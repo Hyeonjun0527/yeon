@@ -1,0 +1,14 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">YEON</title>
+  <desc id="desc">교강사용 AI 학생관리 서비스 로고 아이콘</desc>
+  <rect width="64" height="64" rx="18" fill="#153b50" />
+  <path
+    d="M17 17h10.4L32 27.4 36.6 17H47l-9.8 18L47 47H36.7L32 36.4 27.4 47H17l9.8-12L17 17Z"
+    fill="#f9f6ef"
+  />
+</svg>

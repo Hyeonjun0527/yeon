@@ -1,7 +1,9 @@
 import {
+  contestOverviewResponseSchema,
   createUserResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
+  instructorDashboardResponseSchema,
   listUsersResponseSchema,
   type CreateUserBody,
 } from "@yeon/api-contract";
@@ -78,8 +80,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
     if (!response.ok) {
       const message =
-        (await parseErrorResponse(response)) ??
-        "API 요청 처리에 실패했습니다.";
+        (await parseErrorResponse(response)) ?? "API 요청 처리에 실패했습니다.";
 
       throw new ApiClientError(response.status, message);
     }
@@ -94,6 +95,18 @@ export function createApiClient(options: ApiClientOptions = {}) {
       return request({
         path: "/api/health",
         schema: healthResponseSchema,
+      });
+    },
+    getContestOverview() {
+      return request({
+        path: "/api/v1/contest/overview",
+        schema: contestOverviewResponseSchema,
+      });
+    },
+    getInstructorDashboard() {
+      return request({
+        path: "/api/v1/instructor-dashboard",
+        schema: instructorDashboardResponseSchema,
       });
     },
     listUsers() {
