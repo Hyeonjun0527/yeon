@@ -1,17 +1,26 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type {
   InstructorDashboardResponse,
-  InstructorRiskLevel,
-  LearningSignalEventType,
   PriorityStudentCard,
-  StudentCareSegment,
 } from "@yeon/api-contract";
 
+import {
+  StudentManagementBadge,
+  StudentManagementButton,
+  StudentManagementLinkButton,
+  StudentManagementSectionHeader,
+} from "@/components/student-management-ui/student-management-ui";
 import type { ContestOverview } from "@/lib/contest-overview";
+import {
+  studentManagementRiskLabelMap,
+  studentManagementRiskToneMap,
+  studentManagementSegmentLabelMap,
+  studentManagementSegmentToneMap,
+  studentManagementSignalToneMap,
+} from "@/lib/student-management-display";
 
 import styles from "./student-management-home.module.css";
 
@@ -38,32 +47,6 @@ type StatePanelProps = {
   secondaryLabel?: string;
   hints: string[];
   compact?: boolean;
-};
-
-const riskLevelLabelMap: Record<InstructorRiskLevel, string> = {
-  high: "위험도 상",
-  medium: "위험도 중",
-  low: "위험도 하",
-};
-
-const careSegmentLabelMap: Record<StudentCareSegment, string> = {
-  "needs-care": "즉시 케어",
-  "follow-up": "후속 확인",
-  watch: "관찰 유지",
-  stable: "안정",
-};
-
-const riskLevelClassNameMap: Record<InstructorRiskLevel, string> = {
-  high: styles.riskHigh,
-  medium: styles.riskMedium,
-  low: styles.riskLow,
-};
-
-const signalTypeClassNameMap: Record<LearningSignalEventType, string> = {
-  attendance: styles.signalAttendance,
-  assignment: styles.signalAssignment,
-  question: styles.signalQuestion,
-  "coaching-note": styles.signalCoachingNote,
 };
 
 function normalizeScenario(value?: string): StudentManagementScenario {
@@ -160,13 +143,13 @@ function StatePanel({
       <h2 className={styles.stateTitle}>{title}</h2>
       <p className={styles.stateBody}>{body}</p>
       <div className={styles.stateActionRow}>
-        <Link className={styles.primaryAction} href={primaryHref}>
+        <StudentManagementLinkButton href={primaryHref}>
           {primaryLabel}
-        </Link>
+        </StudentManagementLinkButton>
         {secondaryHref && secondaryLabel ? (
-          <Link className={styles.secondaryAction} href={secondaryHref}>
+          <StudentManagementLinkButton href={secondaryHref} variant="secondary">
             {secondaryLabel}
-          </Link>
+          </StudentManagementLinkButton>
         ) : null}
       </div>
       <div className={styles.stateHintList}>
@@ -261,19 +244,15 @@ export function StudentManagementHome({
           </div>
 
           <div className={styles.heroActions}>
-            <button
-              className={styles.primaryAction}
-              onClick={handleRefresh}
-              type="button"
-            >
+            <StudentManagementButton onClick={handleRefresh}>
               {isRefreshing ? "새로고침 중..." : "오늘 브리핑 새로고침"}
-            </button>
-            <Link
-              className={styles.secondaryAction}
+            </StudentManagementButton>
+            <StudentManagementLinkButton
               href="/api/v1/instructor-dashboard"
+              variant="secondary"
             >
               학생함 API 보기
-            </Link>
+            </StudentManagementLinkButton>
           </div>
         </section>
 
@@ -295,21 +274,17 @@ export function StudentManagementHome({
 
             <section className={styles.briefingGrid}>
               <article className={styles.panel}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>
-                      {dashboard.briefing.label}
-                    </p>
-                    <h2 className={styles.panelTitle}>오늘 바로 실행할 행동</h2>
-                  </div>
-                  <p className={styles.panelMeta}>{dashboard.generatedLabel}</p>
-                </div>
+                <StudentManagementSectionHeader
+                  eyebrow={dashboard.briefing.label}
+                  title="오늘 바로 실행할 행동"
+                  meta={dashboard.generatedLabel}
+                />
                 <div className={styles.actionChecklist}>
                   {dashboard.briefing.actionItems.map((item, index) => (
                     <p key={item} className={styles.actionItem}>
-                      <span
-                        className={styles.actionOrder}
-                      >{`행동 ${index + 1}`}</span>
+                      <StudentManagementBadge tone="accent">
+                        {`행동 ${index + 1}`}
+                      </StudentManagementBadge>
                       <span>{item}</span>
                     </p>
                   ))}
@@ -317,13 +292,11 @@ export function StudentManagementHome({
               </article>
 
               <article className={styles.panel}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <p className={styles.panelEyebrow}>학생 세그먼트</p>
-                    <h2 className={styles.panelTitle}>오늘 큐를 여는 기준</h2>
-                  </div>
-                  <p className={styles.panelMeta}>상태별 밀도 요약</p>
-                </div>
+                <StudentManagementSectionHeader
+                  eyebrow="학생 세그먼트"
+                  title="오늘 큐를 여는 기준"
+                  meta="상태별 밀도 요약"
+                />
                 <div className={styles.segmentGrid}>
                   {dashboard.segments.map((segment) => (
                     <article key={segment.key} className={styles.segmentCard}>
@@ -341,21 +314,18 @@ export function StudentManagementHome({
             <section className={styles.contentGrid}>
               <div className={styles.mainColumn}>
                 <article className={styles.panel}>
-                  <div className={styles.panelHeader}>
-                    <div>
-                      <p className={styles.panelEyebrow}>우선순위 학생 큐</p>
-                      <h2 className={styles.panelTitle}>
-                        누가 왜 먼저 케어 대상인지 카드 한 장에서 닫습니다
-                      </h2>
-                    </div>
-                    <p className={styles.panelMeta}>우선 1부터 순서대로 확인</p>
-                  </div>
+                  <StudentManagementSectionHeader
+                    eyebrow="우선순위 학생 큐"
+                    title="누가 왜 먼저 케어 대상인지 카드 한 장에서 닫습니다"
+                    meta="우선 1부터 순서대로 확인"
+                  />
                   <div className={styles.priorityList}>
                     {priorityStudents.map((student) => {
                       const isActive = student.id === selectedStudent?.id;
 
                       return (
                         <button
+                          aria-pressed={isActive}
                           key={student.id}
                           className={`${styles.priorityCard} ${
                             isActive ? styles.priorityCardActive : ""
@@ -366,9 +336,9 @@ export function StudentManagementHome({
                           <div className={styles.priorityCardHeader}>
                             <div className={styles.priorityCardHeading}>
                               <div className={styles.priorityMetaRow}>
-                                <span
-                                  className={styles.priorityOrder}
-                                >{`우선 ${student.priorityOrder}`}</span>
+                                <StudentManagementBadge tone="accent">
+                                  {`우선 ${student.priorityOrder}`}
+                                </StudentManagementBadge>
                                 <span className={styles.cohortLabel}>
                                   {student.cohortName}
                                 </span>
@@ -378,16 +348,32 @@ export function StudentManagementHome({
                               </h3>
                             </div>
                             <div className={styles.badgeRow}>
-                              <span
-                                className={`${styles.badge} ${riskLevelClassNameMap[student.riskLevel]}`}
+                              <StudentManagementBadge
+                                tone={
+                                  studentManagementRiskToneMap[
+                                    student.riskLevel
+                                  ]
+                                }
                               >
-                                {riskLevelLabelMap[student.riskLevel]}
-                              </span>
-                              <span
-                                className={`${styles.badge} ${styles.segmentBadge}`}
+                                {
+                                  studentManagementRiskLabelMap[
+                                    student.riskLevel
+                                  ]
+                                }
+                              </StudentManagementBadge>
+                              <StudentManagementBadge
+                                tone={
+                                  studentManagementSegmentToneMap[
+                                    student.careSegment
+                                  ]
+                                }
                               >
-                                {careSegmentLabelMap[student.careSegment]}
-                              </span>
+                                {
+                                  studentManagementSegmentLabelMap[
+                                    student.careSegment
+                                  ]
+                                }
+                              </StudentManagementBadge>
                             </div>
                           </div>
                           <div className={styles.priorityDetailGrid}>
@@ -429,27 +415,43 @@ export function StudentManagementHome({
                 </article>
 
                 <article className={styles.panel}>
-                  <div className={styles.panelHeader}>
-                    <div>
-                      <p className={styles.panelEyebrow}>학생 상세 패널</p>
-                      <h2 className={styles.panelTitle}>
-                        {selectedStudent
+                  <div className={styles.detailHeader}>
+                    <StudentManagementSectionHeader
+                      eyebrow="학생 상세 패널"
+                      title={
+                        selectedStudent
                           ? `${selectedStudent.name} · ${selectedStudent.cohortName}`
-                          : "상세 학생 없음"}
-                      </h2>
-                    </div>
+                          : "상세 학생 없음"
+                      }
+                    />
                     {selectedStudent ? (
                       <div className={styles.badgeRow}>
-                        <span
-                          className={`${styles.badge} ${riskLevelClassNameMap[selectedStudent.riskLevel]}`}
+                        <StudentManagementBadge
+                          tone={
+                            studentManagementRiskToneMap[
+                              selectedStudent.riskLevel
+                            ]
+                          }
                         >
-                          {riskLevelLabelMap[selectedStudent.riskLevel]}
-                        </span>
-                        <span
-                          className={`${styles.badge} ${styles.segmentBadge}`}
+                          {
+                            studentManagementRiskLabelMap[
+                              selectedStudent.riskLevel
+                            ]
+                          }
+                        </StudentManagementBadge>
+                        <StudentManagementBadge
+                          tone={
+                            studentManagementSegmentToneMap[
+                              selectedStudent.careSegment
+                            ]
+                          }
                         >
-                          {careSegmentLabelMap[selectedStudent.careSegment]}
-                        </span>
+                          {
+                            studentManagementSegmentLabelMap[
+                              selectedStudent.careSegment
+                            ]
+                          }
+                        </StudentManagementBadge>
                       </div>
                     ) : null}
                   </div>
@@ -480,24 +482,22 @@ export function StudentManagementHome({
                       </div>
 
                       <div className={styles.timelinePanel}>
-                        <div className={styles.panelHeader}>
-                          <div>
-                            <p className={styles.panelEyebrow}>
-                              최근 학습 신호 타임라인
-                            </p>
-                            <h3 className={styles.timelineTitle}>
-                              개입 근거를 시간 순서로 바로 확인합니다
-                            </h3>
-                          </div>
-                        </div>
+                        <StudentManagementSectionHeader
+                          eyebrow="최근 학습 신호 타임라인"
+                          title="개입 근거를 시간 순서로 바로 확인합니다"
+                          titleLevel="h3"
+                        />
                         <ol className={styles.timelineList}>
                           {selectedDetail.timeline.map((event) => (
                             <li key={event.id} className={styles.timelineItem}>
-                              <span
-                                className={`${styles.timelineBadge} ${signalTypeClassNameMap[event.type]}`}
+                              <StudentManagementBadge
+                                className={styles.timelineBadge}
+                                tone={
+                                  studentManagementSignalToneMap[event.type]
+                                }
                               >
                                 {event.typeLabel}
-                              </span>
+                              </StudentManagementBadge>
                               <div className={styles.timelineContent}>
                                 <p className={styles.timelineTime}>
                                   {event.occurredAtLabel}
@@ -522,14 +522,10 @@ export function StudentManagementHome({
 
               <aside className={styles.sidebar}>
                 <article className={styles.panel}>
-                  <div className={styles.panelHeader}>
-                    <div>
-                      <p className={styles.panelEyebrow}>최근 케어 이력</p>
-                      <h2 className={styles.panelTitle}>
-                        개입과 후속관리 흐름이 끊기지 않는 기록
-                      </h2>
-                    </div>
-                  </div>
+                  <StudentManagementSectionHeader
+                    eyebrow="최근 케어 이력"
+                    title="개입과 후속관리 흐름이 끊기지 않는 기록"
+                  />
                   <div className={styles.historyList}>
                     {dashboard.careHistory.map((entry) => (
                       <article
@@ -552,14 +548,10 @@ export function StudentManagementHome({
                 </article>
 
                 <article className={styles.panel}>
-                  <div className={styles.panelHeader}>
-                    <div>
-                      <p className={styles.panelEyebrow}>주간 리포트</p>
-                      <h2 className={styles.panelTitle}>
-                        오늘 수업 전에 함께 볼 반 단위 맥락
-                      </h2>
-                    </div>
-                  </div>
+                  <StudentManagementSectionHeader
+                    eyebrow="주간 리포트"
+                    title="오늘 수업 전에 함께 볼 반 단위 맥락"
+                  />
                   <p className={styles.panelDescription}>
                     {dashboard.weeklyReport.summary}
                   </p>
