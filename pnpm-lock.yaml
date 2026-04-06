@@ -31,6 +31,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@yeon/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@yeon/api-contract':
         specifier: workspace:*
         version: link:../../packages/api-contract
