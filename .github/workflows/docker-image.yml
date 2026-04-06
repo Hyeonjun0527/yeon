@@ -72,20 +72,33 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      secrets.RPI_HOST != '' &&
-      secrets.RPI_USERNAME != '' &&
-      secrets.RPI_SSH_KEY != ''
+    if: github.ref == 'refs/heads/main'
     needs: docker
     runs-on: ubuntu-latest
+    env:
+      RPI_HOST: ${{ secrets.RPI_HOST }}
+      RPI_PORT: ${{ secrets.RPI_PORT }}
+      RPI_USERNAME: ${{ secrets.RPI_USERNAME }}
+      RPI_SSH_KEY: ${{ secrets.RPI_SSH_KEY }}
+      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
 
     steps:
+      - name: Check deploy prerequisites
+        id: deploy_check
+        run: |
+          set -eu
+
+          if [ -z "${RPI_HOST}" ] || [ -z "${RPI_USERNAME}" ] || [ -z "${RPI_SSH_KEY}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Raspberry Pi deploy secrets are not configured; skipping deploy."
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
-        env:
-          RPI_HOST: ${{ secrets.RPI_HOST }}
-          RPI_PORT: ${{ secrets.RPI_PORT }}
-          RPI_SSH_KEY: ${{ secrets.RPI_SSH_KEY }}
+        if: steps.deploy_check.outputs.ready == 'true'
         run: |
           set -eu
           install -m 700 -d ~/.ssh
@@ -94,12 +107,7 @@ jobs:
           ssh-keyscan -p "${RPI_PORT:-22}" -H "$RPI_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy on Raspberry Pi
-        env:
-          RPI_HOST: ${{ secrets.RPI_HOST }}
-          RPI_PORT: ${{ secrets.RPI_PORT }}
-          RPI_USERNAME: ${{ secrets.RPI_USERNAME }}
-          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        if: steps.deploy_check.outputs.ready == 'true'
         run: |
           set -eu
 
