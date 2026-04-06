@@ -4,17 +4,20 @@ on:
   push:
     branches:
       - main
+      - develop
     paths:
       - ".github/workflows/docker-image.yml"
       - "Dockerfile"
       - ".dockerignore"
+      - ".env.example"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
+      - "compose.prod.yml"
+      - "compose.dev.yml"
       - "apps/web/**"
-      - "packages/api-contract/**"
-      - "packages/config/**"
+      - "packages/**"
   workflow_dispatch:
 
 permissions:
@@ -31,6 +34,7 @@ env:
 
 jobs:
   docker:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
 
     steps:
@@ -56,7 +60,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: Build and push Docker image
@@ -71,29 +76,61 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  deploy_production:
     if: github.ref == 'refs/heads/main'
     needs: docker
     runs-on: ubuntu-latest
     env:
+      PROD_RPI_HOST: ${{ secrets.PROD_RPI_HOST }}
+      PROD_RPI_PORT: ${{ secrets.PROD_RPI_PORT }}
+      PROD_RPI_USERNAME: ${{ secrets.PROD_RPI_USERNAME }}
+      PROD_RPI_SSH_KEY: ${{ secrets.PROD_RPI_SSH_KEY }}
+      PROD_GHCR_PULL_USERNAME: ${{ secrets.PROD_GHCR_PULL_USERNAME }}
+      PROD_GHCR_PULL_TOKEN: ${{ secrets.PROD_GHCR_PULL_TOKEN }}
       RPI_HOST: ${{ secrets.RPI_HOST }}
       RPI_PORT: ${{ secrets.RPI_PORT }}
       RPI_USERNAME: ${{ secrets.RPI_USERNAME }}
       RPI_SSH_KEY: ${{ secrets.RPI_SSH_KEY }}
       GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+      DEPLOY_DIR: /srv/yeon
+      COMPOSE_FILE: compose.prod.yml
 
     steps:
-      - name: Check deploy prerequisites
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve deploy configuration
         id: deploy_check
         run: |
           set -eu
 
-          if [ -z "${RPI_HOST}" ] || [ -z "${RPI_USERNAME}" ] || [ -z "${RPI_SSH_KEY}" ]; then
+          deploy_host="${PROD_RPI_HOST:-${RPI_HOST:-}}"
+          deploy_port="${PROD_RPI_PORT:-${RPI_PORT:-22}}"
+          deploy_username="${PROD_RPI_USERNAME:-${RPI_USERNAME:-}}"
+          deploy_ssh_key="${PROD_RPI_SSH_KEY:-${RPI_SSH_KEY:-}}"
+          ghcr_pull_username="${PROD_GHCR_PULL_USERNAME:-${GHCR_PULL_USERNAME:-}}"
+          ghcr_pull_token="${PROD_GHCR_PULL_TOKEN:-${GHCR_PULL_TOKEN:-}}"
+
+          if [ -z "$deploy_host" ] || [ -z "$deploy_username" ] || [ -z "$deploy_ssh_key" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Raspberry Pi deploy secrets are not configured; skipping deploy."
+            echo "Production deploy secrets are not configured; skipping deploy."
             exit 0
           fi
+
+          {
+            echo "DEPLOY_HOST=$deploy_host"
+            echo "DEPLOY_PORT=$deploy_port"
+            echo "DEPLOY_USERNAME=$deploy_username"
+            echo "DEPLOY_GHCR_PULL_USERNAME=$ghcr_pull_username"
+            echo "DEPLOY_GHCR_PULL_TOKEN=$ghcr_pull_token"
+          } >> "$GITHUB_ENV"
+
+          {
+            echo "DEPLOY_SSH_KEY<<EOF"
+            printf '%s\n' "$deploy_ssh_key"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
 
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
@@ -102,19 +139,111 @@ jobs:
         run: |
           set -eu
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$RPI_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${RPI_PORT:-22}" -H "$RPI_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync compose file
+        if: steps.deploy_check.outputs.ready == 'true'
+        run: |
+          set -eu
+          ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" "mkdir -p '${DEPLOY_DIR}'"
+          scp -P "${DEPLOY_PORT}" "${COMPOSE_FILE}" \
+            "${DEPLOY_USERNAME}@${DEPLOY_HOST}:${DEPLOY_DIR}/${COMPOSE_FILE}"
 
       - name: Deploy on Raspberry Pi
         if: steps.deploy_check.outputs.ready == 'true'
         run: |
           set -eu
 
-          if [ -n "${GHCR_PULL_USERNAME}" ] && [ -n "${GHCR_PULL_TOKEN}" ]; then
-            ssh -p "${RPI_PORT:-22}" "${RPI_USERNAME}@${RPI_HOST}" \
-              "printf '%s\n' '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
+          if [ -n "${DEPLOY_GHCR_PULL_USERNAME}" ] && [ -n "${DEPLOY_GHCR_PULL_TOKEN}" ]; then
+            printf '%s\n' "${DEPLOY_GHCR_PULL_TOKEN}" | \
+              ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" \
+                "docker login ghcr.io -u '${DEPLOY_GHCR_PULL_USERNAME}' --password-stdin"
           fi
 
-          ssh -p "${RPI_PORT:-22}" "${RPI_USERNAME}@${RPI_HOST}" \
-            "set -eu; cd /srv/yeon && docker compose -f compose.prod.yml pull && docker compose -f compose.prod.yml up -d"
+          ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" \
+            "set -eu; cd '${DEPLOY_DIR}' && docker compose -f '${COMPOSE_FILE}' pull && docker compose -f '${COMPOSE_FILE}' up -d"
+
+  deploy_develop:
+    if: github.ref == 'refs/heads/develop'
+    needs: docker
+    runs-on: ubuntu-latest
+    env:
+      DEV_RPI_HOST: ${{ secrets.DEV_RPI_HOST }}
+      DEV_RPI_PORT: ${{ secrets.DEV_RPI_PORT }}
+      DEV_RPI_USERNAME: ${{ secrets.DEV_RPI_USERNAME }}
+      DEV_RPI_SSH_KEY: ${{ secrets.DEV_RPI_SSH_KEY }}
+      DEV_GHCR_PULL_USERNAME: ${{ secrets.DEV_GHCR_PULL_USERNAME }}
+      DEV_GHCR_PULL_TOKEN: ${{ secrets.DEV_GHCR_PULL_TOKEN }}
+      DEPLOY_DIR: /srv/yeon-develop
+      COMPOSE_FILE: compose.dev.yml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve deploy configuration
+        id: deploy_check
+        run: |
+          set -eu
+
+          deploy_host="${DEV_RPI_HOST:-}"
+          deploy_port="${DEV_RPI_PORT:-22}"
+          deploy_username="${DEV_RPI_USERNAME:-}"
+          deploy_ssh_key="${DEV_RPI_SSH_KEY:-}"
+          ghcr_pull_username="${DEV_GHCR_PULL_USERNAME:-}"
+          ghcr_pull_token="${DEV_GHCR_PULL_TOKEN:-}"
+
+          if [ -z "$deploy_host" ] || [ -z "$deploy_username" ] || [ -z "$deploy_ssh_key" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Develop deploy secrets are not configured; skipping deploy."
+            exit 0
+          fi
+
+          {
+            echo "DEPLOY_HOST=$deploy_host"
+            echo "DEPLOY_PORT=$deploy_port"
+            echo "DEPLOY_USERNAME=$deploy_username"
+            echo "DEPLOY_GHCR_PULL_USERNAME=$ghcr_pull_username"
+            echo "DEPLOY_GHCR_PULL_TOKEN=$ghcr_pull_token"
+          } >> "$GITHUB_ENV"
+
+          {
+            echo "DEPLOY_SSH_KEY<<EOF"
+            printf '%s\n' "$deploy_ssh_key"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare SSH
+        if: steps.deploy_check.outputs.ready == 'true'
+        run: |
+          set -eu
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync compose file
+        if: steps.deploy_check.outputs.ready == 'true'
+        run: |
+          set -eu
+          ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" "mkdir -p '${DEPLOY_DIR}'"
+          scp -P "${DEPLOY_PORT}" "${COMPOSE_FILE}" \
+            "${DEPLOY_USERNAME}@${DEPLOY_HOST}:${DEPLOY_DIR}/${COMPOSE_FILE}"
+
+      - name: Deploy on Raspberry Pi
+        if: steps.deploy_check.outputs.ready == 'true'
+        run: |
+          set -eu
+
+          if [ -n "${DEPLOY_GHCR_PULL_USERNAME}" ] && [ -n "${DEPLOY_GHCR_PULL_TOKEN}" ]; then
+            printf '%s\n' "${DEPLOY_GHCR_PULL_TOKEN}" | \
+              ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" \
+                "docker login ghcr.io -u '${DEPLOY_GHCR_PULL_USERNAME}' --password-stdin"
+          fi
+
+          ssh -p "${DEPLOY_PORT}" "${DEPLOY_USERNAME}@${DEPLOY_HOST}" \
+            "set -eu; cd '${DEPLOY_DIR}' && docker compose -f '${COMPOSE_FILE}' pull && docker compose -f '${COMPOSE_FILE}' up -d"

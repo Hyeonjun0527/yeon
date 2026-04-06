@@ -32,6 +32,11 @@ docs/
 - [Raspberry Pi Docker Compose Guide](./docs/deployment/raspberry-pi-docker-compose.md)
 - [GitHub Actions + GHCR Guide](./docs/deployment/github-actions-ghcr.md)
 
+브랜치별 배포 기준:
+
+- `develop` -> develop 서버 -> `dev.yeon.world`
+- `main` -> 운영 서버 -> `yeon.world`
+
 ## Contest Docs
 
 - [Contest Docs Overview](./docs/contest/README.md)

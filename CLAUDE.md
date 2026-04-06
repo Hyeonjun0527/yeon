@@ -36,7 +36,7 @@
 ## Repository Operating Model
 
 - 이 저장소는 `pnpm` workspace monorepo다.
-- `study-platform-client`와 동일하게 `develop`을 통합 브랜치, `main`을 운영 브랜치로 둔다.
+- `study-platform-client`와 동일하게 `develop`을 develop 서버 기준 통합 브랜치, `main`을 운영 브랜치로 둔다.
 - 2026-04-06 기준 원격에는 `origin/main`만 있으므로, 첫 PR 흐름에 들어가기 전에 `develop`을 `main`에서 생성해 push하는 것을 전제로 한다.
 
 ## Project Overview
