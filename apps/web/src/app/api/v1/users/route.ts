@@ -42,12 +42,9 @@ export async function POST(request: Request) {
   try {
     const user = await createUser(parseResult.data);
 
-    return NextResponse.json(
-      createUserResponseSchema.parse({ user }),
-      {
-        status: 201,
-      },
-    );
+    return NextResponse.json(createUserResponseSchema.parse({ user }), {
+      status: 201,
+    });
   } catch (error) {
     if (error instanceof ServiceError) {
       return jsonError(error.message, error.status);
