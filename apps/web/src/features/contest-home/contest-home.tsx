@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {
   InstructorDashboardResponse,
   InstructorRiskLevel,
+  LearningSignalEventType,
   PriorityStudentCard,
   StudentCareSegment,
 } from "@yeon/api-contract";
@@ -134,9 +135,21 @@ const riskLevelClassNameMap: Record<InstructorRiskLevel, string> = {
   low: styles.riskLow,
 };
 
+const signalTypeClassNameMap: Record<LearningSignalEventType, string> = {
+  attendance: styles.signalAttendance,
+  assignment: styles.signalAssignment,
+  question: styles.signalQuestion,
+  "coaching-note": styles.signalCoachingNote,
+};
+
 export function ContestHome({ overview, dashboard }: ContestHomeProps) {
-  const highlightedStudent = dashboard.priorityStudents.find(
-    (student) => student.riskLevel === "high",
+  const priorityStudents = [...dashboard.priorityStudents].sort(
+    (left, right) => left.priorityOrder - right.priorityOrder,
+  );
+  const highlightedStudentDetail = dashboard.highlightedStudentDetail;
+
+  const highlightedStudent = priorityStudents.find(
+    (student) => student.id === highlightedStudentDetail.studentId,
   );
 
   const generatedLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -229,59 +242,193 @@ export function ContestHome({ overview, dashboard }: ContestHomeProps) {
                 </div>
               </article>
 
-              <div className={styles.priorityStudentGrid}>
-                {dashboard.priorityStudents.map((student) => (
-                  <article
-                    key={student.id}
-                    className={`${styles.priorityStudentCard} ${
-                      student.id === highlightedStudent?.id
-                        ? styles.priorityStudentCardActive
-                        : ""
-                    }`}
-                  >
-                    <div className={styles.priorityStudentHeader}>
-                      <div className={styles.priorityStudentHeading}>
-                        <p className={styles.roleLabel}>{student.cohortName}</p>
-                        <h3 className={styles.cardTitle}>{student.name}</h3>
-                        {student.id === highlightedStudent?.id ? (
-                          <p className={styles.detailFocusLabel}>
-                            상단 브리핑 기준 학생
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className={styles.priorityStudentBadges}>
-                        <span
-                          className={`${styles.riskBadge} ${riskLevelClassNameMap[student.riskLevel]}`}
-                        >
-                          {riskLevelLabelMap[student.riskLevel]}
-                        </span>
-                        <span className={styles.segmentBadge}>
-                          {careSegmentLabelMap[student.careSegment]}
-                        </span>
-                      </div>
-                    </div>
-                    <p className={styles.cardBody}>{student.riskSummary}</p>
-                    <p className={styles.studentRecentChange}>
-                      최근 변화: {student.recentChange}
+              <article className={styles.priorityListPanel}>
+                <div className={styles.priorityListHeader}>
+                  <div className={styles.priorityListHeading}>
+                    <p className={styles.personaListLabel}>우선순위 학생 큐</p>
+                    <h3 className={styles.cardTitle}>
+                      누구를 어떤 순서로 챙길지 카드 한 장에서 닫히는 라운드 3
+                      리스트
+                    </h3>
+                    <p className={styles.cardBody}>
+                      위험 이유, 최근 변화, 다음 행동, 다음 확인 시각을 같은
+                      위계로 두고 우선 1부터 순서대로 확인합니다.
                     </p>
-                    <p className={styles.studentAction}>
-                      다음 행동: {student.recommendedAction}
-                    </p>
-                    <div className={styles.studentFooter}>
-                      <div className={styles.tagList}>
-                        {student.tags.map((tag) => (
-                          <span key={tag} className={styles.tagChip}>
-                            {tag}
+                  </div>
+                  <p className={styles.priorityListMeta}>
+                    상중하 레벨 기준 · 우선 1부터 확인
+                  </p>
+                </div>
+
+                <div className={styles.priorityStudentGrid}>
+                  {priorityStudents.map((student) => (
+                    <article
+                      key={student.id}
+                      className={`${styles.priorityStudentCard} ${
+                        student.id === highlightedStudent?.id
+                          ? styles.priorityStudentCardActive
+                          : ""
+                      }`}
+                    >
+                      <div className={styles.priorityStudentHeader}>
+                        <div className={styles.priorityStudentHeading}>
+                          <div className={styles.priorityStudentMetaRow}>
+                            <span className={styles.priorityOrderBadge}>
+                              {`우선 ${student.priorityOrder}`}
+                            </span>
+                            <p className={styles.roleLabel}>
+                              {student.cohortName}
+                            </p>
+                          </div>
+                          <h3 className={styles.cardTitle}>{student.name}</h3>
+                          {student.id === highlightedStudent?.id ? (
+                            <p className={styles.detailFocusLabel}>
+                              상단 브리핑 기준 학생
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className={styles.priorityStudentBadges}>
+                          <span
+                            className={`${styles.riskBadge} ${riskLevelClassNameMap[student.riskLevel]}`}
+                          >
+                            {riskLevelLabelMap[student.riskLevel]}
                           </span>
-                        ))}
+                          <span className={styles.segmentBadge}>
+                            {careSegmentLabelMap[student.careSegment]}
+                          </span>
+                        </div>
                       </div>
-                      <span className={styles.deadlineLabel}>
-                        {student.nextCheckLabel}
+
+                      <div className={styles.priorityStudentDetailGrid}>
+                        <article className={styles.priorityStudentDetailCard}>
+                          <p className={styles.priorityStudentFieldLabel}>
+                            위험 이유
+                          </p>
+                          <p className={styles.cardBody}>
+                            {student.riskSummary}
+                          </p>
+                        </article>
+                        <article className={styles.priorityStudentDetailCard}>
+                          <p className={styles.priorityStudentFieldLabel}>
+                            최근 변화
+                          </p>
+                          <p className={styles.cardBody}>
+                            {student.recentChange}
+                          </p>
+                        </article>
+                        <article className={styles.priorityStudentDetailCard}>
+                          <p className={styles.priorityStudentFieldLabel}>
+                            다음 행동
+                          </p>
+                          <p className={styles.priorityStudentActionText}>
+                            {student.recommendedAction}
+                          </p>
+                        </article>
+                      </div>
+
+                      <div className={styles.studentFooter}>
+                        <div className={styles.tagList}>
+                          {student.tags.map((tag) => (
+                            <span key={tag} className={styles.tagChip}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <span className={styles.deadlineLabel}>
+                          다음 확인 {student.nextCheckLabel}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </article>
+
+              <article className={styles.studentDetailPanel}>
+                <div className={styles.studentDetailHeader}>
+                  <div className={styles.studentDetailIntro}>
+                    <p className={styles.personaListLabel}>학생 상세 패널</p>
+                    <h3 className={styles.cardTitle}>
+                      {highlightedStudent
+                        ? `${highlightedStudent.name} · ${highlightedStudent.cohortName}`
+                        : "우선 학생 상세"}
+                    </h3>
+                    <p className={styles.cardBody}>
+                      {highlightedStudentDetail.statusHeadline}
+                    </p>
+                  </div>
+
+                  {highlightedStudent ? (
+                    <div className={styles.priorityStudentBadges}>
+                      <span
+                        className={`${styles.riskBadge} ${riskLevelClassNameMap[highlightedStudent.riskLevel]}`}
+                      >
+                        {riskLevelLabelMap[highlightedStudent.riskLevel]}
+                      </span>
+                      <span className={styles.segmentBadge}>
+                        {careSegmentLabelMap[highlightedStudent.careSegment]}
                       </span>
                     </div>
-                  </article>
-                ))}
-              </div>
+                  ) : null}
+                </div>
+
+                <div className={styles.studentDetailLayout}>
+                  <div className={styles.studentDetailInsights}>
+                    <article className={styles.detailInsightCard}>
+                      <p className={styles.personaListLabel}>AI 위험 해석</p>
+                      <p className={styles.cardBody}>
+                        {highlightedStudentDetail.aiInterpretation}
+                      </p>
+                    </article>
+
+                    <article className={styles.detailInsightCard}>
+                      <p className={styles.personaListLabel}>
+                        교강사 개입 포인트
+                      </p>
+                      <p className={styles.cardBody}>
+                        {highlightedStudentDetail.coachFocus}
+                      </p>
+                    </article>
+                  </div>
+
+                  <div className={styles.timelinePanel}>
+                    <div className={styles.dashboardSideHeader}>
+                      <div>
+                        <p className={styles.personaListLabel}>
+                          최근 학습 신호 타임라인
+                        </p>
+                        <h4 className={styles.timelineTitle}>
+                          개입 근거가 시간순으로 이어져 학생 상태를 바로
+                          설명합니다
+                        </h4>
+                      </div>
+                      <p className={styles.segmentGeneratedAt}>
+                        {generatedLabel} 기준
+                      </p>
+                    </div>
+
+                    <ol className={styles.timelineList}>
+                      {highlightedStudentDetail.timeline.map((event) => (
+                        <li key={event.id} className={styles.timelineItem}>
+                          <span
+                            className={`${styles.timelineBadge} ${signalTypeClassNameMap[event.type]}`}
+                          >
+                            {event.typeLabel}
+                          </span>
+                          <div className={styles.timelineContent}>
+                            <p className={styles.timelineTime}>
+                              {event.occurredAtLabel}
+                            </p>
+                            <p className={styles.dashboardListTitle}>
+                              {event.title}
+                            </p>
+                            <p className={styles.cardBody}>{event.summary}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              </article>
             </div>
 
             <aside className={styles.dashboardSidebar}>
