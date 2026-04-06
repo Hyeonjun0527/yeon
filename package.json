@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "prepare": "sh ./scripts/setup-git-hooks.sh",
     "dev:web": "pnpm --filter @yeon/web dev",
     "build:web": "pnpm --filter @yeon/web build",
     "lint": "turbo run lint --filter=@yeon/web --filter=@yeon/api-contract --filter=@yeon/api-client",
