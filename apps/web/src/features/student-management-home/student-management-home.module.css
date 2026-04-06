@@ -297,6 +297,11 @@
   gap: 6px;
 }
 
+.detailHeader {
+  display: grid;
+  gap: 14px;
+}
+
 .cohortLabel,
 .panelMeta,
 .historyMeta,
