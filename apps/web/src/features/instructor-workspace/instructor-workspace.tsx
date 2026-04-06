@@ -13,6 +13,7 @@ import type {
   StudentCareSegment,
   StudentCareNote,
   WorkspaceStudent,
+  WorkspaceStudentDetail,
 } from "@yeon/api-contract/instructor-workspace";
 
 import styles from "./instructor-workspace.module.css";
@@ -55,6 +56,12 @@ const actionStatusClassNameMap: Record<InstructorActionStatus, string> = {
   done: styles.actionDone,
 };
 
+const actionPriorityRank: Record<InstructorActionStatus, number> = {
+  "in-progress": 0,
+  pending: 1,
+  done: 2,
+};
+
 type InstructorWorkspaceProps = {
   dashboard: InstructorDashboardResponse;
   workspace: InstructorWorkspaceResponse;
@@ -94,6 +101,40 @@ function formatRecordedAtLabel() {
 
 function getStudentMap(students: WorkspaceStudent[]) {
   return new Map(students.map((student) => [student.id, student]));
+}
+
+function getStudentDetailMap(studentDetails: WorkspaceStudentDetail[]) {
+  return new Map(studentDetails.map((detail) => [detail.studentId, detail]));
+}
+
+function getStudentActionMap(actionBoard: InstructorActionBoardItem[]) {
+  return actionBoard.reduce<Map<string, InstructorActionBoardItem>>(
+    (actionMap, actionItem) => {
+      const currentItem = actionMap.get(actionItem.studentId);
+
+      if (
+        !currentItem ||
+        actionPriorityRank[actionItem.status] <
+          actionPriorityRank[currentItem.status]
+      ) {
+        actionMap.set(actionItem.studentId, actionItem);
+      }
+
+      return actionMap;
+    },
+    new Map<string, InstructorActionBoardItem>(),
+  );
+}
+
+function getStudentNextAction(
+  studentDetail: WorkspaceStudentDetail | undefined,
+  actionItem: InstructorActionBoardItem | undefined,
+) {
+  return (
+    studentDetail?.nextBestActions[0] ??
+    actionItem?.summary ??
+    "오늘 수업 전 현재 막힌 지점을 짧게 다시 확인합니다."
+  );
 }
 
 function getSegmentCount(
@@ -193,14 +234,18 @@ export function InstructorWorkspace({
     (detail) => detail.studentId === selectedStudent?.id,
   );
   const studentMap = getStudentMap(students);
+  const studentDetailMap = getStudentDetailMap(studentDetails);
+  const studentActionMap = getStudentActionMap(todayActionBoard);
   const heroFocusStudent =
+    selectedStudent ??
     students.find(
       (student) => student.id === dashboard.highlightedStudentDetail.studentId,
-    ) ?? students[0];
+    ) ??
+    students[0];
   const heroFocusStudentDetail =
-    studentDetails.find(
-      (detail) => detail.studentId === heroFocusStudent?.id,
-    ) ?? dashboard.highlightedStudentDetail;
+    selectedStudentDetail ??
+    studentDetailMap.get(heroFocusStudent?.id ?? "") ??
+    dashboard.highlightedStudentDetail;
   const needsCareCount = getSegmentCount(students, "needs-care");
   const pendingActionCount = todayActionBoard.filter(
     (item) => item.status !== "done",
@@ -372,6 +417,12 @@ export function InstructorWorkspace({
                 "오늘 개입을 기록했고, 다음 수업 전 다시 확인하는 후속 확인 단계로 이동했습니다.",
               coachFocus:
                 "다음 확인 전까지는 과제 진입 여부와 수업 중 반응만 짧게 추적하면 됩니다.",
+              recommendedMessageDraft:
+                "오늘 개입 내용은 기록해뒀고, 내일 오전 수업 전 과제 재진입 여부만 짧게 다시 확인할게요.",
+              nextBestActions: [
+                "내일 오전 출석과 과제 재진입 여부 짧게 확인",
+                "follow-up 메시지 회신 여부 기록",
+              ],
               careNotes: [
                 createCareNote(
                   "상태 이동",
@@ -499,8 +550,8 @@ export function InstructorWorkspace({
                 </h2>
               </div>
               <p className={styles.panelDescription}>
-                세그먼트와 검색으로 학생을 좁히고, 우선순위 순서대로 바로
-                선택합니다.
+                세그먼트와 검색으로 학생을 좁힌 뒤, 카드 안에서 개입 근거와 다음
+                행동을 바로 읽습니다.
               </p>
             </div>
 
@@ -565,70 +616,116 @@ export function InstructorWorkspace({
 
             <div className={styles.studentList}>
               {visibleStudents.length ? (
-                visibleStudents.map((student) => (
-                  <button
-                    key={student.id}
-                    className={`${styles.studentCard} ${
-                      selectedStudent?.id === student.id
-                        ? styles.studentCardActive
-                        : ""
-                    }`}
-                    type="button"
-                    onClick={() => {
-                      handleStudentSelect(student.id);
-                    }}
-                  >
-                    <div className={styles.studentCardHeader}>
-                      <div>
-                        <div className={styles.studentCardMeta}>
-                          <span className={styles.priorityBadge}>
-                            우선 {student.priorityOrder}
+                visibleStudents.map((student) => {
+                  const studentDetail = studentDetailMap.get(student.id);
+                  const studentAction = studentActionMap.get(student.id);
+                  const nextActionLabel = getStudentNextAction(
+                    studentDetail,
+                    studentAction,
+                  );
+
+                  return (
+                    <button
+                      key={student.id}
+                      className={`${styles.studentCard} ${
+                        selectedStudent?.id === student.id
+                          ? styles.studentCardActive
+                          : ""
+                      }`}
+                      type="button"
+                      onClick={() => {
+                        handleStudentSelect(student.id);
+                      }}
+                    >
+                      <div className={styles.studentCardHeader}>
+                        <div>
+                          <div className={styles.studentCardMeta}>
+                            <span className={styles.priorityBadge}>
+                              우선 {student.priorityOrder}
+                            </span>
+                            <span className={styles.cohortLabel}>
+                              {student.cohortName}
+                            </span>
+                          </div>
+                          <h3 className={styles.studentName}>{student.name}</h3>
+                        </div>
+                        <div className={styles.studentBadges}>
+                          <span
+                            className={`${styles.riskBadge} ${riskClassNameMap[student.riskLevel]}`}
+                          >
+                            {riskLabelMap[student.riskLevel]}
                           </span>
-                          <span className={styles.cohortLabel}>
-                            {student.cohortName}
+                          <span className={styles.segmentBadge}>
+                            {segmentLabelMap[student.careSegment]}
                           </span>
                         </div>
-                        <h3 className={styles.studentName}>{student.name}</h3>
                       </div>
-                      <div className={styles.studentBadges}>
-                        <span
-                          className={`${styles.riskBadge} ${riskClassNameMap[student.riskLevel]}`}
-                        >
-                          {riskLabelMap[student.riskLevel]}
-                        </span>
-                        <span className={styles.segmentBadge}>
-                          {segmentLabelMap[student.careSegment]}
-                        </span>
-                      </div>
-                    </div>
 
-                    <p className={styles.studentStatus}>
-                      {student.currentStatus}
-                    </p>
-                    <dl className={styles.studentFacts}>
-                      <div>
-                        <dt>최근 신호</dt>
-                        <dd>{student.latestSignal}</dd>
+                      <dl className={styles.studentFacts}>
+                        <div
+                          className={`${styles.studentFactCard} ${styles.studentFactCardEmphasis}`}
+                        >
+                          <div className={styles.studentFactHeader}>
+                            <dt>위험 이유</dt>
+                          </div>
+                          <dd>
+                            <span className={styles.studentFactLead}>
+                              {student.latestSignal}
+                            </span>
+                            <span className={styles.studentFactBody}>
+                              {student.currentStatus}
+                            </span>
+                          </dd>
+                        </div>
+                        <div className={styles.studentFactCard}>
+                          <div className={styles.studentFactHeader}>
+                            <dt>최근 변화</dt>
+                          </div>
+                          <dd className={styles.studentFactBody}>
+                            {student.recentChange}
+                          </dd>
+                        </div>
+                        <div className={styles.studentFactCard}>
+                          <div className={styles.studentFactHeader}>
+                            <dt>다음 행동</dt>
+                            {studentAction ? (
+                              <span
+                                className={`${styles.actionStatus} ${actionStatusClassNameMap[studentAction.status]}`}
+                              >
+                                {actionStatusLabelMap[studentAction.status]}
+                              </span>
+                            ) : null}
+                          </div>
+                          <dd className={styles.studentFactBody}>
+                            {nextActionLabel}
+                          </dd>
+                        </div>
+                        <div
+                          className={`${styles.studentFactCard} ${styles.studentFactCardCompact}`}
+                        >
+                          <div className={styles.studentFactHeader}>
+                            <dt>다음 확인</dt>
+                          </div>
+                          <dd>
+                            <span className={styles.studentFactTime}>
+                              {student.nextCheckLabel}
+                            </span>
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className={styles.studentFooter}>
+                        <div className={styles.tagList}>
+                          {student.tags.map((tag) => (
+                            <span key={tag} className={styles.tagChip}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <dt>최근 변화</dt>
-                        <dd>{student.recentChange}</dd>
-                      </div>
-                    </dl>
-                    <div className={styles.studentFooter}>
-                      <div className={styles.tagList}>
-                        {student.tags.map((tag) => (
-                          <span key={tag} className={styles.tagChip}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <span className={styles.nextCheckLabel}>
-                        다음 확인 {student.nextCheckLabel}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
               ) : (
                 <article className={styles.emptyState}>
                   <p className={styles.panelEyebrow}>검색 결과 없음</p>
