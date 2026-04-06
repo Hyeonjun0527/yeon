@@ -10,9 +10,9 @@
 
 ## Branch Workflow Note
 
-- 2026-04-06 기준 이 저장소 원격에는 `origin/main`만 있다.
-- `study-platform-client`와 같은 운영 절차를 쓰기 위해서는 첫 통합 단계에서 `develop`을 `main`에서 생성해 push해야 한다.
-- 그 뒤부터는 `origin/develop` 기준 브랜치, stacked branch, stacked PR 규칙을 적용한다.
+- 2026-04-07 기준 원격에는 `origin/main`, `origin/develop`이 모두 있다.
+- 새 landing 단위는 최신 `origin/develop` 기준 브랜치로 시작한다.
+- stacked branch와 stacked PR이 필요한 경우에만 직전 작업 브랜치를 base로 분리한다.
 
 ## Boundary Summary
 
@@ -43,5 +43,5 @@
 - UI 작업은 `ui-ux-pro-max`로 디자인 시스템을 먼저 잡고, 필요하면 21st 도구를 이어서 사용한다.
 - 이 저장소에서는 기본 Tailwind 유틸리티 사용을 허용한다.
 - `global.css` 또는 `globals.css`에서 기본 Tailwind scale을 막는 방식은 사용하지 않는다.
-- 백로그 문서는 `personal_space/YYYY-MM-DD/N-..._BACKLOG.md`에 작성한다.
+- 백로그 문서는 `docs/hyeonjun/YYYY-MM-DD/N-..._BACKLOG.md` 또는 `docs/yeon/YYYY-MM-DD/N-..._BACKLOG.md`에 작성한다.
 - 루트 스크립트가 아직 비어 있을 수 있으므로 실행 전에 항상 해당 `package.json`을 먼저 확인한다.

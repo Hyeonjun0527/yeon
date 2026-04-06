@@ -1,14 +1,16 @@
 :root {
   color-scheme: light;
-  font-family: "IBM Plex Sans", "Pretendard", sans-serif;
-  background:
-    radial-gradient(circle at top, #f3f7ff, transparent 34%),
-    linear-gradient(180deg, #fcfcfd 0%, #f4f6fb 100%);
-  color: #111827;
+  font-family: var(--font-body), "Pretendard", sans-serif;
+  background-color: #f5f1e8;
+  color: #132238;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -18,8 +20,47 @@ body {
 
 body {
   margin: 0;
+  background:
+    linear-gradient(180deg, #f5f1e8 0%, #f7f4ed 100%),
+    linear-gradient(90deg, rgba(19, 34, 56, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(19, 34, 56, 0.04) 1px, transparent 1px);
+  background-size:
+    auto,
+    24px 24px,
+    24px 24px;
+  background-position:
+    0 0,
+    0 0,
+    0 0;
+  color: inherit;
 }
 
 a {
   color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: #153b50;
+  color: #f8fafc;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

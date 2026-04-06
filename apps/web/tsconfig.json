@@ -4,9 +4,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "plugins": [
       {
@@ -14,8 +12,5 @@
       }
     ]
   },
-  "include": [
-    "next-env.d.ts",
-    "src/**/*"
-  ]
+  "include": ["next-env.d.ts", "src/**/*"]
 }

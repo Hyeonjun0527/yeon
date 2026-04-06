@@ -5,9 +5,20 @@
   "scripts": {
     "dev:web": "pnpm --filter @yeon/web dev",
     "build:web": "pnpm --filter @yeon/web build",
+    "lint": "turbo run lint --filter=@yeon/web --filter=@yeon/api-contract --filter=@yeon/api-client",
+    "prettier:fix": "prettier . --write",
+    "typecheck": "turbo run typecheck --filter=@yeon/web --filter=@yeon/api-contract --filter=@yeon/api-client",
     "typecheck:web": "pnpm --filter @yeon/web typecheck",
     "typecheck:api-contract": "pnpm --filter @yeon/api-contract typecheck",
     "typecheck:api-client": "pnpm --filter @yeon/api-client typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8",
+    "typescript-eslint": "^8.46.4"
   },
   "packageManager": "pnpm@10.33.0"
 }

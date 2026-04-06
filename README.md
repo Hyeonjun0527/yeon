@@ -32,6 +32,12 @@ docs/
 - [Raspberry Pi Docker Compose Guide](./docs/deployment/raspberry-pi-docker-compose.md)
 - [GitHub Actions + GHCR Guide](./docs/deployment/github-actions-ghcr.md)
 
+## Contest Docs
+
+- [Contest Docs Overview](./docs/contest/README.md)
+- [100 Round Roadmap](./docs/hyeonjun/2026-04-07/12-student-management-crm-100round-plan_BACKLOG.md)
+- [Round 1 Interactive MVP Backlog](./docs/hyeonjun/2026-04-07/11-contest-interactive-mvp-implementation_BACKLOG.md)
+
 ## Key Rule
 
 Use `Server Actions` only for web-private mutations. Anything mobile also needs must be exposed through a public HTTP API in `apps/web/src/app/api` and described in `packages/api-contract`.
@@ -46,6 +52,8 @@ Use `Server Actions` only for web-private mutations. Anything mobile also needs 
 ## Available Endpoints
 
 - `GET /api/health`
+- `GET /api/v1/contest/overview`
+- `GET /api/v1/instructor-dashboard`
 - `GET /api/v1/users`
 - `POST /api/v1/users`
 
