@@ -4,6 +4,7 @@ import {
   errorResponseSchema,
   healthResponseSchema,
   instructorDashboardResponseSchema,
+  instructorWorkspaceResponseSchema,
   listUsersResponseSchema,
   type CreateUserBody,
 } from "@yeon/api-contract";
@@ -107,6 +108,12 @@ export function createApiClient(options: ApiClientOptions = {}) {
       return request({
         path: "/api/v1/instructor-dashboard",
         schema: instructorDashboardResponseSchema,
+      });
+    },
+    getInstructorWorkspace() {
+      return request({
+        path: "/api/v1/instructor-workspace",
+        schema: instructorWorkspaceResponseSchema,
       });
     },
     listUsers() {

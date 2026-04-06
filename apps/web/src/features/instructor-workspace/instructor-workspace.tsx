@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import type { InstructorDashboardResponse } from "@yeon/api-contract";
 import type {
   CareHistoryEntry,
   InstructorActionBoardItem,
@@ -55,6 +56,7 @@ const actionStatusClassNameMap: Record<InstructorActionStatus, string> = {
 };
 
 type InstructorWorkspaceProps = {
+  dashboard: InstructorDashboardResponse;
   workspace: InstructorWorkspaceResponse;
 };
 
@@ -147,7 +149,14 @@ function createCareNote(
   };
 }
 
-export function InstructorWorkspace({ workspace }: InstructorWorkspaceProps) {
+function formatCount(value: number, unit: string) {
+  return `${String(value).padStart(2, "0")}${unit}`;
+}
+
+export function InstructorWorkspace({
+  dashboard,
+  workspace,
+}: InstructorWorkspaceProps) {
   const [students, setStudents] = useState(workspace.students);
   const [studentDetails, setStudentDetails] = useState(
     workspace.studentDetails,
@@ -184,6 +193,49 @@ export function InstructorWorkspace({ workspace }: InstructorWorkspaceProps) {
     (detail) => detail.studentId === selectedStudent?.id,
   );
   const studentMap = getStudentMap(students);
+  const heroFocusStudent =
+    students.find(
+      (student) => student.id === dashboard.highlightedStudentDetail.studentId,
+    ) ?? students[0];
+  const heroFocusStudentDetail =
+    studentDetails.find(
+      (detail) => detail.studentId === heroFocusStudent?.id,
+    ) ?? dashboard.highlightedStudentDetail;
+  const needsCareCount = getSegmentCount(students, "needs-care");
+  const pendingActionCount = todayActionBoard.filter(
+    (item) => item.status !== "done",
+  ).length;
+  const completedActionCount = todayActionBoard.filter(
+    (item) => item.status === "done",
+  ).length;
+  const focusConceptCount = workspace.weeklyReport.conceptFocuses.length;
+  const displayedMetrics = dashboard.metrics.map((metric) => {
+    switch (metric.label) {
+      case "오늘 케어 학생 수":
+        return {
+          ...metric,
+          value: formatCount(needsCareCount, "명"),
+        };
+      case "개입 대기":
+        return {
+          ...metric,
+          value: formatCount(pendingActionCount, "건"),
+        };
+      case "반복 개념":
+        return {
+          ...metric,
+          value: formatCount(focusConceptCount, "개"),
+        };
+      case "오늘 액션":
+        return {
+          ...metric,
+          value: formatCount(todayActionBoard.length, "개"),
+          description: `완료 ${completedActionCount}건 · 남은 액션 ${pendingActionCount}건`,
+        };
+      default:
+        return metric;
+    }
+  });
 
   useEffect(() => {
     if (!selectedStudentDetail) {
@@ -212,16 +264,6 @@ export function InstructorWorkspace({ workspace }: InstructorWorkspaceProps) {
       });
     }
   }, [selectedStudent, visibleStudents]);
-
-  const totalStudents = students.length;
-  const needsCareCount = getSegmentCount(students, "needs-care");
-  const followUpCount = getSegmentCount(students, "follow-up");
-  const pendingActionCount = todayActionBoard.filter(
-    (item) => item.status !== "done",
-  ).length;
-  const completedActionCount = todayActionBoard.filter(
-    (item) => item.status === "done",
-  ).length;
 
   function appendCareHistory(entry: CareHistoryEntry) {
     setCareHistory((current) => [entry, ...current].slice(0, 8));
@@ -394,27 +436,56 @@ export function InstructorWorkspace({ workspace }: InstructorWorkspaceProps) {
               </Link>
             </div>
           </div>
-          <div className={styles.metricGrid}>
-            <OverviewMetricCard
-              label="관리 학생"
-              value={`${totalStudents}명`}
-              description={workspace.workspace.coverageLabel}
-            />
-            <OverviewMetricCard
-              label="즉시 케어"
-              value={`${needsCareCount}명`}
-              description="오늘 수업 전 바로 챙겨야 하는 학생"
-            />
-            <OverviewMetricCard
-              label="후속 확인"
-              value={`${followUpCount}명`}
-              description="이미 개입했고 다시 확인 일정이 남은 학생"
-            />
-            <OverviewMetricCard
-              label="오늘 액션"
-              value={`${completedActionCount}/${todayActionBoard.length}`}
-              description={`${pendingActionCount}건 남음`}
-            />
+
+          <div className={styles.heroAside}>
+            <article className={styles.briefingPanel}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.panelEyebrow}>
+                    {dashboard.briefing.label}
+                  </p>
+                  <h2 className={styles.panelTitle}>
+                    {dashboard.briefing.headline}
+                  </h2>
+                </div>
+                <p className={styles.panelDescription}>
+                  {dashboard.generatedLabel}
+                </p>
+              </div>
+              <p className={styles.panelDescription}>
+                {dashboard.briefing.summary}
+              </p>
+              <div className={styles.briefingActionList}>
+                {dashboard.briefing.actionItems.map((item, index) => (
+                  <article key={item} className={styles.briefingActionCard}>
+                    <p
+                      className={styles.actionStudentName}
+                    >{`행동 ${index + 1}`}</p>
+                    <p className={styles.detailBody}>{item}</p>
+                  </article>
+                ))}
+              </div>
+              <div className={styles.briefingFocusCard}>
+                <p className={styles.actionStudentName}>지금 먼저 챙길 학생</p>
+                <h3 className={styles.actionTitle}>
+                  {heroFocusStudent.name} · {heroFocusStudent.cohortName}
+                </h3>
+                <p className={styles.detailBody}>
+                  {heroFocusStudentDetail.statusHeadline}
+                </p>
+              </div>
+            </article>
+
+            <div className={styles.metricGrid}>
+              {displayedMetrics.map((metric) => (
+                <OverviewMetricCard
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  description={metric.description}
+                />
+              ))}
+            </div>
           </div>
         </section>
 
