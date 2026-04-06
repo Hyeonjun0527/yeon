@@ -1,26 +1,22 @@
 "use client";
 
-import { ApiClientError, createApiClient } from "@yeon/api-client";
 import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import type { InstructorDashboardResponse } from "@yeon/api-contract";
 import type {
-  InstructorDashboardResponse,
-  PriorityStudentCard,
-} from "@yeon/api-contract";
-import type {
+  CareHistoryEntry,
   InstructorActionBoardItem,
   InstructorActionStatus,
   InstructorRiskLevel,
   InstructorWorkspaceResponse,
   LearningSignalEventType,
   StudentCareSegment,
+  StudentCareNote,
   WorkspaceStudent,
   WorkspaceStudentDetail,
 } from "@yeon/api-contract/instructor-workspace";
 
 import styles from "./instructor-workspace.module.css";
-
-const apiClient = createApiClient();
 
 const segmentLabelMap: Record<StudentCareSegment, string> = {
   "needs-care": "즉시 케어",
@@ -73,12 +69,6 @@ type InstructorWorkspaceProps = {
 
 type SegmentFilter = StudentCareSegment | "all";
 
-type PriorityQueueEntry = {
-  priorityCard: PriorityStudentCard;
-  student: WorkspaceStudent;
-  hasDetail: boolean;
-};
-
 type OverviewMetricCardProps = {
   label: string;
   value: string;
@@ -99,35 +89,18 @@ function OverviewMetricCard({
   );
 }
 
-function getStudentMap(students: WorkspaceStudent[]) {
-  return new Map(students.map((student) => [student.id, student]));
+function formatRecordedAtLabel() {
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
 }
 
-function getPriorityQueueEntries(
-  priorityStudents: PriorityStudentCard[],
-  students: WorkspaceStudent[],
-  studentDetails: InstructorWorkspaceResponse["studentDetails"],
-) {
-  const studentMap = getStudentMap(students);
-  const studentDetailIdSet = new Set(
-    studentDetails.map((detail) => detail.studentId),
-  );
-
-  return priorityStudents.flatMap((priorityCard) => {
-    const student = studentMap.get(priorityCard.id);
-
-    if (!student) {
-      return [];
-    }
-
-    const entry: PriorityQueueEntry = {
-      priorityCard,
-      student,
-      hasDetail: studentDetailIdSet.has(student.id),
-    };
-
-    return [entry];
-  });
+function getStudentMap(students: WorkspaceStudent[]) {
+  return new Map(students.map((student) => [student.id, student]));
 }
 
 function getStudentDetailMap(studentDetails: WorkspaceStudentDetail[]) {
@@ -189,6 +162,34 @@ function matchesSearch(student: WorkspaceStudent, searchTerm: string) {
   return keywords.some((keyword) => keyword.toLowerCase().includes(normalized));
 }
 
+function createCareHistoryEntry(
+  student: WorkspaceStudent,
+  actionLabel: string,
+  outcome: string,
+): CareHistoryEntry {
+  return {
+    studentName: student.name,
+    actionLabel,
+    outcome,
+    recordedAtLabel: `${formatRecordedAtLabel()} 기록`,
+    nextCheckLabel: student.nextCheckLabel,
+  };
+}
+
+function createCareNote(
+  label: string,
+  body: string,
+  authorLabel: string,
+): StudentCareNote {
+  return {
+    id: `${label}-${Date.now()}`,
+    label,
+    body,
+    recordedAtLabel: formatRecordedAtLabel(),
+    authorLabel,
+  };
+}
+
 function formatCount(value: number, unit: string) {
   return `${String(value).padStart(2, "0")}${unit}`;
 }
@@ -197,7 +198,6 @@ export function InstructorWorkspace({
   dashboard,
   workspace,
 }: InstructorWorkspaceProps) {
-  const [workspaceSnapshot, setWorkspaceSnapshot] = useState(workspace);
   const [students, setStudents] = useState(workspace.students);
   const [studentDetails, setStudentDetails] = useState(
     workspace.studentDetails,
@@ -213,9 +213,6 @@ export function InstructorWorkspace({
   );
   const [draftMessage, setDraftMessage] = useState("");
   const [draftNote, setDraftNote] = useState("");
-  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
-  const [mutationError, setMutationError] = useState<string | null>(null);
-  const [isMutating, setIsMutating] = useState(false);
   const deferredSearchTerm = useDeferredValue(searchTerm.trim());
 
   const visibleStudents = students
@@ -229,22 +226,16 @@ export function InstructorWorkspace({
     .filter((student) => matchesSearch(student, deferredSearchTerm))
     .sort((left, right) => left.priorityOrder - right.priorityOrder);
 
-  const studentMap = getStudentMap(students);
-  const studentDetailMap = getStudentDetailMap(studentDetails);
-  const studentActionMap = getStudentActionMap(todayActionBoard);
-  const priorityQueueEntries = getPriorityQueueEntries(
-    dashboard.priorityStudents,
-    students,
-    studentDetails,
-  );
   const selectedStudent =
-    studentMap.get(selectedStudentId) ?? visibleStudents[0] ?? students[0];
+    students.find((student) => student.id === selectedStudentId) ??
+    visibleStudents[0] ??
+    students[0];
   const selectedStudentDetail = studentDetails.find(
     (detail) => detail.studentId === selectedStudent?.id,
   );
-  const isSelectedStudentVisible =
-    !selectedStudent ||
-    visibleStudents.some((student) => student.id === selectedStudent.id);
+  const studentMap = getStudentMap(students);
+  const studentDetailMap = getStudentDetailMap(studentDetails);
+  const studentActionMap = getStudentActionMap(todayActionBoard);
   const heroFocusStudent =
     selectedStudent ??
     students.find(
@@ -262,8 +253,7 @@ export function InstructorWorkspace({
   const completedActionCount = todayActionBoard.filter(
     (item) => item.status === "done",
   ).length;
-  const focusConceptCount =
-    workspaceSnapshot.weeklyReport.conceptFocuses.length;
+  const focusConceptCount = workspace.weeklyReport.conceptFocuses.length;
   const displayedMetrics = dashboard.metrics.map((metric) => {
     switch (metric.label) {
       case "오늘 케어 학생 수":
@@ -305,125 +295,157 @@ export function InstructorWorkspace({
   ]);
 
   useEffect(() => {
-    if (!visibleStudents.length) {
+    if (!visibleStudents.length || !selectedStudent) {
       return;
     }
 
-    const selectedStudentExists = students.some(
-      (student) => student.id === selectedStudentId,
+    const isVisible = visibleStudents.some(
+      (student) => student.id === selectedStudent.id,
     );
 
-    if (!selectedStudentExists) {
+    if (!isVisible) {
       startTransition(() => {
         setSelectedStudentId(visibleStudents[0].id);
       });
     }
-  }, [selectedStudentId, students, visibleStudents]);
+  }, [selectedStudent, visibleStudents]);
 
-  function syncWorkspace(nextWorkspace: InstructorWorkspaceResponse) {
-    setWorkspaceSnapshot(nextWorkspace);
-    setStudents(nextWorkspace.students);
-    setStudentDetails(nextWorkspace.studentDetails);
-    setTodayActionBoard(nextWorkspace.todayActionBoard);
-    setCareHistory(nextWorkspace.careHistory);
-    setSelectedStudentId((current) =>
-      nextWorkspace.students.some((student) => student.id === current)
-        ? current
-        : nextWorkspace.initialStudentId,
+  function appendCareHistory(entry: CareHistoryEntry) {
+    setCareHistory((current) => [entry, ...current].slice(0, 8));
+  }
+
+  function appendStudentNote(studentId: string, note: StudentCareNote) {
+    setStudentDetails((current) =>
+      current.map((detail) =>
+        detail.studentId === studentId
+          ? {
+              ...detail,
+              careNotes: [note, ...detail.careNotes],
+            }
+          : detail,
+      ),
     );
   }
 
-  function getMutationErrorMessage(error: unknown) {
-    if (error instanceof ApiClientError) {
-      return error.message;
-    }
-
-    return "저장 중 오류가 발생했습니다.";
-  }
-
-  async function runWorkspaceMutation(
-    execute: () => Promise<{ workspace: InstructorWorkspaceResponse }>,
-    successMessage: string,
-  ) {
-    setIsMutating(true);
-    setMutationError(null);
-    setMutationMessage(null);
-
-    try {
-      const { workspace: nextWorkspace } = await execute();
-
-      syncWorkspace(nextWorkspace);
-      setMutationMessage(successMessage);
-    } catch (error) {
-      setMutationError(getMutationErrorMessage(error));
-    } finally {
-      setIsMutating(false);
-    }
-  }
-
-  async function handleSaveDraft() {
+  function handleSaveDraft() {
     if (!selectedStudent || !draftMessage.trim()) {
       return;
     }
 
-    await runWorkspaceMutation(
-      () =>
-        apiClient.createInstructorWorkspaceNote({
-          studentId: selectedStudent.id,
-          label: "체크인 초안",
-          body: draftMessage.trim(),
-          authorLabel: workspaceSnapshot.workspace.coachName,
-        }),
-      "체크인 초안을 저장했습니다.",
+    const note = createCareNote(
+      "체크인 초안",
+      draftMessage.trim(),
+      workspace.workspace.coachName,
+    );
+
+    appendStudentNote(selectedStudent.id, note);
+    appendCareHistory(
+      createCareHistoryEntry(
+        selectedStudent,
+        "체크인 메시지 초안 저장",
+        draftMessage.trim(),
+      ),
+    );
+
+    setTodayActionBoard((current) =>
+      current.map((item) =>
+        item.studentId === selectedStudent.id && item.status === "pending"
+          ? { ...item, status: "in-progress" }
+          : item,
+      ),
     );
   }
 
-  async function handleSaveNote() {
+  function handleSaveNote() {
     if (!selectedStudent || !draftNote.trim()) {
       return;
     }
 
-    await runWorkspaceMutation(
-      () =>
-        apiClient.createInstructorWorkspaceNote({
-          studentId: selectedStudent.id,
-          label: "교강사 메모",
-          body: draftNote.trim(),
-          authorLabel: workspaceSnapshot.workspace.coachName,
-        }),
-      "교강사 메모를 저장했습니다.",
+    const note = createCareNote(
+      "교강사 메모",
+      draftNote.trim(),
+      workspace.workspace.coachName,
+    );
+
+    appendStudentNote(selectedStudent.id, note);
+    appendCareHistory(
+      createCareHistoryEntry(
+        selectedStudent,
+        "교강사 메모 저장",
+        draftNote.trim(),
+      ),
     );
     setDraftNote("");
   }
 
-  async function handleMoveToFollowUp() {
+  function handleMoveToFollowUp() {
     if (!selectedStudent) {
       return;
     }
 
-    await runWorkspaceMutation(
-      () =>
-        apiClient.updateInstructorWorkspaceStudentState(selectedStudent.id, {
-          careSegment: "follow-up",
-          currentStatus:
-            "오늘 개입 완료. 다음 수업 전 follow-up으로 다시 확인합니다.",
-          nextCheckLabel: "내일 10:00",
-          statusHeadline:
-            "오늘 개입을 기록했고, 다음 수업 전 다시 확인하는 후속 확인 단계로 이동했습니다.",
-          coachFocus:
-            "다음 확인 전까지는 과제 진입 여부와 수업 중 반응만 짧게 추적하면 됩니다.",
-        }),
-      "학생 상태를 후속 확인으로 이동했습니다.",
+    const outcome =
+      "오늘 개입을 기록하고 학생 상태를 후속 확인 세그먼트로 이동했습니다.";
+
+    setStudents((current) =>
+      current.map((student) =>
+        student.id === selectedStudent.id
+          ? {
+              ...student,
+              careSegment: "follow-up",
+              currentStatus:
+                "오늘 개입 완료. 다음 수업 전 follow-up으로 다시 확인합니다.",
+              nextCheckLabel: "내일 10:00",
+            }
+          : student,
+      ),
+    );
+
+    setTodayActionBoard((current) =>
+      current.map((item) =>
+        item.studentId === selectedStudent.id
+          ? { ...item, status: "done" }
+          : item,
+      ),
+    );
+
+    setStudentDetails((current) =>
+      current.map((detail) =>
+        detail.studentId === selectedStudent.id
+          ? {
+              ...detail,
+              statusHeadline:
+                "오늘 개입을 기록했고, 다음 수업 전 다시 확인하는 후속 확인 단계로 이동했습니다.",
+              coachFocus:
+                "다음 확인 전까지는 과제 진입 여부와 수업 중 반응만 짧게 추적하면 됩니다.",
+              recommendedMessageDraft:
+                "오늘 개입 내용은 기록해뒀고, 내일 오전 수업 전 과제 재진입 여부만 짧게 다시 확인할게요.",
+              nextBestActions: [
+                "내일 오전 출석과 과제 재진입 여부 짧게 확인",
+                "follow-up 메시지 회신 여부 기록",
+              ],
+              careNotes: [
+                createCareNote(
+                  "상태 이동",
+                  outcome,
+                  workspace.workspace.coachName,
+                ),
+                ...detail.careNotes,
+              ],
+            }
+          : detail,
+      ),
+    );
+
+    appendCareHistory(
+      createCareHistoryEntry(selectedStudent, "후속 확인으로 이동", outcome),
     );
   }
 
-  async function handleActionComplete(actionId: string) {
-    await runWorkspaceMutation(
-      () =>
-        apiClient.updateInstructorWorkspaceActionStatus(actionId, {
-          status: "done",
-        }),
-      "오늘 액션 상태를 완료로 저장했습니다.",
+  function handleActionComplete(actionId: string) {
+    setTodayActionBoard((current) =>
+      current.map((item) =>
+        item.id === actionId ? { ...item, status: "done" } : item,
+      ),
     );
   }
 
@@ -445,13 +467,13 @@ export function InstructorWorkspace({
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>교강사 학생관리 워크스페이스</p>
-            <h1 className={styles.heroTitle}>{workspaceSnapshot.headline}</h1>
-            <p className={styles.heroSummary}>{workspaceSnapshot.summary}</p>
+            <h1 className={styles.heroTitle}>{workspace.headline}</h1>
+            <p className={styles.heroSummary}>{workspace.summary}</p>
             <div className={styles.heroMetaList}>
-              <span>{workspaceSnapshot.workspace.coachName}</span>
-              <span>{workspaceSnapshot.workspace.organizationName}</span>
-              <span>{workspaceSnapshot.workspace.focusWindowLabel}</span>
-              <span>{workspaceSnapshot.generatedLabel}</span>
+              <span>{workspace.workspace.coachName}</span>
+              <span>{workspace.workspace.organizationName}</span>
+              <span>{workspace.workspace.focusWindowLabel}</span>
+              <span>{workspace.generatedLabel}</span>
             </div>
             <div className={styles.heroActions}>
               <Link
@@ -524,165 +546,12 @@ export function InstructorWorkspace({
               <div>
                 <p className={styles.panelEyebrow}>학생 큐</p>
                 <h2 className={styles.panelTitle}>
-                  우선순위 학생과 전체 학생 탐색을 같은 패널에서 정리합니다
+                  오늘 챙길 학생을 바로 고릅니다
                 </h2>
               </div>
               <p className={styles.panelDescription}>
-                상단 고정 큐는 오늘 먼저 개입할 학생을, 아래 탐색 영역은 전체
-                학생 검색과 세그먼트 필터를 담당합니다.
-              </p>
-            </div>
-
-            <div className={styles.priorityQueueBlock}>
-              <div className={styles.queueSubsectionHeader}>
-                <div>
-                  <p className={styles.panelEyebrow}>우선순위 학생 큐</p>
-                  <h3 className={styles.sectionTitle}>
-                    위험 이유와 다음 행동을 카드 한 장에서 바로 닫습니다
-                  </h3>
-                </div>
-                <p className={styles.panelDescription}>
-                  카드를 누르면 상세 패널과 오늘 액션 보드가 같은 학생 기준으로
-                  바로 연결됩니다.
-                </p>
-              </div>
-
-              <div className={styles.priorityQueueList}>
-                {priorityQueueEntries.map(
-                  ({ priorityCard, student, hasDetail }) => {
-                    const studentAction = studentActionMap.get(student.id);
-                    const isActive = selectedStudent?.id === student.id;
-
-                    return (
-                      <button
-                        key={priorityCard.id}
-                        className={`${styles.priorityQueueCard} ${
-                          isActive ? styles.priorityQueueCardActive : ""
-                        }`}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => {
-                          handleStudentSelect(student.id);
-                        }}
-                      >
-                        <div className={styles.priorityQueueCardHeader}>
-                          <div>
-                            <div className={styles.studentCardMeta}>
-                              <span className={styles.priorityBadge}>
-                                우선 {priorityCard.priorityOrder}
-                              </span>
-                              <span className={styles.cohortLabel}>
-                                {priorityCard.cohortName}
-                              </span>
-                              {isActive ? (
-                                <span className={styles.prioritySelectionChip}>
-                                  현재 상세 확인 중
-                                </span>
-                              ) : null}
-                            </div>
-                            <h3 className={styles.studentName}>
-                              {priorityCard.name}
-                            </h3>
-                            <p className={styles.priorityStage}>
-                              {student.stageLabel} · {student.ownerLabel}
-                            </p>
-                          </div>
-                          <div className={styles.studentBadges}>
-                            <span
-                              className={`${styles.riskBadge} ${riskClassNameMap[priorityCard.riskLevel]}`}
-                            >
-                              {riskLabelMap[priorityCard.riskLevel]}
-                            </span>
-                            <span className={styles.segmentBadge}>
-                              {segmentLabelMap[priorityCard.careSegment]}
-                            </span>
-                          </div>
-                        </div>
-
-                        <dl className={styles.priorityQueueFacts}>
-                          <div
-                            className={`${styles.studentFactCard} ${styles.studentFactCardEmphasis}`}
-                          >
-                            <div className={styles.studentFactHeader}>
-                              <dt>위험 이유</dt>
-                            </div>
-                            <dd>
-                              <span className={styles.studentFactLead}>
-                                {student.latestSignal}
-                              </span>
-                              <span className={styles.studentFactBody}>
-                                {priorityCard.riskSummary}
-                              </span>
-                            </dd>
-                          </div>
-                          <div className={styles.studentFactCard}>
-                            <div className={styles.studentFactHeader}>
-                              <dt>최근 변화</dt>
-                            </div>
-                            <dd className={styles.studentFactBody}>
-                              {priorityCard.recentChange}
-                            </dd>
-                          </div>
-                          <div className={styles.studentFactCard}>
-                            <div className={styles.studentFactHeader}>
-                              <dt>다음 행동</dt>
-                              {studentAction ? (
-                                <span
-                                  className={`${styles.actionStatus} ${actionStatusClassNameMap[studentAction.status]}`}
-                                >
-                                  {actionStatusLabelMap[studentAction.status]}
-                                </span>
-                              ) : null}
-                            </div>
-                            <dd className={styles.studentFactBody}>
-                              {priorityCard.recommendedAction}
-                            </dd>
-                          </div>
-                          <div
-                            className={`${styles.studentFactCard} ${styles.studentFactCardCompact}`}
-                          >
-                            <div className={styles.studentFactHeader}>
-                              <dt>다음 확인</dt>
-                            </div>
-                            <dd>
-                              <span className={styles.studentFactTime}>
-                                {priorityCard.nextCheckLabel}
-                              </span>
-                            </dd>
-                          </div>
-                        </dl>
-
-                        <div className={styles.priorityQueueFooter}>
-                          <div className={styles.tagList}>
-                            {priorityCard.tags.map((tag) => (
-                              <span key={tag} className={styles.tagChip}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                          <p className={styles.priorityQueueFootnote}>
-                            {hasDetail
-                              ? "상세 패널과 오늘 액션 보드가 함께 연결됩니다."
-                              : "상세 신호는 준비 중이며 큐 우선순위는 먼저 확인할 수 있습니다."}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-
-            <div className={styles.queueSubsectionHeader}>
-              <div>
-                <p className={styles.panelEyebrow}>전체 학생 탐색</p>
-                <h3 className={styles.sectionTitle}>
-                  세그먼트와 검색으로 학생함을 다시 좁힙니다
-                </h3>
-              </div>
-              <p className={styles.panelDescription}>
-                우선순위 큐와 별개로 전체 학생을 탐색해 다른 학생 상세도 바로 열
-                수 있습니다.
+                세그먼트와 검색으로 학생을 좁힌 뒤, 카드 안에서 개입 근거와 다음
+                행동을 바로 읽습니다.
               </p>
             </div>
 
@@ -745,13 +614,6 @@ export function InstructorWorkspace({
               </label>
             </div>
 
-            {!isSelectedStudentVisible ? (
-              <p className={styles.queueFilterNotice}>
-                현재 상세 패널은 필터 결과 밖 학생을 유지하고 있습니다. 목록에서
-                다시 보이게 하려면 세그먼트나 검색어를 조정하세요.
-              </p>
-            ) : null}
-
             <div className={styles.studentList}>
               {visibleStudents.length ? (
                 visibleStudents.map((student) => {
@@ -771,7 +633,6 @@ export function InstructorWorkspace({
                           : ""
                       }`}
                       type="button"
-                      aria-pressed={selectedStudent?.id === student.id}
                       onClick={() => {
                         handleStudentSelect(student.id);
                       }}
@@ -986,13 +847,6 @@ export function InstructorWorkspace({
                       </ul>
                     </div>
 
-                    {mutationMessage ? (
-                      <p className={styles.mutationNotice}>{mutationMessage}</p>
-                    ) : null}
-                    {mutationError ? (
-                      <p className={styles.mutationError}>{mutationError}</p>
-                    ) : null}
-
                     <label className={styles.editorField}>
                       <span className={styles.editorLabel}>
                         체크인 메시지 초안
@@ -1010,15 +864,13 @@ export function InstructorWorkspace({
                       <button
                         className={styles.primaryButton}
                         type="button"
-                        disabled={isMutating}
                         onClick={handleSaveDraft}
                       >
-                        {isMutating ? "저장 중..." : "초안 저장"}
+                        초안 저장
                       </button>
                       <button
                         className={styles.secondaryButton}
                         type="button"
-                        disabled={isMutating}
                         onClick={handleMoveToFollowUp}
                       >
                         후속 확인으로 이동
@@ -1040,7 +892,6 @@ export function InstructorWorkspace({
                     <button
                       className={styles.secondaryButton}
                       type="button"
-                      disabled={isMutating}
                       onClick={handleSaveNote}
                     >
                       메모 저장
@@ -1115,7 +966,6 @@ export function InstructorWorkspace({
                         <button
                           className={styles.secondaryButton}
                           type="button"
-                          disabled={isMutating}
                           onClick={() => {
                             handleActionFocus(action);
                           }}
@@ -1125,7 +975,7 @@ export function InstructorWorkspace({
                         <button
                           className={styles.primaryButton}
                           type="button"
-                          disabled={action.status === "done" || isMutating}
+                          disabled={action.status === "done"}
                           onClick={() => {
                             handleActionComplete(action.id);
                           }}
@@ -1149,7 +999,7 @@ export function InstructorWorkspace({
                 </div>
               </div>
               <div className={styles.cohortGrid}>
-                {workspaceSnapshot.cohorts.map((cohort) => (
+                {workspace.cohorts.map((cohort) => (
                   <article key={cohort.id} className={styles.cohortCard}>
                     <p className={styles.cohortStage}>{cohort.stageLabel}</p>
                     <h3 className={styles.cohortTitle}>{cohort.name}</h3>
@@ -1204,18 +1054,18 @@ export function InstructorWorkspace({
                 </div>
               </div>
               <p className={styles.detailBody}>
-                {workspaceSnapshot.weeklyReport.summary}
+                {workspace.weeklyReport.summary}
               </p>
               <div className={styles.checklistCard}>
                 <p className={styles.detailLabel}>오늘 확인할 포인트</p>
                 <ul className={styles.pointList}>
-                  {workspaceSnapshot.weeklyReport.todayFocus.map((item) => (
+                  {workspace.weeklyReport.todayFocus.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
               </div>
               <div className={styles.focusList}>
-                {workspaceSnapshot.weeklyReport.conceptFocuses.map((focus) => (
+                {workspace.weeklyReport.conceptFocuses.map((focus) => (
                   <article key={focus.concept} className={styles.focusCard}>
                     <p className={styles.focusMetric}>
                       {focus.concept} · {focus.affectedStudentCount}명
@@ -1225,7 +1075,7 @@ export function InstructorWorkspace({
                 ))}
               </div>
               <p className={styles.coachMemo}>
-                {workspaceSnapshot.weeklyReport.coachMemo}
+                {workspace.weeklyReport.coachMemo}
               </p>
             </section>
           </aside>

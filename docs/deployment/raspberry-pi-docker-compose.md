@@ -110,7 +110,7 @@ develop 서버 예시:
 
 ```env
 YEON_WEB_IMAGE=ghcr.io/hyeonjun0527/yeon-web-app:develop
-WEB_PORT=3000
+WEB_PORT=3001
 NODE_ENV=production
 PORT=3000
 NEXT_PUBLIC_APP_URL=https://dev.yeon.world
@@ -126,6 +126,7 @@ DATABASE_URL=postgresql://yeon_develop:<dev-password>@db:5432/yeon_develop
 - 민감 값은 이미지에 bake하지 않는다.
 - `.env`는 서버에만 둔다.
 - develop과 운영은 절대 같은 `DATABASE_URL`을 쓰지 않는다.
+- `CLOUDFLARE_TUNNEL_TOKEN`은 앱 `.env`가 아니라 별도 `cloudflared` 컨테이너 환경변수에 둔다.
 
 ## 7. 수동 배포 명령
 
@@ -156,34 +157,58 @@ docker compose -f compose.dev.yml logs -f
 
 ## 8. Cloudflare Tunnel 기준
 
-질문한 방향대로 `dev.yeon.world`는 별도 develop 경로로 여는 게 맞다. 운영 안정성을 생각하면 dev/prod를 별도 tunnel로 나누는 쪽이 더 안전하다.
+현재처럼 같은 Pi에 운영/개발 앱을 함께 올리고, `cloudflared`도 Docker 컨테이너로 띄우는 구조라면 기존 `yeon-tunnel` 하나에 hostname 두 개를 매핑하는 방식이 가장 빠르다. 다만 `web:3001`처럼 서비스명에 host 포트를 붙이는 방식은 맞지 않는다. 컨테이너 간 통신은 둘 다 내부 포트 `3000`을 쓰고, 운영/개발 웹에 서로 다른 Docker alias를 주는 쪽이 안전하다.
 
 권장:
 
-- 운영 tunnel: `yeon.world` -> 운영 서버 `localhost:3000`
-- develop tunnel: `dev.yeon.world` -> develop 서버 `localhost:3000`
+- `yeon.world` -> `http://yeon-prod-web:3000`
+- `dev.yeon.world` -> `http://yeon-dev-web:3000`
 
-### 권장안 A. tunnel 2개
+전제:
 
-- 운영과 develop을 완전히 분리
-- 토큰, 장애, 재시작 영향 범위를 분리
-- 운영 DNS와 develop DNS를 독립적으로 바꾸기 쉬움
+- 운영/개발 compose와 `cloudflared` 컨테이너가 공용 Docker network `yeon-edge`에 join해야 한다.
+- [compose.prod.yml](/home/osuma/coding_stuffs/yeon/compose.prod.yml)은 `yeon-prod-web` alias를, [compose.dev.yml](/home/osuma/coding_stuffs/yeon/compose.dev.yml)은 `yeon-dev-web` alias를 사용한다.
+- GitHub Actions deploy job도 `yeon-edge`가 없으면 자동으로 생성한다.
 
-### 대안 B. tunnel 1개 + ingress 2개
+### 권장안 A. tunnel 1개 + ingress 2개
 
-가능은 하지만 운영과 develop의 실패 경계가 같이 움직인다.
+- 현재 이미 `yeon-tunnel`이 살아 있고, 같은 Pi에서 운영/개발을 함께 띄우는 구조에 가장 잘 맞는다.
+- Public Hostname 두 개만 추가하면 된다.
 
 예시:
 
 ```yaml
-tunnel: yeon-develop
-credentials-file: /etc/cloudflared/yeon-develop.json
+tunnel: yeon-tunnel
+credentials-file: /etc/cloudflared/yeon-tunnel.json
 
 ingress:
+  - hostname: yeon.world
+    service: http://yeon-prod-web:3000
   - hostname: dev.yeon.world
-    service: http://localhost:3000
+    service: http://yeon-dev-web:3000
   - service: http_status:404
 ```
+
+`cloudflared` Docker Compose 예시:
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - yeon-edge
+
+networks:
+  yeon-edge:
+    external: true
+```
+
+### 대안 B. tunnel 2개 완전 분리
+
+- 운영과 develop의 장애 범위를 더 잘 나눌 수 있다.
+- 다만 지금 상태에서는 새 tunnel 생성, token 교체, Public Hostname 재정리가 추가로 필요하다.
 
 운영 tunnel 예시:
 
@@ -193,26 +218,40 @@ credentials-file: /etc/cloudflared/yeon-production.json
 
 ingress:
   - hostname: yeon.world
-    service: http://localhost:3000
+    service: http://yeon-prod-web:3000
+  - service: http_status:404
+```
+
+develop tunnel 예시:
+
+```yaml
+tunnel: yeon-development
+credentials-file: /etc/cloudflared/yeon-development.json
+
+ingress:
+  - hostname: dev.yeon.world
+    service: http://yeon-dev-web:3000
   - service: http_status:404
 ```
 
 ## 9. 자동 배포 메모
 
-- [docker-image.yml](/home/osuma/coding_stuffs/yeon/.github/workflows/docker-image.yml)이 branch별 GHCR publish와 SSH deploy를 처리한다.
-- `develop`은 `DEV_*` secret이 있으면 develop 서버로 자동 배포된다.
-- `main`은 `PROD_*` secret이 있으면 운영 서버로 자동 배포된다.
-- 운영 workflow는 기존 `RPI_*` secret도 fallback으로 읽는다.
-- secret이 없으면 해당 deploy job은 skip되고 GHCR publish까지만 수행된다.
+- [docker-image.yml](/home/osuma/coding_stuffs/yeon/.github/workflows/docker-image.yml)이 branch별 GHCR publish와 self-hosted runner 로컬 deploy를 처리한다.
+- `develop` push 시 runner가 `/srv/yeon-develop`에 `compose.dev.yml`을 동기화하고 deploy한다.
+- `main` push 시 runner가 `/srv/yeon`에 `compose.prod.yml`을 동기화하고 deploy한다.
+- 별도 SSH secret 없이 runner가 같은 Pi 로컬 Docker를 직접 조작한다.
+- 각 디렉터리의 `.env`가 없으면 deploy job은 실패한다.
 
 ## 10. 운영 체크리스트
 
 - Raspberry Pi OS Lite 64-bit인가
 - `docker compose version` 확인했는가
+- `docker network create yeon-edge`를 해 두었는가
 - `arm64` 이미지가 실제로 push 되었는가
 - 운영 `.env`와 develop `.env`가 분리되어 있는가
 - 운영 DB와 develop DB가 분리되어 있는가
-- `dev.yeon.world`, `yeon.world` DNS와 tunnel 대상이 올바른가
+- `dev.yeon.world`, `yeon.world` Public Hostname이 각각 `yeon-dev-web:3000`, `yeon-prod-web:3000`을 가리키는가
+- 앱 `.env`에 tunnel token을 넣지 않았는가
 - `docker compose logs`로 기동 확인을 했는가
 
 ## Sources

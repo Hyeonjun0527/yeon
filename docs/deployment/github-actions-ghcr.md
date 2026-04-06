@@ -28,7 +28,7 @@
 3. `GITHUB_TOKEN`으로 GHCR 로그인
 4. branch 기준 Docker tag 생성
 5. `linux/amd64`, `linux/arm64` 멀티플랫폼 이미지 build + push
-6. branch에 맞는 Raspberry Pi 서버로 compose 파일 동기화 후 SSH deploy
+6. branch에 맞는 self-hosted runner가 같은 Pi 안에서 compose 파일 동기화 후 로컬 deploy
 
 ## 3. 브랜치별 배포 기준
 
@@ -42,11 +42,16 @@
   - 배포 대상: 운영 서버
   - 원격 디렉터리: `/srv/yeon`
   - compose 파일: `compose.prod.yml`
+  - 앱 host 포트: `3000`
 
 중요:
 
-- 워크플로는 원격 서버에 compose 파일을 `scp`로 같이 올린다.
-- 따라서 원격 서버에는 최소한 `.env`와 Docker / Compose만 준비되어 있으면 된다.
+- 현재 기준 deploy job은 `self-hosted`, `Linux`, `ARM64` 라벨 runner에서 실행된다.
+- 즉 GitHub Actions가 SSH로 외부 Pi에 붙는 구조가 아니라, Pi 위 runner가 자기 로컬 디렉터리를 직접 배포한다.
+- 서버에는 최소한 각 디렉터리의 `.env`, Docker, Compose가 준비되어 있어야 한다.
+- 같은 Pi에서 운영과 develop을 함께 띄우면 develop 앱 host 포트는 `3001`로 분리하는 것을 권장한다.
+- `cloudflared`가 Docker 네트워크로 앱에 붙는 구조라면 `web:3001`이 아니라 고유 alias `yeon-prod-web:3000`, `yeon-dev-web:3000`처럼 라우팅해야 한다.
+- deploy job은 `yeon-edge` external network가 없으면 자동으로 생성한다.
 
 ## 4. 핵심 권한
 
@@ -77,40 +82,21 @@ ghcr.io/<owner>/yeon-web-app
 
 ## 6. GitHub Actions secret 기준
 
-### develop 서버
+현재 same Pi + self-hosted runner 기준에서는 별도 `DEV_RPI_*`, `PROD_RPI_*`, `RPI_*` SSH secret이 필요 없다.
 
 필수:
 
-- `DEV_RPI_HOST`
-- `DEV_RPI_USERNAME`
-- `DEV_RPI_SSH_KEY`
+- 기본 `GITHUB_TOKEN`
 
 선택:
 
-- `DEV_RPI_PORT`
-- `DEV_GHCR_PULL_USERNAME`
-- `DEV_GHCR_PULL_TOKEN`
+- 없음
 
-### 운영 서버
+메모:
 
-권장:
-
-- `PROD_RPI_HOST`
-- `PROD_RPI_USERNAME`
-- `PROD_RPI_SSH_KEY`
-
-선택:
-
-- `PROD_RPI_PORT`
-- `PROD_GHCR_PULL_USERNAME`
-- `PROD_GHCR_PULL_TOKEN`
-
-하위 호환:
-
-- 기존 `RPI_HOST`, `RPI_PORT`, `RPI_USERNAME`, `RPI_SSH_KEY`
-- 기존 `GHCR_PULL_USERNAME`, `GHCR_PULL_TOKEN`
-
-운영 workflow는 위 legacy secret도 fallback으로 읽는다.
+- self-hosted runner가 로컬 Docker에 로그인한 뒤 GHCR 이미지를 pull한다.
+- `cloudflared` 컨테이너를 따로 운영한다면 tunnel token은 앱 `.env`가 아니라 `cloudflared` 컨테이너 환경변수에 둔다.
+- 같은 tunnel 컨테이너가 운영/개발 앱 둘 다 붙어야 하면 공용 Docker network(`yeon-edge`)에 join시킨다.
 
 ## 7. 원격 서버가 만족해야 하는 조건
 
@@ -118,11 +104,11 @@ develop 서버와 운영 서버 모두 아래 전제를 만족해야 한다.
 
 - Docker Engine 설치
 - `docker compose` 사용 가능
-- GitHub Actions가 접속할 SSH 계정 준비
+- GitHub self-hosted runner online 상태
 - 각 서버 디렉터리에 실제 `.env` 배치
 
-원격 서버에 저장소 전체를 clone할 필요는 없다.
-workflow가 compose 파일은 매번 동기화한다.
+Pi에 저장소 전체를 clone할 필요는 없다.
+workflow가 compose 파일은 runner에서 해당 디렉터리로 매번 동기화한다.
 
 ## 8. 수동 배포 예시
 
@@ -154,9 +140,9 @@ docker login ghcr.io
 - GitHub Settings -> Actions 정책 제한
 - Docker build 실패
 - GHCR 로그인 실패
-- Raspberry Pi SSH 접속 실패
+- self-hosted runner offline
 - 각 서버의 `.env` 누락
-- `DEV_*` 또는 `PROD_*` secret 누락
+- host 포트 충돌 (`3000`, `3001`)
 
 로그에서 자주 보이는 실패 유형:
 
@@ -164,7 +150,8 @@ docker login ghcr.io
 - `insufficient_scope`
 - `denied: permission`
 - `403 Forbidden` on GHCR blob HEAD request
-- SSH host key mismatch
+- `/srv/yeon-develop/.env` 없음
+- self-hosted runner queue 대기
 
 ## 10. 운영 메모
 
@@ -172,3 +159,4 @@ docker login ghcr.io
 - `main`은 운영 서버 배포 브랜치다.
 - `dev.yeon.world`는 develop 서버를 향하도록 분리한다.
 - `yeon.world`는 운영 서버를 향하도록 유지한다.
+- Docker service discovery를 쓰는 구조면 `yeon.world -> http://yeon-prod-web:3000`, `dev.yeon.world -> http://yeon-dev-web:3000`으로 붙인다.

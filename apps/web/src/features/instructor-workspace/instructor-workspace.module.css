@@ -249,23 +249,6 @@
   gap: 14px;
 }
 
-.priorityQueueBlock {
-  display: grid;
-  gap: 16px;
-}
-
-.queueSubsectionHeader {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
-}
-
-.priorityQueueList {
-  display: grid;
-  gap: 16px;
-}
-
 .segmentChips {
   display: flex;
   flex-wrap: wrap;
@@ -277,7 +260,6 @@
 .secondaryButton,
 .primaryLink,
 .secondaryLink,
-.priorityQueueCard,
 .studentCard {
   font: inherit;
 }
@@ -357,7 +339,6 @@
   gap: 14px;
 }
 
-.priorityQueueCard,
 .studentCard {
   display: grid;
   gap: 16px;
@@ -374,84 +355,13 @@
     box-shadow 180ms ease-out;
 }
 
-.priorityQueueCard {
-  gap: 18px;
-  padding: 20px;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 251, 244, 0.98) 0%,
-      rgba(250, 244, 235, 0.94) 100%
-    ),
-    var(--surface-panel-strong);
-}
-
-.priorityQueueCardHeader {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
-}
-
-.priorityStage,
-.priorityQueueFootnote,
-.queueFilterNotice {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.priorityStage {
-  color: var(--text-subtle);
-}
-
-.prioritySelectionChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(139, 90, 34, 0.14);
-  color: var(--warm);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.priorityQueueFacts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.priorityQueueFooter {
-  display: grid;
-  gap: 10px;
-}
-
-.priorityQueueFootnote {
-  color: var(--text-muted);
-}
-
-.queueFilterNotice {
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(44, 97, 121, 0.18);
-  background: rgba(44, 97, 121, 0.08);
-  color: var(--accent-strong);
-}
-
 .studentCard:hover,
-.studentCard:focus-visible,
-.priorityQueueCard:hover,
-.priorityQueueCard:focus-visible {
+.studentCard:focus-visible {
   transform: translateY(-1px);
   border-color: var(--border-strong);
   box-shadow: 0 18px 32px rgba(21, 40, 60, 0.08);
 }
 
-.priorityQueueCardActive,
 .studentCardActive {
   border-color: rgba(139, 90, 34, 0.36);
   box-shadow: 0 20px 36px rgba(139, 90, 34, 0.12);
@@ -741,27 +651,6 @@
   line-height: 1.7;
 }
 
-.mutationNotice,
-.mutationError {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.mutationNotice {
-  border: 1px solid rgba(49, 96, 73, 0.16);
-  background: rgba(73, 104, 79, 0.08);
-  color: #315543;
-}
-
-.mutationError {
-  border: 1px solid rgba(158, 61, 47, 0.14);
-  background: rgba(158, 61, 47, 0.08);
-  color: #8d372c;
-}
-
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -831,11 +720,6 @@
 .secondaryButton:focus-visible {
   border-color: var(--border-strong);
   background: var(--surface-subtle);
-}
-
-.secondaryButton:disabled {
-  opacity: 0.52;
-  cursor: not-allowed;
 }
 
 .secondaryLink {
@@ -912,7 +796,6 @@
 .secondaryButton:focus-visible,
 .primaryLink:focus-visible,
 .secondaryLink:focus-visible,
-.priorityQueueCard:focus-visible,
 .studentCard:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -977,8 +860,6 @@
   }
 
   .studentCardHeader,
-  .priorityQueueCardHeader,
-  .queueSubsectionHeader,
   .panelHeader,
   .detailSectionHeader,
   .actionCardHeader,
@@ -997,16 +878,11 @@
 }
 
 @media (max-width: 540px) {
-  .priorityQueueFacts {
-    grid-template-columns: 1fr;
-  }
-
   .studentFactHeader {
     flex-direction: column;
     align-items: start;
   }
 
-  .priorityQueueCard,
   .studentCard,
   .detailCard,
   .checklistCard,
