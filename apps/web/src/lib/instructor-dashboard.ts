@@ -4,31 +4,45 @@ import {
 } from "@yeon/api-contract";
 
 const instructorDashboard = instructorDashboardResponseSchema.parse({
-  generatedAt: "2026-04-07T09:00:00.000Z",
+  generatedAt: "2026-04-07T00:00:00.000Z",
+  generatedLabel: "2026년 4월 7일 오전 9:00 기준",
   headline:
-    "수업 전 30분 안에 오늘 케어 학생과 다음 행동을 바로 정리하는 교강사 대시보드",
+    "오늘 케어 학생 6명과 개입 대기 3건을 먼저 정리하고 수업을 시작하는 교강사 브리핑",
   summary:
-    "라운드 1에서는 실제 DB보다 먼저, 교강사가 누구를 왜 먼저 챙겨야 하는지 설명 가능한 구조를 공용 계약과 mock source data로 고정합니다.",
+    "라운드 2에서는 대시보드 상단에서 오늘 바로 봐야 할 숫자 4개와 행동 3개를 먼저 읽고, 아래에서 학생함 세그먼트와 우선 학생 맥락을 이어서 확인하게 만듭니다.",
+  briefing: {
+    label: "오늘 아침 브리핑",
+    headline: "먼저 3건을 처리하면 오전 수업 전 학생관리 흐름이 안정됩니다.",
+    summary:
+      "오늘 케어 학생 6명 중 긴급도 높은 3명만 먼저 닫아도 반 전체 리스크가 크게 줄어듭니다. 숫자는 상황을 요약하고, 브리핑은 지금 해야 할 행동을 바로 고정합니다.",
+    actionItems: [
+      "김하린에게 09:40 전 체크인 메시지를 보냅니다.",
+      "박준오 보강 과제 범위를 절반으로 다시 제안합니다.",
+      "B반 질문 침묵 학생 2명은 수업 중 먼저 호명합니다.",
+    ],
+    supportNote:
+      "라운드 2 기준으로는 숫자만 보여주지 않고, 교강사가 즉시 실행할 문장형 브리핑을 함께 둡니다.",
+  },
   metrics: [
     {
-      label: "오늘 바로 케어",
+      label: "오늘 케어 학생 수",
       value: "06명",
-      description: "수업 전 체크인 또는 피드백이 오늘 필요한 학생",
+      description: "수업 전 체크인 또는 피드백이 오늘 바로 필요한 학생",
     },
     {
-      label: "후속 확인 대기",
-      value: "09건",
-      description: "이전 개입 뒤 재확인 일정이 남아 있는 항목",
+      label: "개입 대기",
+      value: "03건",
+      description: "메시지, 면담 제안, 보강 과제 안내를 바로 실행할 항목",
     },
     {
       label: "반복 개념",
       value: "03개",
-      description: "이번 주 여러 학생에게 공통으로 보인 막힘 포인트",
+      description: "오늘 수업 전에 다시 짚어야 할 공통 막힘 포인트",
     },
     {
-      label: "교강사 준비 시간",
-      value: "30분",
-      description: "라운드 1이 먼저 줄이려는 실제 업무 압박 구간",
+      label: "오늘 액션",
+      value: "03개",
+      description: "첫 30분 안에 끝내야 하는 우선 행동 체크리스트",
     },
   ],
   segments: [
@@ -106,6 +120,53 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
       tags: ["질문 없음", "조용한 이탈", "실습 막힘"],
     },
   ],
+  highlightedStudentDetail: {
+    studentId: "student-01",
+    statusHeadline:
+      "출석 하락과 과제 지연, 질문 무응답이 겹쳐 오늘 수업 전에 가장 먼저 개입해야 하는 학생입니다.",
+    aiInterpretation:
+      "이번 주 신호는 단순 과제 미제출보다 학습 리듬 이탈에 가깝습니다. 출석과 실습 참여가 흔들린 직후 질문 채널 반응이 사라졌고, 그 다음날 데일리 과제가 비었습니다.",
+    coachFocus:
+      "학습 의지 확인보다 현재 막힌 지점을 좁혀 묻는 대화가 우선입니다. 첫 실습 20분 안에 체크인하고 과제 범위를 작게 나눠 재진입 장벽을 낮춰야 합니다.",
+    timeline: [
+      {
+        id: "student-01-signal-01",
+        type: "attendance",
+        typeLabel: "출석",
+        title: "월요일 체크인 12분 지각",
+        summary:
+          "지난 3주간 정시 입실하던 패턴에서 처음으로 지각이 발생했습니다.",
+        occurredAtLabel: "04-04 오전 09:12",
+      },
+      {
+        id: "student-01-signal-02",
+        type: "question",
+        typeLabel: "질문",
+        title: "라이브 질문 시간 무응답",
+        summary:
+          "React 상태 업데이트 실습에서 막힌 것으로 보였지만 질문 채널과 수업 중 반응이 모두 없었습니다.",
+        occurredAtLabel: "04-04 오후 14:30",
+      },
+      {
+        id: "student-01-signal-03",
+        type: "assignment",
+        typeLabel: "과제",
+        title: "데일리 과제 미제출",
+        summary:
+          "과제 마감 30분 전까지 제출이 없어 자동 리마인드가 발송됐습니다.",
+        occurredAtLabel: "04-05 오후 23:30",
+      },
+      {
+        id: "student-01-signal-04",
+        type: "coaching-note",
+        typeLabel: "상담 메모",
+        title: "집중력 저하 가능성 메모 추가",
+        summary:
+          "조교가 실습 집중도 저하와 피로 호소를 상담 메모에 남겼습니다.",
+        occurredAtLabel: "04-06 오후 17:10",
+      },
+    ],
+  },
   careHistory: [
     {
       studentName: "정민서",
@@ -136,11 +197,11 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
     summary:
       "이번 주에는 배열 메서드 체이닝, 비동기 흐름 이해, CSS 레이아웃 복구에서 반복 막힘이 나타났습니다.",
     coachMemo:
-      "숫자형 위험 점수보다 왜 지금 케어가 필요한지 문장으로 정리해 두면 교강사와 운영자가 같은 맥락으로 움직일 수 있습니다.",
+      "상단 KPI에서 숫자를 먼저 읽고, 바로 아래 행동 패널에서 오늘 실행 순서를 확인하면 교강사와 운영자가 같은 우선순위로 움직일 수 있습니다.",
     todayFocus: [
-      "오늘 바로 케어 3명 우선 체크인",
-      "어제 후속 확인 미처리 2건 정리",
-      "반복 개념 복습용 미니 예제 준비",
+      "우선 학생 3명에게 체크인 또는 면담 제안 먼저 보내기",
+      "어제 미처리 개입 2건을 수업 전까지 정리하기",
+      "반복 개념 3개를 오늘 미니 예제로 다시 짚기",
     ],
     conceptFocuses: [
       {
