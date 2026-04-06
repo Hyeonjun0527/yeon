@@ -2,6 +2,7 @@ import Link from "next/link";
 import type {
   InstructorDashboardResponse,
   InstructorRiskLevel,
+  PriorityStudentCard,
   StudentCareSegment,
 } from "@yeon/api-contract";
 
@@ -20,6 +21,11 @@ type SectionHeadingProps = {
   description: string;
 };
 
+type DashboardBriefingStripProps = {
+  dashboard: InstructorDashboardResponse;
+  highlightedStudent?: PriorityStudentCard;
+};
+
 function SectionHeading({ eyebrow, title, description }: SectionHeadingProps) {
   return (
     <div className={styles.sectionHeading}>
@@ -27,6 +33,85 @@ function SectionHeading({ eyebrow, title, description }: SectionHeadingProps) {
       <h2 className={styles.sectionTitle}>{title}</h2>
       <p className={styles.sectionDescription}>{description}</p>
     </div>
+  );
+}
+
+function DashboardBriefingStrip({
+  dashboard,
+  highlightedStudent,
+}: DashboardBriefingStripProps) {
+  const generatedLabel = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(dashboard.generatedAt));
+
+  return (
+    <section
+      className={styles.metricStrip}
+      aria-labelledby="dashboard-briefing"
+    >
+      <div className={styles.metricStripLayout}>
+        <div className={styles.metricStripMain}>
+          <div className={styles.metricStripCopy}>
+            <p className={styles.eyebrow}>{dashboard.briefing.label}</p>
+            <h2 id="dashboard-briefing" className={styles.metricStripTitle}>
+              {dashboard.briefing.headline}
+            </h2>
+            <p className={styles.metricStripSummary}>
+              {dashboard.briefing.summary}
+            </p>
+            <p className={styles.metricStripGeneratedAt}>
+              {generatedLabel} 기준
+            </p>
+          </div>
+
+          <article className={styles.metricStripHighlight}>
+            <p className={styles.personaListLabel}>지금 먼저 챙길 학생</p>
+            <h3 className={styles.cardTitle}>
+              {highlightedStudent
+                ? `${highlightedStudent.name} · ${highlightedStudent.cohortName}`
+                : "우선 확인 학생"}
+            </h3>
+            <p className={styles.cardBody}>
+              {highlightedStudent?.riskSummary ??
+                "가장 먼저 확인할 학생 위험 요약이 여기에 표시됩니다."}
+            </p>
+            <p className={styles.metricStripHighlightNote}>
+              {highlightedStudent
+                ? `다음 행동: ${highlightedStudent.recommendedAction}`
+                : dashboard.briefing.supportNote}
+            </p>
+          </article>
+        </div>
+
+        <div className={styles.metricStripGrid}>
+          {dashboard.metrics.map((metric) => (
+            <article key={metric.label} className={styles.dashboardMetricCard}>
+              <p className={styles.metricLabel}>{metric.label}</p>
+              <p className={styles.dashboardMetricValue}>{metric.value}</p>
+              <p className={styles.cardBody}>{metric.description}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.metricActionGrid}>
+        {dashboard.briefing.actionItems.map((item, index) => (
+          <article key={item} className={styles.metricActionCard}>
+            <p className={styles.metricActionOrder}>{`행동 ${index + 1}`}</p>
+            <p className={styles.metricActionText}>{item}</p>
+          </article>
+        ))}
+      </div>
+
+      <p className={styles.metricStripFootnote}>
+        {dashboard.briefing.supportNote}
+      </p>
+    </section>
   );
 }
 
@@ -50,9 +135,27 @@ const riskLevelClassNameMap: Record<InstructorRiskLevel, string> = {
 };
 
 export function ContestHome({ overview, dashboard }: ContestHomeProps) {
+  const highlightedStudent = dashboard.priorityStudents.find(
+    (student) => student.riskLevel === "high",
+  );
+
+  const generatedLabel = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(dashboard.generatedAt));
+
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
+        <DashboardBriefingStrip
+          dashboard={dashboard}
+          highlightedStudent={highlightedStudent}
+        />
+
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.heroEyebrow}>{overview.category}</p>
@@ -66,8 +169,8 @@ export function ContestHome({ overview, dashboard }: ContestHomeProps) {
               ))}
             </div>
             <div className={styles.heroActions}>
-              <a className={styles.primaryAction} href="#round-one-preview">
-                오늘 케어 브리핑 보기
+              <a className={styles.primaryAction} href="#dashboard-preview">
+                학생함 프리뷰 보기
               </a>
               <Link
                 className={styles.secondaryAction}
@@ -92,41 +195,14 @@ export function ContestHome({ overview, dashboard }: ContestHomeProps) {
           </aside>
         </section>
 
-        <section className={styles.metricStrip} aria-label="예상 개선 지표">
-          {overview.expectedImpacts.slice(0, 3).map((impact) => (
-            <article key={impact.metric} className={styles.metricCard}>
-              <p className={styles.metricLabel}>{impact.metric}</p>
-              <p className={styles.metricTarget}>{impact.targetState}</p>
-              <p className={styles.metricCurrent}>
-                기존: {impact.currentState}
-              </p>
-            </article>
-          ))}
-        </section>
-
-        <section className={styles.section} id="round-one-preview">
+        <section className={styles.section} id="dashboard-preview">
           <SectionHeading
-            eyebrow="라운드 1 프리뷰"
+            eyebrow="학생함 프리뷰"
             title={dashboard.headline}
             description={dashboard.summary}
           />
           <div className={styles.dashboardPreview}>
             <div className={styles.dashboardMain}>
-              <div className={styles.dashboardMetricGrid}>
-                {dashboard.metrics.map((metric) => (
-                  <article
-                    key={metric.label}
-                    className={styles.dashboardMetricCard}
-                  >
-                    <p className={styles.metricLabel}>{metric.label}</p>
-                    <p className={styles.dashboardMetricValue}>
-                      {metric.value}
-                    </p>
-                    <p className={styles.cardBody}>{metric.description}</p>
-                  </article>
-                ))}
-              </div>
-
               <article className={styles.segmentPanel}>
                 <div className={styles.segmentPanelHeader}>
                   <div>
@@ -136,7 +212,7 @@ export function ContestHome({ overview, dashboard }: ContestHomeProps) {
                     </h3>
                   </div>
                   <p className={styles.segmentGeneratedAt}>
-                    기준 시각 {dashboard.generatedAt.slice(11, 16)}
+                    {generatedLabel} 기준
                   </p>
                 </div>
                 <div className={styles.segmentGrid}>
@@ -157,12 +233,21 @@ export function ContestHome({ overview, dashboard }: ContestHomeProps) {
                 {dashboard.priorityStudents.map((student) => (
                   <article
                     key={student.id}
-                    className={styles.priorityStudentCard}
+                    className={`${styles.priorityStudentCard} ${
+                      student.id === highlightedStudent?.id
+                        ? styles.priorityStudentCardActive
+                        : ""
+                    }`}
                   >
                     <div className={styles.priorityStudentHeader}>
                       <div className={styles.priorityStudentHeading}>
                         <p className={styles.roleLabel}>{student.cohortName}</p>
                         <h3 className={styles.cardTitle}>{student.name}</h3>
+                        {student.id === highlightedStudent?.id ? (
+                          <p className={styles.detailFocusLabel}>
+                            상단 브리핑 기준 학생
+                          </p>
+                        ) : null}
                       </div>
                       <div className={styles.priorityStudentBadges}>
                         <span
