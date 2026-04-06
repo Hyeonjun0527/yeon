@@ -1,12 +1,6 @@
-import { ContestHome } from "@/features/contest-home/contest-home";
-import { getContestOverview } from "@/lib/contest-overview";
-import { getInstructorDashboard } from "@/lib/instructor-dashboard";
+import { InstructorWorkspace } from "@/features/instructor-workspace/instructor-workspace";
+import { getInstructorWorkspace } from "@/lib/instructor-workspace";
 
 export default function HomePage() {
-  return (
-    <ContestHome
-      overview={getContestOverview()}
-      dashboard={getInstructorDashboard()}
-    />
-  );
+  return <InstructorWorkspace workspace={getInstructorWorkspace()} />;
 }

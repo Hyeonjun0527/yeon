@@ -8,6 +8,7 @@
     "./contest": "./src/contest.ts",
     "./health": "./src/health.ts",
     "./instructor-dashboard": "./src/instructor-dashboard.ts",
+    "./instructor-workspace": "./src/instructor-workspace.ts",
     "./users": "./src/users.ts"
   },
   "scripts": {

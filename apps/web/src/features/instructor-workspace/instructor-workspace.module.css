@@ -1,0 +1,805 @@
+.page {
+  min-height: 100vh;
+  padding: 32px 0 64px;
+}
+
+.shell {
+  width: min(1480px, calc(100% - 32px));
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+}
+
+.hero,
+.queuePanel,
+.detailPanel,
+.sidePanel {
+  border: 1px solid rgba(28, 40, 58, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, 0.92);
+  box-shadow: 0 24px 56px rgba(28, 40, 58, 0.08);
+  animation: panel-enter 220ms ease-out both;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(420px, 1fr);
+  gap: 24px;
+  padding: 28px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(19, 34, 56, 0.98) 0%,
+      rgba(24, 47, 68, 0.96) 100%
+    ),
+    rgba(19, 34, 56, 1);
+  color: #f7f1e7;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.eyebrow,
+.panelEyebrow,
+.metricLabel,
+.detailLabel,
+.searchLabel,
+.noteLabel,
+.cohortStage,
+.focusMetric,
+.actionStudentName {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow,
+.panelEyebrow {
+  color: #d1b27f;
+}
+
+.heroTitle {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(34px, 5.2vw, 62px);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.heroSummary,
+.panelDescription,
+.metricDescription,
+.studentStatus,
+.detailBody,
+.coachMemo {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.heroSummary {
+  color: rgba(247, 241, 231, 0.9);
+}
+
+.heroMetaList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.heroMetaList span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 251, 245, 0.1);
+  border: 1px solid rgba(255, 251, 245, 0.14);
+  font-size: 14px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricCard {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 251, 245, 0.08);
+  border: 1px solid rgba(255, 251, 245, 0.12);
+}
+
+.metricLabel {
+  color: rgba(244, 218, 179, 0.86);
+}
+
+.metricValue {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.metricDescription {
+  color: rgba(247, 241, 231, 0.78);
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.2fr) minmax(
+      300px,
+      0.86fr
+    );
+  gap: 20px;
+  align-items: start;
+}
+
+.queuePanel,
+.detailPanel,
+.sidePanel {
+  padding: 22px;
+}
+
+.queuePanel,
+.detailPanel,
+.sideColumn {
+  min-height: 100%;
+}
+
+.queuePanel,
+.detailPanel,
+.sideColumn {
+  display: grid;
+  gap: 18px;
+}
+
+.sideColumn {
+  align-content: start;
+}
+
+.panelHeader,
+.detailSectionHeader,
+.noteHeader,
+.studentCardHeader,
+.actionCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.panelTitle,
+.sectionTitle,
+.studentName,
+.actionTitle,
+.cohortTitle,
+.emptyStateTitle,
+.timelineTitle,
+.historyTitle {
+  margin: 0;
+  color: #15283c;
+  letter-spacing: -0.03em;
+}
+
+.panelTitle {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.queueToolbar {
+  display: grid;
+  gap: 14px;
+}
+
+.segmentChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.segmentChip,
+.primaryButton,
+.secondaryButton,
+.primaryLink,
+.secondaryLink,
+.studentCard {
+  font: inherit;
+}
+
+.segmentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 40, 60, 0.12);
+  background: rgba(255, 255, 255, 0.62);
+  color: #30445d;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+.segmentChipActive {
+  border-color: rgba(152, 88, 32, 0.46);
+  background: rgba(152, 88, 32, 0.12);
+  color: #6e3f16;
+}
+
+.segmentChipCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(21, 40, 60, 0.08);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.searchField {
+  display: grid;
+  gap: 8px;
+}
+
+.searchLabel {
+  color: #735128;
+}
+
+.searchInput,
+.editorTextarea {
+  width: 100%;
+  border: 1px solid rgba(21, 40, 60, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #15283c;
+}
+
+.searchInput {
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+.searchInput::placeholder,
+.editorTextarea::placeholder {
+  color: rgba(48, 68, 93, 0.64);
+}
+
+.studentList,
+.actionList,
+.historyList,
+.focusList,
+.cohortGrid,
+.noteList {
+  display: grid;
+  gap: 14px;
+}
+
+.studentCard {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 18px;
+  border: 1px solid rgba(21, 40, 60, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.76);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+
+.studentCard:hover,
+.studentCard:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(21, 40, 60, 0.22);
+  box-shadow: 0 18px 32px rgba(21, 40, 60, 0.08);
+}
+
+.studentCardActive {
+  border-color: rgba(152, 88, 32, 0.42);
+  box-shadow: 0 20px 36px rgba(152, 88, 32, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 236, 0.98) 0%,
+    rgba(255, 255, 255, 0.86) 100%
+  );
+}
+
+.studentCardMeta,
+.studentBadges,
+.tagList,
+.studentFooter,
+.cohortStats,
+.actionMetaList,
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.priorityBadge,
+.cohortLabel,
+.riskBadge,
+.segmentBadge,
+.tagChip,
+.nextCheckLabel,
+.actionStatus,
+.timelineBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.priorityBadge,
+.cohortLabel {
+  background: rgba(21, 40, 60, 0.08);
+  color: #30445d;
+}
+
+.studentName {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.riskBadge {
+  color: #fffdf8;
+}
+
+.riskHigh {
+  background: #9e3d2f;
+}
+
+.riskMedium {
+  background: #b46d24;
+}
+
+.riskLow {
+  background: #4b6a52;
+}
+
+.segmentBadge,
+.tagChip,
+.nextCheckLabel {
+  background: rgba(152, 88, 32, 0.1);
+  color: #7a4618;
+}
+
+.studentStatus {
+  color: #1d3147;
+  font-weight: 600;
+}
+
+.studentFacts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.studentFacts div {
+  display: grid;
+  gap: 4px;
+}
+
+.studentFacts dt,
+.detailMeta,
+.timelineTime,
+.noteMeta,
+.historyMeta {
+  color: rgba(48, 68, 93, 0.72);
+  font-size: 13px;
+}
+
+.studentFacts dd {
+  margin: 0;
+  color: #30445d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.emptyState {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px dashed rgba(21, 40, 60, 0.16);
+}
+
+.detailPanel {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 246, 0.98) 0%,
+    rgba(251, 247, 239, 0.96) 100%
+  );
+}
+
+.detailHeadline {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: rgba(21, 40, 60, 0.06);
+  color: #15283c;
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 600;
+}
+
+.detailInsightGrid,
+.detailColumns {
+  display: grid;
+  gap: 16px;
+}
+
+.detailInsightGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detailColumns {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+}
+
+.detailSection,
+.detailCard,
+.checklistCard,
+.noteCard,
+.actionCard,
+.cohortCard,
+.historyCard,
+.focusCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(21, 40, 60, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.detailLabel,
+.actionStudentName,
+.cohortStage,
+.focusMetric {
+  color: #7a4618;
+}
+
+.detailBody {
+  color: #30445d;
+}
+
+.timelineList,
+.pointList {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.timelineList {
+  display: grid;
+  gap: 14px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.timelineBadge {
+  min-width: 56px;
+  padding: 0 12px;
+  color: #fffdf8;
+}
+
+.signalAttendance {
+  background: #4f6987;
+}
+
+.signalAssignment {
+  background: #9e3d2f;
+}
+
+.signalQuestion {
+  background: #6b507a;
+}
+
+.signalCoachingNote {
+  background: #786136;
+}
+
+.timelineContent {
+  display: grid;
+  gap: 6px;
+}
+
+.timelineTitle {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.editorField {
+  display: grid;
+  gap: 8px;
+}
+
+.editorLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #735128;
+}
+
+.editorTextarea {
+  min-height: 128px;
+  padding: 14px 16px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out,
+    opacity 180ms ease-out;
+}
+
+.primaryLink,
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out,
+    opacity 180ms ease-out;
+}
+
+.primaryButton {
+  background: #18344c;
+  color: #fff8ef;
+}
+
+.primaryButton:hover,
+.primaryButton:focus-visible {
+  background: #10263a;
+}
+
+.primaryLink {
+  background: #fff8ef;
+  color: #18344c;
+}
+
+.primaryLink:hover,
+.primaryLink:focus-visible {
+  background: #f2e7d4;
+}
+
+.primaryButton:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  border-color: rgba(21, 40, 60, 0.14);
+  background: transparent;
+  color: #1d3147;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+  border-color: rgba(21, 40, 60, 0.3);
+  background: rgba(21, 40, 60, 0.04);
+}
+
+.secondaryLink {
+  border-color: rgba(255, 251, 245, 0.18);
+  background: rgba(255, 251, 245, 0.08);
+  color: #fff8ef;
+}
+
+.secondaryLink:hover,
+.secondaryLink:focus-visible {
+  border-color: rgba(255, 251, 245, 0.34);
+  background: rgba(255, 251, 245, 0.14);
+}
+
+.noteList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.noteHeader {
+  align-items: baseline;
+}
+
+.noteMeta,
+.historyMeta {
+  margin: 0;
+}
+
+.sidePanel {
+  gap: 16px;
+}
+
+.actionStatus {
+  color: #fffdf8;
+}
+
+.actionPending {
+  background: #915327;
+}
+
+.actionInProgress {
+  background: #365b79;
+}
+
+.actionDone {
+  background: #49684f;
+}
+
+.actionTitle,
+.cohortTitle {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.actionMetaList,
+.cohortStats {
+  color: rgba(48, 68, 93, 0.76);
+  font-size: 13px;
+}
+
+.historyTitle {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.coachMemo {
+  color: #1d3147;
+  font-weight: 600;
+}
+
+.segmentChip:focus-visible,
+.searchInput:focus-visible,
+.editorTextarea:focus-visible,
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.primaryLink:focus-visible,
+.secondaryLink:focus-visible,
+.studentCard:focus-visible {
+  outline: 2px solid #915327;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1320px) {
+  .workspaceGrid {
+    grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.08fr);
+  }
+
+  .sideColumn {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1040px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .detailInsightGrid,
+  .detailColumns,
+  .noteList,
+  .sideColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 18px 0 40px;
+  }
+
+  .shell {
+    width: min(100%, calc(100% - 20px));
+    gap: 18px;
+  }
+
+  .hero,
+  .queuePanel,
+  .detailPanel,
+  .sidePanel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .heroTitle {
+    max-width: none;
+  }
+
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .studentCardHeader,
+  .panelHeader,
+  .detailSectionHeader,
+  .actionCardHeader,
+  .noteHeader,
+  .heroActions {
+    flex-direction: column;
+  }
+
+  .panelTitle {
+    font-size: 22px;
+  }
+
+  .studentName {
+    font-size: 20px;
+  }
+}
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
