@@ -164,7 +164,7 @@ Raspberry Pi 배포 전에 이 저장소에서 이미 추가된 항목은 아래
 ```bash
 docker buildx build \
   --platform linux/arm64 \
-  -t ghcr.io/<owner>/yeon-web:latest \
+  -t ghcr.io/<owner>/yeon-web-app:latest \
   --push .
 ```
 
@@ -173,7 +173,7 @@ docker buildx build \
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/<owner>/yeon-web:latest \
+  -t ghcr.io/<owner>/yeon-web-app:latest \
   --push .
 ```
 
@@ -214,7 +214,7 @@ Git 저장소 전체를 Pi에 clone할지, compose 파일만 둘지는 선택할
 ```yaml
 services:
   web:
-    image: ghcr.io/<owner>/yeon-web:latest
+    image: ghcr.io/<owner>/yeon-web-app:latest
     restart: unless-stopped
     env_file:
       - .env

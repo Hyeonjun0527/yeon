@@ -2,7 +2,7 @@ name: yeon
 
 services:
   web:
-    image: ${YEON_WEB_IMAGE:-ghcr.io/hyeonjun0527/yeon-web:latest}
+    image: ${YEON_WEB_IMAGE:-ghcr.io/hyeonjun0527/yeon-web-app:latest}
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-production}

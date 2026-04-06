@@ -65,7 +65,7 @@ permissions:
 워크플로가 성공하면 GHCR에 아래 이미지가 생긴다.
 
 ```txt
-ghcr.io/<owner>/yeon-web
+ghcr.io/<owner>/yeon-web-app
 ```
 
 기본 태그:
@@ -152,6 +152,12 @@ docker compose -f compose.prod.yml up -d
 - `insufficient_scope`
 - `denied: permission`
 - action 사용 제한 메시지
+- `403 Forbidden` on GHCR blob HEAD request
+
+추가 메모:
+
+- 수동 `docker push`로 먼저 만든 GHCR 패키지가 저장소와 연결되지 않은 상태면, 같은 이름으로 GitHub Actions `GITHUB_TOKEN` push가 `403`으로 막힐 수 있다.
+- 이런 경우에는 새 패키지 이름을 쓰거나, GitHub 웹에서 패키지와 저장소 권한 연결을 다시 맞춘다.
 
 ## 10. 운영 권장
 

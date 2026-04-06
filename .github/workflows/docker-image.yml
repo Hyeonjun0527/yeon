@@ -27,7 +27,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/yeon-web
+  IMAGE_NAME: ${{ github.repository_owner }}/yeon-web-app
 
 jobs:
   docker:
