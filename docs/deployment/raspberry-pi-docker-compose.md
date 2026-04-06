@@ -21,8 +21,8 @@
 
 1. GitHub Actions로 GHCR 이미지 publish
 2. Raspberry Pi 서버 준비
-3. secret이 있으면 GitHub Actions에서 SSH 자동 배포
-4. secret이 없으면 Pi에서 수동 `compose pull && up -d`
+3. GitHub self-hosted runner가 online이면 Raspberry Pi에서 자동 배포
+4. runner가 없거나 offline이면 Pi에서 수동 `compose pull && up -d`
 
 ## 2. 권장 배포 전략
 
@@ -143,8 +143,9 @@ Raspberry Pi 배포 전에 이 저장소에서 이미 추가된 항목은 아래
 
 1. GitHub Actions / GHCR 웹 설정 확인
 2. Raspberry Pi 서버에 실제 `.env` 배치
-3. `docker login ghcr.io`
-4. 배포 실행
+3. GitHub self-hosted runner 등록
+4. 필요 시 수동 `docker login ghcr.io`
+5. 배포 실행
 
 최소 체크리스트:
 
@@ -205,6 +206,26 @@ Pi에는 보통 아래 정도만 두면 된다.
 
 Git 저장소 전체를 Pi에 clone할지, compose 파일만 둘지는 선택할 수 있다.
 운영 단순성을 위해서는 `compose` 파일과 환경변수만 두는 편을 권장한다.
+
+## 8-1. GitHub self-hosted runner 준비
+
+고정 IP나 SSH inbound 없이 자동 배포하려면 Raspberry Pi 안에 GitHub self-hosted runner를 등록하는 편이 단순하다.
+
+요약 절차:
+
+1. `Repository -> Settings -> Actions -> Runners -> New self-hosted runner`
+2. `Linux`, `ARM64` 선택
+3. GitHub가 보여주는 `config.sh` 명령을 Raspberry Pi에서 실행
+4. runner가 등록되면 `sudo ./svc.sh install && sudo ./svc.sh start`
+
+runner가 붙으면 workflow의 deploy job은 Raspberry Pi 안에서 직접 아래를 수행한다.
+
+```bash
+install -m 644 compose.prod.yml /srv/yeon/compose.prod.yml
+cd /srv/yeon
+docker compose -f compose.prod.yml pull
+docker compose -f compose.prod.yml up -d
+```
 
 ## 9. Compose 예시
 
@@ -298,8 +319,9 @@ docker compose -f compose.prod.yml up -d
 자동 배포 메모:
 
 - [.github/workflows/docker-image.yml](/home/osuma/coding_stuffs/yeon/.github/workflows/docker-image.yml)에 deploy job이 들어 있다.
-- `RPI_HOST`, `RPI_USERNAME`, `RPI_SSH_KEY` secret이 있으면 `main` push 뒤 자동으로 Raspberry Pi에 SSH 접속해 위 명령을 실행한다.
-- secret이 없으면 GHCR publish까지만 수행된다.
+- self-hosted runner가 online이면 `main` push 뒤 자동으로 Raspberry Pi 안에서 위 명령을 실행한다.
+- 테스트 브랜치에서는 GitHub Actions의 `Run workflow`로 수동 실행해 같은 배포 경로를 검증할 수 있다.
+- runner가 offline이면 GHCR publish는 성공해도 deploy job은 대기 상태가 된다.
 
 특정 태그로 롤백:
 

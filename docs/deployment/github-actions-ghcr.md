@@ -28,7 +28,7 @@
 3. `GITHUB_TOKEN`으로 GHCR 로그인
 4. Docker metadata 생성
 5. `linux/amd64`, `linux/arm64` 멀티플랫폼 이미지 build + push
-6. 필요한 secret이 있으면 Raspberry Pi SSH deploy
+6. Raspberry Pi self-hosted runner가 online이면 해당 runner에서 직접 deploy
 
 ## 3. 핵심 권한
 
@@ -73,36 +73,26 @@ ghcr.io/<owner>/yeon-web-app
 - `latest`
 - `sha-<short-sha>`
 
-## 6. 자동 배포가 되려면 필요한 secret
+## 6. 자동 배포가 되려면 필요한 조건
 
-현재 workflow는 아래 secret이 있으면 deploy job까지 실행한다.
+현재 workflow는 Raspberry Pi 안에 GitHub self-hosted runner가 등록되어 있고, runner가 online 상태면 deploy job까지 실행한다.
+`main` push에서는 자동 deploy가 동작하고, 테스트 브랜치에서는 `workflow_dispatch`로 수동 실행해 deploy까지 검증할 수 있다.
 
-- `RPI_HOST`
-- `RPI_USERNAME`
-- `RPI_SSH_KEY`
-
-선택:
-
-- `RPI_PORT`
-- `GHCR_PULL_USERNAME`
-- `GHCR_PULL_TOKEN`
-
-의미:
-
-- `RPI_HOST`, `RPI_USERNAME`, `RPI_SSH_KEY`: Raspberry Pi SSH 접속
-- `RPI_PORT`: 기본값 `22`
-- `GHCR_PULL_USERNAME`, `GHCR_PULL_TOKEN`: GHCR private 이미지 pull이 필요할 때 사용
+- `Settings -> Actions -> Runners`에서 저장소용 runner 등록
+- runner 기본 라벨 `self-hosted`, `linux`, `ARM64`
+- runner 프로세스를 `svc.sh` 또는 systemd 서비스로 상시 실행
+- Raspberry Pi에 `/srv/yeon/.env` 배치
 
 중요:
 
-- 위 SSH secret이 없으면 deploy job은 실행되지 않고 skip된다.
-- 즉, 현재 구조는 “조건부 CD”다.
+- 현재 workflow는 `runs-on: [self-hosted, linux, ARM64]`로 매칭한다.
+- 해당 runner가 offline이면 deploy job은 시작되지 않고 대기 상태에 머문다.
+- 브랜치에서 수동 실행할 때도 같은 runner 라벨로 deploy를 수행한다.
 
 ## 7. Raspberry Pi에서 pull할 때
 
-이미지가 public이면 별도 로그인 없이 pull 가능하다.
-
-이미지가 private이면 Raspberry Pi에서 GHCR 로그인 후 pull해야 한다.
+deploy job은 self-hosted runner 안에서 `docker/login-action`으로 GHCR에 로그인한 뒤 pull을 수행한다.
+즉, workflow가 실행될 때는 별도 SSH secret이나 별도 pull token을 요구하지 않는다.
 
 예시:
 
@@ -114,27 +104,28 @@ docker compose -f compose.prod.yml up -d
 
 운영 메모:
 
-- GitHub Actions 안에서는 `GITHUB_TOKEN`으로 push한다.
-- Raspberry Pi 같은 외부 서버에서는 별도 인증 정보로 login해야 한다.
+- GitHub Actions job 안에서는 `GITHUB_TOKEN`으로 push와 pull을 모두 처리한다.
+- 운영자가 Raspberry Pi에서 수동 pull을 할 때만 별도 `docker login ghcr.io`가 필요할 수 있다.
 
 ## 8. Raspberry Pi 서버가 만족해야 하는 조건
 
-deploy job은 Raspberry Pi 안에 아래가 이미 준비되어 있다고 가정한다.
+deploy job은 self-hosted runner가 올라간 Raspberry Pi 안에 아래가 이미 준비되어 있다고 가정한다.
 
 - `/srv/yeon` 디렉터리 존재
-- `compose.prod.yml` 배치
 - `.env` 배치
 - `docker compose` 사용 가능
+- GitHub self-hosted runner 서비스 실행 중
 
-deploy job이 원격에서 수행하는 명령은 아래와 같다.
+deploy job이 runner 안에서 수행하는 핵심 명령은 아래와 같다.
 
 ```bash
+install -m 644 compose.prod.yml /srv/yeon/compose.prod.yml
 cd /srv/yeon
 docker compose -f compose.prod.yml pull
 docker compose -f compose.prod.yml up -d
 ```
 
-즉, 서버 준비가 끝나 있지 않으면 publish는 성공해도 deploy는 실패한다.
+즉, runner는 이미 Raspberry Pi 안에서 실행 중이어야 하고 서버 준비가 끝나 있지 않으면 publish는 성공해도 deploy는 실패한다.
 
 ## 9. 실패 시 가장 먼저 볼 것
 
@@ -143,8 +134,9 @@ docker compose -f compose.prod.yml up -d
 - 조직 정책 제한
 - Docker build 실패
 - GHCR 로그인 실패
-- Raspberry Pi SSH 접속 실패
+- self-hosted runner offline
 - `/srv/yeon` 경로 또는 `.env` 부재
+- runner 사용 계정의 Docker 권한 누락
 
 로그에서 자주 보이는 실패 유형:
 
@@ -153,6 +145,7 @@ docker compose -f compose.prod.yml up -d
 - `denied: permission`
 - action 사용 제한 메시지
 - `403 Forbidden` on GHCR blob HEAD request
+- `Waiting for a runner to pick up this job`
 
 추가 메모:
 
@@ -162,6 +155,7 @@ docker compose -f compose.prod.yml up -d
 ## 10. 운영 권장
 
 - `main` push 시 `latest` 갱신
-- SSH secret이 설정되면 `main` push 시 자동 deploy
-- secret이 아직 없으면 수동 `pull && up -d`
+- self-hosted runner가 online이면 `main` push 시 자동 deploy
+- 테스트 브랜치에서는 `workflow_dispatch`로 수동 deploy 검증 가능
+- runner가 아직 없거나 offline이면 수동 `pull && up -d`
 - 롤백은 `sha-<short-sha>` 태그를 사용
