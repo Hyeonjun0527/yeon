@@ -138,3 +138,5 @@
 - 첫 `workflow_dispatch` 테스트에서 build/push와 runner 할당은 성공했다.
 - 첫 deploy 실패 원인은 `github.repository_owner`의 대문자 값이 그대로 이미지 경로에 들어가 `invalid reference format`가 난 것이었다.
 - 후속 조치로 deploy 단계에서 owner를 소문자로 변환해 `YEON_WEB_IMAGE`를 export하도록 수정한다.
+- 두 번째 `workflow_dispatch` 테스트에서는 `docker` job과 `deploy` job이 모두 성공했다.
+- deploy 로그 기준으로 Raspberry Pi runner가 GHCR pull, Postgres 기동, `yeon-web-1` 컨테이너 시작까지 완료했다.
