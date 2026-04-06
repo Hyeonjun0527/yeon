@@ -198,8 +198,9 @@ export function InstructorWorkspace({
       (student) => student.id === dashboard.highlightedStudentDetail.studentId,
     ) ?? students[0];
   const heroFocusStudentDetail =
-    studentDetails.find((detail) => detail.studentId === heroFocusStudent?.id) ??
-    dashboard.highlightedStudentDetail;
+    studentDetails.find(
+      (detail) => detail.studentId === heroFocusStudent?.id,
+    ) ?? dashboard.highlightedStudentDetail;
   const needsCareCount = getSegmentCount(students, "needs-care");
   const pendingActionCount = todayActionBoard.filter(
     (item) => item.status !== "done",
