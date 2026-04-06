@@ -1,9 +1,25 @@
 import {
   instructorDashboardResponseSchema,
   type InstructorDashboardResponse,
-  type InstructorDashboardScope,
-  type InstructorDashboardScopeOption,
 } from "@yeon/api-contract";
+
+type InstructorDashboardScopeOption = {
+  id: string;
+  label: string;
+  meta: string;
+  description: string;
+};
+
+type InstructorDashboardScope = {
+  selectedCohortId: string;
+  selectedWeekId: string;
+  cohortLabel: string;
+  weekLabel: string;
+  weekDateRangeLabel: string;
+  contextSummary: string;
+  cohorts: readonly InstructorDashboardScopeOption[];
+  weeks: readonly InstructorDashboardScopeOption[];
+};
 
 const instructorDashboardCohortIds = {
   webFullstack7: "web-fullstack-7",

@@ -40,6 +40,12 @@ select {
   color: #ffffff;
 }
 
+/* Spline 3D canvas 강제 표시 — Spline이 초기 로드 시 display:none을 넣는 문제 해결 */
+canvas[data-engine],
+div[style*="overflow: hidden"] > canvas {
+  display: block !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
