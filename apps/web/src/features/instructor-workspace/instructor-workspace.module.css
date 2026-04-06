@@ -224,7 +224,7 @@
 .timelineTitle,
 .historyTitle {
   margin: 0;
-  color: #15283c;
+  color: var(--text-strong);
   letter-spacing: -0.03em;
 }
 
@@ -406,8 +406,8 @@
 
 .priorityBadge,
 .cohortLabel {
-  background: rgba(21, 40, 60, 0.08);
-  color: #30445d;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
 }
 
 .studentName {
@@ -434,12 +434,12 @@
 .segmentBadge,
 .tagChip,
 .nextCheckLabel {
-  background: rgba(152, 88, 32, 0.1);
-  color: #7a4618;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .studentStatus {
-  color: #1d3147;
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -459,13 +459,13 @@
 .timelineTime,
 .noteMeta,
 .historyMeta {
-  color: rgba(48, 68, 93, 0.72);
+  color: var(--text-subtle);
   font-size: 13px;
 }
 
 .studentFacts dd {
   margin: 0;
-  color: #30445d;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -475,8 +475,8 @@
   gap: 10px;
   padding: 22px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px dashed rgba(21, 40, 60, 0.16);
+  background: var(--surface-panel-strong);
+  border: 1px dashed var(--border-soft);
 }
 
 .detailPanel {
@@ -491,8 +491,8 @@
   margin: 0;
   padding: 18px 20px;
   border-radius: 22px;
-  background: rgba(21, 40, 60, 0.06);
-  color: #15283c;
+  background: var(--surface-subtle);
+  color: var(--text-strong);
   font-size: 18px;
   line-height: 1.6;
   font-weight: 600;
@@ -523,20 +523,20 @@
   display: grid;
   gap: 12px;
   padding: 18px;
-  border: 1px solid rgba(21, 40, 60, 0.1);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-panel-strong);
 }
 
 .detailLabel,
 .actionStudentName,
 .cohortStage,
 .focusMetric {
-  color: #7a4618;
+  color: var(--warm);
 }
 
 .detailBody {
-  color: #30445d;
+  color: var(--text-muted);
 }
 
 .timelineList,
@@ -733,7 +733,7 @@
 
 .actionMetaList,
 .cohortStats {
-  color: rgba(48, 68, 93, 0.76);
+  color: var(--text-subtle);
   font-size: 13px;
 }
 
@@ -743,7 +743,7 @@
 }
 
 .coachMemo {
-  color: #1d3147;
+  color: var(--text-strong);
   font-weight: 600;
 }
 

@@ -149,6 +149,10 @@ function createCareNote(
   };
 }
 
+function formatCount(value: number, unit: string) {
+  return `${String(value).padStart(2, "0")}${unit}`;
+}
+
 export function InstructorWorkspace({
   dashboard,
   workspace,
@@ -193,6 +197,44 @@ export function InstructorWorkspace({
     students.find(
       (student) => student.id === dashboard.highlightedStudentDetail.studentId,
     ) ?? students[0];
+  const heroFocusStudentDetail =
+    studentDetails.find((detail) => detail.studentId === heroFocusStudent?.id) ??
+    dashboard.highlightedStudentDetail;
+  const needsCareCount = getSegmentCount(students, "needs-care");
+  const pendingActionCount = todayActionBoard.filter(
+    (item) => item.status !== "done",
+  ).length;
+  const completedActionCount = todayActionBoard.filter(
+    (item) => item.status === "done",
+  ).length;
+  const focusConceptCount = workspace.weeklyReport.conceptFocuses.length;
+  const displayedMetrics = dashboard.metrics.map((metric) => {
+    switch (metric.label) {
+      case "오늘 케어 학생 수":
+        return {
+          ...metric,
+          value: formatCount(needsCareCount, "명"),
+        };
+      case "개입 대기":
+        return {
+          ...metric,
+          value: formatCount(pendingActionCount, "건"),
+        };
+      case "반복 개념":
+        return {
+          ...metric,
+          value: formatCount(focusConceptCount, "개"),
+        };
+      case "오늘 액션":
+        return {
+          ...metric,
+          value: formatCount(todayActionBoard.length, "개"),
+          description: `완료 ${completedActionCount}건 · 남은 액션 ${pendingActionCount}건`,
+        };
+      default:
+        return metric;
+    }
+  });
 
   useEffect(() => {
     if (!selectedStudentDetail) {
@@ -428,13 +470,13 @@ export function InstructorWorkspace({
                   {heroFocusStudent.name} · {heroFocusStudent.cohortName}
                 </h3>
                 <p className={styles.detailBody}>
-                  {dashboard.highlightedStudentDetail.statusHeadline}
+                  {heroFocusStudentDetail.statusHeadline}
                 </p>
               </div>
             </article>
 
             <div className={styles.metricGrid}>
-              {dashboard.metrics.map((metric) => (
+              {displayedMetrics.map((metric) => (
                 <OverviewMetricCard
                   key={metric.label}
                   label={metric.label}
