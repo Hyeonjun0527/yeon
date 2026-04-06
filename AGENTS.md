@@ -43,6 +43,8 @@
   5. `git commit`
 - 검증 순서와 커밋 순서는 `study-platform-client`와 동일하게 유지한다.
 - 이 저장소는 `pnpm` 모노레포이므로 실제 실행 명령은 현재 workspace의 `package.json`에 맞춰 `pnpm --filter ...` 또는 `turbo run ... --filter=...`로 치환한다.
+- 이 저장소는 하나의 레포를 매우 빠르게 동시 작업하는 환경이고 `git worktree` 사용이 금지되어 있으므로, 작업 브랜치에서 자기 범위 커밋을 만든 뒤에는 가능한 한 빨리 `develop`에 머지한다.
+- 통합 이후 검증은 `develop` 기준으로 반복한다. 개념상 `yarn lint`, `yarn prettier`, `yarn typecheck` 흐름으로 보되, 현재 저장소 실제 명령은 `pnpm lint`, `pnpm prettier:fix`, `pnpm typecheck`를 우선 사용한다.
 - 현재 workspace에 해당 스크립트가 아직 없으면 없는 척 대체하지 말고, 부재 사실과 영향 범위를 먼저 공유하고 커밋하지 않는다.
 - 중간 단계가 하나라도 실패하면 커밋하지 않고 실패 내용을 먼저 공유한다.
 - 기존에 일부 파일만 staging 되어 있어도 커밋 직전에는 반드시 `git add .`를 다시 수행한다.
@@ -65,6 +67,7 @@
 - 작업을 위해 별도 git worktree를 새로 만들지 않는다.
 - 특히 `~/coding_stuffs` 아래에 현재 저장소의 sibling 디렉터리 형태 worktree를 추가 생성하는 행위를 금지한다.
 - 병렬 작업, 충돌 회피, 임시 검증을 이유로도 worktree를 만들지 말고 현재 작업 디렉터리와 현재 브랜치 규칙 안에서 해결한다.
+- 이 제약 때문에 작업 브랜치에서 커밋이 끝난 변경은 오래 들고 있지 말고 가능한 한 빨리 `develop`에 흡수해, 다음 작업도 최신 `develop` 기준으로 이어간다.
 - 사용자가 명시적으로 worktree 생성을 지시한 경우에만 예외를 검토한다.
 - 브랜치명은 항상 의미 있는 이름 뒤에 `-1`, `-2`, `-3` 같은 숫자 suffix를 붙인다.
 - 같은 주제의 후속 작업이 별도 브랜치가 필요하면 직전 작업 브랜치를 base로 삼아 suffix 숫자를 올려 진행한다.
@@ -135,6 +138,8 @@
   5. `git add .`
   6. `git commit`
 - 현재 저장소에 스크립트가 아직 없으면 검증 미실행 사유를 먼저 공유하고, 그 상태로 커밋할지 사용자와 맞춘다.
+- 다중 에이전트 동시 작업 환경에서는 통합 검증의 기준 브랜치를 `develop`으로 본다.
+- 즉, 작업 브랜치 커밋 후 빠르게 `develop`에 머지하고 `develop`에서 `pnpm lint`, `pnpm prettier:fix`, `pnpm typecheck` 순서를 반복하는 것을 기본값으로 삼는다.
 
 ## push 규칙
 
