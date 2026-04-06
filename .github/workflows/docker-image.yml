@@ -72,49 +72,39 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     needs: docker
-    runs-on: ubuntu-latest
-    env:
-      RPI_HOST: ${{ secrets.RPI_HOST }}
-      RPI_PORT: ${{ secrets.RPI_PORT }}
-      RPI_USERNAME: ${{ secrets.RPI_USERNAME }}
-      RPI_SSH_KEY: ${{ secrets.RPI_SSH_KEY }}
-      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+    runs-on: [self-hosted, linux, ARM64]
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check deploy prerequisites
-        id: deploy_check
         run: |
           set -eu
+          test -d /srv/yeon
+          test -f /srv/yeon/.env
+          command -v docker
+          docker compose version
 
-          if [ -z "${RPI_HOST}" ] || [ -z "${RPI_USERNAME}" ] || [ -z "${RPI_SSH_KEY}" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Raspberry Pi deploy secrets are not configured; skipping deploy."
-            exit 0
-          fi
-
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare SSH
-        if: steps.deploy_check.outputs.ready == 'true'
+      - name: Sync compose file to Raspberry Pi deploy directory
         run: |
           set -eu
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$RPI_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${RPI_PORT:-22}" -H "$RPI_HOST" >> ~/.ssh/known_hosts
+          install -m 644 compose.prod.yml /srv/yeon/compose.prod.yml
 
       - name: Deploy on Raspberry Pi
-        if: steps.deploy_check.outputs.ready == 'true'
+        env:
+          YEON_WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/yeon-web-app:latest
         run: |
           set -eu
-
-          if [ -n "${GHCR_PULL_USERNAME}" ] && [ -n "${GHCR_PULL_TOKEN}" ]; then
-            ssh -p "${RPI_PORT:-22}" "${RPI_USERNAME}@${RPI_HOST}" \
-              "printf '%s\n' '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
-          fi
-
-          ssh -p "${RPI_PORT:-22}" "${RPI_USERNAME}@${RPI_HOST}" \
-            "set -eu; cd /srv/yeon && docker compose -f compose.prod.yml pull && docker compose -f compose.prod.yml up -d"
+          cd /srv/yeon
+          docker compose -f compose.prod.yml pull
+          docker compose -f compose.prod.yml up -d
