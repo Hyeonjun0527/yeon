@@ -14,10 +14,10 @@
 .queuePanel,
 .detailPanel,
 .sidePanel {
-  border: 1px solid rgba(28, 40, 58, 0.12);
-  border-radius: 28px;
-  background: rgba(255, 252, 246, 0.92);
-  box-shadow: 0 24px 56px rgba(28, 40, 58, 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
   animation: panel-enter 220ms ease-out both;
 }
 
@@ -29,11 +29,11 @@
   background:
     linear-gradient(
       135deg,
-      rgba(19, 34, 56, 0.98) 0%,
-      rgba(24, 47, 68, 0.96) 100%
+      rgba(20, 48, 61, 0.98) 0%,
+      rgba(30, 68, 85, 0.96) 100%
     ),
-    rgba(19, 34, 56, 1);
-  color: #f7f1e7;
+    rgba(20, 48, 61, 1);
+  color: var(--hero-text);
 }
 
 .heroCopy {
@@ -60,7 +60,7 @@
 
 .eyebrow,
 .panelEyebrow {
-  color: #d1b27f;
+  color: var(--hero-accent);
 }
 
 .heroTitle {
@@ -83,7 +83,7 @@
 }
 
 .heroSummary {
-  color: rgba(247, 241, 231, 0.9);
+  color: rgba(248, 248, 244, 0.88);
 }
 
 .heroMetaList {
@@ -104,8 +104,8 @@
   min-height: 38px;
   padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 251, 245, 0.1);
-  border: 1px solid rgba(255, 251, 245, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 14px;
 }
 
@@ -115,17 +115,23 @@
   gap: 14px;
 }
 
+.heroAside {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
 .metricCard {
   display: grid;
   gap: 10px;
   padding: 18px;
   border-radius: 22px;
-  background: rgba(255, 251, 245, 0.08);
-  border: 1px solid rgba(255, 251, 245, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .metricLabel {
-  color: rgba(244, 218, 179, 0.86);
+  color: rgba(239, 220, 186, 0.92);
 }
 
 .metricValue {
@@ -136,7 +142,33 @@
 }
 
 .metricDescription {
-  color: rgba(247, 241, 231, 0.78);
+  color: rgba(248, 248, 244, 0.76);
+}
+
+.briefingPanel,
+.briefingActionCard,
+.briefingFocusCard {
+  display: grid;
+  gap: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.briefingPanel {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.briefingActionList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.briefingActionCard,
+.briefingFocusCard {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .workspaceGrid {
@@ -192,13 +224,20 @@
 .timelineTitle,
 .historyTitle {
   margin: 0;
-  color: #15283c;
+  color: var(--text-strong);
   letter-spacing: -0.03em;
 }
 
 .panelTitle {
   font-size: 24px;
   line-height: 1.1;
+}
+
+.hero .panelTitle,
+.hero .actionTitle,
+.hero .detailBody,
+.hero .panelDescription {
+  color: var(--hero-text);
 }
 
 .sectionTitle {
@@ -233,9 +272,9 @@
   min-height: 42px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(21, 40, 60, 0.12);
-  background: rgba(255, 255, 255, 0.62);
-  color: #30445d;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-panel-strong);
+  color: var(--text-muted);
   cursor: pointer;
   transition:
     border-color 180ms ease-out,
@@ -244,9 +283,9 @@
 }
 
 .segmentChipActive {
-  border-color: rgba(152, 88, 32, 0.46);
-  background: rgba(152, 88, 32, 0.12);
-  color: #6e3f16;
+  border-color: rgba(139, 90, 34, 0.36);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .segmentChipCount {
@@ -268,16 +307,16 @@
 }
 
 .searchLabel {
-  color: #735128;
+  color: var(--warm);
 }
 
 .searchInput,
 .editorTextarea {
   width: 100%;
-  border: 1px solid rgba(21, 40, 60, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #15283c;
+  background: var(--surface-panel-strong);
+  color: var(--text-strong);
 }
 
 .searchInput {
@@ -288,7 +327,7 @@
 
 .searchInput::placeholder,
 .editorTextarea::placeholder {
-  color: rgba(48, 68, 93, 0.64);
+  color: var(--text-subtle);
 }
 
 .studentList,
@@ -306,9 +345,9 @@
   gap: 16px;
   width: 100%;
   padding: 18px;
-  border: 1px solid rgba(21, 40, 60, 0.1);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--surface-panel-strong);
   text-align: left;
   cursor: pointer;
   transition:
@@ -320,17 +359,17 @@
 .studentCard:hover,
 .studentCard:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(21, 40, 60, 0.22);
+  border-color: var(--border-strong);
   box-shadow: 0 18px 32px rgba(21, 40, 60, 0.08);
 }
 
 .studentCardActive {
-  border-color: rgba(152, 88, 32, 0.42);
-  box-shadow: 0 20px 36px rgba(152, 88, 32, 0.12);
+  border-color: rgba(139, 90, 34, 0.36);
+  box-shadow: 0 20px 36px rgba(139, 90, 34, 0.12);
   background: linear-gradient(
     180deg,
     rgba(255, 248, 236, 0.98) 0%,
-    rgba(255, 255, 255, 0.86) 100%
+    rgba(255, 255, 255, 0.94) 100%
   );
 }
 
@@ -367,8 +406,8 @@
 
 .priorityBadge,
 .cohortLabel {
-  background: rgba(21, 40, 60, 0.08);
-  color: #30445d;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
 }
 
 .studentName {
@@ -395,12 +434,12 @@
 .segmentBadge,
 .tagChip,
 .nextCheckLabel {
-  background: rgba(152, 88, 32, 0.1);
-  color: #7a4618;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .studentStatus {
-  color: #1d3147;
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -420,13 +459,13 @@
 .timelineTime,
 .noteMeta,
 .historyMeta {
-  color: rgba(48, 68, 93, 0.72);
+  color: var(--text-subtle);
   font-size: 13px;
 }
 
 .studentFacts dd {
   margin: 0;
-  color: #30445d;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -436,8 +475,8 @@
   gap: 10px;
   padding: 22px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px dashed rgba(21, 40, 60, 0.16);
+  background: var(--surface-panel-strong);
+  border: 1px dashed var(--border-soft);
 }
 
 .detailPanel {
@@ -452,8 +491,8 @@
   margin: 0;
   padding: 18px 20px;
   border-radius: 22px;
-  background: rgba(21, 40, 60, 0.06);
-  color: #15283c;
+  background: var(--surface-subtle);
+  color: var(--text-strong);
   font-size: 18px;
   line-height: 1.6;
   font-weight: 600;
@@ -484,20 +523,20 @@
   display: grid;
   gap: 12px;
   padding: 18px;
-  border: 1px solid rgba(21, 40, 60, 0.1);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-panel-strong);
 }
 
 .detailLabel,
 .actionStudentName,
 .cohortStage,
 .focusMetric {
-  color: #7a4618;
+  color: var(--warm);
 }
 
 .detailBody {
-  color: #30445d;
+  color: var(--text-muted);
 }
 
 .timelineList,
@@ -560,7 +599,7 @@
 .editorLabel {
   font-size: 13px;
   font-weight: 700;
-  color: #735128;
+  color: var(--warm);
 }
 
 .editorTextarea {
@@ -605,18 +644,18 @@
 }
 
 .primaryButton {
-  background: #18344c;
+  background: var(--accent-strong);
   color: #fff8ef;
 }
 
 .primaryButton:hover,
 .primaryButton:focus-visible {
-  background: #10263a;
+  background: var(--accent);
 }
 
 .primaryLink {
   background: #fff8ef;
-  color: #18344c;
+  color: var(--accent-strong);
 }
 
 .primaryLink:hover,
@@ -630,15 +669,15 @@
 }
 
 .secondaryButton {
-  border-color: rgba(21, 40, 60, 0.14);
+  border-color: var(--border-soft);
   background: transparent;
-  color: #1d3147;
+  color: var(--text-strong);
 }
 
 .secondaryButton:hover,
 .secondaryButton:focus-visible {
-  border-color: rgba(21, 40, 60, 0.3);
-  background: rgba(21, 40, 60, 0.04);
+  border-color: var(--border-strong);
+  background: var(--surface-subtle);
 }
 
 .secondaryLink {
@@ -694,7 +733,7 @@
 
 .actionMetaList,
 .cohortStats {
-  color: rgba(48, 68, 93, 0.76);
+  color: var(--text-subtle);
   font-size: 13px;
 }
 
@@ -704,7 +743,7 @@
 }
 
 .coachMemo {
-  color: #1d3147;
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -716,7 +755,7 @@
 .primaryLink:focus-visible,
 .secondaryLink:focus-visible,
 .studentCard:focus-visible {
-  outline: 2px solid #915327;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -733,6 +772,10 @@
 
 @media (max-width: 1040px) {
   .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .briefingActionList {
     grid-template-columns: 1fr;
   }
 
