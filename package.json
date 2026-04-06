@@ -1,0 +1,13 @@
+{
+  "name": "yeon",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @yeon/web dev",
+    "build:web": "pnpm --filter @yeon/web build",
+    "typecheck:web": "pnpm --filter @yeon/web typecheck",
+    "typecheck:api-contract": "pnpm --filter @yeon/api-contract typecheck",
+    "typecheck:api-client": "pnpm --filter @yeon/api-client typecheck"
+  },
+  "packageManager": "pnpm@10.33.0"
+}
