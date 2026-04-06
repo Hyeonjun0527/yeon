@@ -197,6 +197,7 @@ export function InstructorWorkspace({
   dashboard,
   workspace,
 }: InstructorWorkspaceProps) {
+  const [workspaceSnapshot, setWorkspaceSnapshot] = useState(workspace);
   const [students, setStudents] = useState(workspace.students);
   const [studentDetails, setStudentDetails] = useState(
     workspace.studentDetails,
@@ -237,9 +238,7 @@ export function InstructorWorkspace({
     studentDetails,
   );
   const selectedStudent =
-    studentMap.get(selectedStudentId) ??
-    visibleStudents[0] ??
-    students[0];
+    studentMap.get(selectedStudentId) ?? visibleStudents[0] ?? students[0];
   const selectedStudentDetail = studentDetails.find(
     (detail) => detail.studentId === selectedStudent?.id,
   );
@@ -263,7 +262,8 @@ export function InstructorWorkspace({
   const completedActionCount = todayActionBoard.filter(
     (item) => item.status === "done",
   ).length;
-  const focusConceptCount = workspace.weeklyReport.conceptFocuses.length;
+  const focusConceptCount =
+    workspaceSnapshot.weeklyReport.conceptFocuses.length;
   const displayedMetrics = dashboard.metrics.map((metric) => {
     switch (metric.label) {
       case "오늘 케어 학생 수":
@@ -321,6 +321,7 @@ export function InstructorWorkspace({
   }, [selectedStudentId, students, visibleStudents]);
 
   function syncWorkspace(nextWorkspace: InstructorWorkspaceResponse) {
+    setWorkspaceSnapshot(nextWorkspace);
     setStudents(nextWorkspace.students);
     setStudentDetails(nextWorkspace.studentDetails);
     setTodayActionBoard(nextWorkspace.todayActionBoard);
@@ -371,7 +372,7 @@ export function InstructorWorkspace({
           studentId: selectedStudent.id,
           label: "체크인 초안",
           body: draftMessage.trim(),
-          authorLabel: workspace.workspace.coachName,
+          authorLabel: workspaceSnapshot.workspace.coachName,
         }),
       "체크인 초안을 저장했습니다.",
     );
@@ -388,7 +389,7 @@ export function InstructorWorkspace({
           studentId: selectedStudent.id,
           label: "교강사 메모",
           body: draftNote.trim(),
-          authorLabel: workspace.workspace.coachName,
+          authorLabel: workspaceSnapshot.workspace.coachName,
         }),
       "교강사 메모를 저장했습니다.",
     );
@@ -444,13 +445,13 @@ export function InstructorWorkspace({
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>교강사 학생관리 워크스페이스</p>
-            <h1 className={styles.heroTitle}>{workspace.headline}</h1>
-            <p className={styles.heroSummary}>{workspace.summary}</p>
+            <h1 className={styles.heroTitle}>{workspaceSnapshot.headline}</h1>
+            <p className={styles.heroSummary}>{workspaceSnapshot.summary}</p>
             <div className={styles.heroMetaList}>
-              <span>{workspace.workspace.coachName}</span>
-              <span>{workspace.workspace.organizationName}</span>
-              <span>{workspace.workspace.focusWindowLabel}</span>
-              <span>{workspace.generatedLabel}</span>
+              <span>{workspaceSnapshot.workspace.coachName}</span>
+              <span>{workspaceSnapshot.workspace.organizationName}</span>
+              <span>{workspaceSnapshot.workspace.focusWindowLabel}</span>
+              <span>{workspaceSnapshot.generatedLabel}</span>
             </div>
             <div className={styles.heroActions}>
               <Link
@@ -547,126 +548,128 @@ export function InstructorWorkspace({
               </div>
 
               <div className={styles.priorityQueueList}>
-                {priorityQueueEntries.map(({ priorityCard, student, hasDetail }) => {
-                  const studentAction = studentActionMap.get(student.id);
-                  const isActive = selectedStudent?.id === student.id;
+                {priorityQueueEntries.map(
+                  ({ priorityCard, student, hasDetail }) => {
+                    const studentAction = studentActionMap.get(student.id);
+                    const isActive = selectedStudent?.id === student.id;
 
-                  return (
-                    <button
-                      key={priorityCard.id}
-                      className={`${styles.priorityQueueCard} ${
-                        isActive ? styles.priorityQueueCardActive : ""
-                      }`}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => {
-                        handleStudentSelect(student.id);
-                      }}
-                    >
-                      <div className={styles.priorityQueueCardHeader}>
-                        <div>
-                          <div className={styles.studentCardMeta}>
-                            <span className={styles.priorityBadge}>
-                              우선 {priorityCard.priorityOrder}
-                            </span>
-                            <span className={styles.cohortLabel}>
-                              {priorityCard.cohortName}
-                            </span>
-                            {isActive ? (
-                              <span className={styles.prioritySelectionChip}>
-                                현재 상세 확인 중
+                    return (
+                      <button
+                        key={priorityCard.id}
+                        className={`${styles.priorityQueueCard} ${
+                          isActive ? styles.priorityQueueCardActive : ""
+                        }`}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => {
+                          handleStudentSelect(student.id);
+                        }}
+                      >
+                        <div className={styles.priorityQueueCardHeader}>
+                          <div>
+                            <div className={styles.studentCardMeta}>
+                              <span className={styles.priorityBadge}>
+                                우선 {priorityCard.priorityOrder}
                               </span>
-                            ) : null}
+                              <span className={styles.cohortLabel}>
+                                {priorityCard.cohortName}
+                              </span>
+                              {isActive ? (
+                                <span className={styles.prioritySelectionChip}>
+                                  현재 상세 확인 중
+                                </span>
+                              ) : null}
+                            </div>
+                            <h3 className={styles.studentName}>
+                              {priorityCard.name}
+                            </h3>
+                            <p className={styles.priorityStage}>
+                              {student.stageLabel} · {student.ownerLabel}
+                            </p>
                           </div>
-                          <h3 className={styles.studentName}>
-                            {priorityCard.name}
-                          </h3>
-                          <p className={styles.priorityStage}>
-                            {student.stageLabel} · {student.ownerLabel}
+                          <div className={styles.studentBadges}>
+                            <span
+                              className={`${styles.riskBadge} ${riskClassNameMap[priorityCard.riskLevel]}`}
+                            >
+                              {riskLabelMap[priorityCard.riskLevel]}
+                            </span>
+                            <span className={styles.segmentBadge}>
+                              {segmentLabelMap[priorityCard.careSegment]}
+                            </span>
+                          </div>
+                        </div>
+
+                        <dl className={styles.priorityQueueFacts}>
+                          <div
+                            className={`${styles.studentFactCard} ${styles.studentFactCardEmphasis}`}
+                          >
+                            <div className={styles.studentFactHeader}>
+                              <dt>위험 이유</dt>
+                            </div>
+                            <dd>
+                              <span className={styles.studentFactLead}>
+                                {student.latestSignal}
+                              </span>
+                              <span className={styles.studentFactBody}>
+                                {priorityCard.riskSummary}
+                              </span>
+                            </dd>
+                          </div>
+                          <div className={styles.studentFactCard}>
+                            <div className={styles.studentFactHeader}>
+                              <dt>최근 변화</dt>
+                            </div>
+                            <dd className={styles.studentFactBody}>
+                              {priorityCard.recentChange}
+                            </dd>
+                          </div>
+                          <div className={styles.studentFactCard}>
+                            <div className={styles.studentFactHeader}>
+                              <dt>다음 행동</dt>
+                              {studentAction ? (
+                                <span
+                                  className={`${styles.actionStatus} ${actionStatusClassNameMap[studentAction.status]}`}
+                                >
+                                  {actionStatusLabelMap[studentAction.status]}
+                                </span>
+                              ) : null}
+                            </div>
+                            <dd className={styles.studentFactBody}>
+                              {priorityCard.recommendedAction}
+                            </dd>
+                          </div>
+                          <div
+                            className={`${styles.studentFactCard} ${styles.studentFactCardCompact}`}
+                          >
+                            <div className={styles.studentFactHeader}>
+                              <dt>다음 확인</dt>
+                            </div>
+                            <dd>
+                              <span className={styles.studentFactTime}>
+                                {priorityCard.nextCheckLabel}
+                              </span>
+                            </dd>
+                          </div>
+                        </dl>
+
+                        <div className={styles.priorityQueueFooter}>
+                          <div className={styles.tagList}>
+                            {priorityCard.tags.map((tag) => (
+                              <span key={tag} className={styles.tagChip}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <p className={styles.priorityQueueFootnote}>
+                            {hasDetail
+                              ? "상세 패널과 오늘 액션 보드가 함께 연결됩니다."
+                              : "상세 신호는 준비 중이며 큐 우선순위는 먼저 확인할 수 있습니다."}
                           </p>
                         </div>
-                        <div className={styles.studentBadges}>
-                          <span
-                            className={`${styles.riskBadge} ${riskClassNameMap[priorityCard.riskLevel]}`}
-                          >
-                            {riskLabelMap[priorityCard.riskLevel]}
-                          </span>
-                          <span className={styles.segmentBadge}>
-                            {segmentLabelMap[priorityCard.careSegment]}
-                          </span>
-                        </div>
-                      </div>
-
-                      <dl className={styles.priorityQueueFacts}>
-                        <div
-                          className={`${styles.studentFactCard} ${styles.studentFactCardEmphasis}`}
-                        >
-                          <div className={styles.studentFactHeader}>
-                            <dt>위험 이유</dt>
-                          </div>
-                          <dd>
-                            <span className={styles.studentFactLead}>
-                              {student.latestSignal}
-                            </span>
-                            <span className={styles.studentFactBody}>
-                              {priorityCard.riskSummary}
-                            </span>
-                          </dd>
-                        </div>
-                        <div className={styles.studentFactCard}>
-                          <div className={styles.studentFactHeader}>
-                            <dt>최근 변화</dt>
-                          </div>
-                          <dd className={styles.studentFactBody}>
-                            {priorityCard.recentChange}
-                          </dd>
-                        </div>
-                        <div className={styles.studentFactCard}>
-                          <div className={styles.studentFactHeader}>
-                            <dt>다음 행동</dt>
-                            {studentAction ? (
-                              <span
-                                className={`${styles.actionStatus} ${actionStatusClassNameMap[studentAction.status]}`}
-                              >
-                                {actionStatusLabelMap[studentAction.status]}
-                              </span>
-                            ) : null}
-                          </div>
-                          <dd className={styles.studentFactBody}>
-                            {priorityCard.recommendedAction}
-                          </dd>
-                        </div>
-                        <div
-                          className={`${styles.studentFactCard} ${styles.studentFactCardCompact}`}
-                        >
-                          <div className={styles.studentFactHeader}>
-                            <dt>다음 확인</dt>
-                          </div>
-                          <dd>
-                            <span className={styles.studentFactTime}>
-                              {priorityCard.nextCheckLabel}
-                            </span>
-                          </dd>
-                        </div>
-                      </dl>
-
-                      <div className={styles.priorityQueueFooter}>
-                        <div className={styles.tagList}>
-                          {priorityCard.tags.map((tag) => (
-                            <span key={tag} className={styles.tagChip}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <p className={styles.priorityQueueFootnote}>
-                          {hasDetail
-                            ? "상세 패널과 오늘 액션 보드가 함께 연결됩니다."
-                            : "상세 신호는 준비 중이며 큐 우선순위는 먼저 확인할 수 있습니다."}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  },
+                )}
               </div>
             </div>
 
@@ -678,8 +681,8 @@ export function InstructorWorkspace({
                 </h3>
               </div>
               <p className={styles.panelDescription}>
-                우선순위 큐와 별개로 전체 학생을 탐색해 다른 학생 상세도 바로
-                열 수 있습니다.
+                우선순위 큐와 별개로 전체 학생을 탐색해 다른 학생 상세도 바로 열
+                수 있습니다.
               </p>
             </div>
 
@@ -1146,7 +1149,7 @@ export function InstructorWorkspace({
                 </div>
               </div>
               <div className={styles.cohortGrid}>
-                {workspace.cohorts.map((cohort) => (
+                {workspaceSnapshot.cohorts.map((cohort) => (
                   <article key={cohort.id} className={styles.cohortCard}>
                     <p className={styles.cohortStage}>{cohort.stageLabel}</p>
                     <h3 className={styles.cohortTitle}>{cohort.name}</h3>
@@ -1201,18 +1204,18 @@ export function InstructorWorkspace({
                 </div>
               </div>
               <p className={styles.detailBody}>
-                {workspace.weeklyReport.summary}
+                {workspaceSnapshot.weeklyReport.summary}
               </p>
               <div className={styles.checklistCard}>
                 <p className={styles.detailLabel}>오늘 확인할 포인트</p>
                 <ul className={styles.pointList}>
-                  {workspace.weeklyReport.todayFocus.map((item) => (
+                  {workspaceSnapshot.weeklyReport.todayFocus.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
               </div>
               <div className={styles.focusList}>
-                {workspace.weeklyReport.conceptFocuses.map((focus) => (
+                {workspaceSnapshot.weeklyReport.conceptFocuses.map((focus) => (
                   <article key={focus.concept} className={styles.focusCard}>
                     <p className={styles.focusMetric}>
                       {focus.concept} · {focus.affectedStudentCount}명
@@ -1222,7 +1225,7 @@ export function InstructorWorkspace({
                 ))}
               </div>
               <p className={styles.coachMemo}>
-                {workspace.weeklyReport.coachMemo}
+                {workspaceSnapshot.weeklyReport.coachMemo}
               </p>
             </section>
           </aside>
