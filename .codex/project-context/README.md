@@ -5,7 +5,7 @@
 - 이름: `yeon`
 - 형태: `pnpm` workspace monorepo
 - 현재 기본 브랜치: `main`
-- 목표 운영 모델: `develop` = 통합/QA, `main` = 운영
+- 목표 운영 모델: `develop` = develop 서버, `main` = 운영 서버
 - 현재 상태: 웹, 모바일, 공유 패키지 구조를 먼저 세운 초기 스캐폴드 단계
 
 ## Branch Workflow Note
