@@ -101,10 +101,10 @@ jobs:
           install -m 644 compose.prod.yml /srv/yeon/compose.prod.yml
 
       - name: Deploy on Raspberry Pi
-        env:
-          YEON_WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/yeon-web-app:latest
         run: |
           set -eu
+          owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd /srv/yeon
+          export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:latest"
           docker compose -f compose.prod.yml pull
           docker compose -f compose.prod.yml up -d
