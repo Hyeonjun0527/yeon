@@ -74,7 +74,6 @@
 .heroSummary,
 .panelDescription,
 .metricDescription,
-.studentStatus,
 .detailBody,
 .coachMemo {
   margin: 0;
@@ -438,20 +437,39 @@
   color: var(--accent-strong);
 }
 
-.studentStatus {
-  color: var(--text-strong);
-  font-weight: 600;
-}
-
 .studentFacts {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
 }
 
-.studentFacts div {
+.studentFactCard {
   display: grid;
-  gap: 4px;
+  gap: 10px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 250, 244, 0.86);
+}
+
+.studentFactCardEmphasis {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 249, 238, 0.98) 0%,
+    rgba(250, 242, 229, 0.94) 100%
+  );
+  border-color: rgba(139, 90, 34, 0.18);
+}
+
+.studentFactCardCompact {
+  background: var(--surface-subtle);
+}
+
+.studentFactHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .studentFacts dt,
@@ -463,11 +481,35 @@
   font-size: 13px;
 }
 
-.studentFacts dd {
-  margin: 0;
+.studentFactLead {
+  display: block;
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.studentFactBody {
+  display: block;
   color: var(--text-muted);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
+}
+
+.studentFacts dd {
+  margin: 0;
+}
+
+.studentFactTime {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .emptyState {
@@ -832,6 +874,24 @@
 
   .studentName {
     font-size: 20px;
+  }
+}
+
+@media (max-width: 540px) {
+  .studentFactHeader {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .studentCard,
+  .detailCard,
+  .checklistCard,
+  .noteCard,
+  .actionCard,
+  .cohortCard,
+  .historyCard,
+  .focusCard {
+    padding: 16px;
   }
 }
 
