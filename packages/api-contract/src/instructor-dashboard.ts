@@ -31,6 +31,7 @@ export const studentCareSegmentSummarySchema = z.object({
 });
 
 export const priorityStudentCardSchema = z.object({
+  priorityOrder: z.number().int().positive(),
   id: z.string(),
   name: z.string(),
   cohortName: z.string(),

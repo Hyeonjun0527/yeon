@@ -9,7 +9,7 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
   headline:
     "오늘 케어 학생 6명과 개입 대기 3건을 먼저 정리하고 수업을 시작하는 교강사 브리핑",
   summary:
-    "라운드 2에서는 대시보드 상단에서 오늘 바로 봐야 할 숫자 4개와 행동 3개를 먼저 읽고, 아래에서 학생함 세그먼트와 우선 학생 맥락을 이어서 확인하게 만듭니다.",
+    "라운드 3에서는 대시보드 상단 브리핑 아래에 우선순위 학생 큐를 두고, 위험 이유와 최근 변화, 다음 행동을 한 카드에서 바로 읽게 만듭니다.",
   briefing: {
     label: "오늘 아침 브리핑",
     headline: "먼저 3건을 처리하면 오전 수업 전 학생관리 흐름이 안정됩니다.",
@@ -21,7 +21,7 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
       "B반 질문 침묵 학생 2명은 수업 중 먼저 호명합니다.",
     ],
     supportNote:
-      "라운드 2 기준으로는 숫자만 보여주지 않고, 교강사가 즉시 실행할 문장형 브리핑을 함께 둡니다.",
+      "라운드 3 기준으로는 숫자만 보여주지 않고, 우선 학생 카드에서 순번과 다음 행동까지 바로 이어 보게 만듭니다.",
   },
   metrics: [
     {
@@ -75,6 +75,7 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
   ],
   priorityStudents: [
     {
+      priorityOrder: 1,
       id: "student-01",
       name: "김하린",
       cohortName: "웹 풀스택 8기",
@@ -90,6 +91,7 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
       tags: ["참여 저하", "과제 지연", "질문 없음"],
     },
     {
+      priorityOrder: 2,
       id: "student-02",
       name: "박준오",
       cohortName: "웹 풀스택 8기",
@@ -105,6 +107,7 @@ const instructorDashboard = instructorDashboardResponseSchema.parse({
       tags: ["상담 메모", "후속 확인", "보강 과제"],
     },
     {
+      priorityOrder: 3,
       id: "student-03",
       name: "이서후",
       cohortName: "웹 풀스택 7기",
