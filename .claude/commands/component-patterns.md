@@ -1,0 +1,1 @@
+../skills/component-patterns.md
