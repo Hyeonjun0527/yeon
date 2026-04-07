@@ -507,13 +507,17 @@ export async function updateTranscriptSegment(
     return mapSegmentRow(segment);
   }
 
-  const [updated] = await db
-    .update(counselingTranscriptSegments)
-    .set(updateFields)
-    .where(eq(counselingTranscriptSegments.id, segmentId))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(counselingTranscriptSegments)
+      .set(updateFields)
+      .where(eq(counselingTranscriptSegments.id, segmentId))
+      .returning();
 
-  await rebuildTranscriptText(record.id);
+    await rebuildTranscriptText(record.id, tx);
+
+    return [row];
+  });
 
   return mapSegmentRow(updated);
 }
@@ -535,20 +539,24 @@ export async function bulkUpdateSpeakerLabel(
     updateFields.speakerTone = toSpeakerTone;
   }
 
-  const result = await db
-    .update(counselingTranscriptSegments)
-    .set(updateFields)
-    .where(
-      and(
-        eq(counselingTranscriptSegments.recordId, record.id),
-        eq(counselingTranscriptSegments.speakerLabel, fromSpeakerLabel),
-      ),
-    )
-    .returning({ id: counselingTranscriptSegments.id });
+  const result = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(counselingTranscriptSegments)
+      .set(updateFields)
+      .where(
+        and(
+          eq(counselingTranscriptSegments.recordId, record.id),
+          eq(counselingTranscriptSegments.speakerLabel, fromSpeakerLabel),
+        ),
+      )
+      .returning({ id: counselingTranscriptSegments.id });
 
-  if (result.length > 0) {
-    await rebuildTranscriptText(record.id);
-  }
+    if (rows.length > 0) {
+      await rebuildTranscriptText(record.id, tx);
+    }
+
+    return rows;
+  });
 
   return result.length;
 }
