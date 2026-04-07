@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
     networks:
       default:
-      edge:
+      db-edge:
         aliases:
           - yeon-dev-db
     environment:
@@ -67,4 +67,7 @@ volumes:
 networks:
   edge:
     name: yeon-edge
+    external: true
+  db-edge:
+    name: yeon-db-edge
     external: true
