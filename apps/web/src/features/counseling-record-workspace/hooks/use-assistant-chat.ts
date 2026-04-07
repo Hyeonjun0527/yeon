@@ -316,6 +316,15 @@ export function useAssistantChat(
     aiAbortControllerRef.current?.abort();
   }
 
+  function clearAssistantMessages(recordId: string) {
+    setAssistantMessagesByRecord((current) => {
+      const next = { ...current };
+      delete next[recordId];
+      return next;
+    });
+    autoAnalysisTriggeredRef.current.delete(recordId);
+  }
+
   return {
     assistantDraft,
     setAssistantDraft,
@@ -324,6 +333,7 @@ export function useAssistantChat(
     isAiStreaming,
     appendAssistantExchange,
     handleStopStreaming,
+    clearAssistantMessages,
     messageListRef,
   };
 }
