@@ -154,23 +154,54 @@ export function CounselingRecordWorkspace() {
           </form>
         </header>
 
-        {/* 기록 0건: 빈 랜딩 */}
-        {recordList.records.length === 0 ? (
-          <EmptyLanding
-            recordingPhase={recording.recordingPhase}
-            hasAudioReady={uploadForm.hasAudioReady}
-            selectedAudioFile={uploadForm.selectedAudioFile}
-            selectedAudioDurationMs={uploadForm.selectedAudioDurationMs}
-            selectedAudioPreviewUrl={uploadForm.selectedAudioPreviewUrl}
-            recordingElapsedMs={recording.recordingElapsedMs}
-            recordingError={recording.recordingError}
-            fileInputRef={uploadForm.fileInputRef}
-            handleAudioFileChange={uploadForm.handleAudioFileChange}
-            onFileInputClick={() => uploadForm.fileInputRef.current?.click()}
-            onStartRecording={handleStartRecording}
-            onStopRecording={recording.stopRecording}
-            onGoToUploadPanel={handleNewRecord}
-          />
+        {/* 초기 목록 로딩 중에는 빈 화면 유지 (EmptyLanding 깜빡임 방지) */}
+        {recordList.isLoadingList && recordList.records.length === 0 ? (
+          <div className={styles.workspace} />
+        ) : recordList.records.length === 0 ? (
+          uploadForm.isUploadPanelOpen ? (
+            <div className={styles.workspace}>
+              <section
+                className={`${styles.centerColumn} ${styles.centerColumnFull}`}
+              >
+                <UploadPanel
+                  isUploadPanelOpen={uploadForm.isUploadPanelOpen}
+                  setIsUploadPanelOpen={uploadForm.setIsUploadPanelOpen}
+                  formState={uploadForm.formState}
+                  updateFormState={uploadForm.updateFormState}
+                  uploadState={uploadForm.uploadState}
+                  selectedAudioFile={uploadForm.selectedAudioFile}
+                  selectedAudioDurationMs={uploadForm.selectedAudioDurationMs}
+                  selectedAudioPreviewUrl={uploadForm.selectedAudioPreviewUrl}
+                  hasAudioReady={uploadForm.hasAudioReady}
+                  isAdditionalInfoOpen={uploadForm.isAdditionalInfoOpen}
+                  setIsAdditionalInfoOpen={uploadForm.setIsAdditionalInfoOpen}
+                  recordingPhase={recording.recordingPhase}
+                  recordingElapsedMs={recording.recordingElapsedMs}
+                  recordingError={recording.recordingError}
+                  fileInputRef={uploadForm.fileInputRef}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={recording.stopRecording}
+                  handleUploadSubmit={uploadForm.handleUploadSubmit}
+                />
+              </section>
+            </div>
+          ) : (
+            <EmptyLanding
+              recordingPhase={recording.recordingPhase}
+              hasAudioReady={uploadForm.hasAudioReady}
+              selectedAudioFile={uploadForm.selectedAudioFile}
+              selectedAudioDurationMs={uploadForm.selectedAudioDurationMs}
+              selectedAudioPreviewUrl={uploadForm.selectedAudioPreviewUrl}
+              recordingElapsedMs={recording.recordingElapsedMs}
+              recordingError={recording.recordingError}
+              fileInputRef={uploadForm.fileInputRef}
+              handleAudioFileChange={uploadForm.handleAudioFileChange}
+              onFileInputClick={() => uploadForm.fileInputRef.current?.click()}
+              onStartRecording={handleStartRecording}
+              onStopRecording={recording.stopRecording}
+              onGoToUploadPanel={handleNewRecord}
+            />
+          )
         ) : (
           <div className={styles.workspace}>
             {/* 좌측 사이드바 */}
