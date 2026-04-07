@@ -4,6 +4,7 @@ import type {
   CounselingRecordListItem,
   CounselingRecordSpeakerTone,
   CounselingTranscriptSegment,
+  StudentSummary,
 } from "@yeon/api-contract";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { randomUUID, createHash } from "node:crypto";
@@ -926,6 +927,49 @@ export async function listCounselingRecords(userId: string) {
   return records.map(mapRecordListItem);
 }
 
+// 78차: 학생별 기록 요약
+export async function listStudentSummaries(
+  userId: string,
+): Promise<StudentSummary[]> {
+  const allRecords = await listCounselingRecords(userId);
+
+  const groupMap = new Map<string, CounselingRecordListItem[]>();
+
+  for (const record of allRecords) {
+    const name = record.studentName;
+    const group = groupMap.get(name);
+
+    if (group) {
+      group.push(record);
+    } else {
+      groupMap.set(name, [record]);
+    }
+  }
+
+  const summaries: StudentSummary[] = [];
+
+  for (const [studentName, records] of groupMap) {
+    const sorted = records.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    summaries.push({
+      studentName,
+      recordCount: sorted.length,
+      firstCounselingAt: sorted[0].createdAt,
+      lastCounselingAt: sorted[sorted.length - 1].createdAt,
+      records: sorted,
+    });
+  }
+
+  return summaries.sort(
+    (a, b) =>
+      new Date(b.lastCounselingAt).getTime() -
+      new Date(a.lastCounselingAt).getTime(),
+  );
+}
+
 export async function getCounselingRecordDetail(
   userId: string,
   recordId: string,
@@ -943,6 +987,49 @@ export async function getCounselingRecordDetail(
   const segments = await findTranscriptSegments(record.id);
 
   return mapRecordDetail(record, segments);
+}
+
+// 78차: 추이 분석용 다중 기록 조회
+export async function getMultipleRecordsWithSegments(
+  userId: string,
+  recordIds: string[],
+) {
+  const MAX_TREND_RECORDS = 5;
+  const limitedIds = recordIds.slice(0, MAX_TREND_RECORDS);
+
+  const results: {
+    studentName: string;
+    sessionTitle: string;
+    counselingType: string;
+    createdAt: string;
+    segments: { speakerLabel: string; text: string; startMs: number }[];
+  }[] = [];
+
+  for (const recordId of limitedIds) {
+    const record = await findOwnedRecord(userId, recordId);
+    const segments = await findTranscriptSegments(record.id);
+
+    results.push({
+      studentName: record.studentName,
+      sessionTitle: record.sessionTitle,
+      counselingType: record.counselingType,
+      createdAt: record.createdAt.toISOString(),
+      segments: segments.map((s) => ({
+        speakerLabel: s.speakerLabel,
+        text: s.text,
+        startMs: s.startMs ?? 0,
+      })),
+    });
+  }
+
+  // 같은 학생인지 검증
+  const names = new Set(results.map((r) => r.studentName));
+
+  if (names.size > 1) {
+    throw new ServiceError(400, "같은 학생의 기록만 추이 분석할 수 있습니다.");
+  }
+
+  return results;
 }
 
 function scheduleCounselingRecordTranscription(params: {
@@ -1233,4 +1320,111 @@ export async function deleteCounselingRecord(
       );
     }
   }
+}
+
+export async function updateTranscriptSegment(
+  userId: string,
+  recordId: string,
+  segmentId: string,
+  patch: {
+    text?: string;
+    speakerLabel?: string;
+    speakerTone?: CounselingRecordSpeakerTone;
+  },
+) {
+  const record = await findOwnedRecord(userId, recordId);
+  const db = getDb();
+
+  const [segment] = await db
+    .select()
+    .from(counselingTranscriptSegments)
+    .where(
+      and(
+        eq(counselingTranscriptSegments.id, segmentId),
+        eq(counselingTranscriptSegments.recordId, record.id),
+      ),
+    )
+    .limit(1);
+
+  if (!segment) {
+    throw new ServiceError(404, "해당 세그먼트를 찾지 못했습니다.");
+  }
+
+  const updateFields: Partial<typeof counselingTranscriptSegments.$inferInsert> =
+    {};
+
+  if (patch.text !== undefined) {
+    updateFields.text = patch.text;
+  }
+
+  if (patch.speakerLabel !== undefined) {
+    updateFields.speakerLabel = patch.speakerLabel;
+  }
+
+  if (patch.speakerTone !== undefined) {
+    updateFields.speakerTone = patch.speakerTone;
+  }
+
+  if (Object.keys(updateFields).length === 0) {
+    return mapSegmentRow(segment);
+  }
+
+  const [updated] = await db
+    .update(counselingTranscriptSegments)
+    .set(updateFields)
+    .where(eq(counselingTranscriptSegments.id, segmentId))
+    .returning();
+
+  await rebuildTranscriptText(record.id);
+
+  return mapSegmentRow(updated);
+}
+
+export async function bulkUpdateSpeakerLabel(
+  userId: string,
+  recordId: string,
+  fromSpeakerLabel: string,
+  toSpeakerLabel: string,
+  toSpeakerTone?: CounselingRecordSpeakerTone,
+) {
+  const record = await findOwnedRecord(userId, recordId);
+  const db = getDb();
+
+  const updateFields: Partial<typeof counselingTranscriptSegments.$inferInsert> =
+    { speakerLabel: toSpeakerLabel };
+
+  if (toSpeakerTone !== undefined) {
+    updateFields.speakerTone = toSpeakerTone;
+  }
+
+  const result = await db
+    .update(counselingTranscriptSegments)
+    .set(updateFields)
+    .where(
+      and(
+        eq(counselingTranscriptSegments.recordId, record.id),
+        eq(counselingTranscriptSegments.speakerLabel, fromSpeakerLabel),
+      ),
+    )
+    .returning({ id: counselingTranscriptSegments.id });
+
+  if (result.length > 0) {
+    await rebuildTranscriptText(record.id);
+  }
+
+  return result.length;
+}
+
+async function rebuildTranscriptText(recordId: string) {
+  const db = getDb();
+  const segments = await findTranscriptSegments(recordId);
+  const fullText = segments.map((s) => s.text).join("\n");
+
+  await db
+    .update(counselingRecords)
+    .set({
+      transcriptText: fullText,
+      updatedAt: new Date(),
+    })
+    .where(eq(counselingRecords.id, recordId));
 }
