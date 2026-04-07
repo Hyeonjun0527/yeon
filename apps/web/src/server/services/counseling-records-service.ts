@@ -444,10 +444,7 @@ export async function deleteCounselingRecord(
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
-  await db
-    .delete(counselingRecords)
-    .where(eq(counselingRecords.id, record.id));
-
+  // R2 파일을 먼저 삭제 — DB가 source of truth이므로 행이 남아있으면 재시도 가능
   if (!isPlaceholderAudioStoragePath(record.audioStoragePath)) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
@@ -458,6 +455,10 @@ export async function deleteCounselingRecord(
       );
     }
   }
+
+  await db
+    .delete(counselingRecords)
+    .where(eq(counselingRecords.id, record.id));
 }
 
 export async function updateTranscriptSegment(
