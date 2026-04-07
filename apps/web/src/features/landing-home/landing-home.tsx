@@ -181,7 +181,7 @@ export function LandingHome({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              YEON 상담 기록 워크스페이스
+              YEON
             </motion.p>
 
             <motion.h1
@@ -194,10 +194,12 @@ export function LandingHome({
                 ease: [0.16, 1, 0.3, 1],
               }}
             >
-              상담을 다시 여는
+              좋은 상담은
+              <br />
+              기억에만
               <br />
               <span className={styles.heroTitleAccent}>
-                단 하나의 기록 화면
+                남기기 아깝습니다
               </span>
             </motion.h1>
 
@@ -207,10 +209,10 @@ export function LandingHome({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.7 }}
             >
-              녹음 하나를 고품질 원문 텍스트, 구조화 요약, 다음 액션으로
-              정리합니다.
+              켜두기만 하세요. 상담이 끝나면 기록이 완성되어 있습니다.
               <br />
-              왼쪽에서 고르고, 가운데서 읽고, 오른쪽 AI로 바로 정리하세요.
+              녹음 버튼 하나면 전사부터 요약, 후속 조치까지 자동으로
+              정리됩니다.
             </motion.p>
 
             <motion.div
@@ -441,7 +443,7 @@ export function LandingHome({
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
-                워크스페이스 열기
+                시작하기
                 <ArrowRight size={18} strokeWidth={2.5} />
               </button>
             </motion.div>

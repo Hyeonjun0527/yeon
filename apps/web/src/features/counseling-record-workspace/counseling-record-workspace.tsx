@@ -1122,7 +1122,7 @@ export function CounselingRecordWorkspace() {
         }
 
         const now = new Date();
-        const readableTitle = `브라우저 녹음 ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const readableTitle = `바로 녹음하기 ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
         const file = new File(
           chunks,
           `${readableTitle}${extension}`,
@@ -2016,8 +2016,8 @@ export function CounselingRecordWorkspace() {
           </form>
         </header>
 
-        {/* 기록 0건: 풀스크린 빈 상태 */}
-        {!isLoadingList && records.length === 0 ? (
+        {/* 기록 0건 또는 로딩 중: 풀스크린 빈 상태 */}
+        {records.length === 0 ? (
           <div className={styles.emptyLanding}>
             <input
               ref={fileInputRef}
@@ -2052,7 +2052,7 @@ export function CounselingRecordWorkspace() {
                   onClick={startRecording}
                 >
                   <Mic size={16} strokeWidth={2.2} />
-                  브라우저 녹음
+                  바로 녹음하기
                 </button>
               </div>
             </div>
@@ -3062,7 +3062,7 @@ export function CounselingRecordWorkspace() {
                           <Mic size={20} strokeWidth={2} />
                           <div>
                             <span className={styles.primaryCtaTileTitle}>
-                              브라우저 녹음
+                              바로 녹음하기
                             </span>
                             <span className={styles.primaryCtaTileDescription}>
                               지금 바로 녹음 시작
@@ -3216,7 +3216,7 @@ export function CounselingRecordWorkspace() {
                             onClick={startRecording}
                             disabled={uploadState.isUploading}
                           >
-                            브라우저 녹음
+                            바로 녹음하기
                           </button>
                         </div>
                       </>
