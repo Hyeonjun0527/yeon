@@ -93,6 +93,8 @@ export function CounselingRecordWorkspace() {
     recordList.setRecords,
     recordList.setSelectedRecordId,
     toast.setSaveToast,
+    detail.clearRecordDetail,
+    assistantChat.clearAssistantMessages,
   );
 
   // ── 파생 값 ──

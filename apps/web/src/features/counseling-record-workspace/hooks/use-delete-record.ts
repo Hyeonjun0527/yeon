@@ -6,6 +6,8 @@ export function useDeleteRecord(
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
   setSelectedRecordId: (id: string | null) => void,
   setSaveToast: (message: string) => void,
+  clearRecordDetail: (recordId: string) => void,
+  clearAssistantMessages: (recordId: string) => void,
 ) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -35,6 +37,8 @@ export function useDeleteRecord(
       setRecords((current) =>
         current.filter((record) => record.id !== selectedRecord.id),
       );
+      clearRecordDetail(selectedRecord.id);
+      clearAssistantMessages(selectedRecord.id);
       setSelectedRecordId(null);
       setIsDeleteConfirmOpen(false);
       setSaveToast("기록이 삭제되었습니다.");

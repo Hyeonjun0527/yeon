@@ -201,6 +201,14 @@ export function useRecordDetail(
     }
   }
 
+  function clearRecordDetail(recordId: string) {
+    setRecordDetails((current) => {
+      const next = { ...current };
+      delete next[recordId];
+      return next;
+    });
+  }
+
   return {
     selectedRecordDetail,
     isLoadingDetail,
@@ -212,5 +220,6 @@ export function useRecordDetail(
     retryTranscription,
     setRecordDetails,
     recordDetails,
+    clearRecordDetail,
   };
 }
