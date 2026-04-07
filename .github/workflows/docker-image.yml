@@ -244,6 +244,7 @@ jobs:
           command -v docker
           docker compose version
           docker network inspect yeon-edge >/dev/null 2>&1 || docker network create yeon-edge
+          docker network inspect yeon-db-edge >/dev/null 2>&1 || docker network create yeon-db-edge
 
       - name: Sync compose file
         run: |
@@ -292,6 +293,7 @@ jobs:
           command -v docker
           docker compose version
           docker network inspect yeon-edge >/dev/null 2>&1 || docker network create yeon-edge
+          docker network inspect yeon-db-edge >/dev/null 2>&1 || docker network create yeon-db-edge
 
       - name: Sync compose file
         run: |
