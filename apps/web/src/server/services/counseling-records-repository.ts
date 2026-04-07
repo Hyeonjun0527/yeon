@@ -24,6 +24,35 @@ export type CounselingRecordRow = typeof counselingRecords.$inferSelect;
 type CounselingTranscriptSegmentRow =
   typeof counselingTranscriptSegments.$inferSelect;
 
+const VALID_STATUSES = new Set<CounselingRecordListItem["status"]>([
+  "processing",
+  "ready",
+  "error",
+]);
+
+const VALID_SPEAKER_TONES = new Set<CounselingTranscriptSegment["speakerTone"]>([
+  "teacher",
+  "student",
+  "guardian",
+  "unknown",
+]);
+
+function toRecordStatus(raw: string): CounselingRecordListItem["status"] {
+  if (VALID_STATUSES.has(raw as CounselingRecordListItem["status"])) {
+    return raw as CounselingRecordListItem["status"];
+  }
+
+  return "error";
+}
+
+function toSpeakerTone(raw: string): CounselingTranscriptSegment["speakerTone"] {
+  if (VALID_SPEAKER_TONES.has(raw as CounselingTranscriptSegment["speakerTone"])) {
+    return raw as CounselingTranscriptSegment["speakerTone"];
+  }
+
+  return "unknown";
+}
+
 export type PersistedAudio = {
   storagePath: string;
   sha256: string;
@@ -189,7 +218,7 @@ export function mapRecordListItem(
     sessionTitle: record.sessionTitle,
     counselingType: record.counselingType,
     counselorName: record.counselorName,
-    status: record.status as CounselingRecordListItem["status"],
+    status: toRecordStatus(record.status),
     preview: buildPreviewText(record),
     tags: buildRecordTags(record),
     audioOriginalName: record.audioOriginalName,
@@ -218,8 +247,7 @@ export function mapSegmentRow(
     startMs: segment.startMs,
     endMs: segment.endMs,
     speakerLabel: segment.speakerLabel,
-    speakerTone:
-      segment.speakerTone as CounselingTranscriptSegment["speakerTone"],
+    speakerTone: toSpeakerTone(segment.speakerTone),
     text: segment.text,
   };
 }
