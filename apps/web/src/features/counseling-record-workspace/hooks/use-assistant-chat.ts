@@ -3,6 +3,29 @@ import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api
 import type { Message } from "../types";
 import { buildInitialAssistantMessages } from "../utils";
 
+const MAX_CACHED_RECORDS = 20;
+
+function evictOldestIfNeeded(
+  map: Record<string, Message[]>,
+  keepRecordId: string,
+): Record<string, Message[]> {
+  const keys = Object.keys(map);
+
+  if (keys.length <= MAX_CACHED_RECORDS) {
+    return map;
+  }
+
+  const evictKey = keys.find((k) => k !== keepRecordId);
+
+  if (!evictKey) {
+    return map;
+  }
+
+  const next = { ...map };
+  delete next[evictKey];
+  return next;
+}
+
 export function useAssistantChat(
   selectedRecord: CounselingRecordListItem | null,
   selectedRecordDetail: CounselingRecordDetail | null,
@@ -62,10 +85,10 @@ export function useAssistantChat(
       const nextMessages = buildInitialAssistantMessages(selectedRecord, statusMeta);
 
       if (!existingMessages) {
-        return {
-          ...current,
-          [selectedRecord.id]: nextMessages,
-        };
+        return evictOldestIfNeeded(
+          { ...current, [selectedRecord.id]: nextMessages },
+          selectedRecord.id,
+        );
       }
 
       if (existingMessages.some((message) => message.role === "user")) {
