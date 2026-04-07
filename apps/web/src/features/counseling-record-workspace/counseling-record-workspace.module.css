@@ -1170,6 +1170,78 @@
   animation: spin 1s linear infinite;
 }
 
+/* 빈 상태 풀스크린 랜딩 */
+
+.emptyLanding {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.emptyLandingCta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  max-width: 360px;
+}
+
+.emptyLandingIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.emptyLandingTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.emptyLandingDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.emptyLandingButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+
+.emptyLandingButton:hover {
+  opacity: 0.9;
+  box-shadow: var(--shadow-lg);
+}
+
+.emptyLandingUpload {
+  width: 100%;
+  max-width: 480px;
+}
+
 /* 27차: 빈 상태 셸 시각 보강 */
 
 .preSelectionEmpty {

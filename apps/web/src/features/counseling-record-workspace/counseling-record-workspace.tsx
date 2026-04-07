@@ -764,11 +764,7 @@ export function CounselingRecordWorkspace() {
     });
   }, [filteredRecords, selectedRecordId]);
 
-  useEffect(() => {
-    if (!isLoadingList && records.length === 0) {
-      setIsUploadPanelOpen(true);
-    }
-  }, [isLoadingList, records.length]);
+  // 기록 0건일 때 자동 업로드 패널 열기 제거 — 빈 상태 CTA로 대체
 
   // 31차: 재생 중 active segment 자동 스크롤
   useEffect(() => {
@@ -2020,6 +2016,106 @@ export function CounselingRecordWorkspace() {
           </form>
         </header>
 
+        {/* 기록 0건: 풀스크린 빈 상태 */}
+        {!isLoadingList && records.length === 0 ? (
+          <div className={styles.emptyLanding}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className={styles.hiddenFileInput}
+              onChange={handleAudioFileChange}
+            />
+
+            {isUploadPanelOpen ? (
+              <div className={styles.emptyLandingUpload}>
+                <form
+                  className={styles.createRecordForm}
+                  onSubmit={handleUploadSubmit}
+                >
+                  <header className={styles.createRecordHeader}>
+                    <div>
+                      <h2 className={styles.centerUploadTitle}>
+                        새 기록 만들기
+                      </h2>
+                      <p className={styles.centerUploadDescription}>
+                        {hasAudioReady
+                          ? "선택한 오디오를 확인한 뒤 저장합니다."
+                          : recordingPhase !== "idle"
+                            ? "녹음을 마치면 바로 저장할 수 있습니다."
+                            : "파일을 올리거나 바로 녹음해 시작합니다."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.topbarGhostButton}
+                      onClick={() => setIsUploadPanelOpen(false)}
+                    >
+                      닫기
+                    </button>
+                  </header>
+
+                  {!selectedAudioFile && recordingPhase === "idle" ? (
+                    <div className={styles.primaryCtaStack}>
+                      <button
+                        type="button"
+                        className={styles.primaryCtaTile}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadState.isUploading}
+                      >
+                        <Upload size={20} strokeWidth={2} />
+                        <div>
+                          <span className={styles.primaryCtaTileTitle}>
+                            파일 업로드
+                          </span>
+                          <span className={styles.primaryCtaTileDescription}>
+                            오디오 파일에서 시작
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.primaryCtaTile}
+                        onClick={startRecording}
+                        disabled={uploadState.isUploading}
+                      >
+                        <Mic size={20} strokeWidth={2} />
+                        <div>
+                          <span className={styles.primaryCtaTileTitle}>
+                            브라우저 녹음
+                          </span>
+                          <span className={styles.primaryCtaTileDescription}>
+                            지금 바로 녹음 시작
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  ) : null}
+                </form>
+              </div>
+            ) : (
+              <div className={styles.emptyLandingCta}>
+                <div className={styles.emptyLandingIcon}>
+                  <Mic size={32} strokeWidth={1.5} />
+                </div>
+                <h2 className={styles.emptyLandingTitle}>
+                  첫 상담 기록을 만들어 보세요
+                </h2>
+                <p className={styles.emptyLandingDescription}>
+                  음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  className={styles.emptyLandingButton}
+                  onClick={() => setIsUploadPanelOpen(true)}
+                >
+                  <Upload size={16} strokeWidth={2.2} />
+                  새 기록 만들기
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className={styles.workspace}>
           {/* ── 좌측: 생성 + 탐색 ── */}
           <aside className={styles.sidebar}>
@@ -3420,6 +3516,7 @@ export function CounselingRecordWorkspace() {
             </section>
           )}
         </div>
+        )}
       </div>
     </main>
   );
