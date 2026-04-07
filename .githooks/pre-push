@@ -1,18 +1,6 @@
 #!/bin/sh
 
-set -eu
+# lint와 typecheck는 pre-commit에서 수행한다.
+# pre-push는 추가 검증이 필요할 때만 사용한다.
 
-repo_root=$(git rev-parse --show-toplevel)
-
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm을 찾을 수 없어 pre-push 검증을 중단합니다." >&2
-  exit 1
-fi
-
-cd "$repo_root"
-
-echo "[pre-push] pnpm lint"
-pnpm lint
-
-echo "[pre-push] pnpm typecheck"
-pnpm typecheck
+exit 0
