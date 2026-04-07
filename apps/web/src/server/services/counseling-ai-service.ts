@@ -141,6 +141,113 @@ export async function streamCounselingAiChat(
   return transformOpenAiStream(response.body);
 }
 
+// 78차: 추이 분석 시스템 프롬프트
+function buildTrendAnalysisSystemPrompt(
+  studentName: string,
+  recordSummaries: {
+    sessionTitle: string;
+    counselingType: string;
+    createdAt: string;
+    transcriptBlock: string;
+  }[],
+) {
+  const recordBlocks = recordSummaries
+    .map(
+      (r, i) =>
+        `### ${i + 1}차 상담 (${r.createdAt})\n- 제목: ${r.sessionTitle}\n- 유형: ${r.counselingType}\n\n${r.transcriptBlock}`,
+    )
+    .join("\n\n---\n\n");
+
+  return `당신은 교육 상담 기록 분석 전문 AI 도우미입니다.
+
+## 역할
+아래는 "${studentName}" 학생의 여러 차례 상담 원문입니다. 시간 순서로 학생의 변화 추이, 반복되는 이슈, 개선된 점, 주의 필요 사항을 분석해주세요.
+
+## 상담 기록들
+${recordBlocks}
+
+## 응답 가이드라인
+- 한국어로 답변합니다.
+- 마크다운 서식을 자유롭게 사용합니다.
+- 다음 구조로 분석합니다:
+  1. **전체 추이 요약** — 학생의 변화 흐름을 3-5문장으로 정리
+  2. **반복되는 이슈** — 여러 상담에 걸쳐 반복 등장하는 문제
+  3. **긍정적 변화** — 개선되거나 해소된 부분
+  4. **주의 필요 사항** — 악화 경향이나 새로 발견된 위험 신호
+  5. **후속 조치 제안** — 다음 상담 방향, 보호자 공유 포인트
+- 원문 인용 시 몇 차 상담인지 표기합니다.
+- 불필요하게 길게 쓰지 않습니다.`;
+}
+
+export async function streamTrendAnalysis(
+  studentName: string,
+  recordSummaries: {
+    sessionTitle: string;
+    counselingType: string;
+    createdAt: string;
+    segments: TranscriptSegmentInput[];
+  }[],
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = getOpenAiApiKey();
+  const model =
+    process.env.OPENAI_AI_CHAT_MODEL?.trim() || DEFAULT_AI_CHAT_MODEL;
+
+  const systemPrompt = buildTrendAnalysisSystemPrompt(
+    studentName,
+    recordSummaries.map((r) => ({
+      sessionTitle: r.sessionTitle,
+      counselingType: r.counselingType,
+      createdAt: r.createdAt,
+      transcriptBlock: buildTranscriptBlock(r.segments),
+    })),
+  );
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: "위 상담 기록들을 바탕으로 학생의 변화 추이를 분석해주세요." },
+  ];
+
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = "추이 분석 AI가 응답하지 못했습니다.";
+
+    try {
+      const errorData = (await response.json()) as {
+        error?: { message?: string };
+      };
+
+      if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      }
+    } catch {
+      // 에러 파싱 실패
+    }
+
+    throw new ServiceError(
+      response.status >= 500 ? 502 : response.status,
+      errorMessage,
+    );
+  }
+
+  if (!response.body) {
+    throw new ServiceError(502, "AI 응답 스트림을 받지 못했습니다.");
+  }
+
+  return transformOpenAiStream(response.body);
+}
+
 function transformOpenAiStream(
   upstream: ReadableStream<Uint8Array>,
 ): ReadableStream<Uint8Array> {

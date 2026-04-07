@@ -82,3 +82,46 @@ export type ListCounselingRecordsResponse = z.infer<
 export type CounselingRecordDetailResponse = z.infer<
   typeof counselingRecordDetailResponseSchema
 >;
+
+export const updateSegmentRequestSchema = z.object({
+  text: z.string().min(1).optional(),
+  speakerLabel: z.string().min(1).max(40).optional(),
+  speakerTone: counselingRecordSpeakerToneSchema.optional(),
+});
+
+export const updateSegmentResponseSchema = z.object({
+  segment: counselingTranscriptSegmentSchema,
+});
+
+export const bulkUpdateSpeakerRequestSchema = z.object({
+  fromSpeakerLabel: z.string().min(1).max(40),
+  toSpeakerLabel: z.string().min(1).max(40),
+  toSpeakerTone: counselingRecordSpeakerToneSchema.optional(),
+});
+
+export const bulkUpdateSpeakerResponseSchema = z.object({
+  updatedCount: z.number().int().nonnegative(),
+});
+
+export type UpdateSegmentRequest = z.infer<typeof updateSegmentRequestSchema>;
+export type BulkUpdateSpeakerRequest = z.infer<
+  typeof bulkUpdateSpeakerRequestSchema
+>;
+
+// 78차: 학생별 요약
+export const studentSummarySchema = z.object({
+  studentName: z.string(),
+  recordCount: z.number().int().nonnegative(),
+  firstCounselingAt: z.string().datetime(),
+  lastCounselingAt: z.string().datetime(),
+  records: z.array(counselingRecordListItemSchema),
+});
+
+export const listStudentSummariesResponseSchema = z.object({
+  students: z.array(studentSummarySchema),
+});
+
+export type StudentSummary = z.infer<typeof studentSummarySchema>;
+export type ListStudentSummariesResponse = z.infer<
+  typeof listStudentSummariesResponseSchema
+>;

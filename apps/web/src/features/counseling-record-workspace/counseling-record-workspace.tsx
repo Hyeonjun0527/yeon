@@ -21,11 +21,15 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   Bot,
+  Check,
   CheckCheck,
   ChevronDown,
   ClipboardCopy,
+  Download,
   FileAudio,
+  FileText,
   Filter,
+  List,
   LoaderCircle,
   LogOut,
   Mic,
@@ -36,11 +40,14 @@ import {
   Trash2,
   TriangleAlert,
   Upload,
+  Users,
+  X,
 } from "lucide-react";
 
 import styles from "./counseling-record-workspace.module.css";
 
 type RecordFilter = "all" | CounselingRecordListItem["status"];
+type SidebarViewMode = "all" | "student";
 type UploadTone = "idle" | "success" | "error";
 type MessageRole = "assistant" | "user";
 type UploadFormState = {
@@ -195,6 +202,20 @@ function formatFileSize(value: number) {
   }
 
   return `${value}B`;
+}
+
+const SPEAKER_CYCLE = [
+  { label: "교사", tone: "teacher" },
+  { label: "학생", tone: "student" },
+  { label: "보호자", tone: "guardian" },
+  { label: "기타", tone: "unknown" },
+] as const;
+
+function getNextSpeaker(currentTone: string) {
+  const currentIndex = SPEAKER_CYCLE.findIndex((s) => s.tone === currentTone);
+  const nextIndex = (currentIndex + 1) % SPEAKER_CYCLE.length;
+
+  return SPEAKER_CYCLE[nextIndex];
 }
 
 function getSpeakerToneClass(
@@ -406,6 +427,14 @@ export function CounselingRecordWorkspace() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
+  const [sidebarViewMode, setSidebarViewMode] =
+    useState<SidebarViewMode>("all");
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(
+    null,
+  );
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isDetailMetaOpen, setIsDetailMetaOpen] = useState(false);
   const [transcriptQuery, setTranscriptQuery] = useState("");
@@ -459,9 +488,20 @@ export function CounselingRecordWorkspace() {
   );
   const [audioLoadError, setAudioLoadError] = useState<string | null>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
+  // 78차: 추이 분석 상태
+  const [trendAnalysis, setTrendAnalysis] = useState<{
+    studentName: string;
+    content: string;
+    isStreaming: boolean;
+  } | null>(null);
+  const trendAbortControllerRef = useRef<AbortController | null>(null);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [recentlySavedId, setRecentlySavedId] = useState<string | null>(null);
+  const [isAiExportOpen, setIsAiExportOpen] = useState(false);
   const [isAiStreaming, setIsAiStreaming] = useState(false);
+  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [editingSegmentText, setEditingSegmentText] = useState("");
+  const [editingSegmentSaving, setEditingSegmentSaving] = useState(false);
   const aiAbortControllerRef = useRef<AbortController | null>(null);
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
 
@@ -473,6 +513,7 @@ export function CounselingRecordWorkspace() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef<number | null>(null);
+  const exportDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const normalizedSearchTerm = deferredSearchTerm.trim().toLowerCase();
@@ -513,6 +554,44 @@ export function CounselingRecordWorkspace() {
         isTranscriptSegmentMatched(segment, normalizedTranscriptQuery),
       ).length
     : 0;
+  // 78차: 학생별 그룹
+  const studentGroups = (() => {
+    const map = new Map<
+      string,
+      { records: CounselingRecordListItem[]; lastCounselingAt: string }
+    >();
+
+    for (const record of filteredRecords) {
+      const group = map.get(record.studentName);
+
+      if (group) {
+        group.records.push(record);
+
+        if (record.createdAt > group.lastCounselingAt) {
+          group.lastCounselingAt = record.createdAt;
+        }
+      } else {
+        map.set(record.studentName, {
+          records: [record],
+          lastCounselingAt: record.createdAt,
+        });
+      }
+    }
+
+    return Array.from(map.entries())
+      .map(([name, { records: groupRecords, lastCounselingAt }]) => ({
+        studentName: name,
+        records: groupRecords,
+        recordCount: groupRecords.length,
+        lastCounselingAt,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.lastCounselingAt).getTime() -
+          new Date(a.lastCounselingAt).getTime(),
+      );
+  })();
+
   const quickPrompts = selectedRecord ? buildQuickPrompts(selectedRecord) : [];
   const assistantMessages = selectedRecord
     ? (assistantMessagesByRecord[selectedRecord.id] ?? [])
@@ -532,6 +611,25 @@ export function CounselingRecordWorkspace() {
       container.scrollTop = container.scrollHeight;
     }
   }, [assistantMessages, isAiStreaming]);
+
+  // 77차: 내보내기 드롭다운 바깥 클릭 닫기
+  useEffect(() => {
+    if (!isAiExportOpen) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAiExportOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isAiExportOpen]);
 
   useEffect(() => {
     let ignore = false;
@@ -1493,6 +1591,349 @@ export function CounselingRecordWorkspace() {
     }
   }
 
+  function startEditingSegment(segmentId: string, currentText: string) {
+    setEditingSegmentId(segmentId);
+    setEditingSegmentText(currentText);
+  }
+
+  function cancelEditingSegment() {
+    setEditingSegmentId(null);
+    setEditingSegmentText("");
+  }
+
+  async function saveEditingSegment() {
+    if (!selectedRecord || !editingSegmentId || editingSegmentSaving) {
+      return;
+    }
+
+    setEditingSegmentSaving(true);
+
+    try {
+      const response = await fetch(
+        `/api/v1/counseling-records/${selectedRecord.id}/segments/${editingSegmentId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: editingSegmentText }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { message?: string };
+
+        setSaveToast(data.message ?? "세그먼트 수정에 실패했습니다.");
+        return;
+      }
+
+      setRecordDetails((current) => {
+        const detail = current[selectedRecord.id];
+
+        if (!detail) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [selectedRecord.id]: {
+            ...detail,
+            transcriptSegments: detail.transcriptSegments.map((s) =>
+              s.id === editingSegmentId
+                ? { ...s, text: editingSegmentText }
+                : s,
+            ),
+          },
+        };
+      });
+
+      setEditingSegmentId(null);
+      setEditingSegmentText("");
+    } catch {
+      setSaveToast("세그먼트 수정에 실패했습니다.");
+    } finally {
+      setEditingSegmentSaving(false);
+    }
+  }
+
+  async function handleSpeakerLabelChange(
+    segmentId: string,
+    newLabel: string,
+    newTone: string,
+  ) {
+    if (!selectedRecord) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/v1/counseling-records/${selectedRecord.id}/segments/${segmentId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            speakerLabel: newLabel,
+            speakerTone: newTone,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      setRecordDetails((current) => {
+        const detail = current[selectedRecord.id];
+
+        if (!detail) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [selectedRecord.id]: {
+            ...detail,
+            transcriptSegments: detail.transcriptSegments.map((s) =>
+              s.id === segmentId
+                ? { ...s, speakerLabel: newLabel, speakerTone: newTone as typeof s.speakerTone }
+                : s,
+            ),
+          },
+        };
+      });
+    } catch {
+      // 실패 시 무시 (이미 서버에 반영 안 됨)
+    }
+  }
+
+  // 77차: AI 분석 내보내기 텍스트 빌더
+  function buildAiExportText() {
+    if (!selectedRecord) {
+      return "";
+    }
+
+    const messages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const aiMessages = messages
+      .filter((m) => m.role === "assistant" && !m.isStreaming)
+      .map((m) => m.content);
+
+    if (aiMessages.length === 0) {
+      return "";
+    }
+
+    const header = [
+      "[상담 분석 보고서]",
+      `학생: ${selectedRecord.studentName}`,
+      `상담 제목: ${selectedRecord.sessionTitle}`,
+      `일시: ${formatDateTimeLabel(selectedRecord.createdAt)}`,
+    ].join("\n");
+
+    const aiSection = `--- AI 분석 ---\n${aiMessages.join("\n\n")}`;
+
+    const segmentCount = selectedRecordDetail?.transcriptSegments.length ?? 0;
+    const textLength = selectedRecordDetail?.transcriptText.length ?? 0;
+    const summary = `--- 원문 요약 ---\n세그먼트 ${segmentCount}개 · ${textLength}자`;
+
+    return `${header}\n\n${aiSection}\n\n${summary}`;
+  }
+
+  // 77차: 종합 보고서 마크다운 빌더
+  function buildComprehensiveReportMarkdown() {
+    if (!selectedRecord || !selectedRecordDetail) {
+      return "";
+    }
+
+    const messages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const aiContent = messages
+      .filter((m) => m.role === "assistant" && !m.isStreaming)
+      .map((m) => m.content)
+      .join("\n\n");
+
+    const transcriptLines = selectedRecordDetail.transcriptSegments.map(
+      (segment) =>
+        `[${formatTranscriptTime(segment.startMs)}] ${segment.speakerLabel}: ${segment.text}`,
+    );
+
+    return [
+      "# 상담 기록 종합 보고서",
+      "",
+      "## 기본 정보",
+      `- **학생**: ${selectedRecord.studentName}`,
+      `- **상담 유형**: ${selectedRecord.counselingType}`,
+      `- **상담 제목**: ${selectedRecord.sessionTitle}`,
+      `- **일시**: ${formatDateTimeLabel(selectedRecord.createdAt)}`,
+      "",
+      "## AI 분석",
+      aiContent || "(AI 분석 내용이 없습니다)",
+      "",
+      "## 상담 원문",
+      ...transcriptLines,
+    ].join("\n");
+  }
+
+  async function handleAiExportClipboard() {
+    const text = buildAiExportText();
+
+    if (!text) {
+      setSaveToast("내보낼 AI 분석이 없습니다.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setSaveToast("AI 분석이 클립보드에 복사되었습니다.");
+    } catch {
+      setSaveToast("클립보드 복사에 실패했습니다.");
+    }
+
+    setIsAiExportOpen(false);
+  }
+
+  function handleAiExportTextFile() {
+    const text = buildAiExportText();
+
+    if (!text) {
+      setSaveToast("내보낼 AI 분석이 없습니다.");
+      return;
+    }
+
+    const fileName = `상담분석_${selectedRecord?.studentName ?? "분석"}_${new Date().toISOString().slice(0, 10)}.txt`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setSaveToast("텍스트 파일을 다운로드했습니다.");
+    setIsAiExportOpen(false);
+  }
+
+  async function handleComprehensiveReportClipboard() {
+    const text = buildComprehensiveReportMarkdown();
+
+    if (!text) {
+      setSaveToast("내보낼 내용이 없습니다.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setSaveToast("종합 보고서가 클립보드에 복사되었습니다.");
+    } catch {
+      setSaveToast("클립보드 복사에 실패했습니다.");
+    }
+
+    setIsAiExportOpen(false);
+  }
+
+  function handleComprehensiveReportTextFile() {
+    const text = buildComprehensiveReportMarkdown();
+
+    if (!text) {
+      setSaveToast("내보낼 내용이 없습니다.");
+      return;
+    }
+
+    const fileName = `종합보고서_${selectedRecord?.studentName ?? "보고서"}_${new Date().toISOString().slice(0, 10)}.md`;
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setSaveToast("종합 보고서를 다운로드했습니다.");
+    setIsAiExportOpen(false);
+  }
+
+  // 78차: 추이 분석 시작
+  async function handleStartTrendAnalysis(
+    studentName: string,
+    recordIds: string[],
+  ) {
+    trendAbortControllerRef.current?.abort();
+
+    const controller = new AbortController();
+    trendAbortControllerRef.current = controller;
+
+    setTrendAnalysis({ studentName, content: "", isStreaming: true });
+    setSelectedRecordId(null);
+
+    try {
+      const response = await fetch(
+        "/api/v1/counseling-records/analyze-trend",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recordIds }),
+          signal: controller.signal,
+        },
+      );
+
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message ?? "추이 분석 요청에 실패했습니다.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) {
+            continue;
+          }
+
+          const payload = line.slice(6);
+
+          if (payload === "[DONE]") {
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(payload);
+            const token = parsed.content ?? "";
+
+            if (token) {
+              setTrendAnalysis((prev) =>
+                prev
+                  ? { ...prev, content: prev.content + token }
+                  : null,
+              );
+            }
+          } catch {
+            // SSE 파싱 실패 무시
+          }
+        }
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        setSaveToast(
+          (error as Error).message || "추이 분석 중 오류가 발생했습니다.",
+        );
+      }
+    } finally {
+      setTrendAnalysis((prev) =>
+        prev ? { ...prev, isStreaming: false } : null,
+      );
+      trendAbortControllerRef.current = null;
+    }
+  }
+
+  function handleStopTrendAnalysis() {
+    trendAbortControllerRef.current?.abort();
+  }
+
   async function handleDeleteRecord() {
     if (!selectedRecord || isDeleting) {
       return;
@@ -1614,6 +2055,28 @@ export function CounselingRecordWorkspace() {
                   ) : null}
                 </div>
 
+                {/* 78차: 전체/학생별 뷰 전환 */}
+                {!isLoadingList && !loadError && records.length > 0 ? (
+                  <div className={styles.viewModeToggle}>
+                    <button
+                      type="button"
+                      className={`${styles.viewModeButton} ${sidebarViewMode === "all" ? styles.viewModeButtonActive : ""}`}
+                      onClick={() => setSidebarViewMode("all")}
+                    >
+                      <List size={13} strokeWidth={2.2} />
+                      전체
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.viewModeButton} ${sidebarViewMode === "student" ? styles.viewModeButtonActive : ""}`}
+                      onClick={() => setSidebarViewMode("student")}
+                    >
+                      <Users size={13} strokeWidth={2.2} />
+                      학생별
+                    </button>
+                  </div>
+                ) : null}
+
                 {/* 14차: 5건 초과일 때만 검색/필터 노출 */}
                 {records.length > 5 ? (
                   <div className={styles.browseTools}>
@@ -1715,6 +2178,120 @@ export function CounselingRecordWorkspace() {
                         {loadError}
                       </p>
                     </div>
+                  ) : sidebarViewMode === "student" ? (
+                    /* 78차: 학생별 그룹 뷰 */
+                    studentGroups.length > 0 ? (
+                      studentGroups.map((group) => {
+                        const isExpanded = expandedStudents.has(
+                          group.studentName,
+                        );
+
+                        return (
+                          <div
+                            key={group.studentName}
+                            className={styles.studentGroup}
+                          >
+                            <button
+                              type="button"
+                              className={`${styles.studentGroupHeader} ${selectedStudentName === group.studentName ? styles.studentGroupHeaderActive : ""}`}
+                              onClick={() => {
+                                setExpandedStudents((prev) => {
+                                  const next = new Set(prev);
+
+                                  if (next.has(group.studentName)) {
+                                    next.delete(group.studentName);
+                                  } else {
+                                    next.add(group.studentName);
+                                  }
+
+                                  return next;
+                                });
+                                setSelectedStudentName(group.studentName);
+                              }}
+                            >
+                              <ChevronDown
+                                size={14}
+                                strokeWidth={2.2}
+                                className={`${styles.studentGroupChevron} ${isExpanded ? styles.studentGroupChevronOpen : ""}`}
+                              />
+                              <span className={styles.studentGroupName}>
+                                {group.studentName}
+                              </span>
+                              <span className={styles.studentGroupCount}>
+                                {group.recordCount}건
+                              </span>
+                            </button>
+                            {isExpanded
+                              ? group.records.map((record) => {
+                                  const status = STATUS_META[record.status];
+                                  const StatusIcon = status.icon;
+                                  const isSelected =
+                                    record.id === selectedRecord?.id;
+
+                                  return (
+                                    <button
+                                      key={record.id}
+                                      type="button"
+                                      className={`${styles.recordItem} ${styles.recordItemIndented} ${
+                                        isSelected
+                                          ? styles.recordItemSelected
+                                          : ""
+                                      } ${recentlySavedId === record.id ? styles.recordItemSaved : ""}`}
+                                      onClick={() =>
+                                        handleSelectRecord(record.id)
+                                      }
+                                    >
+                                      {isSelected ? (
+                                        <span
+                                          className={styles.recordAccentBar}
+                                          aria-hidden
+                                        />
+                                      ) : null}
+                                      <div className={styles.recordItemBody}>
+                                        <div
+                                          className={styles.recordItemHeader}
+                                        >
+                                          <div className={styles.recordMain}>
+                                            <span
+                                              className={
+                                                styles.recordSessionTitle
+                                              }
+                                            >
+                                              {record.sessionTitle}
+                                            </span>
+                                          </div>
+                                          <div className={styles.recordMetaRow}>
+                                            <span>
+                                              {formatDateTimeLabel(
+                                                record.createdAt,
+                                              )}
+                                            </span>
+                                            <span
+                                              className={`${styles.statusBadge} ${status.className}`}
+                                            >
+                                              <StatusIcon
+                                                size={10}
+                                                strokeWidth={2.2}
+                                              />
+                                              {status.label}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })
+                              : null}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className={styles.emptyListState}>
+                        <p className={styles.emptyStateTitle}>
+                          표시할 상담 기록이 없습니다.
+                        </p>
+                      </div>
+                    )
                   ) : filteredRecords.length > 0 ? (
                     filteredRecords.map((record) => {
                       const status = STATUS_META[record.status];
@@ -2093,28 +2670,60 @@ export function CounselingRecordWorkspace() {
                                 ? styles.segmentSeekable
                                 : styles.segmentStatic
                             }`;
-                            const segmentContent = (
+                            const isEditing = editingSegmentId === segment.id;
+                            const segmentContent = isEditing ? (
+                              <>
+                                <div className={styles.segmentTime}>
+                                  {formatTranscriptTime(segment.startMs)}
+                                </div>
+                                <div className={`${styles.segmentSpeaker} ${getSpeakerToneClass(segment.speakerTone)}`}>
+                                  {segment.speakerLabel}
+                                </div>
+                                <div className={styles.segmentEditArea}>
+                                  <textarea
+                                    className={styles.segmentEditInput}
+                                    value={editingSegmentText}
+                                    onChange={(e) => setEditingSegmentText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEditingSegment(); }
+                                      if (e.key === "Escape") { cancelEditingSegment(); }
+                                    }}
+                                    rows={2}
+                                    autoFocus
+                                    disabled={editingSegmentSaving}
+                                  />
+                                  <div className={styles.segmentEditActions}>
+                                    <button type="button" className={styles.segmentEditSave} onClick={(e) => { e.stopPropagation(); saveEditingSegment(); }} disabled={editingSegmentSaving} aria-label="저장">
+                                      <Check size={14} strokeWidth={2.5} />
+                                    </button>
+                                    <button type="button" className={styles.segmentEditCancel} onClick={(e) => { e.stopPropagation(); cancelEditingSegment(); }} disabled={editingSegmentSaving} aria-label="취소">
+                                      <X size={14} strokeWidth={2.5} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
                               <>
                                 <div className={styles.segmentTime}>
                                   {formatTranscriptTime(segment.startMs)}
                                 </div>
                                 <div
-                                  className={`${styles.segmentSpeaker} ${getSpeakerToneClass(
-                                    segment.speakerTone,
-                                  )}`}
+                                  className={`${styles.segmentSpeaker} ${styles.segmentSpeakerClickable} ${getSpeakerToneClass(segment.speakerTone)}`}
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); const next = getNextSpeaker(segment.speakerTone); handleSpeakerLabelChange(segment.id, next.label, next.tone); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); const next = getNextSpeaker(segment.speakerTone); handleSpeakerLabelChange(segment.id, next.label, next.tone); } }}
+                                  title="클릭하여 화자 변경"
                                 >
                                   {segment.speakerLabel}
                                 </div>
-                                <p className={styles.segmentText}>
-                                  {renderHighlightedText(
-                                    segment.text,
-                                    normalizedTranscriptQuery,
-                                  )}
+                                <p className={styles.segmentText} onDoubleClick={(e) => { e.stopPropagation(); startEditingSegment(segment.id, segment.text); }}>
+                                  {renderHighlightedText(segment.text, normalizedTranscriptQuery)}
                                 </p>
                               </>
                             );
 
-                            if (isSeekable) {
+                            if (isSeekable && !isEditing) {
                               return (
                                 <button
                                   key={segment.id}
@@ -2186,6 +2795,56 @@ export function CounselingRecordWorkspace() {
                       <Bot size={16} strokeWidth={2} />
                     </div>
                     <h2 className={styles.assistantTitle}>AI 도우미</h2>
+                  </div>
+                  {/* 77차: 내보내기 드롭다운 */}
+                  <div ref={exportDropdownRef} className={styles.exportDropdownWrapper}>
+                    <button
+                      type="button"
+                      className={styles.exportTrigger}
+                      onClick={() => setIsAiExportOpen((prev) => !prev)}
+                      title="AI 분석 내보내기"
+                    >
+                      <Download size={14} strokeWidth={2} />
+                    </button>
+                    {isAiExportOpen ? (
+                      <div className={styles.exportDropdown}>
+                        <p className={styles.exportGroupLabel}>AI 분석</p>
+                        <button
+                          type="button"
+                          className={styles.exportOption}
+                          onClick={handleAiExportClipboard}
+                        >
+                          <ClipboardCopy size={13} strokeWidth={2} />
+                          클립보드 복사
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportOption}
+                          onClick={handleAiExportTextFile}
+                        >
+                          <FileText size={13} strokeWidth={2} />
+                          텍스트 파일 다운로드
+                        </button>
+                        <div className={styles.exportDivider} />
+                        <p className={styles.exportGroupLabel}>종합 보고서</p>
+                        <button
+                          type="button"
+                          className={styles.exportOption}
+                          onClick={handleComprehensiveReportClipboard}
+                        >
+                          <ClipboardCopy size={13} strokeWidth={2} />
+                          마크다운 복사
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportOption}
+                          onClick={handleComprehensiveReportTextFile}
+                        >
+                          <Download size={13} strokeWidth={2} />
+                          마크다운 파일 다운로드
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -2569,6 +3228,178 @@ export function CounselingRecordWorkspace() {
                     ) : null}
                   </form>
                 </div>
+              ) : sidebarViewMode === "student" && selectedStudentName ? (
+                /* 78차: 학생 타임라인 뷰 */
+                (() => {
+                  const studentRecords = filteredRecords
+                    .filter((r) => r.studentName === selectedStudentName)
+                    .sort(
+                      (a, b) =>
+                        new Date(a.createdAt).getTime() -
+                        new Date(b.createdAt).getTime(),
+                    );
+
+                  return (
+                    <div className={styles.studentTimeline}>
+                      <div className={styles.timelineHeader}>
+                        <Users size={20} strokeWidth={1.8} />
+                        <h2 className={styles.timelineTitle}>
+                          {selectedStudentName}
+                        </h2>
+                        <span className={styles.timelineCount}>
+                          상담 {studentRecords.length}건
+                        </span>
+                      </div>
+
+                      {studentRecords.length === 0 ? (
+                        <p className={styles.timelineEmptyText}>
+                          해당 학생의 상담 기록이 없습니다.
+                        </p>
+                      ) : (
+                        <div className={styles.timelineList}>
+                          {studentRecords.map((record, index) => {
+                            const status = STATUS_META[record.status];
+                            const StatusIcon = status.icon;
+
+                            return (
+                              <div
+                                key={record.id}
+                                className={styles.timelineItem}
+                              >
+                                <div className={styles.timelineTrack}>
+                                  <div className={styles.timelineDot} />
+                                  {index < studentRecords.length - 1 ? (
+                                    <div className={styles.timelineLine} />
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.timelineCard}
+                                  onClick={() =>
+                                    handleSelectRecord(record.id)
+                                  }
+                                >
+                                  <div className={styles.timelineCardHeader}>
+                                    <span className={styles.timelineDate}>
+                                      {formatDateTimeLabel(record.createdAt)}
+                                    </span>
+                                    <span
+                                      className={`${styles.statusBadge} ${status.className}`}
+                                    >
+                                      <StatusIcon
+                                        size={10}
+                                        strokeWidth={2.2}
+                                      />
+                                      {status.label}
+                                    </span>
+                                  </div>
+                                  <p className={styles.timelineCardTitle}>
+                                    {record.sessionTitle}
+                                  </p>
+                                  <div className={styles.timelineCardMeta}>
+                                    <span>{record.counselingType}</span>
+                                    {record.preview ? (
+                                      <span className={styles.timelinePreview}>
+                                        {record.preview}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {studentRecords.length >= 3 ? (
+                        <button
+                          type="button"
+                          className={styles.trendAnalysisButton}
+                          disabled={
+                            trendAnalysis?.isStreaming &&
+                            trendAnalysis.studentName === selectedStudentName
+                          }
+                          onClick={() => {
+                            handleStartTrendAnalysis(
+                              selectedStudentName,
+                              studentRecords.map((r) => r.id),
+                            );
+                          }}
+                        >
+                          {trendAnalysis?.isStreaming &&
+                          trendAnalysis.studentName === selectedStudentName ? (
+                            <>
+                              <LoaderCircle
+                                size={16}
+                                strokeWidth={2}
+                                className={styles.spinnerIcon}
+                              />
+                              분석 중...
+                            </>
+                          ) : (
+                            <>
+                              <Bot size={16} strokeWidth={2} />
+                              AI 추이 분석
+                            </>
+                          )}
+                        </button>
+                      ) : null}
+
+                      {/* 78차: 추이 분석 결과 패널 */}
+                      {trendAnalysis &&
+                      trendAnalysis.studentName === selectedStudentName ? (
+                        <div className={styles.trendResultPanel}>
+                          <div className={styles.trendResultHeader}>
+                            <Bot size={14} strokeWidth={2} />
+                            <span className={styles.trendResultTitle}>
+                              추이 분석 결과
+                            </span>
+                            {trendAnalysis.isStreaming ? (
+                              <button
+                                type="button"
+                                className={styles.trendStopButton}
+                                onClick={handleStopTrendAnalysis}
+                              >
+                                <Square size={12} strokeWidth={2.5} />
+                                중지
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className={styles.trendExportButton}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(
+                                      trendAnalysis.content,
+                                    );
+                                    setSaveToast(
+                                      "추이 분석이 클립보드에 복사되었습니다.",
+                                    );
+                                  } catch {
+                                    setSaveToast(
+                                      "클립보드 복사에 실패했습니다.",
+                                    );
+                                  }
+                                }}
+                              >
+                                <ClipboardCopy size={12} strokeWidth={2} />
+                                복사
+                              </button>
+                            )}
+                          </div>
+                          <div className={styles.trendResultContent}>
+                            <Markdown remarkPlugins={[remarkGfm]}>
+                              {trendAnalysis.content}
+                            </Markdown>
+                            {trendAnalysis.isStreaming ? (
+                              <span className={styles.streamingCursor} />
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className={styles.preSelectionEmpty}>
                   <div className={styles.preSelectionIcon}>
