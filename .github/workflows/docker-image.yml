@@ -257,7 +257,7 @@ jobs:
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
           docker compose -f "${COMPOSE_FILE}" pull
-          docker compose -f "${COMPOSE_FILE}" up -d
+          docker compose -f "${COMPOSE_FILE}" up -d --force-recreate
 
       - name: Run DB migrations
         run: |
@@ -305,7 +305,7 @@ jobs:
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
           docker compose -f "${COMPOSE_FILE}" pull
-          docker compose -f "${COMPOSE_FILE}" up -d
+          docker compose -f "${COMPOSE_FILE}" up -d --force-recreate
 
       - name: Run DB migrations
         run: |
