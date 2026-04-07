@@ -22,6 +22,7 @@
 4. git 관련 작업이 있으면 `.claude/skills/git-pr-workflow.md`를 함께 확인한다.
 5. `AGENTS.local.md`는 사용자 개인 환경, 장비 정보, 비공개 운영 메모를 두는 용도로 사용한다.
 6. `AGENTS.local.md`가 없으면 조용히 건너뛴다.
+7. **코드 변경이 수반되는 작업에는 `.claude/agents/code-quality-guardian.md`를 항상 동반 적용한다.** 이 에이전트는 구현 과정 전체에서 상태 정합성, 경계 위반, 보안, 스타일링 규칙을 감시하고 커밋 전 최종 게이트를 수행한다.
 
 ## UI 작업 시작 규칙
 
@@ -258,6 +259,9 @@
 - Expo / React Native 작업: `.claude/skills/expo-patterns.md`
 - 모노레포 / 패키지 경계 작업: `.claude/skills/monorepo-patterns.md`
 - git / commit / push / PR 작업: `.claude/skills/git-pr-workflow.md`
+- 검증 파이프라인: `.claude/skills/validate.md`
+- 배포 플로우: `.claude/skills/ship.md`
+- 코드 리뷰: `.claude/skills/code-review.md`
 - 구현 전후 점검: `.claude/skills/self-improve-checklist.md`
 - 회고 / 개선 작업: `.claude/skills/retrospective.md`
 - 재발 방지 참고: `.claude/memory/anti-patterns.md`, `.claude/memory/bug-patterns.md`
