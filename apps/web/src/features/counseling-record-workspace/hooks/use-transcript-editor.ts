@@ -1,4 +1,4 @@
-import { useDeferredValue, useState, type Dispatch, type SetStateAction } from "react";
+import { useDeferredValue, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract";
 import { isTranscriptSegmentMatched } from "../utils";
 
@@ -10,6 +10,12 @@ export function useTranscriptEditor(
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingSegmentText, setEditingSegmentText] = useState("");
   const [editingSegmentSaving, setEditingSegmentSaving] = useState(false);
+
+  // 저장 시점의 최신 값을 보장하기 위한 ref
+  const editingSegmentIdRef = useRef(editingSegmentId);
+  const editingSegmentTextRef = useRef(editingSegmentText);
+  editingSegmentIdRef.current = editingSegmentId;
+  editingSegmentTextRef.current = editingSegmentText;
   const [transcriptQuery, setTranscriptQuery] = useState("");
 
   const deferredTranscriptQuery = useDeferredValue(transcriptQuery);
@@ -40,7 +46,10 @@ export function useTranscriptEditor(
   }
 
   async function saveEditingSegment() {
-    if (!selectedRecord || !editingSegmentId || editingSegmentSaving) {
+    const targetSegmentId = editingSegmentIdRef.current;
+    const targetText = editingSegmentTextRef.current;
+
+    if (!selectedRecord || !targetSegmentId || editingSegmentSaving) {
       return;
     }
 
@@ -48,11 +57,11 @@ export function useTranscriptEditor(
 
     try {
       const response = await fetch(
-        `/api/v1/counseling-records/${selectedRecord.id}/segments/${editingSegmentId}`,
+        `/api/v1/counseling-records/${selectedRecord.id}/segments/${targetSegmentId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: editingSegmentText }),
+          body: JSON.stringify({ text: targetText }),
         },
       );
 
@@ -77,8 +86,8 @@ export function useTranscriptEditor(
           [selectedRecord.id]: {
             ...detail,
             transcriptSegments: detail.transcriptSegments.map((s) =>
-              s.id === editingSegmentId
-                ? { ...s, text: editingSegmentText }
+              s.id === targetSegmentId
+                ? { ...s, text: targetText }
                 : s,
             ),
           },
