@@ -39,6 +39,11 @@ services:
   db:
     image: postgres:16-bookworm
     restart: unless-stopped
+    networks:
+      default:
+      edge:
+        aliases:
+          - yeon-dev-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-yeon_develop}
       POSTGRES_USER: ${POSTGRES_USER:-yeon_develop}
