@@ -764,11 +764,7 @@ export function CounselingRecordWorkspace() {
     });
   }, [filteredRecords, selectedRecordId]);
 
-  useEffect(() => {
-    if (!isLoadingList && records.length === 0) {
-      setIsUploadPanelOpen(true);
-    }
-  }, [isLoadingList, records.length]);
+  // 기록 0건일 때 자동 업로드 패널 열기 제거 — 빈 상태 CTA로 대체
 
   // 31차: 재생 중 active segment 자동 스크롤
   useEffect(() => {
@@ -1126,7 +1122,7 @@ export function CounselingRecordWorkspace() {
         }
 
         const now = new Date();
-        const readableTitle = `브라우저 녹음 ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const readableTitle = `바로 녹음하기 ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
         const file = new File(
           chunks,
           `${readableTitle}${extension}`,
@@ -2020,6 +2016,48 @@ export function CounselingRecordWorkspace() {
           </form>
         </header>
 
+        {/* 기록 0건 또는 로딩 중: 풀스크린 빈 상태 */}
+        {records.length === 0 ? (
+          <div className={styles.emptyLanding}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className={styles.hiddenFileInput}
+              onChange={handleAudioFileChange}
+            />
+
+            <div className={styles.emptyLandingCta}>
+              <div className={styles.emptyLandingIcon}>
+                <Mic size={32} strokeWidth={1.5} />
+              </div>
+              <h2 className={styles.emptyLandingTitle}>
+                첫 상담 기록을 만들어 보세요
+              </h2>
+              <p className={styles.emptyLandingDescription}>
+                음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.
+              </p>
+              <div className={styles.emptyLandingActions}>
+                <button
+                  type="button"
+                  className={styles.emptyLandingButton}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={16} strokeWidth={2.2} />
+                  파일 업로드
+                </button>
+                <button
+                  type="button"
+                  className={styles.emptyLandingButtonSecondary}
+                  onClick={startRecording}
+                >
+                  <Mic size={16} strokeWidth={2.2} />
+                  바로 녹음하기
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className={styles.workspace}>
           {/* ── 좌측: 생성 + 탐색 ── */}
           <aside className={styles.sidebar}>
@@ -3024,7 +3062,7 @@ export function CounselingRecordWorkspace() {
                           <Mic size={20} strokeWidth={2} />
                           <div>
                             <span className={styles.primaryCtaTileTitle}>
-                              브라우저 녹음
+                              바로 녹음하기
                             </span>
                             <span className={styles.primaryCtaTileDescription}>
                               지금 바로 녹음 시작
@@ -3178,7 +3216,7 @@ export function CounselingRecordWorkspace() {
                             onClick={startRecording}
                             disabled={uploadState.isUploading}
                           >
-                            브라우저 녹음
+                            바로 녹음하기
                           </button>
                         </div>
                       </>
@@ -3420,6 +3458,7 @@ export function CounselingRecordWorkspace() {
             </section>
           )}
         </div>
+        )}
       </div>
     </main>
   );
