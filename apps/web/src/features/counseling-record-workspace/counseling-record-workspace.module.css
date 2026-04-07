@@ -1237,9 +1237,30 @@
   box-shadow: var(--shadow-lg);
 }
 
-.emptyLandingUpload {
-  width: 100%;
-  max-width: 480px;
+.emptyLandingButtonSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.emptyLandingButtonSecondary:hover {
+  background: var(--surface-secondary);
+  border-color: var(--border-hover);
+}
+
+.emptyLandingActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 /* 27차: 빈 상태 셸 시각 보강 */
