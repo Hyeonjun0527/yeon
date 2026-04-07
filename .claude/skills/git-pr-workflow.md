@@ -1,6 +1,7 @@
 ---
 name: git-pr-workflow
 description: `study-platform-client`와 동일한 commit, push, PR, stacked PR 운영 절차.
+user_invocable: true
 ---
 
 # Git / PR Workflow
