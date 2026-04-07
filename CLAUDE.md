@@ -55,6 +55,7 @@
 ### 브랜치·커밋·머지 절대 원칙
 
 - **모든 작업은 반드시 `origin/develop`에서 새 브랜치를 만들어 시작한다.** 아무리 사소한 수정이라도 예외 없다.
+- 브랜치 생성 명령어: `git switch -c <type>/<name> origin/develop` (예: `git switch -c feat/add-upload origin/develop`)
 - **모든 작업은 반드시 커밋 → push → PR → develop 머지까지 완료한다.** 아무리 작은 변경이라도 로컬에만 두지 않는다.
 - 이 두 원칙이 깨지면 여러 에이전트가 같은 기준(`origin/develop`)을 보고 작업할 수 없다. 절대 위반하지 않는다.
 - 개발 병목을 최소화하기 위해 중간에 멈추지 않는다.
