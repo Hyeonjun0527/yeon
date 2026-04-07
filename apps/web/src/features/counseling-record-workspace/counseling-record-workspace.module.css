@@ -1259,6 +1259,17 @@
   margin-top: 8px;
 }
 
+.emptyLandingReadyCard {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  max-width: 380px;
+  width: 100%;
+}
+
 /* 27차: 빈 상태 셸 시각 보강 */
 
 .preSelectionEmpty {
