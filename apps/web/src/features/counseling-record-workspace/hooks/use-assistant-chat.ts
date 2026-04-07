@@ -17,6 +17,19 @@ export function useAssistantChat(
   const aiAbortControllerRef = useRef<AbortController | null>(null);
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  const activeRecordIdRef = useRef<string | null>(null);
+
+  // 레코드 전환 시 진행 중인 스트리밍 중단
+  useEffect(() => {
+    const currentId = selectedRecord?.id ?? null;
+    const previousId = activeRecordIdRef.current;
+
+    activeRecordIdRef.current = currentId;
+
+    if (previousId && previousId !== currentId) {
+      aiAbortControllerRef.current?.abort();
+    }
+  }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
     ? (assistantMessagesByRecord[selectedRecord.id] ?? [])
@@ -106,10 +119,11 @@ export function useAssistantChat(
 
     autoAnalysisTriggeredRef.current.add(selectedRecord.id);
 
+    const capturedRecordId = selectedRecord.id;
     const analysisPrompt = "이 상담 내용을 분석해줘";
     const welcomeMessages = buildInitialAssistantMessages(selectedRecord, statusMeta);
     const userMessage: Message = {
-      id: `${selectedRecord.id}-user-auto-${Date.now()}`,
+      id: `${capturedRecordId}-user-auto-${Date.now()}`,
       role: "user",
       content: analysisPrompt,
     };
@@ -117,10 +131,10 @@ export function useAssistantChat(
 
     setAssistantMessagesByRecord((current) => ({
       ...current,
-      [selectedRecord.id]: allMessages,
+      [capturedRecordId]: allMessages,
     }));
 
-    streamAssistantResponse(selectedRecord.id, allMessages);
+    streamAssistantResponse(capturedRecordId, allMessages);
   }, [selectedRecord, selectedRecordDetail, isAiStreaming, assistantMessagesByRecord, statusMeta]);
 
   async function streamAssistantResponse(

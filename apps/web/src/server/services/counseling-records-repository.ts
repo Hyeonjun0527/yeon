@@ -332,12 +332,19 @@ export function parseSingleAudioRange(
   };
 }
 
-export async function rebuildTranscriptText(recordId: string) {
-  const db = getDb();
-  const segments = await findTranscriptSegments(recordId);
+export async function rebuildTranscriptText(
+  recordId: string,
+  tx?: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+) {
+  const conn = tx ?? getDb();
+  const segments = await conn
+    .select()
+    .from(counselingTranscriptSegments)
+    .where(eq(counselingTranscriptSegments.recordId, recordId))
+    .orderBy(asc(counselingTranscriptSegments.segmentIndex));
   const fullText = segments.map((s) => s.text).join("\n");
 
-  await db
+  await conn
     .update(counselingRecords)
     .set({
       transcriptText: fullText,
