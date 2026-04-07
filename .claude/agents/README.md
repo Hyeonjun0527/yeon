@@ -37,6 +37,7 @@
 - `package-engineer`: `packages/*` 계약, export, runtime 독립성 관리
 - `qa-tester`: lint, typecheck, build, 회귀 확인
 - `meta-cognitive`: 반복 실수 패턴을 skills와 memory에 축적
+- `code-quality-guardian`: **항상 동반** — 코드 변경 작업 시 상태 정합성, 경계 위반, 보안, 스타일링 규칙을 실시간 감시하고 커밋 전 최종 게이트 수행
 
 ## UI 작업 시 규칙
 
