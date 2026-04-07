@@ -1,6 +1,7 @@
 ---
 name: code-review
 description: critical/major/minor 구조화 코드 리뷰 절차와 상태 정합성 중심 체크리스트.
+user_invocable: true
 ---
 
 # Code Review

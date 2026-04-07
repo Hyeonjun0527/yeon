@@ -1,6 +1,7 @@
 ---
 name: self-improve-checklist
 description: 코드 작성 후 자기 점검 체크리스트.
+user_invocable: true
 ---
 
 # Self Improve Checklist

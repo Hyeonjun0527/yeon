@@ -2,6 +2,7 @@
 name: design-workflow
 description: |
   UI 작업 시 디자인 방향을 먼저 정하고 21st 도구로 구현 레퍼런스를 연결하는 절차.
+user_invocable: true
 ---
 
 # Design Workflow

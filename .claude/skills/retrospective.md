@@ -1,6 +1,7 @@
 ---
 name: retrospective
 description: 반복 수정 뒤 재발 방지 규칙을 남기는 회고 절차.
+user_invocable: true
 ---
 
 # Retrospective
