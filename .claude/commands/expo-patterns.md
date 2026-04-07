@@ -1,0 +1,1 @@
+../skills/expo-patterns.md
