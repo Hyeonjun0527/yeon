@@ -20,7 +20,9 @@
   1. lint fix
   2. format fix
   3. typecheck
-  4. 필요 시 build 또는 test
+  4. `pnpm --filter @yeon/web build` (Next.js 빌드) — **반드시 실행**
+  5. 필요 시 test
+- **CSS Modules 제약**: `.module.css` 파일 안에서 `*`, `html`, `body` 같은 전역 셀렉터를 단독 사용할 수 없다. 반드시 로컬 클래스(`.page *` 등)로 스코프해야 한다. Turbopack은 "Selector is not pure" 에러로 빌드를 거부한다.
 - 현재 workspace에 스크립트가 아직 정의되지 않았다면 없는 척 채우지 말고, 검증이 불가능한 이유를 명시한다.
 - 문서 전용 변경이라면 최소한 `git diff --check` 수준의 형식 검증은 수행한다.
 

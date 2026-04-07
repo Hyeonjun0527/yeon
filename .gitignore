@@ -36,6 +36,7 @@ AGENTS.local.md
 apps/*/.expo
 expo-env.d.ts
 web-build/
+apps/web/.data/
 
 # debug
 npm-debug.log*

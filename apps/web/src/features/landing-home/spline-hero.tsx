@@ -15,7 +15,7 @@ function SplineCanvas() {
     setError(true);
   }, []);
 
-  if (error) {
+  if (error || process.env.NODE_ENV !== "production") {
     return <div className={styles.splineFallback} />;
   }
 

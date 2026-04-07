@@ -14,9 +14,9 @@ const metadataBase = (() => {
 })();
 
 export const metadata: Metadata = {
-  title: "YEON | 로그인 기반 학생 운영 포털",
+  title: "YEON | 상담 기록 워크스페이스",
   description:
-    "로그인 후 프로젝트 생성, 학생 정보 파일 업로드, 과제 할당과 진행 파악 흐름으로 다시 구축 중인 학생 운영 포털",
+    "녹음 업로드, 원문 열람, 구조화 요약, 원문 기반 AI 채팅을 하나의 흐름으로 다루는 상담 기록 워크스페이스",
   metadataBase,
   alternates: {
     canonical: "/",

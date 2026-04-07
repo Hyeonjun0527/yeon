@@ -6,6 +6,7 @@
     "prepare": "sh -c 'if [ -f ./scripts/setup-git-hooks.sh ]; then sh ./scripts/setup-git-hooks.sh; fi'",
     "dev:web": "pnpm --filter @yeon/web dev",
     "build:web": "pnpm --filter @yeon/web build",
+    "openai:test:web": "pnpm --filter @yeon/web openai:test",
     "lint": "turbo run lint --filter=@yeon/web --filter=@yeon/api-contract --filter=@yeon/api-client",
     "prettier:fix": "prettier . --write",
     "typecheck": "turbo run typecheck --filter=@yeon/web --filter=@yeon/api-contract --filter=@yeon/api-client",

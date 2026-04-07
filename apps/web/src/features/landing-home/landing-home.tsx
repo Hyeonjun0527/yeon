@@ -9,10 +9,10 @@ import {
   useTransform,
 } from "framer-motion";
 import {
-  Users,
-  BarChart3,
-  ClipboardCheck,
-  Zap,
+  Mic,
+  FileText,
+  MessageSquare,
+  FolderOpen,
   ArrowRight,
   ChevronDown,
   X,
@@ -24,58 +24,64 @@ import styles from "./landing-home.module.css";
 /* ── Data ── */
 
 const STATS = [
-  { label: "관리 가능 학생 수", value: 500, suffix: "+" },
-  { label: "일일 개입 판단 시간", value: 30, suffix: "분" },
-  { label: "상태 자동 분류 정확도", value: 98, suffix: "%" },
+  { label: "원문 전체 열람", value: 100, suffix: "%" },
+  { label: "요약 기본 구조", value: 4, suffix: "개" },
+  { label: "한 화면 작업 영역", value: 3, suffix: "영역" },
 ] as const;
 
 const FEATURES = [
   {
-    icon: Users,
-    title: "우선순위 학생 큐",
+    icon: Mic,
+    title: "고품질 STT 원문",
     description:
-      "AI가 출결, 과제, 참여도를 종합해 오늘 먼저 챙겨야 할 학생을 자동으로 줄 세웁니다.",
+      "긴 상담 녹음도 흐름이 끊기지 않게 텍스트로 펼쳐 보여줍니다. 요약 전에 원문을 먼저 확인할 수 있습니다.",
     accent: "orange" as const,
   },
   {
-    icon: BarChart3,
-    title: "실시간 대시보드",
+    icon: FileText,
+    title: "구조화 상담 요약",
     description:
-      "학생별 진행률, 위험 신호, 최근 활동을 한 화면에서 파악합니다. 엑셀을 열 필요가 없습니다.",
+      "핵심 상담 내용, 학생 문제 포인트, 보호자 요청사항, 다음 액션을 실무형 구조로 나눠 정리합니다.",
     accent: "blue" as const,
   },
   {
-    icon: ClipboardCheck,
-    title: "개입 기록 추적",
+    icon: MessageSquare,
+    title: "원문 기반 AI 채팅",
     description:
-      "누가, 언제, 어떤 개입을 했는지 자동 기록합니다. 같은 학생에게 두 번 물어볼 일이 없습니다.",
+      "선택한 상담 원문을 기준으로 요청사항 추출, 다음 상담 준비, 특정 주제 검색을 빠르게 처리합니다.",
     accent: "green" as const,
   },
   {
-    icon: Zap,
-    title: "30분 루틴",
+    icon: FolderOpen,
+    title: "학생별 상담 히스토리",
     description:
-      "수업 전 30분, 대시보드 확인부터 개입 완료까지. 복잡한 도구 대신 하나의 흐름으로 끝냅니다.",
+      "상담 기록이 학생 단위로 쌓여 이전 약속, 후속 액션, 보호자 요청 맥락을 이어서 볼 수 있습니다.",
     accent: "purple" as const,
   },
 ] as const;
 
 const FLOW_STEPS = [
-  { number: "01", title: "로그인", description: "운영자 인증을 통과합니다." },
+  {
+    number: "01",
+    title: "로그인",
+    description: "상담 기록 서비스에 로그인하고 작업 화면을 엽니다.",
+  },
   {
     number: "02",
-    title: "프로젝트 생성",
-    description: "운영 대상과 기본 메타데이터를 고정합니다.",
+    title: "상담 선택 또는 업로드",
+    description: "왼쪽 리스트에서 기존 상담을 고르거나 새 녹음본을 올립니다.",
   },
   {
     number: "03",
-    title: "학생 데이터 연결",
-    description: "파일 업로드로 학생 정보를 한 번에 채웁니다.",
+    title: "원문과 요약 생성",
+    description:
+      "STT가 전체 원문을 만들고 AI가 핵심 상담 내용과 다음 액션 초안을 정리합니다.",
   },
   {
     number: "04",
-    title: "운영 시작",
-    description: "AI가 분석한 우선순위에 따라 개입합니다.",
+    title: "다음 상담 준비",
+    description:
+      "가운데 원문을 검토하고 오른쪽 AI 채팅으로 필요한 부분만 다시 묻고 저장합니다.",
   },
 ] as const;
 
@@ -119,6 +125,7 @@ function RevealSection({
 type LoginModalProps = {
   open: boolean;
   onClose: () => void;
+  nextPath: string;
 };
 
 function KakaoTalkIcon() {
@@ -165,10 +172,15 @@ function GoogleIcon() {
   );
 }
 
-function LoginModal({ open, onClose }: LoginModalProps) {
+function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
+  const [pendingProvider, setPendingProvider] = useState<
+    "google" | "kakao" | null
+  >(null);
+
   useEffect(() => {
     if (!open) {
       document.body.style.overflow = "";
+      setPendingProvider(null);
       return;
     }
 
@@ -187,6 +199,14 @@ function LoginModal({ open, onClose }: LoginModalProps) {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [open, onClose]);
+
+  const kakaoLoginHref = `/api/auth/kakao?next=${encodeURIComponent(nextPath)}`;
+  const googleLoginHref = `/api/auth/google?next=${encodeURIComponent(nextPath)}`;
+
+  function moveToSocialLogin(provider: "google" | "kakao", href: string) {
+    setPendingProvider(provider);
+    window.location.assign(href);
+  }
 
   return (
     <AnimatePresence>
@@ -216,7 +236,7 @@ function LoginModal({ open, onClose }: LoginModalProps) {
                   회원가입 없이 시작해요
                 </h2>
                 <p className={styles.modalDescription}>
-                  3초 만에 시작할 수 있어요.
+                  상담 기록 워크스페이스를 바로 열 수 있어요.
                 </p>
               </div>
 
@@ -235,19 +255,25 @@ function LoginModal({ open, onClose }: LoginModalProps) {
                 <button
                   type="button"
                   className={`${styles.loginButton} ${styles.kakaoButton}`}
-                  disabled
+                  disabled={pendingProvider !== null}
+                  onClick={() => moveToSocialLogin("kakao", kakaoLoginHref)}
                 >
                   <KakaoTalkIcon />
-                  카카오 로그인
+                  {pendingProvider === "kakao"
+                    ? "카카오로 이동하는 중..."
+                    : "카카오 로그인"}
                 </button>
 
                 <button
                   type="button"
                   className={`${styles.loginButton} ${styles.googleButton}`}
-                  disabled
+                  disabled={pendingProvider !== null}
+                  onClick={() => moveToSocialLogin("google", googleLoginHref)}
                 >
                   <GoogleIcon />
-                  구글 로그인
+                  {pendingProvider === "google"
+                    ? "구글로 이동하는 중..."
+                    : "구글 로그인"}
                 </button>
               </div>
               <p className={styles.modalHint}>
@@ -264,9 +290,19 @@ function LoginModal({ open, onClose }: LoginModalProps) {
 
 /* ── Main Component ── */
 
-export function LandingHome() {
+type LandingHomeProps = {
+  nextPath: string;
+  initialLoginModalOpen?: boolean;
+};
+
+export function LandingHome({
+  nextPath,
+  initialLoginModalOpen = false,
+}: LandingHomeProps) {
   const heroRef = useRef(null);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(
+    initialLoginModalOpen,
+  );
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
@@ -282,9 +318,17 @@ export function LandingHome() {
     setIsLoginModalOpen(false);
   }
 
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  }
+
   return (
     <>
-      <LoginModal open={isLoginModalOpen} onClose={closeLoginModal} />
+      <LoginModal
+        open={isLoginModalOpen}
+        onClose={closeLoginModal}
+        nextPath={nextPath}
+      />
       <div className={styles.landing}>
         {/* ── Hero ── */}
         <section ref={heroRef} className={styles.hero}>
@@ -304,7 +348,7 @@ export function LandingHome() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              YEON
+              YEON 상담 기록 워크스페이스
             </motion.p>
 
             <motion.h1
@@ -317,9 +361,11 @@ export function LandingHome() {
                 ease: [0.16, 1, 0.3, 1],
               }}
             >
-              학생을 놓치지 않는
+              상담을 다시 여는
               <br />
-              <span className={styles.heroTitleAccent}>단 하나의 화면</span>
+              <span className={styles.heroTitleAccent}>
+                단 하나의 기록 화면
+              </span>
             </motion.h1>
 
             <motion.p
@@ -328,9 +374,10 @@ export function LandingHome() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.7 }}
             >
-              수업 전 30분, 오늘 챙겨야 할 학생을 AI가 정리해줍니다.
+              녹음 하나를 고품질 원문 텍스트, 구조화 요약, 다음 액션으로
+              정리합니다.
               <br />
-              교강사는 판단과 개입에만 집중하세요.
+              왼쪽에서 고르고, 가운데서 읽고, 오른쪽 AI로 바로 정리하세요.
             </motion.p>
 
             <motion.div
@@ -346,11 +393,15 @@ export function LandingHome() {
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
-                시작하기
+                상담 기록 시작하기
                 <ArrowRight size={18} strokeWidth={2.5} />
               </button>
-              <button className={styles.btnGhost} type="button">
-                더 알아보기
+              <button
+                className={styles.btnGhost}
+                type="button"
+                onClick={() => scrollToSection("features")}
+              >
+                핵심 기능 보기
               </button>
             </motion.div>
           </motion.div>
@@ -358,11 +409,7 @@ export function LandingHome() {
           <motion.button
             className={styles.scrollIndicator}
             type="button"
-            onClick={() =>
-              document
-                .getElementById("stats")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+            onClick={() => scrollToSection("stats")}
             aria-label="아래로 스크롤"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -406,37 +453,38 @@ export function LandingHome() {
               variants={fadeUp}
               transition={{ duration: 0.5 }}
             >
-              Mission
+              왜 지금 필요한가
             </motion.p>
             <motion.h2
               className={styles.missionTitle}
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
-              교강사의 시간을
+              녹음이 기록이 되고
               <br />
-              학생에게 돌려줍니다
+              기록이 다음 상담이 됩니다
             </motion.h2>
             <motion.p
               className={styles.missionDescription}
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
-              출결 집계, 과제 취합, 엑셀 정리에 쓰던 시간을 AI가 대신합니다.
+              상담 메모를 다시 정리하느라 시간을 쓰지 않습니다.
               <br />
-              교강사는 학생을 직접 만나고, 대화하고, 개입하는 데 집중하세요.
+              원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로
+              이어갑니다.
             </motion.p>
           </div>
         </RevealSection>
 
         {/* ── Features ── */}
         <RevealSection className={styles.featuresSection}>
-          <div className={styles.featuresInner}>
+          <div id="features" className={styles.featuresInner}>
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className={styles.sectionEyebrow}>Core Features</p>
+              <p className={styles.sectionEyebrow}>핵심 기능</p>
               <h2 className={styles.featuresTitle}>
-                운영에 필요한 모든 것,
-                <br />한 곳에서
+                원문, 요약, 액션을
+                <br />한 화면에서
               </h2>
             </motion.div>
 
@@ -476,35 +524,35 @@ export function LandingHome() {
               variants={fadeUp}
               transition={{ duration: 0.5 }}
             >
-              Philosophy
+              원칙
             </motion.p>
             <motion.blockquote
               className={styles.philosophyQuote}
               variants={fadeUp}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              &ldquo;도구가 복잡해지면
+              &ldquo;원문이 보이지 않으면
               <br />
-              학생이 보이지 않습니다&rdquo;
+              AI를 믿을 수 없습니다&rdquo;
             </motion.blockquote>
             <motion.p
               className={styles.philosophyCaption}
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
-              YEON은 교강사가 매일 반복하는 판단을 단순하게 만듭니다.
+              YEON은 요약보다 먼저 원문을 보여줍니다.
               <br />
-              기술이 아니라, 학생과의 접점을 설계합니다.
+              상담 기록이 다음 대화와 후속 관리로 이어지게 설계합니다.
             </motion.p>
           </div>
         </RevealSection>
 
         {/* ── Flow Steps ── */}
         <RevealSection className={styles.flowSection}>
-          <div className={styles.flowInner}>
+          <div id="flow" className={styles.flowInner}>
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className={styles.sectionEyebrow}>How It Works</p>
-              <h2 className={styles.flowTitle}>시작은 간단합니다</h2>
+              <p className={styles.sectionEyebrow}>사용 흐름</p>
+              <h2 className={styles.flowTitle}>시작부터 저장까지 단순하게</h2>
             </motion.div>
 
             <div className={styles.flowTimeline}>
@@ -541,16 +589,16 @@ export function LandingHome() {
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
-              지금 바로
+              상담 기록을
               <br />
-              <span className={styles.ctaTitleAccent}>YEON</span>을 시작하세요
+              <span className={styles.ctaTitleAccent}>YEON</span>으로 정리하세요
             </motion.h2>
             <motion.p
               className={styles.ctaDescription}
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
-              복잡한 설정 없이, 로그인 한 번이면 준비 완료.
+              녹음, 원문, 요약, AI 질의를 하나의 흐름으로 연결합니다.
             </motion.p>
             <motion.div variants={fadeUp} transition={{ duration: 0.5 }}>
               <button
@@ -560,7 +608,7 @@ export function LandingHome() {
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
-                무료로 시작하기
+                워크스페이스 열기
                 <ArrowRight size={18} strokeWidth={2.5} />
               </button>
             </motion.div>

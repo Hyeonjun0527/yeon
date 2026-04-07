@@ -58,15 +58,18 @@ Use `Server Actions` only for web-private mutations. Anything mobile also needs 
 
 - `GET /api/health`
 - `GET /api/v1/contest/overview`
-- `GET /api/v1/instructor-dashboard`
 - `GET /api/v1/users`
 - `POST /api/v1/users`
 
 ## Run Web
 
 1. Copy `apps/web/.env.example` values into your local env.
-2. Start PostgreSQL and point `DATABASE_URL` at it.
-3. Generate or apply migrations as needed:
+2. Fill `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`, `AUTH_SECRET`.
+3. Start PostgreSQL and point `DATABASE_URL` at it.
+4. Register these callback URLs in each provider console:
+   - Google: `http://localhost:3000/api/auth/google/callback`
+   - Kakao: `http://localhost:3000/api/auth/kakao/callback`
+5. Generate or apply migrations as needed:
    - `pnpm --filter @yeon/web db:generate`
    - `pnpm --filter @yeon/web db:migrate`
-4. Start the app with `pnpm dev:web`.
+6. Start the app with `pnpm dev:web`.

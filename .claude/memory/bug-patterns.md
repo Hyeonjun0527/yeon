@@ -7,3 +7,4 @@
 - shared contract 없이 앱별 타입이 따로 진화해 request / response shape가 어긋나는 문제
 - web-private 구현을 mobile이 우회 import해서 런타임 경계가 깨지는 문제
 - 토큰 강제 설계 때문에 기본 Tailwind 클래스 사용이 막혀 구현 속도와 일관성이 같이 무너지는 문제
+- OAuth `state`를 단일 쿠키 값 하나로만 저장해, 같은 브라우저에서 소셜 로그인 시도를 연속으로 시작하면 먼저 연 인증 콜백이 `invalid_state`로 깨지는 문제

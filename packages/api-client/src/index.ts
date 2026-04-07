@@ -1,10 +1,9 @@
 import {
+  authSessionResponseSchema,
   contestOverviewResponseSchema,
   createUserResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
-  instructorDashboardResponseSchema,
-  instructorWorkspaceResponseSchema,
   listUsersResponseSchema,
   type CreateUserBody,
 } from "@yeon/api-contract";
@@ -98,22 +97,25 @@ export function createApiClient(options: ApiClientOptions = {}) {
         schema: healthResponseSchema,
       });
     },
+    getAuthSession() {
+      return request({
+        path: "/api/v1/auth/session",
+        schema: authSessionResponseSchema,
+      });
+    },
+    async logout() {
+      await request({
+        path: "/api/v1/auth/session",
+        schema: authSessionResponseSchema,
+        init: {
+          method: "DELETE",
+        },
+      });
+    },
     getContestOverview() {
       return request({
         path: "/api/v1/contest/overview",
         schema: contestOverviewResponseSchema,
-      });
-    },
-    getInstructorDashboard() {
-      return request({
-        path: "/api/v1/instructor-dashboard",
-        schema: instructorDashboardResponseSchema,
-      });
-    },
-    getInstructorWorkspace() {
-      return request({
-        path: "/api/v1/instructor-workspace",
-        schema: instructorWorkspaceResponseSchema,
       });
     },
     listUsers() {
