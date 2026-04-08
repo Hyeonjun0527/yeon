@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readErrorMessage } from "../utils";
 
 interface TrendAnalysisState {
@@ -14,6 +14,8 @@ export function useTrendAnalysis(
   const [trendAnalysis, setTrendAnalysis] =
     useState<TrendAnalysisState | null>(null);
   const trendAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => { trendAbortControllerRef.current?.abort(); }, []);
 
   async function handleStartTrendAnalysis(
     studentName: string,
