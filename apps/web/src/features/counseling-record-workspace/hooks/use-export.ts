@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract/counseling-records";
+} from "@yeon/api-contract";
 import type { Message } from "../types";
 import { formatDateTimeLabel, formatTranscriptTime } from "../utils";
 

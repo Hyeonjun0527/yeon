@@ -1,33 +1,25 @@
 import {
   useDeferredValue,
-  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { counselingRecordSpeakerToneSchema } from "@yeon/api-contract/counseling-records";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract/counseling-records";
+} from "@yeon/api-contract";
 import { isTranscriptSegmentMatched } from "../utils";
 
 export function useTranscriptEditor(
   selectedRecord: CounselingRecordListItem | null,
   setRecordDetails: Dispatch<
-    SetStateAction<Record<string, CounselingRecordDetail | null>>
+    SetStateAction<Record<string, CounselingRecordDetail>>
   >,
   setSaveToast: (message: string) => void,
 ) {
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingSegmentText, setEditingSegmentText] = useState("");
   const [editingSegmentSaving, setEditingSegmentSaving] = useState(false);
-
-  // 저장 시점의 최신 값을 보장하기 위한 ref
-  const editingSegmentIdRef = useRef(editingSegmentId);
-  const editingSegmentTextRef = useRef(editingSegmentText);
-  editingSegmentIdRef.current = editingSegmentId;
-  editingSegmentTextRef.current = editingSegmentText;
   const [transcriptQuery, setTranscriptQuery] = useState("");
 
   const deferredTranscriptQuery = useDeferredValue(transcriptQuery);
@@ -58,10 +50,7 @@ export function useTranscriptEditor(
   }
 
   async function saveEditingSegment() {
-    const targetSegmentId = editingSegmentIdRef.current;
-    const targetText = editingSegmentTextRef.current;
-
-    if (!selectedRecord || !targetSegmentId || editingSegmentSaving) {
+    if (!selectedRecord || !editingSegmentId || editingSegmentSaving) {
       return;
     }
 
@@ -69,11 +58,11 @@ export function useTranscriptEditor(
 
     try {
       const response = await fetch(
-        `/api/v1/counseling-records/${selectedRecord.id}/segments/${targetSegmentId}`,
+        `/api/v1/counseling-records/${selectedRecord.id}/segments/${editingSegmentId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: targetText }),
+          body: JSON.stringify({ text: editingSegmentText }),
         },
       );
 
@@ -98,7 +87,9 @@ export function useTranscriptEditor(
           [selectedRecord.id]: {
             ...detail,
             transcriptSegments: detail.transcriptSegments.map((s) =>
-              s.id === targetSegmentId ? { ...s, text: targetText } : s,
+              s.id === editingSegmentId
+                ? { ...s, text: editingSegmentText }
+                : s,
             ),
           },
         };
@@ -122,12 +113,6 @@ export function useTranscriptEditor(
       return;
     }
 
-    const parsedTone = counselingRecordSpeakerToneSchema.safeParse(newTone);
-
-    if (!parsedTone.success) {
-      return;
-    }
-
     try {
       const response = await fetch(
         `/api/v1/counseling-records/${selectedRecord.id}/segments/${segmentId}`,
@@ -136,17 +121,12 @@ export function useTranscriptEditor(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             speakerLabel: newLabel,
-            speakerTone: parsedTone.data,
+            speakerTone: newTone,
           }),
         },
       );
 
       if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as {
-          message?: string;
-        };
-
-        setSaveToast(data.message ?? "화자 변경에 실패했습니다.");
         return;
       }
 
@@ -166,7 +146,7 @@ export function useTranscriptEditor(
                 ? {
                     ...s,
                     speakerLabel: newLabel,
-                    speakerTone: parsedTone.data,
+                    speakerTone: newTone as typeof s.speakerTone,
                   }
                 : s,
             ),
@@ -174,7 +154,7 @@ export function useTranscriptEditor(
         };
       });
     } catch {
-      setSaveToast("화자 변경에 실패했습니다.");
+      // 실패 시 무시 (이미 서버에 반영 안 됨)
     }
   }
 

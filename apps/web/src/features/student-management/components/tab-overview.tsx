@@ -34,10 +34,7 @@ export function TabOverview({ student }: TabOverviewProps) {
         </div>
         <div className={styles.statCard}>
           <div className={styles.statCardLabel}>등록일</div>
-          <div
-            className={styles.statCardValue}
-            style={{ fontSize: 16 }}
-          >
+          <div className={styles.statCardValue} style={{ fontSize: 16 }}>
             {student.registeredAt}
           </div>
         </div>
@@ -65,7 +62,9 @@ export function TabOverview({ student }: TabOverviewProps) {
             {activeCourses.map((course) => (
               <div key={course.id} className={styles.courseItem}>
                 <div>
-                  <div className={styles.courseItemName}>{course.className}</div>
+                  <div className={styles.courseItemName}>
+                    {course.className}
+                  </div>
                   <div className={styles.courseItemMeta}>{course.period}</div>
                 </div>
                 {course.instructor && (

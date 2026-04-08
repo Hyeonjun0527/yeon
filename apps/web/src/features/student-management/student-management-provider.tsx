@@ -72,9 +72,7 @@ export function StudentManagementProvider({
           c.id === classId
             ? {
                 ...c,
-                studentIds: [
-                  ...new Set([...c.studentIds, ...studentIds]),
-                ],
+                studentIds: [...new Set([...c.studentIds, ...studentIds])],
               }
             : c,
         ),

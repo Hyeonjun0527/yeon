@@ -9,11 +9,15 @@ export function useStudentList() {
   const { students, classes } = useStudentManagement();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StudentStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StudentStatus | "all">(
+    "all",
+  );
   const [classFilter, setClassFilter] = useState<string | "all">("all");
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
   const [viewMode, setViewMode] = useState<ViewMode>("card");
-  const [sortKey, setSortKey] = useState<"name" | "registeredAt" | "status">("registeredAt");
+  const [sortKey, setSortKey] = useState<"name" | "registeredAt" | "status">(
+    "registeredAt",
+  );
 
   const filtered = filterStudents(students, {
     search,

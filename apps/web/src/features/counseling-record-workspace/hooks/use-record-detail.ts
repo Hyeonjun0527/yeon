@@ -2,10 +2,9 @@ import {
   counselingRecordDetailResponseSchema,
   type CounselingRecordDetail,
   type CounselingRecordListItem,
-} from "@yeon/api-contract/counseling-records";
+} from "@yeon/api-contract";
 import {
   useEffect,
-  useRef,
   useState,
   startTransition,
   type Dispatch,
@@ -21,7 +20,7 @@ export function useRecordDetail(
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
 ) {
   const [recordDetails, setRecordDetails] = useState<
-    Record<string, CounselingRecordDetail | null>
+    Record<string, CounselingRecordDetail>
   >({});
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDetailMetaOpen, setIsDetailMetaOpen] = useState(false);
@@ -35,16 +34,13 @@ export function useRecordDetail(
     tone: "idle",
   });
 
-  const recordDetailsRef = useRef(recordDetails);
-  recordDetailsRef.current = recordDetails;
-
   const selectedRecordDetail = selectedRecordId
     ? (recordDetails[selectedRecordId] ?? null)
     : null;
 
   // 상세 로드
   useEffect(() => {
-    if (!selectedRecordId || selectedRecordId in recordDetailsRef.current) {
+    if (!selectedRecordId || recordDetails[selectedRecordId]) {
       return;
     }
 
@@ -78,11 +74,6 @@ export function useRecordDetail(
           return;
         }
 
-        // 실패한 ID를 null로 기록하여 무한 재시도 방지
-        setRecordDetails((current) => ({
-          ...current,
-          [selectedRecordId!]: null,
-        }));
         setRetryState({
           isSubmitting: false,
           message:
@@ -103,7 +94,7 @@ export function useRecordDetail(
     return () => {
       ignore = true;
     };
-  }, [selectedRecordId, setRecords]);
+  }, [recordDetails, selectedRecordId, setRecords]);
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {
@@ -216,14 +207,6 @@ export function useRecordDetail(
     }
   }
 
-  function clearRecordDetail(recordId: string) {
-    setRecordDetails((current) => {
-      const next = { ...current };
-      delete next[recordId];
-      return next;
-    });
-  }
-
   return {
     selectedRecordDetail,
     isLoadingDetail,
@@ -235,6 +218,5 @@ export function useRecordDetail(
     retryTranscription,
     setRecordDetails,
     recordDetails,
-    clearRecordDetail,
   };
 }
