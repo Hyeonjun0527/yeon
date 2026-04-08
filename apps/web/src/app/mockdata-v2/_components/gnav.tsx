@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "../../mockdata/mockdata.module.css";
-import { PlusCircleIcon, SettingsIcon, LogOutIcon } from "./icons";
+import { SettingsIcon, LogOutIcon } from "./icons";
 
 type GnavProps = {
   activeMenu: "records" | "students";
-  onNewChat: () => void;
 };
 
-export function Gnav({ activeMenu, onNewChat }: GnavProps) {
+export function Gnav({ activeMenu }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,15 +27,6 @@ export function Gnav({ activeMenu, onNewChat }: GnavProps) {
       <div className={styles.gnavItem} title="홈" style={{ marginBottom: 4 }}>
         <span className={styles.logo} style={{ fontSize: 13 }}>Y</span>
       </div>
-      <button
-        className={styles.gnavItem}
-        title="새 채팅"
-        onClick={onNewChat}
-        style={{ border: "none", background: "none", padding: 0 }}
-      >
-        <PlusCircleIcon size={18} />
-      </button>
-
       {/* 메뉴 */}
       <div style={{ marginTop: 8 }}>
         <div
