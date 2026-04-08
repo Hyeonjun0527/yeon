@@ -2022,3 +2022,92 @@
 .memoDate { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; font-family: "JetBrains Mono", monospace; }
 .memoText { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
 .memoAdd { display: flex; gap: 8px; align-items: flex-start; }
+
+/* ══════════════════════════════════════════════
+   학생 관리 뷰 (mockdata-v2)
+   ══════════════════════════════════════════════ */
+
+/* ── 사이드바 필터 ── */
+.stuFilters { display: flex; gap: 4px; padding: 0 12px 8px; flex-wrap: wrap; }
+.stuFilterBtn { padding: 4px 10px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.stuFilterBtn:hover { border-color: var(--border-light); color: var(--text-secondary); }
+.stuFilterBtnActive { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+
+/* ── 사이드바 학생 아이템 ── */
+.stuItem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 0 8px 2px; border-radius: 8px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
+.stuItem:hover { background: var(--surface3); }
+.stuItemActive { background: var(--surface3); border-color: var(--border-light); }
+.stuAvatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.stuItemInfo { flex: 1; min-width: 0; }
+.stuItemName { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stuItemMeta { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.stuItemStats { text-align: center; flex-shrink: 0; }
+.stuItemCount { font-size: 14px; font-weight: 700; color: var(--text); font-family: "JetBrains Mono", monospace; display: block; }
+.stuItemCountLabel { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── 센터 패널 ── */
+.stuCenter { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg); }
+
+/* ── 빈 상태 ── */
+.stuEmptyCenter { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.stuEmptyIcon { width: 64px; height: 64px; border-radius: 16px; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.stuEmptyTitle { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+.stuEmptyDesc { font-size: 13px; color: var(--text-secondary); max-width: 300px; text-align: center; }
+
+/* ── 프로필 헤더 ── */
+.stuProfile { display: flex; align-items: flex-start; gap: 16px; padding: 24px; border-bottom: 1px solid var(--border); }
+.stuProfileAvatar { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.stuProfileInfo { flex: 1; min-width: 0; }
+.stuProfileName { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; margin-bottom: 2px; }
+.stuProfileMeta { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.stuProfileTags { display: flex; gap: 6px; flex-wrap: wrap; }
+.stuTag { padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); }
+.stuTagIssue { padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border); }
+.stuProfileActions { display: flex; gap: 6px; flex-shrink: 0; }
+.stuActionBtn { padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface2); color: var(--text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.stuActionBtn:hover { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
+
+/* ── 통계 카드 ── */
+.stuStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.stuStatCard { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.stuStatLabel { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+.stuStatValue { font-size: 20px; font-weight: 700; color: var(--text); font-family: "JetBrains Mono", monospace; letter-spacing: -0.5px; }
+
+/* ── 탭 바 ── */
+.stuTabBar { display: flex; gap: 0; padding: 0 24px; border-bottom: 1px solid var(--border); }
+.stuTabBtn { padding: 12px 16px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-dim); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.stuTabBtn:hover { color: var(--text-secondary); }
+.stuTabBtnActive { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* ── 탭 컨텐츠 ── */
+.stuTabContent { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* ── 섹션 ── */
+.stuSection { margin-bottom: 24px; }
+.stuSectionTitle { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+/* ── AI 분석 카드 ── */
+.stuAiCard { background: linear-gradient(135deg, rgba(129,140,248,0.06), rgba(34,211,238,0.04)); border: 1px solid var(--accent-border); border-radius: var(--radius); padding: 16px 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+/* ── 상담 기록 아이템 ── */
+.stuHistoryItem { display: flex; gap: 12px; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; transition: border-color 0.15s; align-items: flex-start; }
+.stuHistoryItem:hover { border-color: var(--border-light); }
+.stuHistoryDate { font-size: 11px; color: var(--text-dim); font-family: "JetBrains Mono", monospace; white-space: nowrap; min-width: 70px; padding-top: 2px; }
+.stuHistoryBody { flex: 1; min-width: 0; }
+.stuHistoryTitle { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.stuHistorySummary { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.stuHistoryType { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--surface3); color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+
+/* ── 메모 입력 ── */
+.stuMemoInput { display: flex; gap: 8px; margin-bottom: 16px; align-items: flex-start; }
+.stuMemoTextarea { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 13px; font-family: inherit; resize: none; outline: none; line-height: 1.5; transition: border-color 0.15s; }
+.stuMemoTextarea::placeholder { color: var(--text-dim); }
+.stuMemoTextarea:focus { border-color: var(--accent-border); }
+.stuMemoSubmit { padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; font-family: inherit; white-space: nowrap; }
+.stuMemoSubmit:hover { opacity: 0.9; }
+.stuMemoSubmit:disabled { background: var(--surface3); color: var(--text-dim); cursor: default; opacity: 1; }
+
+/* ── 메모 아이템 ── */
+.stuMemoItem { padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+.stuMemoDate { font-size: 10px; color: var(--text-dim); font-family: "JetBrains Mono", monospace; margin-bottom: 4px; }
+.stuMemoText { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
