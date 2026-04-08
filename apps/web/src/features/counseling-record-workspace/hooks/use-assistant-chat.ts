@@ -41,6 +41,13 @@ export function useAssistantChat(
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevRecordIdRef = useRef<string | null>(null);
+  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
+  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
+
+  // 컴포넌트 언마운트 시 스트리밍 정리
+  useEffect(() => () => {
+    aiAbortControllerRef.current?.abort();
+  }, []);
 
   // 레코드 전환 시 진행 중인 스트리밍 중단
   useEffect(() => {
@@ -48,6 +55,7 @@ export function useAssistantChat(
 
     if (prevRecordIdRef.current && prevRecordIdRef.current !== currentId) {
       aiAbortControllerRef.current?.abort();
+      setIsAiStreaming(false);
     }
 
     prevRecordIdRef.current = currentId;
@@ -117,10 +125,6 @@ export function useAssistantChat(
       };
     });
   }, [selectedRecord, selectedRecordDetail, statusMeta]);
-
-  // assistantMessagesByRecord를 ref로 추적하여 자동 분석 effect에서 불필요한 재실행 방지
-  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
-  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
 
   // 자동 분석 트리거
   useEffect(() => {
@@ -326,15 +330,16 @@ export function useAssistantChat(
       content: trimmedPrompt,
     };
 
-    const currentMessages =
-      assistantMessagesByRecord[selectedRecord.id] ?? [];
+    let updatedMessages: Message[] = [];
 
-    const updatedMessages = [...currentMessages, userMessage];
-
-    setAssistantMessagesByRecord((current) => ({
-      ...current,
-      [selectedRecord.id]: updatedMessages,
-    }));
+    setAssistantMessagesByRecord((current) => {
+      const currentMessages = current[selectedRecord.id] ?? [];
+      updatedMessages = [...currentMessages, userMessage];
+      return {
+        ...current,
+        [selectedRecord.id]: updatedMessages,
+      };
+    });
     setAssistantDraft("");
 
     streamAssistantResponse(selectedRecord.id, updatedMessages);

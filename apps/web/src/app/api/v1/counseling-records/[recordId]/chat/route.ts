@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import { getCounselingRecordDetail } from "@/server/services/counseling-records-service";
 import { streamCounselingAiChat } from "@/server/services/counseling-ai-service";
@@ -14,9 +15,14 @@ type RouteContext = {
   }>;
 };
 
-type ChatRequestBody = {
-  messages?: { role: "user" | "assistant"; content: string }[];
-};
+const chatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+
+const chatRequestSchema = z.object({
+  messages: z.array(chatMessageSchema).nonempty(),
+});
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const { currentUser, response } = await requireAuthenticatedUser(request);
@@ -27,19 +33,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { recordId } = await context.params;
 
-  let body: ChatRequestBody;
+  let body: unknown;
 
   try {
-    body = (await request.json()) as ChatRequestBody;
+    body = await request.json();
   } catch {
     return jsonError("요청 형식이 올바르지 않습니다.", 400);
   }
 
-  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+  const parsed = chatRequestSchema.safeParse(body);
+
+  if (!parsed.success) {
     return jsonError("메시지가 비어 있습니다.", 400);
   }
 
-  const lastMessage = body.messages[body.messages.length - 1];
+  const lastMessage = parsed.data.messages[parsed.data.messages.length - 1];
 
   if (lastMessage.role !== "user" || !lastMessage.content.trim()) {
     return jsonError("마지막 메시지는 사용자 메시지여야 합니다.", 400);
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         text: segment.text,
         startMs: segment.startMs ?? 0,
       })),
-      body.messages,
+      parsed.data.messages,
     );
 
     return new Response(stream, {

@@ -32,9 +32,7 @@ export function getPool() {
     connectionString: getDatabaseUrl(),
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalDatabase.yeonPgPool = pool;
-  }
+  globalDatabase.yeonPgPool = pool;
 
   return pool;
 }
@@ -49,9 +47,7 @@ export function getDb() {
     schema,
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalDatabase.yeonDb = db;
-  }
+  globalDatabase.yeonDb = db;
 
   return db;
 }

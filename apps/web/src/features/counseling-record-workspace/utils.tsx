@@ -25,7 +25,7 @@ export function formatDateTimeLabel(value: string) {
 }
 
 export function formatDurationLabel(value: number | null) {
-  if (!value || value <= 0) {
+  if (value === null || value <= 0) {
     return "길이 미확인";
   }
 
@@ -39,7 +39,7 @@ export function formatDurationLabel(value: number | null) {
 }
 
 export function formatCompactDuration(value: number | null) {
-  if (!value || value <= 0) {
+  if (value === null || value <= 0) {
     return "미확인";
   }
 
@@ -297,7 +297,7 @@ export function buildInitialAssistantMessages(
       {
         id: `${record.id}-assistant-status`,
         role: "assistant",
-        content: `${record.studentName} 기록은 현재 ${statusMeta[record.status].label} 상태입니다. 원문이 준비되면 AI 분석을 시작할 수 있습니다.`,
+        content: `${record.studentName} 기록은 현재 ${statusMeta[record.status]?.label ?? record.status} 상태입니다. 원문이 준비되면 AI 분석을 시작할 수 있습니다.`,
       },
     ];
   }
