@@ -14,7 +14,7 @@ export function useRecordDetail(
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
 ) {
   const [recordDetails, setRecordDetails] = useState<
-    Record<string, CounselingRecordDetail>
+    Record<string, CounselingRecordDetail | null>
   >({});
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDetailMetaOpen, setIsDetailMetaOpen] = useState(false);
@@ -34,7 +34,7 @@ export function useRecordDetail(
 
   // 상세 로드
   useEffect(() => {
-    if (!selectedRecordId || recordDetails[selectedRecordId]) {
+    if (!selectedRecordId || selectedRecordId in recordDetails) {
       return;
     }
 
@@ -68,6 +68,11 @@ export function useRecordDetail(
           return;
         }
 
+        // 실패한 ID를 null로 기록하여 무한 재시도 방지
+        setRecordDetails((current) => ({
+          ...current,
+          [selectedRecordId!]: null,
+        }));
         setRetryState({
           isSubmitting: false,
           message:
