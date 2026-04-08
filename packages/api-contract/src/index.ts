@@ -3,4 +3,6 @@ export * from "./counseling-records";
 export * from "./contest";
 export * from "./error";
 export * from "./health";
+export * from "./instructor-dashboard";
+export * from "./instructor-workspace";
 export * from "./users";

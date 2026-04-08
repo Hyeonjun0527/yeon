@@ -4,9 +4,10 @@ import { SettingsIcon, LogOutIcon } from "./icons";
 
 type GnavProps = {
   activeMenu: "records" | "students";
+  onMenuChange?: (menu: "records" | "students") => void;
 };
 
-export function Gnav({ activeMenu }: GnavProps) {
+export function Gnav({ activeMenu, onMenuChange }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +33,8 @@ export function Gnav({ activeMenu }: GnavProps) {
         <div
           className={`${styles.gnavItem} ${activeMenu === "records" ? styles.gnavItemActive : ""}`}
           title="상담 기록"
+          style={{ cursor: "pointer" }}
+          onClick={() => onMenuChange?.("records")}
         >
           <RecordIcon size={16} />
         </div>
@@ -39,6 +42,8 @@ export function Gnav({ activeMenu }: GnavProps) {
       <div
         className={`${styles.gnavItem} ${activeMenu === "students" ? styles.gnavItemActive : ""}`}
         title="학생 관리"
+        style={{ cursor: "pointer" }}
+        onClick={() => onMenuChange?.("students")}
       >
         <StudentsIcon size={16} />
       </div>
