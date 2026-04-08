@@ -1,7 +1,19 @@
 import styles from "../../mockdata/mockdata.module.css";
 import { ChevronDownIcon } from "./icons";
+import type { ActiveMenu } from "../_hooks/use-workspace-nav";
 
-export function TopNav() {
+const MENU_LABELS: Record<ActiveMenu, string> = {
+  records: "상담 기록",
+  students: "학생 관리",
+  tasks: "후속 조치",
+  reports: "수강생 리포트",
+};
+
+type TopNavProps = {
+  activeMenu?: ActiveMenu;
+};
+
+export function TopNav({ activeMenu = "records" }: TopNavProps) {
   return (
     <div className={styles.topNav}>
       {/* 왼쪽: 모델 선택기 스타일 */}
@@ -11,7 +23,7 @@ export function TopNav() {
       >
         <span className={styles.logo}>YEON</span>
         <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-          상담 기록
+          {MENU_LABELS[activeMenu]}
         </span>
         <ChevronDownIcon size={14} />
       </button>
