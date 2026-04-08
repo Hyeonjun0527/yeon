@@ -47,6 +47,7 @@ export interface TranscriptSegment {
   time: string;
   speaker: "teacher" | "student" | "guardian";
   label: string;
+  name: string;
   text: string;
 }
 
@@ -229,18 +230,18 @@ export const STUDENTS: Student[] = [
 /* ── 전사 세그먼트 ── */
 
 export const TRANSCRIPT: TranscriptSegment[] = [
-  { time: "00:00", speaker: "teacher", label: "교사", text: "민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?" },
-  { time: "00:08", speaker: "student", label: "학생", text: "아... 네, 어제 학원이 늦게 끝나서 못 했어요." },
-  { time: "00:15", speaker: "teacher", label: "교사", text: "그랬구나. 학원 스케줄이 빡빡한 편이야?" },
-  { time: "00:22", speaker: "student", label: "학생", text: "네, 월수금 수학이랑 화목 영어 다녀요." },
-  { time: "00:30", speaker: "teacher", label: "교사", text: "그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로 여유를 주면 어때?" },
-  { time: "00:42", speaker: "student", label: "학생", text: "그러면 할 수 있을 것 같아요. 감사합니다 선생님." },
-  { time: "01:02", speaker: "teacher", label: "교사", text: "좋아, 그러면 2주 동안 이렇게 해보고, 4월 말쯤에 다시 확인하자. 다른 과목은 괜찮아?" },
-  { time: "01:15", speaker: "student", label: "학생", text: "영어는 괜찮은데, 과학이 좀 어려워요." },
-  { time: "01:22", speaker: "teacher", label: "교사", text: "과학은 어떤 부분이 어렵니? 이론? 실험?" },
-  { time: "01:30", speaker: "student", label: "학생", text: "이론은 괜찮은데 계산 문제가 어려워요. 수학이랑 겹치는 부분이요." },
-  { time: "01:42", speaker: "teacher", label: "교사", text: "아, 그러면 수학 기초가 좀 더 단단해지면 과학도 같이 올라갈 수 있겠다. 우선 수학에 집중하자." },
-  { time: "01:55", speaker: "student", label: "학생", text: "네, 알겠습니다. 감사합니다 선생님." },
+  { time: "00:00", speaker: "teacher", label: "교사", name: "최현준", text: "민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?" },
+  { time: "00:08", speaker: "student", label: "학생", name: "김민수", text: "아... 네, 어제 학원이 늦게 끝나서 못 했어요." },
+  { time: "00:15", speaker: "teacher", label: "교사", name: "최현준", text: "그랬구나. 학원 스케줄이 빡빡한 편이야?" },
+  { time: "00:22", speaker: "student", label: "학생", name: "김민수", text: "네, 월수금 수학이랑 화목 영어 다녀요." },
+  { time: "00:30", speaker: "teacher", label: "교사", name: "최현준", text: "그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로 여유를 주면 어때?" },
+  { time: "00:42", speaker: "student", label: "학생", name: "김민수", text: "그러면 할 수 있을 것 같아요. 감사합니다 선생님." },
+  { time: "01:02", speaker: "teacher", label: "교사", name: "최현준", text: "좋아, 그러면 2주 동안 이렇게 해보고, 4월 말쯤에 다시 확인하자. 다른 과목은 괜찮아?" },
+  { time: "01:15", speaker: "student", label: "학생", name: "김민수", text: "영어는 괜찮은데, 과학이 좀 어려워요." },
+  { time: "01:22", speaker: "teacher", label: "교사", name: "최현준", text: "과학은 어떤 부분이 어렵니? 이론? 실험?" },
+  { time: "01:30", speaker: "student", label: "학생", name: "김민수", text: "이론은 괜찮은데 계산 문제가 어려워요. 수학이랑 겹치는 부분이요." },
+  { time: "01:42", speaker: "teacher", label: "교사", name: "최현준", text: "아, 그러면 수학 기초가 좀 더 단단해지면 과학도 같이 올라갈 수 있겠다. 우선 수학에 집중하자." },
+  { time: "01:55", speaker: "student", label: "학생", name: "김민수", text: "네, 알겠습니다. 감사합니다 선생님." },
 ];
 
 /* ── 사이드바 기록 목록 ── */
@@ -255,9 +256,10 @@ export const SIDEBAR_RECORDS: SidebarRecord[] = [
 
 export const PROCESSING_STEPS = [
   { label: "파일 업로드", completeAt: 800 },
-  { label: "음성 분할", completeAt: 1500 },
+  { label: "화자 분리", completeAt: 1500 },
   { label: "AI 전사", completeAt: 2500 },
-  { label: "상담 요약 생성", completeAt: 3200 },
+  { label: "화자 식별", completeAt: 3400 },
+  { label: "상담 분석", completeAt: 4200 },
 ] as const;
 
 /* ── 알림 ── */

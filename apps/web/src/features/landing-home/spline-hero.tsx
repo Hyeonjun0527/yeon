@@ -1,6 +1,13 @@
 "use client";
 
-import { Component, Suspense, lazy, useState, useCallback } from "react";
+import {
+  Component,
+  Suspense,
+  lazy,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import type { ReactNode } from "react";
 import styles from "./landing-home.module.css";
 
@@ -8,6 +15,8 @@ const Spline = lazy(() => import("@splinetool/react-spline"));
 
 const SPLINE_SCENE =
   "https://prod.spline.design/3K3aYKR6mrKFknHz/scene.splinecode";
+
+const SPLINE_ERROR_PATTERN = /reading 'position'/;
 
 class SplineErrorBoundary extends Component<
   { children: ReactNode },
@@ -32,6 +41,16 @@ function SplineCanvas() {
 
   const handleError = useCallback(() => {
     setError(true);
+  }, []);
+
+  useEffect(() => {
+    function suppress(e: ErrorEvent) {
+      if (SPLINE_ERROR_PATTERN.test(e.message)) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("error", suppress);
+    return () => window.removeEventListener("error", suppress);
   }, []);
 
   if (error) {
