@@ -2,7 +2,7 @@ import {
   authUserDtoSchema,
   type AuthProvider,
   type AuthUserDto,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/auth";
 
 import { userIdentities, users } from "@/server/db/schema";
 

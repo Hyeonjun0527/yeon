@@ -2,7 +2,7 @@ import { Check, ClipboardCopy, Search, X } from "lucide-react";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import {
   formatTranscriptTime,
   getNextSpeaker,

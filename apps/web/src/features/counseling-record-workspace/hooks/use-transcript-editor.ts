@@ -1,5 +1,5 @@
 import { useDeferredValue, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { isTranscriptSegmentMatched } from "../utils";
 
 export function useTranscriptEditor(

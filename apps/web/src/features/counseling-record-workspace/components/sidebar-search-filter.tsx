@@ -1,5 +1,5 @@
 import { ChevronDown, Filter, Search } from "lucide-react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { RecordFilter } from "../types";
 import { FILTER_META } from "../constants";
 import styles from "../counseling-record-workspace.module.css";

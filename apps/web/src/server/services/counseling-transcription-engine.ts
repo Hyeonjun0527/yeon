@@ -1,4 +1,4 @@
-import type { CounselingRecordSpeakerTone } from "@yeon/api-contract";
+import type { CounselingRecordSpeakerTone } from "@yeon/api-contract/counseling-records";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";

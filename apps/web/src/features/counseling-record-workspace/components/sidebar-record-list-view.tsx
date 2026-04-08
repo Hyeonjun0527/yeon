@@ -1,4 +1,4 @@
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { formatDateTimeLabel } from "../utils";
 import styles from "../counseling-record-workspace.module.css";
 

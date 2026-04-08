@@ -1,9 +1,9 @@
+import { errorResponseSchema } from "@yeon/api-contract/error";
 import {
   createUserBodySchema,
   createUserResponseSchema,
-  errorResponseSchema,
   listUsersResponseSchema,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/users";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

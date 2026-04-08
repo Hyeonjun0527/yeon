@@ -1,7 +1,7 @@
 import {
   updateSegmentRequestSchema,
   updateSegmentResponseSchema,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

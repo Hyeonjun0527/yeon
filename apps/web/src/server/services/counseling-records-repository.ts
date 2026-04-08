@@ -2,7 +2,7 @@ import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
   CounselingTranscriptSegment,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import path from "node:path";

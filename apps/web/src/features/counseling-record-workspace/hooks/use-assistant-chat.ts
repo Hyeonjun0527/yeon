@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { Message } from "../types";
 import { buildInitialAssistantMessages } from "../utils";
 

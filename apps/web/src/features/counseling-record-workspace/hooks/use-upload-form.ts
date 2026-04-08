@@ -1,7 +1,7 @@
 import {
   counselingRecordDetailResponseSchema,
   type CounselingRecordDetail,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { RecordingPhase, UploadFormState, UploadTone } from "../types";
 import { COUNSELING_TYPE_OPTIONS, MAX_AUDIO_UPLOAD_BYTES } from "../constants";

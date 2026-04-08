@@ -1,4 +1,4 @@
-import { counselingRecordDetailResponseSchema } from "@yeon/api-contract";
+import { counselingRecordDetailResponseSchema } from "@yeon/api-contract/counseling-records";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

@@ -1,4 +1,4 @@
-import type { ContestOverviewResponse } from "@yeon/api-contract";
+import type { ContestOverviewResponse } from "@yeon/api-contract/contest";
 
 export type ContestOverview = ContestOverviewResponse;
 

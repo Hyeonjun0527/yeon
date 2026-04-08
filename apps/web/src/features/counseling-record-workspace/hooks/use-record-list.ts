@@ -1,7 +1,7 @@
 import {
   listCounselingRecordsResponseSchema,
   type CounselingRecordListItem,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { useEffect, useDeferredValue, useState, startTransition } from "react";
 import type { RecordFilter, SidebarViewMode } from "../types";
 import { fetchApi, upsertRecordList } from "../utils";

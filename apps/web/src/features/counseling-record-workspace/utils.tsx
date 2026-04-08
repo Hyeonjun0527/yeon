@@ -1,9 +1,9 @@
 import {
   counselingRecordSpeakerToneSchema,
-  errorResponseSchema,
   type CounselingRecordDetail,
   type CounselingRecordListItem,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
+import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { ReactNode } from "react";
 import type { ApiRequestError, Message } from "./types";
 import { SPEAKER_CYCLE } from "./constants";

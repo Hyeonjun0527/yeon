@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 
 export function useDeleteRecord(
   selectedRecord: CounselingRecordListItem | null,

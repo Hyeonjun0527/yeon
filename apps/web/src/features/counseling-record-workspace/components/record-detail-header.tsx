@@ -7,7 +7,7 @@ import {
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import type { UploadTone } from "../types";
 import {
   formatDateTimeLabel,

@@ -1,7 +1,5 @@
-import {
-  authSessionResponseSchema,
-  errorResponseSchema,
-} from "@yeon/api-contract";
+import { authSessionResponseSchema } from "@yeon/api-contract/auth";
+import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

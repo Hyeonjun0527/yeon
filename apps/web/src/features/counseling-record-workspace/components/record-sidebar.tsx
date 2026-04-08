@@ -1,5 +1,5 @@
 import { List, Upload, Users } from "lucide-react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { RecordFilter, SidebarViewMode } from "../types";
 import styles from "../counseling-record-workspace.module.css";
 import { SidebarSearchFilter } from "./sidebar-search-filter";

@@ -1,9 +1,9 @@
+import type { AuthUserDto } from "@yeon/api-contract/auth";
 import type {
-  AuthUserDto,
   CounselingRecordListItem,
   CounselingRecordSpeakerTone,
   StudentSummary,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { and, desc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
