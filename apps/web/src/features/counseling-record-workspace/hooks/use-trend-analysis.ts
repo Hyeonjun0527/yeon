@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { readErrorMessage } from "../utils";
 
 interface TrendAnalysisState {
   studentName: string;
@@ -38,10 +39,9 @@ export function useTrendAnalysis(
       );
 
       if (!response.ok || !response.body) {
-        const body = (await response.json().catch(() => null)) as {
-          message?: string;
-        } | null;
-        throw new Error(body?.message ?? "추이 분석 요청에 실패했습니다.");
+        throw new Error(
+          (await readErrorMessage(response)) ?? "추이 분석 요청에 실패했습니다.",
+        );
       }
 
       const reader = response.body.getReader();

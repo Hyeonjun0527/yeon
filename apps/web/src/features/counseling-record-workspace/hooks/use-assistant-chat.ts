@@ -40,18 +40,17 @@ export function useAssistantChat(
   const aiAbortControllerRef = useRef<AbortController | null>(null);
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const activeRecordIdRef = useRef<string | null>(null);
+  const prevRecordIdRef = useRef<string | null>(null);
 
   // 레코드 전환 시 진행 중인 스트리밍 중단
   useEffect(() => {
     const currentId = selectedRecord?.id ?? null;
-    const previousId = activeRecordIdRef.current;
 
-    activeRecordIdRef.current = currentId;
-
-    if (previousId && previousId !== currentId) {
+    if (prevRecordIdRef.current && prevRecordIdRef.current !== currentId) {
       aiAbortControllerRef.current?.abort();
     }
+
+    prevRecordIdRef.current = currentId;
   }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
