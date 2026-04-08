@@ -5,3 +5,5 @@ export { RecordingState } from "./recording-state";
 export { Sidebar } from "./sidebar";
 export { CenterPanel } from "./center-panel";
 export { AiPanel } from "./ai-panel";
+export { StudentList } from "./student-list";
+export { StudentDetail } from "./student-detail";

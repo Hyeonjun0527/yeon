@@ -10,7 +10,9 @@
     "./contest": "./src/contest.ts",
     "./health": "./src/health.ts",
     "./users": "./src/users.ts",
-    "./error": "./src/error.ts"
+    "./error": "./src/error.ts",
+    "./instructor-dashboard": "./src/instructor-dashboard.ts",
+    "./instructor-workspace": "./src/instructor-workspace.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import styles from "../mockdata/mockdata.module.css";
 import {
   useRecords,
@@ -8,6 +9,7 @@ import {
   useAudioPlayer,
   useAiChat,
   useAiPanel,
+  useStudents,
 } from "./_hooks";
 import {
   TopNav,
@@ -17,11 +19,17 @@ import {
   Sidebar,
   CenterPanel,
   AiPanel,
+  StudentList,
+  StudentDetail,
 } from "./_components";
 
 export default function MockV2Workspace() {
+  /* ── 메뉴 전환 ── */
+  const [activeMenu, setActiveMenu] = useState<"records" | "students">("records");
+
   /* ── 훅 조합: 각 훅은 하나의 관심사만 담당 ── */
 
+  const students = useStudents();
   const records = useRecords();
 
   const recording = useRecording({
@@ -91,70 +99,95 @@ export default function MockV2Workspace() {
       <TopNav />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Gnav activeMenu="records" />
+        <Gnav activeMenu={activeMenu} onMenuChange={setActiveMenu} />
 
-        {records.phase === "empty" && (
-          <EmptyState
-            onStartRecording={handleStartRecording}
-            onFileUpload={fileUpload.openFilePicker}
-          />
-        )}
-
-        {records.phase === "recording" && (
-          <RecordingState
-            elapsed={recording.elapsed}
-            onStop={recording.stop}
-          />
-        )}
-
-        {(records.phase === "processing" || records.phase === "ready") && (
+        {/* ── 상담 기록 뷰 ── */}
+        {activeMenu === "records" && (
           <>
-            <Sidebar
-              records={records.records}
-              selectedId={records.selectedId}
-              onSelect={handleSelectRecord}
-              onStartRecording={handleStartRecording}
-              onFileUpload={fileUpload.openFilePicker}
-            />
+            {records.phase === "empty" && (
+              <EmptyState
+                onStartRecording={handleStartRecording}
+                onFileUpload={fileUpload.openFilePicker}
+              />
+            )}
 
-            <CenterPanel
-              phase={records.phase}
-              selected={records.selected}
-              processingStep={records.processingStep}
-              isPlaying={audio.isPlaying}
-              audioPosition={audio.position}
-              totalSeconds={audio.totalSeconds}
-              onTogglePlay={audio.toggle}
-              onSeek={audio.seek}
-            />
+            {records.phase === "recording" && (
+              <RecordingState
+                elapsed={recording.elapsed}
+                onStop={recording.stop}
+              />
+            )}
 
-            <AiPanel
-              width={aiPanel.width}
-              collapsed={aiPanel.collapsed}
-              tab={aiPanel.tab}
-              panelRef={aiPanel.panelRef}
-              model={aiPanel.model}
-              onSetTab={aiPanel.setTab}
-              onToggleCollapsed={aiPanel.toggleCollapsed}
-              onExpand={aiPanel.expand}
-              onToggleModel={aiPanel.toggleModel}
-              onStartResize={aiPanel.startResize}
-              phase={records.phase}
-              selected={records.selected}
-              selectedId={records.selectedId}
-              onClearMessages={records.clearMessages}
-              aiInput={aiChat.input}
-              onAiInputChange={aiChat.setInput}
-              onSend={aiChat.send}
-              onSendQuickChip={aiChat.sendQuickChip}
-              canSend={aiChat.canSend}
-              endRef={aiChat.endRef}
-              textareaRef={aiChat.textareaRef}
-              images={aiChat.images}
-              onAddImages={aiChat.addImages}
-              onRemoveImage={aiChat.removeImage}
-              imageInputRef={aiChat.imageInputRef}
-            />
+            {(records.phase === "processing" || records.phase === "ready") && (
+              <>
+                <Sidebar
+                  records={records.records}
+                  selectedId={records.selectedId}
+                  onSelect={handleSelectRecord}
+                  onStartRecording={handleStartRecording}
+                  onFileUpload={fileUpload.openFilePicker}
+                />
+
+                <CenterPanel
+                  phase={records.phase}
+                  selected={records.selected}
+                  processingStep={records.processingStep}
+                  isPlaying={audio.isPlaying}
+                  audioPosition={audio.position}
+                  totalSeconds={audio.totalSeconds}
+                  onTogglePlay={audio.toggle}
+                  onSeek={audio.seek}
+                />
+
+                <AiPanel
+                  width={aiPanel.width}
+                  collapsed={aiPanel.collapsed}
+                  tab={aiPanel.tab}
+                  panelRef={aiPanel.panelRef}
+                  model={aiPanel.model}
+                  onSetTab={aiPanel.setTab}
+                  onToggleCollapsed={aiPanel.toggleCollapsed}
+                  onExpand={aiPanel.expand}
+                  onToggleModel={aiPanel.toggleModel}
+                  onStartResize={aiPanel.startResize}
+                  phase={records.phase}
+                  selected={records.selected}
+                  selectedId={records.selectedId}
+                  onClearMessages={records.clearMessages}
+                  aiInput={aiChat.input}
+                  onAiInputChange={aiChat.setInput}
+                  onSend={aiChat.send}
+                  onSendQuickChip={aiChat.sendQuickChip}
+                  canSend={aiChat.canSend}
+                  endRef={aiChat.endRef}
+                  textareaRef={aiChat.textareaRef}
+                  images={aiChat.images}
+                  onAddImages={aiChat.addImages}
+                  onRemoveImage={aiChat.removeImage}
+                  imageInputRef={aiChat.imageInputRef}
+                />
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── 학생 관리 뷰 ── */}
+        {activeMenu === "students" && (
+          <>
+            {students.selected ? (
+              <StudentDetail
+                student={students.selected}
+                onBack={students.clearSelection}
+              />
+            ) : (
+              <StudentList
+                students={students.students}
+                totalCount={students.totalCount}
+                search={students.search}
+                onSearchChange={students.setSearch}
+                onSelect={students.selectStudent}
+              />
+            )}
           </>
         )}
       </div>
