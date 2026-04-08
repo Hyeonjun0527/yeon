@@ -57,17 +57,16 @@ export function useStudentForm({
   function handleSubmit() {
     if (!validate()) return;
 
-    const guardians =
-      guardianName.trim()
-        ? [
-            {
-              id: existing?.guardians[0]?.id ?? crypto.randomUUID(),
-              name: guardianName.trim(),
-              phone: guardianPhone.trim(),
-              relation: guardianRelation,
-            },
-          ]
-        : (existing?.guardians ?? []);
+    const guardians = guardianName.trim()
+      ? [
+          {
+            id: existing?.guardians[0]?.id ?? crypto.randomUUID(),
+            name: guardianName.trim(),
+            phone: guardianPhone.trim(),
+            relation: guardianRelation,
+          },
+        ]
+      : (existing?.guardians ?? []);
 
     if (mode === "create") {
       addStudent({

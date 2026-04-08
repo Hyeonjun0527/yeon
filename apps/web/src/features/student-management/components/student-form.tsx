@@ -20,21 +20,45 @@ export function StudentForm() {
   });
 
   const {
-    name, phone, email, school, grade, status,
-    tags, classIds, guardianName, guardianPhone, guardianRelation,
+    name,
+    phone,
+    email,
+    school,
+    grade,
+    status,
+    tags,
+    classIds,
+    guardianName,
+    guardianPhone,
+    guardianRelation,
   } = formData;
 
   const {
-    setName, setPhone, setEmail, setSchool, setGrade, setStatus,
-    setTags, setClassIds, setGuardianName, setGuardianPhone, setGuardianRelation,
+    setName,
+    setPhone,
+    setEmail,
+    setSchool,
+    setGrade,
+    setStatus,
+    setTags,
+    setClassIds,
+    setGuardianName,
+    setGuardianPhone,
+    setGuardianRelation,
   } = setters;
 
   function toggleTag(tag: string) {
-    setTags(tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]);
+    setTags(
+      tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag],
+    );
   }
 
   function toggleClass(id: string) {
-    setClassIds(classIds.includes(id) ? classIds.filter((c) => c !== id) : [...classIds, id]);
+    setClassIds(
+      classIds.includes(id)
+        ? classIds.filter((c) => c !== id)
+        : [...classIds, id],
+    );
   }
 
   return (
@@ -64,7 +88,9 @@ export function StudentForm() {
             >
               <option value="">기수 선택</option>
               {GRADES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
             {errors.grade && <p className={styles.formError}>{errors.grade}</p>}
@@ -79,7 +105,9 @@ export function StudentForm() {
             >
               <option value="">트랙 선택</option>
               {[...new Set(classes.map((c) => c.subject))].map((subject) => (
-                <option key={subject} value={subject}>{subject}</option>
+                <option key={subject} value={subject}>
+                  {subject}
+                </option>
               ))}
             </select>
           </div>
@@ -138,7 +166,9 @@ export function StudentForm() {
               onChange={(e) => setGuardianRelation(e.target.value)}
             >
               {GUARDIAN_RELATIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </select>
           </div>
@@ -150,7 +180,14 @@ export function StudentForm() {
 
           <div className={styles.formField}>
             <label className={styles.formLabel}>태그</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px",
+                marginTop: "4px",
+              }}
+            >
               {ALL_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -160,7 +197,9 @@ export function StudentForm() {
                   style={{
                     padding: "4px 10px",
                     borderRadius: "12px",
-                    border: tags.includes(tag) ? "1.5px solid #2563eb" : "1px solid #e2e8f0",
+                    border: tags.includes(tag)
+                      ? "1.5px solid #2563eb"
+                      : "1px solid #e2e8f0",
                     background: tags.includes(tag) ? "#eff6ff" : "#f8fafc",
                     color: tags.includes(tag) ? "#2563eb" : "#475569",
                     fontSize: "13px",
@@ -180,21 +219,37 @@ export function StudentForm() {
               value={status}
               onChange={(e) => setStatus(e.target.value as StudentStatus)}
             >
-              {(Object.keys(STUDENT_STATUS_META) as StudentStatus[]).map((key) => (
-                <option key={key} value={key}>
-                  {STUDENT_STATUS_META[key].label}
-                </option>
-              ))}
+              {(Object.keys(STUDENT_STATUS_META) as StudentStatus[]).map(
+                (key) => (
+                  <option key={key} value={key}>
+                    {STUDENT_STATUS_META[key].label}
+                  </option>
+                ),
+              )}
             </select>
           </div>
 
           <div className={styles.formField}>
             <label className={styles.formLabel}>코호트 배정</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                marginTop: "4px",
+              }}
+            >
               {classes.map((cls) => (
                 <label
                   key={cls.id}
-                  style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#334155", cursor: "pointer" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "14px",
+                    color: "#334155",
+                    cursor: "pointer",
+                  }}
                 >
                   <input
                     type="checkbox"
@@ -213,7 +268,11 @@ export function StudentForm() {
         <button type="button" className={styles.cancelBtn} onClick={closeSheet}>
           취소
         </button>
-        <button type="button" className={styles.submitBtn} onClick={handleSubmit}>
+        <button
+          type="button"
+          className={styles.submitBtn}
+          onClick={handleSubmit}
+        >
           저장
         </button>
       </div>

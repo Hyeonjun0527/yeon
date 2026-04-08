@@ -32,7 +32,11 @@
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Noto Sans KR",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -83,7 +87,9 @@
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .navItem:hover {

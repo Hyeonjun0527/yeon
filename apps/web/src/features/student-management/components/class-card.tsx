@@ -25,8 +25,7 @@ export function ClassCard({
   isExpanded,
   onToggle,
 }: ClassCardProps) {
-  const ratio =
-    classRoom.capacity > 0 ? studentCount / classRoom.capacity : 0;
+  const ratio = classRoom.capacity > 0 ? studentCount / classRoom.capacity : 0;
   const widthPct = `${Math.min(ratio * 100, 100).toFixed(1)}%`;
   const fillColor = getCapacityColor(ratio);
   const previewStudents = students.slice(0, 5);
@@ -36,11 +35,15 @@ export function ClassCard({
     <div
       className={styles.classCard}
       onClick={onToggle}
-      style={isExpanded ? { boxShadow: "0 4px 12px rgba(0,0,0,0.08)" } : undefined}
+      style={
+        isExpanded ? { boxShadow: "0 4px 12px rgba(0,0,0,0.08)" } : undefined
+      }
     >
       <div className={styles.classCardHeader}>
         <span className={styles.className}>{classRoom.name}</span>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>{classRoom.year}년</span>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>
+          {classRoom.year}년
+        </span>
       </div>
 
       <div className={styles.classMeta}>

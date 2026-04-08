@@ -1,9 +1,12 @@
-import { LoaderCircle, Mic } from "lucide-react";
+import { LoaderCircle, Mic, Upload } from "lucide-react";
 import type { RecordingPhase, UploadFormState, UploadTone } from "../types";
-import { formatCompactDuration } from "../utils";
+import { COUNSELING_TYPE_OPTIONS } from "../constants";
+import {
+  formatCompactDuration,
+  formatDurationLabel,
+  formatFileSize,
+} from "../utils";
 import styles from "../counseling-record-workspace.module.css";
-import { UploadAudioSourcePicker } from "./upload-audio-source-picker";
-import { UploadAudioReadyForm } from "./upload-audio-ready-form";
 
 export interface UploadPanelProps {
   isUploadPanelOpen: boolean;
@@ -76,11 +79,38 @@ export function UploadPanel({
         </header>
 
         {!selectedAudioFile && recordingPhase === "idle" ? (
-          <UploadAudioSourcePicker
-            fileInputRef={fileInputRef}
-            onStartRecording={onStartRecording}
-            isUploading={uploadState.isUploading}
-          />
+          <div className={styles.primaryCtaStack}>
+            <button
+              type="button"
+              className={styles.primaryCtaTile}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadState.isUploading}
+            >
+              <Upload size={20} strokeWidth={2} />
+              <div>
+                <span className={styles.primaryCtaTileTitle}>파일 업로드</span>
+                <span className={styles.primaryCtaTileDescription}>
+                  오디오 파일에서 시작
+                </span>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={styles.primaryCtaTile}
+              onClick={onStartRecording}
+              disabled={uploadState.isUploading}
+            >
+              <Mic size={20} strokeWidth={2} />
+              <div>
+                <span className={styles.primaryCtaTileTitle}>
+                  바로 녹음하기
+                </span>
+                <span className={styles.primaryCtaTileDescription}>
+                  지금 바로 녹음 시작
+                </span>
+              </div>
+            </button>
+          </div>
         ) : null}
 
         {recordingPhase !== "idle" ? (
@@ -112,18 +142,108 @@ export function UploadPanel({
         ) : null}
 
         {hasAudioReady && selectedAudioFile ? (
-          <UploadAudioReadyForm
-            selectedAudioFile={selectedAudioFile}
-            selectedAudioDurationMs={selectedAudioDurationMs}
-            selectedAudioPreviewUrl={selectedAudioPreviewUrl}
-            formState={formState}
-            updateFormState={updateFormState}
-            isAdditionalInfoOpen={isAdditionalInfoOpen}
-            setIsAdditionalInfoOpen={setIsAdditionalInfoOpen}
-            uploadState={uploadState}
-            fileInputRef={fileInputRef}
-            onStartRecording={onStartRecording}
-          />
+          <>
+            <div className={styles.selectedAudioCard}>
+              <p className={styles.selectedAudioLabel}>선택한 오디오</p>
+              <p className={styles.selectedAudioTitle}>
+                {selectedAudioFile.name}
+              </p>
+              <p className={styles.selectedAudioMeta}>
+                {formatFileSize(selectedAudioFile.size)} ·{" "}
+                {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
+              </p>
+              {selectedAudioPreviewUrl ? (
+                <audio
+                  className={styles.audioPreview}
+                  controls
+                  src={selectedAudioPreviewUrl}
+                />
+              ) : null}
+            </div>
+
+            <label className={styles.minimalField}>
+              <span>학생 이름</span>
+              <input
+                value={formState.studentName}
+                onChange={(event) =>
+                  updateFormState("studentName", event.target.value)
+                }
+                className={styles.formInput}
+                placeholder="예: 김민수"
+              />
+            </label>
+
+            <div className={styles.additionalInfoSection}>
+              <button
+                type="button"
+                className={styles.additionalInfoToggle}
+                aria-expanded={isAdditionalInfoOpen}
+                aria-controls="create-record-additional-fields"
+                onClick={() => setIsAdditionalInfoOpen((current) => !current)}
+              >
+                <span className={styles.additionalInfoLabel}>추가 정보</span>
+                <span className={styles.additionalInfoSummary}>
+                  제목, 상담 유형
+                </span>
+              </button>
+
+              {isAdditionalInfoOpen ? (
+                <div
+                  id="create-record-additional-fields"
+                  className={styles.additionalInfoBody}
+                >
+                  <label className={styles.fieldLabel}>
+                    <span>상담 제목</span>
+                    <input
+                      value={formState.sessionTitle}
+                      onChange={(event) =>
+                        updateFormState("sessionTitle", event.target.value)
+                      }
+                      className={styles.formInput}
+                      placeholder="자동으로 채워집니다"
+                    />
+                  </label>
+                  <div className={styles.additionalInfoGrid}>
+                    <label className={styles.fieldLabel}>
+                      <span>상담 유형</span>
+                      <select
+                        value={formState.counselingType}
+                        onChange={(event) =>
+                          updateFormState("counselingType", event.target.value)
+                        }
+                        className={styles.formSelect}
+                      >
+                        {COUNSELING_TYPE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.supportActionRow}>
+              <button
+                type="button"
+                className={styles.topbarGhostButton}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadState.isUploading}
+              >
+                다른 파일 선택
+              </button>
+              <button
+                type="button"
+                className={styles.topbarGhostButton}
+                onClick={onStartRecording}
+                disabled={uploadState.isUploading}
+              >
+                바로 녹음하기
+              </button>
+            </div>
+          </>
         ) : null}
 
         {recordingError ? (

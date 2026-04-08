@@ -1,9 +1,9 @@
-import type { AuthUserDto } from "@yeon/api-contract/auth";
 import type {
+  AuthUserDto,
   CounselingRecordListItem,
   CounselingRecordSpeakerTone,
   StudentSummary,
-} from "@yeon/api-contract/counseling-records";
+} from "@yeon/api-contract";
 import { and, desc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
@@ -441,23 +441,14 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
-  // DB를 먼저 삭제 — R2보다 DB가 source of truth이므로 DB 삭제 성공 후 R2를 제거
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(counselingTranscriptSegments)
-      .where(eq(counselingTranscriptSegments.recordId, record.id));
-    await tx
-      .delete(counselingRecords)
-      .where(eq(counselingRecords.id, record.id));
-  });
+  await db.delete(counselingRecords).where(eq(counselingRecords.id, record.id));
 
-  // R2 삭제 실패는 로그만 남기고 무시 — DB에서 이미 삭제되었으므로 고아 파일은 나중에 정리 가능
   if (!isPlaceholderAudioStoragePath(record.audioStoragePath)) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
       console.error(
-        `상담 기록 ${record.id}의 R2 음성 파일 삭제에 실패했습니다. DB 삭제는 완료되었으므로 무시합니다.`,
+        `상담 기록 ${record.id}의 R2 음성 파일 삭제에 실패했습니다.`,
         error,
       );
     }
@@ -512,17 +503,13 @@ export async function updateTranscriptSegment(
     return mapSegmentRow(segment);
   }
 
-  const [updated] = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .update(counselingTranscriptSegments)
-      .set(updateFields)
-      .where(eq(counselingTranscriptSegments.id, segmentId))
-      .returning();
+  const [updated] = await db
+    .update(counselingTranscriptSegments)
+    .set(updateFields)
+    .where(eq(counselingTranscriptSegments.id, segmentId))
+    .returning();
 
-    await rebuildTranscriptText(record.id, tx);
-
-    return [row];
-  });
+  await rebuildTranscriptText(record.id);
 
   return mapSegmentRow(updated);
 }
@@ -545,24 +532,20 @@ export async function bulkUpdateSpeakerLabel(
     updateFields.speakerTone = toSpeakerTone;
   }
 
-  const result = await db.transaction(async (tx) => {
-    const rows = await tx
-      .update(counselingTranscriptSegments)
-      .set(updateFields)
-      .where(
-        and(
-          eq(counselingTranscriptSegments.recordId, record.id),
-          eq(counselingTranscriptSegments.speakerLabel, fromSpeakerLabel),
-        ),
-      )
-      .returning({ id: counselingTranscriptSegments.id });
+  const result = await db
+    .update(counselingTranscriptSegments)
+    .set(updateFields)
+    .where(
+      and(
+        eq(counselingTranscriptSegments.recordId, record.id),
+        eq(counselingTranscriptSegments.speakerLabel, fromSpeakerLabel),
+      ),
+    )
+    .returning({ id: counselingTranscriptSegments.id });
 
-    if (rows.length > 0) {
-      await rebuildTranscriptText(record.id, tx);
-    }
-
-    return rows;
-  });
+  if (result.length > 0) {
+    await rebuildTranscriptText(record.id);
+  }
 
   return result.length;
 }

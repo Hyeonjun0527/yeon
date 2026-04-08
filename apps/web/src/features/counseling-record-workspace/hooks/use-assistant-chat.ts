@@ -2,32 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract/counseling-records";
+} from "@yeon/api-contract";
 import type { Message } from "../types";
 import { buildInitialAssistantMessages } from "../utils";
-
-const MAX_CACHED_RECORDS = 20;
-
-function evictOldestIfNeeded(
-  map: Record<string, Message[]>,
-  keepRecordId: string,
-): Record<string, Message[]> {
-  const keys = Object.keys(map);
-
-  if (keys.length <= MAX_CACHED_RECORDS) {
-    return map;
-  }
-
-  const evictKey = keys.find((k) => k !== keepRecordId);
-
-  if (!evictKey) {
-    return map;
-  }
-
-  const next = { ...map };
-  delete next[evictKey];
-  return next;
-}
 
 export function useAssistantChat(
   selectedRecord: CounselingRecordListItem | null,
@@ -43,25 +20,18 @@ export function useAssistantChat(
   const aiAbortControllerRef = useRef<AbortController | null>(null);
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const prevRecordIdRef = useRef<string | null>(null);
-  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
-  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
-
-  // 컴포넌트 언마운트 시 스트리밍 정리
-  useEffect(() => () => {
-    aiAbortControllerRef.current?.abort();
-  }, []);
+  const activeRecordIdRef = useRef<string | null>(null);
 
   // 레코드 전환 시 진행 중인 스트리밍 중단
   useEffect(() => {
     const currentId = selectedRecord?.id ?? null;
+    const previousId = activeRecordIdRef.current;
 
-    if (prevRecordIdRef.current && prevRecordIdRef.current !== currentId) {
+    activeRecordIdRef.current = currentId;
+
+    if (previousId && previousId !== currentId) {
       aiAbortControllerRef.current?.abort();
-      setIsAiStreaming(false);
     }
-
-    prevRecordIdRef.current = currentId;
   }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
@@ -99,10 +69,10 @@ export function useAssistantChat(
       );
 
       if (!existingMessages) {
-        return evictOldestIfNeeded(
-          { ...current, [selectedRecord.id]: nextMessages },
-          selectedRecord.id,
-        );
+        return {
+          ...current,
+          [selectedRecord.id]: nextMessages,
+        };
       }
 
       if (existingMessages.some((message) => message.role === "user")) {
@@ -148,7 +118,7 @@ export function useAssistantChat(
       return;
     }
 
-    const existingMessages = assistantMessagesByRecordRef.current[selectedRecord.id];
+    const existingMessages = assistantMessagesByRecord[selectedRecord.id];
 
     if (existingMessages?.some((m) => m.role === "user")) {
       return;
@@ -175,7 +145,13 @@ export function useAssistantChat(
     }));
 
     streamAssistantResponse(capturedRecordId, allMessages);
-  }, [selectedRecord, selectedRecordDetail, isAiStreaming, statusMeta]);
+  }, [
+    selectedRecord,
+    selectedRecordDetail,
+    isAiStreaming,
+    assistantMessagesByRecord,
+    statusMeta,
+  ]);
 
   async function streamAssistantResponse(
     recordId: string,
@@ -251,7 +227,6 @@ export function useAssistantChat(
 
       const decoder = new TextDecoder();
       let accumulated = "";
-      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -260,9 +235,8 @@ export function useAssistantChat(
           break;
         }
 
-        sseBuffer += decoder.decode(value, { stream: true });
-        const lines = sseBuffer.split("\n");
-        sseBuffer = lines.pop() ?? "";
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -342,16 +316,14 @@ export function useAssistantChat(
       content: trimmedPrompt,
     };
 
-    let updatedMessages: Message[] = [];
+    const currentMessages = assistantMessagesByRecord[selectedRecord.id] ?? [];
 
-    setAssistantMessagesByRecord((current) => {
-      const currentMessages = current[selectedRecord.id] ?? [];
-      updatedMessages = [...currentMessages, userMessage];
-      return {
-        ...current,
-        [selectedRecord.id]: updatedMessages,
-      };
-    });
+    const updatedMessages = [...currentMessages, userMessage];
+
+    setAssistantMessagesByRecord((current) => ({
+      ...current,
+      [selectedRecord.id]: updatedMessages,
+    }));
     setAssistantDraft("");
 
     streamAssistantResponse(selectedRecord.id, updatedMessages);
@@ -359,15 +331,6 @@ export function useAssistantChat(
 
   function handleStopStreaming() {
     aiAbortControllerRef.current?.abort();
-  }
-
-  function clearAssistantMessages(recordId: string) {
-    setAssistantMessagesByRecord((current) => {
-      const next = { ...current };
-      delete next[recordId];
-      return next;
-    });
-    autoAnalysisTriggeredRef.current.delete(recordId);
   }
 
   return {
@@ -378,7 +341,6 @@ export function useAssistantChat(
     isAiStreaming,
     appendAssistantExchange,
     handleStopStreaming,
-    clearAssistantMessages,
     messageListRef,
   };
 }

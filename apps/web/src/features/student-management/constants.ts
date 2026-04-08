@@ -5,10 +5,26 @@ export const STUDENT_STATUS_META: Record<
   StudentStatus,
   { label: string; color: string; bgColor: string }
 > = {
-  enrolled: { label: "수강중", color: "#34d399", bgColor: "rgba(52, 211, 153, 0.1)" },
-  on_leave: { label: "휴원", color: "#fbbf24", bgColor: "rgba(251, 191, 36, 0.1)" },
-  withdrawn: { label: "중도포기", color: "#a1a1aa", bgColor: "rgba(161, 161, 170, 0.1)" },
-  graduated: { label: "수료", color: "#818cf8", bgColor: "rgba(129, 140, 248, 0.1)" },
+  enrolled: {
+    label: "수강중",
+    color: "#34d399",
+    bgColor: "rgba(52, 211, 153, 0.1)",
+  },
+  on_leave: {
+    label: "휴원",
+    color: "#fbbf24",
+    bgColor: "rgba(251, 191, 36, 0.1)",
+  },
+  withdrawn: {
+    label: "중도포기",
+    color: "#a1a1aa",
+    bgColor: "rgba(161, 161, 170, 0.1)",
+  },
+  graduated: {
+    label: "수료",
+    color: "#818cf8",
+    bgColor: "rgba(129, 140, 248, 0.1)",
+  },
 } as const;
 
 /* ── 탭 목록 ── */
