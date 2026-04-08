@@ -198,11 +198,11 @@
 
 ## 카피 규칙
 
-| 위치 | 권장 문구 |
-| --- | --- |
-| 디스클로저 라벨 | `추가 정보` |
-| 닫힘 요약 | `제목, 학년/반, 상담 유형` |
-| 오류 후 안내 | 별도 문장 없이 해당 필드 인라인 오류로 처리 |
+| 위치            | 권장 문구                                   |
+| --------------- | ------------------------------------------- |
+| 디스클로저 라벨 | `추가 정보`                                 |
+| 닫힘 요약       | `제목, 학년/반, 상담 유형`                  |
+| 오류 후 안내    | 별도 문장 없이 해당 필드 인라인 오류로 처리 |
 
 ## 비추천 문구
 
@@ -239,30 +239,37 @@
 ```tsx
 const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false);
 
-{selectedAudioFile ? (
-  <div className={styles.additionalInfoSection}>
-    <button
-      type="button"
-      className={styles.additionalInfoToggle}
-      aria-expanded={isAdditionalInfoOpen}
-      aria-controls="create-record-additional-fields"
-      onClick={() => setIsAdditionalInfoOpen((current) => !current)}
-    >
-      <span className={styles.additionalInfoLabel}>추가 정보</span>
-      <span className={styles.additionalInfoSummary}>제목, 학년/반, 상담 유형</span>
-    </button>
+{
+  selectedAudioFile ? (
+    <div className={styles.additionalInfoSection}>
+      <button
+        type="button"
+        className={styles.additionalInfoToggle}
+        aria-expanded={isAdditionalInfoOpen}
+        aria-controls="create-record-additional-fields"
+        onClick={() => setIsAdditionalInfoOpen((current) => !current)}
+      >
+        <span className={styles.additionalInfoLabel}>추가 정보</span>
+        <span className={styles.additionalInfoSummary}>
+          제목, 학년/반, 상담 유형
+        </span>
+      </button>
 
-    {isAdditionalInfoOpen ? (
-      <div id="create-record-additional-fields" className={styles.additionalInfoBody}>
-        <label>상담 제목</label>
-        <div className={styles.additionalInfoGrid}>
-          <label>학년/반</label>
-          <label>상담 유형</label>
+      {isAdditionalInfoOpen ? (
+        <div
+          id="create-record-additional-fields"
+          className={styles.additionalInfoBody}
+        >
+          <label>상담 제목</label>
+          <div className={styles.additionalInfoGrid}>
+            <label>학년/반</label>
+            <label>상담 유형</label>
+          </div>
         </div>
-      </div>
-    ) : null}
-  </div>
-) : null}
+      ) : null}
+    </div>
+  ) : null;
+}
 ```
 
 ## 권장 CSS 분리

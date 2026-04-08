@@ -9,7 +9,8 @@
     "./counseling-records": "./src/counseling-records.ts",
     "./contest": "./src/contest.ts",
     "./health": "./src/health.ts",
-    "./users": "./src/users.ts"
+    "./users": "./src/users.ts",
+    "./error": "./src/error.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",

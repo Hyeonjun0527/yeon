@@ -1,4 +1,4 @@
-import type { AuthUserDto } from "@yeon/api-contract";
+import type { AuthUserDto } from "@yeon/api-contract/auth";
 import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { DatabaseError } from "pg";

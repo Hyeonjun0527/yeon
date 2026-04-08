@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
     "@splinetool/react-spline",
     "@splinetool/runtime",
   ],
+  serverExternalPackages: ["@aws-sdk/client-s3", "@aws-sdk/lib-storage"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion"],
+  },
 };
 
 export default nextConfig;

@@ -57,12 +57,7 @@ function SplineCanvas() {
     return <div className={styles.splineFallback} />;
   }
 
-  return (
-    <Spline
-      scene={SPLINE_SCENE}
-      onError={handleError}
-    />
-  );
+  return <Spline scene={SPLINE_SCENE} onError={handleError} />;
 }
 
 export function SplineHero() {

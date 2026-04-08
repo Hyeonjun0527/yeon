@@ -211,26 +211,26 @@
 
 ## 섹션
 
-| 현재 | 변경 |
-| --- | --- |
-| `녹음 또는 업로드` | `새 기록 만들기` |
-| `새 상담 기록` | 삭제 또는 약한 보조 라벨 |
+| 현재               | 변경                     |
+| ------------------ | ------------------------ |
+| `녹음 또는 업로드` | `새 기록 만들기`         |
+| `새 상담 기록`     | 삭제 또는 약한 보조 라벨 |
 
 ## CTA
 
-| 역할 | 권장 문구 | 보조 문구 |
-| --- | --- | --- |
-| 업로드 | `파일 업로드` | `오디오 파일에서 시작` |
-| 녹음 | `브라우저 녹음` | `지금 바로 녹음 시작` |
-| 저장 | `기록 저장` | 없음 |
+| 역할   | 권장 문구       | 보조 문구              |
+| ------ | --------------- | ---------------------- |
+| 업로드 | `파일 업로드`   | `오디오 파일에서 시작` |
+| 녹음   | `브라우저 녹음` | `지금 바로 녹음 시작`  |
+| 저장   | `기록 저장`     | 없음                   |
 
 ## 상태 문구
 
-| 상황 | 권장 문구 |
-| --- | --- |
-| idle | `파일을 올리거나 바로 녹음해 시작합니다.` |
-| 파일 선택 후 | `선택한 오디오를 확인한 뒤 저장합니다.` |
-| 녹음 중 | `녹음을 마치면 바로 저장할 수 있습니다.` |
+| 상황         | 권장 문구                                 |
+| ------------ | ----------------------------------------- |
+| idle         | `파일을 올리거나 바로 녹음해 시작합니다.` |
+| 파일 선택 후 | `선택한 오디오를 확인한 뒤 저장합니다.`   |
+| 녹음 중      | `녹음을 마치면 바로 저장할 수 있습니다.`  |
 
 ## 삭제 대상 문구
 
@@ -251,15 +251,19 @@
 
   {!selectedAudioFile && !isRecording ? (
     <div className={styles.primaryCtaStack}>
-      <button type="button" className={styles.primaryCtaTile}>...</button>
-      <button type="button" className={styles.primaryCtaTile}>...</button>
+      <button type="button" className={styles.primaryCtaTile}>
+        ...
+      </button>
+      <button type="button" className={styles.primaryCtaTile}>
+        ...
+      </button>
     </div>
   ) : null}
 
   {selectedAudioFile ? <SelectedAudioCard /> : null}
   {isRecording ? <RecordingStateBlock /> : null}
 
-  {(selectedAudioFile || isRecordingDraftReady) ? (
+  {selectedAudioFile || isRecordingDraftReady ? (
     <button type="submit" className={styles.primaryButton}>
       기록 저장
     </button>

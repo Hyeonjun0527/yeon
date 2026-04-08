@@ -1,9 +1,9 @@
+import type { AuthUserDto } from "@yeon/api-contract/auth";
 import type {
-  AuthUserDto,
   CounselingRecordListItem,
   CounselingRecordSpeakerTone,
   StudentSummary,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { and, desc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
@@ -425,9 +425,9 @@ export async function getCounselingRecordAudio(
     mimeType: record.audioMimeType,
     originalName: record.audioOriginalName,
     byteSize: record.audioByteSize,
-    contentLength: audio.contentLength ?? (
-      byteRange ? byteRange.end - byteRange.start + 1 : record.audioByteSize
-    ),
+    contentLength:
+      audio.contentLength ??
+      (byteRange ? byteRange.end - byteRange.start + 1 : record.audioByteSize),
     contentRange:
       audio.contentRange ??
       (byteRange
@@ -437,10 +437,7 @@ export async function getCounselingRecordAudio(
   };
 }
 
-export async function deleteCounselingRecord(
-  userId: string,
-  recordId: string,
-) {
+export async function deleteCounselingRecord(userId: string, recordId: string) {
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
@@ -495,8 +492,9 @@ export async function updateTranscriptSegment(
     throw new ServiceError(404, "해당 세그먼트를 찾지 못했습니다.");
   }
 
-  const updateFields: Partial<typeof counselingTranscriptSegments.$inferInsert> =
-    {};
+  const updateFields: Partial<
+    typeof counselingTranscriptSegments.$inferInsert
+  > = {};
 
   if (patch.text !== undefined) {
     updateFields.text = patch.text;
@@ -539,8 +537,9 @@ export async function bulkUpdateSpeakerLabel(
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
-  const updateFields: Partial<typeof counselingTranscriptSegments.$inferInsert> =
-    { speakerLabel: toSpeakerLabel };
+  const updateFields: Partial<
+    typeof counselingTranscriptSegments.$inferInsert
+  > = { speakerLabel: toSpeakerLabel };
 
   if (toSpeakerTone !== undefined) {
     updateFields.speakerTone = toSpeakerTone;

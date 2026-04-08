@@ -54,10 +54,7 @@ export function UploadPanel({
 }: UploadPanelProps) {
   return (
     <div className={styles.centerUploadPanel}>
-      <form
-        className={styles.createRecordForm}
-        onSubmit={handleUploadSubmit}
-      >
+      <form className={styles.createRecordForm} onSubmit={handleUploadSubmit}>
         <header className={styles.createRecordHeader}>
           <div>
             <h2 className={styles.centerUploadTitle}>새 기록 만들기</h2>

@@ -1,4 +1,4 @@
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 
 export type RecordFilter = "all" | CounselingRecordListItem["status"];
 export type SidebarViewMode = "all" | "student";

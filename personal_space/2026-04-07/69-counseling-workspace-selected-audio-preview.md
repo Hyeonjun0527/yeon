@@ -176,11 +176,11 @@
 
 ## 카피 개선안
 
-| 현재 | 변경 |
-| --- | --- |
-| `업로드 준비` | `저장 준비`를 메타 줄에 흡수 |
-| `example.m4a 선택 완료` | 삭제 |
-| 없음 | `선택한 오디오` 보조 라벨 추가 가능 |
+| 현재                    | 변경                                |
+| ----------------------- | ----------------------------------- |
+| `업로드 준비`           | `저장 준비`를 메타 줄에 흡수        |
+| `example.m4a 선택 완료` | 삭제                                |
+| 없음                    | `선택한 오디오` 보조 라벨 추가 가능 |
 
 ## 상태별 예시
 
@@ -203,24 +203,31 @@
 ## 마크업 방향
 
 ```tsx
-{selectedAudioFile ? (
-  <div className={styles.selectedAudioCard}>
-    <p className={styles.selectedAudioLabel}>선택한 오디오</p>
+{
+  selectedAudioFile ? (
+    <div className={styles.selectedAudioCard}>
+      <p className={styles.selectedAudioLabel}>선택한 오디오</p>
 
-    <div className={styles.selectedAudioHeader}>
-      <div>
-        <p className={styles.selectedAudioTitle}>{selectedAudioFile.name}</p>
-        <p className={styles.selectedAudioMeta}>
-          {formatFileSize(selectedAudioFile.size)} · {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
-        </p>
+      <div className={styles.selectedAudioHeader}>
+        <div>
+          <p className={styles.selectedAudioTitle}>{selectedAudioFile.name}</p>
+          <p className={styles.selectedAudioMeta}>
+            {formatFileSize(selectedAudioFile.size)} ·{" "}
+            {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
+          </p>
+        </div>
       </div>
-    </div>
 
-    {selectedAudioPreviewUrl ? (
-      <audio className={styles.audioPreview} controls src={selectedAudioPreviewUrl} />
-    ) : null}
-  </div>
-) : null}
+      {selectedAudioPreviewUrl ? (
+        <audio
+          className={styles.audioPreview}
+          controls
+          src={selectedAudioPreviewUrl}
+        />
+      ) : null}
+    </div>
+  ) : null;
+}
 ```
 
 ## 구현 메모

@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { readErrorMessage } from "../utils";
 
 export function useDeleteRecord(
@@ -42,9 +42,7 @@ export function useDeleteRecord(
       setSaveToast("기록이 삭제되었습니다.");
     } catch (error) {
       setSaveToast(
-        error instanceof Error
-          ? error.message
-          : "삭제에 실패했습니다.",
+        error instanceof Error ? error.message : "삭제에 실패했습니다.",
       );
     } finally {
       setIsDeleting(false);

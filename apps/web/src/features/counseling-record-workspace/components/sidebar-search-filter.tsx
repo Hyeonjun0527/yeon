@@ -1,5 +1,5 @@
 import { ChevronDown, Filter, Search } from "lucide-react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { RecordFilter } from "../types";
 import { FILTER_META } from "../constants";
 import styles from "../counseling-record-workspace.module.css";
@@ -26,11 +26,7 @@ export function SidebarSearchFilter({
   return (
     <div className={styles.browseTools}>
       <label className={styles.searchField}>
-        <Search
-          size={16}
-          strokeWidth={2.1}
-          className={styles.searchIcon}
-        />
+        <Search size={16} strokeWidth={2.1} className={styles.searchIcon} />
         <input
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
@@ -51,8 +47,7 @@ export function SidebarSearchFilter({
           <Filter size={14} strokeWidth={2.2} />
           {recordFilter !== "all" ? (
             <span className={styles.activeFilterLabel}>
-              {FILTER_META.find((f) => f.id === recordFilter)?.label ??
-                "전체"}
+              {FILTER_META.find((f) => f.id === recordFilter)?.label ?? "전체"}
             </span>
           ) : (
             <span>필터</span>
@@ -81,9 +76,7 @@ export function SidebarSearchFilter({
                 }`}
                 onClick={() => setRecordFilter(filter.id)}
               >
-                <span className={styles.filterChipLabel}>
-                  {filter.label}
-                </span>
+                <span className={styles.filterChipLabel}>{filter.label}</span>
                 <span className={styles.filterChipCount}>{count}</span>
               </button>
             );

@@ -1,5 +1,5 @@
 import { CheckCheck, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { RecordFilter } from "./types";
 
 export const MAX_AUDIO_UPLOAD_BYTES = 128 * 1024 * 1024;

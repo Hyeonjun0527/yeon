@@ -204,7 +204,10 @@ export async function streamTrendAnalysis(
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
-    { role: "user", content: "위 상담 기록들을 바탕으로 학생의 변화 추이를 분석해주세요." },
+    {
+      role: "user",
+      content: "위 상담 기록들을 바탕으로 학생의 변화 추이를 분석해주세요.",
+    },
   ];
 
   const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
@@ -296,9 +299,7 @@ function transformOpenAiStream(
 
               if (content) {
                 controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ content })}\n\n`,
-                  ),
+                  encoder.encode(`data: ${JSON.stringify({ content })}\n\n`),
                 );
               }
             } catch {

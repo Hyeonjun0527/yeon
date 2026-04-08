@@ -1,4 +1,4 @@
-import { healthResponseSchema } from "@yeon/api-contract";
+import { healthResponseSchema } from "@yeon/api-contract/health";
 import { NextResponse } from "next/server";
 
 export async function GET() {

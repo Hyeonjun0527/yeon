@@ -1,13 +1,8 @@
-import {
-  ChevronDown,
-  LoaderCircle,
-  RefreshCcw,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, LoaderCircle, RefreshCcw, Trash2 } from "lucide-react";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import type { UploadTone } from "../types";
 import {
   formatDateTimeLabel,
@@ -68,9 +63,7 @@ export function RecordDetailHeader({
     <header className={styles.detailHeader}>
       <div className={styles.detailHeaderTop}>
         <div className={styles.detailHeaderCopy}>
-          <h2 className={styles.detailTitle}>
-            {selectedRecord.studentName}
-          </h2>
+          <h2 className={styles.detailTitle}>{selectedRecord.studentName}</h2>
           <p className={styles.detailSessionTitle}>
             {selectedRecord.sessionTitle}
           </p>
@@ -82,8 +75,7 @@ export function RecordDetailHeader({
             }`}
           >
             {(() => {
-              const StatusIcon =
-                statusMeta[selectedRecord.status].icon;
+              const StatusIcon = statusMeta[selectedRecord.status].icon;
               return <StatusIcon size={12} strokeWidth={2.2} />;
             })()}
             {statusMeta[selectedRecord.status].label}
@@ -144,9 +136,7 @@ export function RecordDetailHeader({
         <span className={styles.metaChip}>
           {formatDurationLabel(selectedRecord.audioDurationMs)}
         </span>
-        <span className={styles.metaChip}>
-          {selectedRecord.counselingType}
-        </span>
+        <span className={styles.metaChip}>{selectedRecord.counselingType}</span>
 
         {/* 17차: 나머지는 접힌 상세 정보 토글 */}
         <button
@@ -166,24 +156,15 @@ export function RecordDetailHeader({
       </div>
 
       {isDetailMetaOpen ? (
-        <div
-          id="detail-extra-meta"
-          className={styles.metaChips}
-        >
+        <div id="detail-extra-meta" className={styles.metaChips}>
           <span className={styles.metaChip}>
             세그먼트 {selectedRecord.transcriptSegmentCount}개
           </span>
           <span className={styles.metaChip}>
-            원문{" "}
-            {selectedRecord.transcriptTextLength.toLocaleString(
-              "ko-KR",
-            )}
-            자
+            원문 {selectedRecord.transcriptTextLength.toLocaleString("ko-KR")}자
           </span>
           {selectedRecord.sttModel ? (
-            <span className={styles.metaChip}>
-              {selectedRecord.sttModel}
-            </span>
+            <span className={styles.metaChip}>{selectedRecord.sttModel}</span>
           ) : null}
         </div>
       ) : null}
@@ -218,9 +199,7 @@ export function RecordDetailHeader({
         )}
 
         {audioLoadError ? (
-          <p
-            className={`${styles.inlineMessage} ${styles.inlineError}`}
-          >
+          <p className={`${styles.inlineMessage} ${styles.inlineError}`}>
             {audioLoadError}
           </p>
         ) : null}
@@ -248,9 +227,7 @@ export function RecordDetailHeader({
             <button
               type="button"
               className={styles.secondaryButton}
-              onClick={() =>
-                refreshRecordDetail(selectedRecord.id)
-              }
+              onClick={() => refreshRecordDetail(selectedRecord.id)}
               disabled={retryState.isSubmitting}
             >
               {retryState.isSubmitting ? (
@@ -270,9 +247,7 @@ export function RecordDetailHeader({
             <button
               type="button"
               className={styles.primaryButton}
-              onClick={() =>
-                retryTranscription(selectedRecord.id)
-              }
+              onClick={() => retryTranscription(selectedRecord.id)}
               disabled={retryState.isSubmitting}
             >
               {retryState.isSubmitting ? (
