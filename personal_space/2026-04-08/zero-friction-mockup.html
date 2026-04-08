@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제로 프릭션 녹음 플로우 — UI 목업</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --surface3: #282828;
+    --border: #2a2a2a;
+    --text: #e5e5e5;
+    --text-muted: #888;
+    --text-dim: #555;
+    --accent: #7c6cff;
+    --accent-dim: rgba(124, 108, 255, 0.15);
+    --green: #34d399;
+    --green-dim: rgba(52, 211, 153, 0.12);
+    --orange: #f59e0b;
+    --orange-dim: rgba(245, 158, 11, 0.12);
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* ── 페이지 레이아웃 ── */
+  .page-header {
+    padding: 32px 48px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-header h1 { font-size: 14px; color: var(--text-muted); font-weight: 400; margin-bottom: 4px; }
+  .page-header h2 { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+
+  .mockup-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .mockup-nav button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .mockup-nav button:hover { color: var(--text); }
+  .mockup-nav button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .screen { display: none; padding: 48px; }
+  .screen.active { display: block; }
+  .screen-label {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .screen-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .screen-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    max-width: 560px;
+  }
+  .vs-label {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    padding: 24px 0;
+    letter-spacing: 1px;
+  }
+
+  /* ── 공용 목업 프레임 ── */
+  .frame {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 960px;
+    margin-bottom: 24px;
+  }
+  .frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .frame-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--surface3);
+  }
+  .frame-url {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 8px;
+  }
+
+  /* ── EmptyLanding ── */
+  .empty-landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+  }
+  .empty-icon {
+    width: 64px; height: 64px;
+    background: var(--accent-dim);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+  .empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .empty-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    max-width: 320px;
+  }
+  .cta-row {
+    display: flex;
+    gap: 12px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+  .btn-secondary {
+    background: var(--surface3);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-ghost {
+    background: none;
+    color: var(--text-muted);
+    border: none;
+    padding: 8px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* ── 녹음 중 ── */
+  .recording-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    margin-top: 24px;
+  }
+  .rec-dot {
+    width: 10px; height: 10px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .rec-info { flex: 1; }
+  .rec-title { font-size: 13px; font-weight: 500; color: var(--red); }
+  .rec-meta { font-size: 12px; color: var(--text-muted); }
+  .btn-stop {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  /* ── 워크스페이스 레이아웃 ── */
+  .workspace {
+    display: grid;
+    grid-template-columns: 220px 1fr 320px;
+    min-height: 480px;
+  }
+
+  /* 사이드바 */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 16px;
+  }
+  .sidebar-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent-dim);
+    border: 1px dashed rgba(124, 108, 255, 0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .sidebar-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .sidebar-item.active {
+    background: var(--surface3);
+  }
+  .sidebar-item-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-item-meta {
+    color: var(--text-muted);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-processing { background: var(--orange); }
+  .status-ready { background: var(--green); }
+
+  /* 센터 */
+  .center {
+    padding: 20px 24px;
+    overflow-y: auto;
+  }
+  .center-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .center-header-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .center-header-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .editable-field {
+    border-bottom: 1px dashed var(--text-dim);
+    cursor: pointer;
+    padding-bottom: 1px;
+  }
+  .editable-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* 전사 진행 중 */
+  .processing-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--surface3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .processing-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* 전사 결과 (세그먼트) */
+  .segment {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+  }
+  .segment-time {
+    color: var(--text-dim);
+    font-size: 11px;
+    min-width: 42px;
+    padding-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .segment-speaker {
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 36px;
+    padding-top: 2px;
+  }
+  .speaker-teacher { color: #60a5fa; }
+  .speaker-student { color: #34d399; }
+  .segment-text { color: var(--text); flex: 1; }
+
+  /* AI 패널 */
+  .ai-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* AI 요약 카드 */
+  .ai-summary-card {
+    margin: 12px;
+    padding: 14px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 108, 255, 0.2);
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .ai-summary-title {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 10px;
+    color: var(--accent);
+  }
+  .ai-summary-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .ai-summary-label {
+    color: var(--text-muted);
+    min-width: 60px;
+  }
+  .ai-summary-value {
+    color: var(--text);
+  }
+  .ai-summary-divider {
+    border-top: 1px solid rgba(124, 108, 255, 0.15);
+    margin: 10px 0;
+  }
+  .ai-summary-body {
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* AI 메시지 */
+  .ai-messages {
+    flex: 1;
+    padding: 12px 16px;
+    overflow-y: auto;
+  }
+  .ai-msg {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 8px;
+    max-width: 90%;
+  }
+  .ai-msg.assistant {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .ai-msg.user {
+    background: var(--accent-dim);
+    color: var(--text);
+    margin-left: auto;
+  }
+  .ai-msg.system {
+    background: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  /* AI 입력 */
+  .ai-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .ai-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  .ai-input::placeholder { color: var(--text-dim); }
+
+  /* 퀵 프롬프트 */
+  .quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 16px 8px;
+  }
+  .quick-prompt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  /* ── 비교 레이아웃 ── */
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1100px;
+  }
+  .comparison-label {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .comparison-label.before { color: var(--red); }
+  .comparison-label.after { color: var(--green); }
+
+  /* 줄 그은 텍스트 */
+  .strikethrough { text-decoration: line-through; color: var(--text-dim); }
+
+  /* ── 플로우 다이어그램 ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .flow-step.action {
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 108, 255, 0.3);
+    color: var(--accent);
+  }
+  .flow-step.auto {
+    background: var(--green-dim);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    color: var(--green);
+  }
+  .flow-step.removed {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--text-dim);
+    text-decoration: line-through;
+  }
+  .flow-arrow {
+    color: var(--text-dim);
+    padding: 0 8px;
+    font-size: 14px;
+  }
+
+  /* audio bar mock */
+  .audio-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface3);
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-top: 8px;
+  }
+  .audio-bar-play {
+    width: 28px; height: 28px;
+    background: var(--text);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--bg);
+    flex-shrink: 0;
+  }
+  .audio-bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--text-dim);
+    border-radius: 2px;
+    position: relative;
+  }
+  .audio-bar-track::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 30%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .audio-bar-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface3);
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h2>DESIGN MOCKUP</h2>
+  <h1>제로 프릭션 녹음 플로우 — 차수별 UI 목업</h1>
+</div>
+
+<nav class="mockup-nav" id="nav">
+  <button class="active" data-screen="overview">개요</button>
+  <button data-screen="s1-before">AS-IS (현재)</button>
+  <button data-screen="s1-after">1차: 즉시 업로드</button>
+  <button data-screen="s2">2차: AI 메타추출</button>
+  <button data-screen="s3">3차: 완성 UX</button>
+</nav>
+
+<!-- ════════════ 개요 ════════════ -->
+<section class="screen active" id="overview">
+  <span class="screen-label">OVERVIEW</span>
+  <h2 class="screen-title">플로우 비교</h2>
+  <p class="screen-desc">현재 5단계 → 최종 2단계. 사용자가 건드리는 것: 버튼 2번(녹음 시작 + 녹음 종료).</p>
+
+  <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">AS-IS</p>
+  <div class="flow">
+    <div class="flow-step action">🎙 녹음</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step removed">오디오 프리뷰</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step removed">"저장하러 가기"</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step removed">메타데이터 폼</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step removed">"기록 저장"</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step auto">전사 대기</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step auto">결과</div>
+  </div>
+
+  <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px; margin-top:24px;">TO-BE (3차 완료 후)</p>
+  <div class="flow">
+    <div class="flow-step action">🎙 녹음 종료</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step auto">자동 업로드 + 전사</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step auto">AI 메타 추출 + 요약</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step auto">원문 + AI 채팅</div>
+  </div>
+
+  <div style="margin-top:40px; padding:20px; background:var(--surface); border-radius:10px; border:1px solid var(--border); max-width:560px;">
+    <p style="font-size:13px; font-weight:600; margin-bottom:12px;">차수별 핵심 변화</p>
+    <div style="font-size:12px; color:var(--text-muted); line-height:2;">
+      <p><span class="tag" style="background:var(--accent-dim); color:var(--accent);">1차</span> &nbsp;폼 제거 — 녹음 종료 즉시 업로드, 워크스페이스 진입</p>
+      <p><span class="tag" style="background:var(--green-dim); color:var(--green);">2차</span> &nbsp;AI 추출 — 전사 완료 후 학생명·제목·요약 자동 생성</p>
+      <p><span class="tag" style="background:var(--orange-dim); color:var(--orange);">3차</span> &nbsp;UX 완성 — AI 요약 카드, 인라인 수정, 전사 중 안내</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ AS-IS ════════════ -->
+<section class="screen" id="s1-before">
+  <span class="screen-label">AS-IS</span>
+  <h2 class="screen-title">현재 플로우 (문제점)</h2>
+  <p class="screen-desc">녹음 후 3단계(프리뷰 → 저장하러가기 → 폼 작성)를 거쳐야 저장됨. 유저 입장에서 전부 불필요한 마찰.</p>
+
+  <p class="comparison-label before">Step 1 — 빈 화면</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+      <span class="frame-url">localhost:3000/counseling-records</span>
+    </div>
+    <div class="empty-landing">
+      <div class="empty-icon">🎙</div>
+      <p class="empty-title">첫 상담 기록을 만들어 보세요</p>
+      <p class="empty-desc">음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.</p>
+      <div class="cta-row">
+        <button class="btn-primary">📁 파일 업로드</button>
+        <button class="btn-secondary">🎙 바로 녹음하기</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="comparison-label before">Step 2 — 녹음 후 오디오 프리뷰 (불필요한 중간 단계)</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+    </div>
+    <div class="empty-landing">
+      <div class="empty-icon">🎙</div>
+      <p class="empty-title">첫 상담 기록을 만들어 보세요</p>
+      <p class="empty-desc">음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.</p>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:20px; margin-top:16px; max-width:400px; width:100%;">
+        <p style="font-size:11px; color:var(--text-dim); margin-bottom:6px;">선택한 오디오</p>
+        <p style="font-size:14px; font-weight:500; margin-bottom:4px;">바로 녹음하기 2026.04.08 03:46.webm</p>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">6KB · 길이 미확인 · 저장 준비</p>
+        <div class="audio-bar">
+          <div class="audio-bar-play">▶</div>
+          <span class="audio-bar-time">0:00</span>
+          <div class="audio-bar-track"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn-primary" style="opacity:1;">저장하러 가기 ← <span style="opacity:0.6; font-size:11px;">어디로?</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="comparison-label before">Step 3 — 메타데이터 폼 (귀찮은 입력)</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+    </div>
+    <div style="padding:40px; max-width:500px; margin:0 auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+          <p style="font-size:16px; font-weight:600;">새 기록 만들기</p>
+          <p style="font-size:12px; color:var(--text-muted);">선택한 오디오를 확인한 뒤 저장합니다.</p>
+        </div>
+        <button class="btn-ghost">닫기</button>
+      </div>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px;">
+        <p style="font-size:11px; color:var(--text-dim);">선택한 오디오 (또 보여줌)</p>
+        <p style="font-size:13px; margin-top:4px;">바로 녹음하기 2026.04.08.webm</p>
+      </div>
+      <label style="display:block; margin-bottom:14px;">
+        <span style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">학생 이름 <span style="color:var(--red);">*</span></span>
+        <input style="width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px; color:var(--text); font-size:13px;" placeholder="예: 김민수">
+      </label>
+      <div style="padding:10px 0; border-top:1px solid var(--border); margin-bottom:12px;">
+        <span style="font-size:12px; color:var(--text-dim);">▸ 추가 정보 — 제목, 상담 유형 (접혀있음)</span>
+      </div>
+      <button class="btn-primary" style="width:100%; justify-content:center;">기록 저장</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ 1차 ════════════ -->
+<section class="screen" id="s1-after">
+  <span class="screen-label">1차</span>
+  <h2 class="screen-title">즉시 업로드 — 폼 완전 제거</h2>
+  <p class="screen-desc">녹음 종료 즉시 API 호출. 오디오 프리뷰, "저장하러 가기", 메타데이터 폼 전부 제거. 바로 워크스페이스 진입.</p>
+
+  <p class="comparison-label after">녹음 중 (변경 없음)</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+      <span class="frame-url">yeon.world/counseling-records</span>
+    </div>
+    <div class="empty-landing">
+      <div class="empty-icon">🎙</div>
+      <p class="empty-title">첫 상담 기록을 만들어 보세요</p>
+      <div class="recording-bar" style="max-width:400px;">
+        <div class="rec-dot"></div>
+        <div class="rec-info">
+          <p class="rec-title">녹음 중</p>
+          <p class="rec-meta">02:34 경과</p>
+        </div>
+        <button class="btn-stop">■ 녹음 중지</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="comparison-label after">녹음 종료 → 즉시 워크스페이스 진입 (전사 처리 중)</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+      <span class="frame-url">yeon.world/counseling-records</span>
+    </div>
+    <div class="workspace">
+      <div class="sidebar">
+        <button class="sidebar-btn">+ 새 기록</button>
+        <div class="sidebar-item active">
+          <p class="sidebar-item-title">녹음 2026.04.08 03:46</p>
+          <p class="sidebar-item-meta">
+            <span class="status-dot status-processing"></span>
+            전사 처리 중
+          </p>
+        </div>
+      </div>
+      <div class="center">
+        <div class="center-header">
+          <div>
+            <p class="center-header-title">녹음 2026.04.08 03:46</p>
+            <p class="center-header-meta">2분 34초 · 전사 처리 중</p>
+          </div>
+        </div>
+        <div class="processing-placeholder">
+          <div class="spinner"></div>
+          <p class="processing-title">음성을 분석하고 있습니다</p>
+          <p class="processing-desc">보통 1~2분 이내에 완료됩니다.</p>
+        </div>
+      </div>
+      <div class="ai-panel">
+        <div class="ai-panel-header">🤖 AI 어시스턴트</div>
+        <div class="ai-messages">
+          <div class="ai-msg system">전사가 완료되면 AI 분석을 시작합니다</div>
+        </div>
+        <div class="ai-input-area">
+          <input class="ai-input" placeholder="전사 완료 후 질문할 수 있습니다" disabled>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ 2차 ════════════ -->
+<section class="screen" id="s2">
+  <span class="screen-label">2차</span>
+  <h2 class="screen-title">AI 자동 메타데이터 추출</h2>
+  <p class="screen-desc">전사 완료 후 AI가 학생 이름, 상담 제목, 유형, 요약을 자동 추출하여 DB에 채움.</p>
+
+  <p class="comparison-label after">전사 완료 → AI 메타데이터 자동 채움</p>
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+      <span class="frame-url">yeon.world/counseling-records</span>
+    </div>
+    <div class="workspace">
+      <div class="sidebar">
+        <button class="sidebar-btn">+ 새 기록</button>
+        <div class="sidebar-item active">
+          <p class="sidebar-item-title">수학 과제 누락 상담</p>
+          <p class="sidebar-item-meta">
+            <span class="status-dot status-ready"></span>
+            김민수 · 대면 상담
+          </p>
+        </div>
+      </div>
+      <div class="center">
+        <div class="center-header">
+          <div>
+            <p class="center-header-title" style="color:var(--green);">
+              ← AI가 자동 생성한 제목: 수학 과제 누락 상담
+            </p>
+            <p class="center-header-meta">
+              <span style="color:var(--green);">김민수</span> · 대면 상담 · 2분 34초 · 원문 준비 완료
+            </p>
+          </div>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:00</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:08</span>
+          <span class="segment-speaker speaker-student">학생</span>
+          <span class="segment-text">아... 네, 어제 학원이 늦게 끝나서 못 했어요.</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:15</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">그랬구나. 학원 스케줄이 빡빡한 편이야?</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:22</span>
+          <span class="segment-speaker speaker-student">학생</span>
+          <span class="segment-text">네, 월수금 수학이랑 화목 영어 다녀요.</span>
+        </div>
+        <div class="segment" style="border:none;">
+          <span class="segment-time">00:30</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로...</span>
+        </div>
+      </div>
+      <div class="ai-panel">
+        <div class="ai-panel-header">🤖 AI 어시스턴트</div>
+        <div class="ai-messages">
+          <div class="ai-msg assistant">
+            <strong>📋 상담 분석 완료</strong><br><br>
+            <strong>학생:</strong> 김민수<br>
+            <strong>유형:</strong> 대면 상담<br>
+            <strong>주제:</strong> 수학 과제 미제출<br><br>
+            <strong>핵심 내용:</strong><br>
+            • 학원 일정(주 5회)으로 과제 시간 부족<br>
+            • 과제 마감 시간 조정 논의<br>
+            • 학습 루틴 점검 필요<br><br>
+            <strong>후속 조치:</strong><br>
+            • 과제 제출 기한을 익일 오전으로 변경 검토<br>
+            • 2주 후 학습 루틴 재점검 상담 예정
+          </div>
+        </div>
+        <div class="quick-prompts">
+          <span class="quick-prompt">이 학생 이전 상담 요약</span>
+          <span class="quick-prompt">보호자 안내문 초안</span>
+          <span class="quick-prompt">후속 조치 체크리스트</span>
+        </div>
+        <div class="ai-input-area">
+          <input class="ai-input" placeholder="질문을 입력하세요...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ 3차 ════════════ -->
+<section class="screen" id="s3">
+  <span class="screen-label">3차</span>
+  <h2 class="screen-title">완성 UX — 인라인 수정 + AI 요약 카드</h2>
+  <p class="screen-desc">AI 요약은 별도 고정 카드로, 메타데이터는 헤더에서 인라인 수정 가능. 채팅은 사용자 질문부터 시작.</p>
+
+  <div class="frame">
+    <div class="frame-bar">
+      <div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div>
+      <span class="frame-url">yeon.world/counseling-records</span>
+    </div>
+    <div class="workspace">
+      <div class="sidebar">
+        <button class="sidebar-btn">+ 새 기록</button>
+        <div class="sidebar-item active">
+          <p class="sidebar-item-title">수학 과제 누락 상담</p>
+          <p class="sidebar-item-meta">
+            <span class="status-dot status-ready"></span>
+            김민수 · 4.8 03:46
+          </p>
+        </div>
+        <div class="sidebar-item">
+          <p class="sidebar-item-title">교우 관계 고민 상담</p>
+          <p class="sidebar-item-meta">
+            <span class="status-dot status-ready"></span>
+            이서윤 · 4.7 14:20
+          </p>
+        </div>
+        <div class="sidebar-item">
+          <p class="sidebar-item-title">녹음 2026.04.08 10:30</p>
+          <p class="sidebar-item-meta">
+            <span class="status-dot status-processing"></span>
+            전사 처리 중
+          </p>
+        </div>
+      </div>
+      <div class="center">
+        <div class="center-header">
+          <div>
+            <p class="center-header-title">
+              <span class="editable-field">수학 과제 누락 상담</span>
+              <span class="editable-hint"> ← 클릭해서 수정</span>
+            </p>
+            <p class="center-header-meta">
+              <span class="editable-field">김민수</span> ·
+              <span class="editable-field">대면 상담</span> ·
+              2분 34초 · 원문 준비 완료
+            </p>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-ghost">🔊</button>
+            <button class="btn-ghost">📋</button>
+            <button class="btn-ghost" style="color:var(--red);">🗑</button>
+          </div>
+        </div>
+
+        <div class="audio-bar" style="margin-bottom:16px;">
+          <div class="audio-bar-play">▶</div>
+          <span class="audio-bar-time">0:08</span>
+          <div class="audio-bar-track"></div>
+          <span class="audio-bar-time">2:34</span>
+        </div>
+
+        <div class="segment">
+          <span class="segment-time">00:00</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:08</span>
+          <span class="segment-speaker speaker-student">학생</span>
+          <span class="segment-text">아... 네, 어제 학원이 늦게 끝나서 못 했어요.</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:15</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">그랬구나. 학원 스케줄이 빡빡한 편이야?</span>
+        </div>
+        <div class="segment">
+          <span class="segment-time">00:22</span>
+          <span class="segment-speaker speaker-student">학생</span>
+          <span class="segment-text">네, 월수금 수학이랑 화목 영어 다녀요.</span>
+        </div>
+        <div class="segment" style="border:none;">
+          <span class="segment-time">00:30</span>
+          <span class="segment-speaker speaker-teacher">교사</span>
+          <span class="segment-text">그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로...</span>
+        </div>
+      </div>
+      <div class="ai-panel">
+        <div class="ai-panel-header">🤖 AI 어시스턴트</div>
+        <div class="ai-summary-card">
+          <p class="ai-summary-title">📋 AI 상담 요약</p>
+          <div class="ai-summary-row">
+            <span class="ai-summary-label">학생</span>
+            <span class="ai-summary-value">김민수</span>
+          </div>
+          <div class="ai-summary-row">
+            <span class="ai-summary-label">유형</span>
+            <span class="ai-summary-value">대면 상담</span>
+          </div>
+          <div class="ai-summary-row">
+            <span class="ai-summary-label">주제</span>
+            <span class="ai-summary-value">수학 과제 미제출</span>
+          </div>
+          <div class="ai-summary-divider"></div>
+          <div class="ai-summary-body">
+            학원 일정(주 5회)으로 과제 시간 부족. 제출 기한 조정 논의. 2주 후 재점검 예정.
+          </div>
+        </div>
+        <div class="ai-messages" style="flex:1;">
+          <div class="ai-msg user">보호자한테 보낼 안내문 초안 만들어줘</div>
+          <div class="ai-msg assistant">
+            안녕하세요, 김민수 학생 담임입니다.<br><br>
+            오늘 민수와 수학 과제 제출 관련 상담을 진행했습니다. 학원 일정이 빡빡해 과제 시간 확보가 어려운 상황이라, 제출 기한을 익일 오전으로 조정하기로 했습니다...<br><br>
+            <span style="color:var(--text-muted);">📋 복사하기</span>
+          </div>
+        </div>
+        <div class="quick-prompts">
+          <span class="quick-prompt">후속 조치 체크리스트</span>
+          <span class="quick-prompt">이전 상담과 비교</span>
+        </div>
+        <div class="ai-input-area">
+          <input class="ai-input" placeholder="질문을 입력하세요...">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const nav = document.getElementById('nav');
+  const buttons = nav.querySelectorAll('button');
+  const screens = document.querySelectorAll('.screen');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      screens.forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.screen).classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

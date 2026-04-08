@@ -41,6 +41,11 @@
 - `study-platform-client`와 동일하게 `develop`을 develop 서버 기준 통합 브랜치, `main`을 운영 브랜치로 둔다.
 - 2026-04-06 기준 원격에는 `origin/main`만 있으므로, 첫 PR 흐름에 들어가기 전에 `develop`을 `main`에서 생성해 push하는 것을 전제로 한다.
 
+### 배포 도메인
+
+- `yeon.world` — 운영 서버 (`main` 브랜치 기준 배포)
+- `dev.yeon.world` — 개발용 배포 서버 (`develop` 브랜치 기준 배포)
+
 ### Worktree 운영 정책
 
 - 이 저장소는 최대 3개의 worktree를 사용한다.
