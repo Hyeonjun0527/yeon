@@ -46,9 +46,46 @@
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 32px;
-  height: 52px;
-  gap: 24px;
+  padding: 0 16px;
+  height: 48px;
+  gap: 12px;
+}
+
+.topNavModelBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.topNavModelBtn:hover {
+  background: var(--surface3);
+}
+
+.topNavActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.topNavActionBtn:hover {
+  background: var(--surface3);
+  color: var(--text-secondary);
 }
 
 .logo {
@@ -101,6 +138,7 @@
 /* ── App Shell ── */
 .appShell {
   display: flex;
+  height: 100vh;
   min-height: 520px;
 }
 
@@ -179,6 +217,10 @@
   font-weight: 600;
 }
 
+.btnNewWrap {
+  position: relative;
+}
+
 .btnNew {
   background: var(--accent);
   color: #fff;
@@ -189,6 +231,75 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+}
+
+.btnNewDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 4px 0;
+  min-width: 140px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.btnNewDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.btnNewDropdownItem:hover {
+  background: var(--surface4);
+}
+
+/* ── Drag & Drop Overlay ── */
+.dropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(9, 9, 11, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dropBox {
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 48px 64px;
+  text-align: center;
+  background: rgba(129, 140, 248, 0.06);
+}
+
+.dropBoxIcon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.dropBoxTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.dropBoxDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .sidebarSearch {
@@ -419,21 +530,132 @@
 
 /* ── AI Panel ── */
 .aiPanel {
-  width: 340px;
+  width: 400px;
+  min-width: 280px;
+  max-width: 600px;
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  position: relative;
+}
+
+.aiPanel.aiPanelCollapsed {
+  width: 0 !important;
+  min-width: 0;
+  overflow: hidden;
+  border-left: none;
+  transition: width 0.15s ease;
+}
+
+.aiResizeHandle {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+}
+
+.aiResizeHandle:hover,
+.aiResizeHandle:active {
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+.aiToggleBtn {
+  position: absolute;
+  left: -28px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-dim);
+  z-index: 11;
+  transition: background 0.15s;
+}
+
+.aiToggleBtn:hover {
+  background: var(--hover);
 }
 
 .aiHeader {
-  padding: 14px 16px;
+  padding: 0 12px;
+  height: 49px;
+  min-height: 49px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
+}
+
+.aiHeaderTabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+}
+
+.aiHeaderTab {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.aiHeaderTab:hover {
+  color: var(--text-secondary);
+}
+
+.aiHeaderTabActive {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+.aiHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.aiHeaderBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.aiHeaderBtn:hover {
+  background: var(--hover);
 }
 
 .aiHeaderDot {
@@ -557,9 +779,180 @@
   color: var(--text);
 }
 
+/* ── Image Chips ── */
+.aiImageChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.aiImageChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.aiImageChipLoading {
+  opacity: 0.5;
+  animation: mockPulse 1.2s ease-in-out infinite;
+}
+
+.aiImageChipName {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiImageChipRemove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.aiImageChipRemove:hover {
+  color: var(--text);
+}
+
+/* ── Web Search Toggle ── */
+.aiWebSearchActive {
+  color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+}
+
 .aiInputWrap {
-  padding: 10px 14px;
+  padding: 10px;
   border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.aiInputBox {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.aiInputBox:focus-within {
+  border-color: var(--accent-border);
+}
+
+.aiTextarea {
+  width: 100%;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 12px 14px 4px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  font-family: inherit;
+  background: none;
+  border: none;
+  resize: none;
+  overflow-y: auto;
+}
+
+.aiTextarea::placeholder {
+  color: var(--text-dim);
+}
+
+.aiInputToolbar {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px 8px;
+  gap: 2px;
+}
+
+.aiToolBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.aiToolBtn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.aiToolBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.aiToolBtn:disabled:hover {
+  background: none;
+  color: var(--text-secondary);
+}
+
+.aiModelSelect {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.aiModelSelect:hover {
+  background: var(--hover);
+}
+
+.aiSendBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.15s;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.aiSendBtn:disabled {
+  background: var(--border);
+  cursor: default;
+}
+
+.aiSendBtn:hover:not(:disabled) {
+  opacity: 0.85;
 }
 
 .aiInput {
@@ -586,56 +979,71 @@
 .emptyState {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 40px;
+  min-height: 0;
+}
+
+.emptyStateCta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   text-align: center;
+  max-width: 360px;
 }
 
 .emptyIconWrap {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  background: linear-gradient(
-    135deg,
-    var(--accent-dim),
-    rgba(34, 211, 238, 0.08)
-  );
-  border: 1px solid var(--accent-border);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  margin-bottom: 20px;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.emptyIconWrap svg {
+  width: 32px;
+  height: 32px;
 }
 
 .emptyTitle {
-  font-size: 17px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  letter-spacing: -0.3px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .emptyDesc {
-  font-size: 13px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--text-secondary);
-  max-width: 320px;
-  margin-bottom: 28px;
+}
+
+.emptyActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .btnLg {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 500;
+  padding: 14px 28px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  border: none;
-  transition: all 0.15s;
+  transition: opacity 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .btnAccent {
@@ -644,17 +1052,23 @@
 }
 
 .btnAccent:hover {
+  opacity: 0.9;
+  box-shadow: 0 8px 32px rgba(129, 140, 248, 0.25);
+}
+
+.btnAccent:hover {
   background: var(--accent-hover);
 }
 
 .btnOutline {
-  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
-  border: 1px solid var(--border-light);
 }
 
 .btnOutline:hover {
-  background: var(--surface3);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* ── Recording State ── */
