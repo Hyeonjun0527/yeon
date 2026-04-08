@@ -91,13 +91,7 @@ export default function MockV2Workspace() {
       <TopNav />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Gnav
-          activeMenu="records"
-          onNewChat={() => {
-            if (records.selectedId) records.clearMessages(records.selectedId);
-            aiPanel.setTab("chat");
-          }}
-        />
+        <Gnav activeMenu="records" />
 
         {records.phase === "empty" && (
           <EmptyState
