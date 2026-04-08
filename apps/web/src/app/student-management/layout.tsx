@@ -8,7 +8,11 @@ import styles from "./student-management-layout.module.css";
 
 const NAV_ITEMS = [
   { href: "/student-management", label: "학생 목록", icon: Users, exact: true },
-  { href: "/student-management/classes", label: "코호트 관리", icon: GraduationCap },
+  {
+    href: "/student-management/classes",
+    label: "코호트 관리",
+    icon: GraduationCap,
+  },
 ] as const;
 
 export default function StudentManagementLayout({

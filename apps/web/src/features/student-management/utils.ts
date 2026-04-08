@@ -67,8 +67,7 @@ export function sortStudents(
     if (key === "name") return a.name.localeCompare(b.name, "ko");
     if (key === "registeredAt")
       return (
-        new Date(b.registeredAt).getTime() -
-        new Date(a.registeredAt).getTime()
+        new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()
       );
     return a.status.localeCompare(b.status);
   });
