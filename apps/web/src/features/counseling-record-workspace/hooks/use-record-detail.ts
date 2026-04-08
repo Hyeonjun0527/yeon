@@ -3,7 +3,7 @@ import {
   type CounselingRecordDetail,
   type CounselingRecordListItem,
 } from "@yeon/api-contract";
-import { useEffect, useState, startTransition, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, startTransition, type Dispatch, type SetStateAction } from "react";
 import type { UploadTone } from "../types";
 import { PROCESSING_REFRESH_INTERVAL_MS } from "../constants";
 import { fetchApi, buildClientRequestId, upsertRecordList } from "../utils";
@@ -28,13 +28,16 @@ export function useRecordDetail(
     tone: "idle",
   });
 
+  const recordDetailsRef = useRef(recordDetails);
+  recordDetailsRef.current = recordDetails;
+
   const selectedRecordDetail = selectedRecordId
     ? (recordDetails[selectedRecordId] ?? null)
     : null;
 
   // 상세 로드
   useEffect(() => {
-    if (!selectedRecordId || selectedRecordId in recordDetails) {
+    if (!selectedRecordId || selectedRecordId in recordDetailsRef.current) {
       return;
     }
 
@@ -93,7 +96,7 @@ export function useRecordDetail(
     return () => {
       ignore = true;
     };
-  }, [recordDetails, selectedRecordId, setRecords]);
+  }, [selectedRecordId, setRecords]);
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {
