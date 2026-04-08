@@ -1,5 +1,5 @@
 ---
-name: deploy
+name: deploy-all
 description: 검증 → 커밋 → push → PR(develop) → 머지 → PR(main) → 머지까지 전체 배포 플로우.
 user_invocable: true
 ---
