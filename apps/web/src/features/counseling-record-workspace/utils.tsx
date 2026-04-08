@@ -71,8 +71,7 @@ export function isTranscriptSegmentActive(params: {
     return false;
   }
 
-  const fallbackEndMs =
-    params.nextStartMs ?? params.startMs + 4000;
+  const fallbackEndMs = params.nextStartMs ?? params.startMs + 4000;
   const effectiveEndMs = Math.max(
     params.endMs ?? fallbackEndMs,
     params.startMs + 500,
@@ -275,9 +274,7 @@ export function buildQuickPrompts(record: CounselingRecordListItem) {
   }
 
   if (record.status === "processing") {
-    return [
-      "현재 상태를 알려줘",
-    ];
+    return ["현재 상태를 알려줘"];
   }
 
   return [

@@ -36,9 +36,7 @@ export function UploadAudioSourcePicker({
       >
         <Mic size={20} strokeWidth={2} />
         <div>
-          <span className={styles.primaryCtaTileTitle}>
-            바로 녹음하기
-          </span>
+          <span className={styles.primaryCtaTileTitle}>바로 녹음하기</span>
           <span className={styles.primaryCtaTileDescription}>
             지금 바로 녹음 시작
           </span>

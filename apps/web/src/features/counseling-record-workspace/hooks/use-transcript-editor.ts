@@ -1,10 +1,21 @@
-import { useDeferredValue, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
+import {
+  useDeferredValue,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import type {
+  CounselingRecordDetail,
+  CounselingRecordListItem,
+} from "@yeon/api-contract/counseling-records";
 import { isTranscriptSegmentMatched } from "../utils";
 
 export function useTranscriptEditor(
   selectedRecord: CounselingRecordListItem | null,
-  setRecordDetails: Dispatch<SetStateAction<Record<string, CounselingRecordDetail>>>,
+  setRecordDetails: Dispatch<
+    SetStateAction<Record<string, CounselingRecordDetail>>
+  >,
   setSaveToast: (message: string) => void,
 ) {
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
@@ -86,9 +97,7 @@ export function useTranscriptEditor(
           [selectedRecord.id]: {
             ...detail,
             transcriptSegments: detail.transcriptSegments.map((s) =>
-              s.id === targetSegmentId
-                ? { ...s, text: targetText }
-                : s,
+              s.id === targetSegmentId ? { ...s, text: targetText } : s,
             ),
           },
         };

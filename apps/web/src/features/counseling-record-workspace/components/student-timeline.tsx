@@ -1,10 +1,4 @@
-import {
-  Bot,
-  ClipboardCopy,
-  LoaderCircle,
-  Square,
-  Users,
-} from "lucide-react";
+import { Bot, ClipboardCopy, LoaderCircle, Square, Users } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
@@ -28,10 +22,7 @@ export interface StudentTimelineProps {
     content: string;
     isStreaming: boolean;
   } | null;
-  handleStartTrendAnalysis: (
-    studentName: string,
-    recordIds: string[],
-  ) => void;
+  handleStartTrendAnalysis: (studentName: string, recordIds: string[]) => void;
   handleStopTrendAnalysis: () => void;
   setSaveToast: (message: string) => void;
 }
@@ -50,17 +41,14 @@ export function StudentTimeline({
     .filter((r) => r.studentName === selectedStudentName)
     .sort(
       (a, b) =>
-        new Date(a.createdAt).getTime() -
-        new Date(b.createdAt).getTime(),
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
   return (
     <div className={styles.studentTimeline}>
       <div className={styles.timelineHeader}>
         <Users size={20} strokeWidth={1.8} />
-        <h2 className={styles.timelineTitle}>
-          {selectedStudentName}
-        </h2>
+        <h2 className={styles.timelineTitle}>{selectedStudentName}</h2>
         <span className={styles.timelineCount}>
           상담 {studentRecords.length}건
         </span>
@@ -77,10 +65,7 @@ export function StudentTimeline({
             const StatusIcon = status.icon;
 
             return (
-              <div
-                key={record.id}
-                className={styles.timelineItem}
-              >
+              <div key={record.id} className={styles.timelineItem}>
                 <div className={styles.timelineTrack}>
                   <div className={styles.timelineDot} />
                   {index < studentRecords.length - 1 ? (
@@ -90,9 +75,7 @@ export function StudentTimeline({
                 <button
                   type="button"
                   className={styles.timelineCard}
-                  onClick={() =>
-                    handleSelectRecord(record.id)
-                  }
+                  onClick={() => handleSelectRecord(record.id)}
                 >
                   <div className={styles.timelineCardHeader}>
                     <span className={styles.timelineDate}>
@@ -101,10 +84,7 @@ export function StudentTimeline({
                     <span
                       className={`${styles.statusBadge} ${status.className}`}
                     >
-                      <StatusIcon
-                        size={10}
-                        strokeWidth={2.2}
-                      />
+                      <StatusIcon size={10} strokeWidth={2.2} />
                       {status.label}
                     </span>
                   </div>
@@ -161,14 +141,11 @@ export function StudentTimeline({
       ) : null}
 
       {/* 78차: 추이 분석 결과 패널 */}
-      {trendAnalysis &&
-      trendAnalysis.studentName === selectedStudentName ? (
+      {trendAnalysis && trendAnalysis.studentName === selectedStudentName ? (
         <div className={styles.trendResultPanel}>
           <div className={styles.trendResultHeader}>
             <Bot size={14} strokeWidth={2} />
-            <span className={styles.trendResultTitle}>
-              추이 분석 결과
-            </span>
+            <span className={styles.trendResultTitle}>추이 분석 결과</span>
             {trendAnalysis.isStreaming ? (
               <button
                 type="button"
@@ -184,16 +161,10 @@ export function StudentTimeline({
                 className={styles.trendExportButton}
                 onClick={async () => {
                   try {
-                    await navigator.clipboard.writeText(
-                      trendAnalysis.content,
-                    );
-                    setSaveToast(
-                      "추이 분석이 클립보드에 복사되었습니다.",
-                    );
+                    await navigator.clipboard.writeText(trendAnalysis.content);
+                    setSaveToast("추이 분석이 클립보드에 복사되었습니다.");
                   } catch {
-                    setSaveToast(
-                      "클립보드 복사에 실패했습니다.",
-                    );
+                    setSaveToast("클립보드 복사에 실패했습니다.");
                   }
                 }}
               >

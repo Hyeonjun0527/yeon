@@ -14,8 +14,7 @@ const MAX_OPENAI_TRANSCRIPTION_BYTES = 24 * 1024 * 1024;
 const MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS = 8 * 60;
 const MAX_DIARIZE_CHUNK_DURATION_SECONDS = 30;
 const DEFAULT_TRANSCRIPTION_MODEL =
-  process.env.OPENAI_TRANSCRIPTION_MODEL?.trim() ||
-  "gpt-4o-transcribe-diarize";
+  process.env.OPENAI_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-transcribe-diarize";
 const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = (
   process.env.OPENAI_TRANSCRIPTION_FALLBACK_MODELS?.trim() ||
   "gpt-4o-transcribe"
@@ -179,7 +178,8 @@ async function buildTranscriptionSources(params: {
     randomUUID(),
   );
   const sourceExtension =
-    path.extname(params.originalName) || guessExtensionFromMimeType(params.mimeType);
+    path.extname(params.originalName) ||
+    guessExtensionFromMimeType(params.mimeType);
   const sourcePath = path.join(sourceDirectory, `source${sourceExtension}`);
   const sourceAudio = await downloadCounselingAudioObject(params.storagePath);
 
@@ -435,25 +435,31 @@ async function requestOpenAiTranscription(params: {
   );
   formData.append("model", params.model);
   formData.append("language", "ko");
-  formData.append("response_format", usesDiarization ? "diarized_json" : "json");
+  formData.append(
+    "response_format",
+    usesDiarization ? "diarized_json" : "json",
+  );
   formData.append("temperature", "0");
 
   if (!usesDiarization) {
     formData.append("prompt", COUNSELING_TRANSCRIPTION_PROMPT);
   }
 
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${params.apiKey}`,
-      ...(params.clientRequestId
-        ? {
-            "X-Client-Request-Id": params.clientRequestId,
-          }
-        : {}),
+  const response = await fetch(
+    "https://api.openai.com/v1/audio/transcriptions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        ...(params.clientRequestId
+          ? {
+              "X-Client-Request-Id": params.clientRequestId,
+            }
+          : {}),
+      },
+      body: formData,
     },
-    body: formData,
-  });
+  );
 
   if (response.ok) {
     return {
@@ -466,7 +472,10 @@ async function requestOpenAiTranscription(params: {
     (await extractOpenAiErrorMessage(response)) ??
     "STT 제공자가 전사 요청을 처리하지 못했습니다.";
 
-  throw new ServiceError(response.status >= 500 ? 502 : response.status, message);
+  throw new ServiceError(
+    response.status >= 500 ? 502 : response.status,
+    message,
+  );
 }
 
 export async function transcribeStoredAudio(params: {

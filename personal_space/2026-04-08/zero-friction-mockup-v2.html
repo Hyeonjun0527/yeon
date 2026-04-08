@@ -1,1005 +1,2009 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YEON — 학원 학생관리 + AI 상담 기록 플랫폼 목업 v2</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #09090b;
-    --surface: #111113;
-    --surface2: #18181b;
-    --surface3: #222225;
-    --surface4: #2c2c30;
-    --border: #27272a;
-    --border-light: #333338;
-    --text: #fafafa;
-    --text-secondary: #a1a1aa;
-    --text-dim: #52525b;
-    --accent: #818cf8;
-    --accent-hover: #6366f1;
-    --accent-dim: rgba(129, 140, 248, 0.1);
-    --accent-border: rgba(129, 140, 248, 0.2);
-    --green: #34d399;
-    --green-dim: rgba(52, 211, 153, 0.1);
-    --green-border: rgba(52, 211, 153, 0.2);
-    --amber: #fbbf24;
-    --amber-dim: rgba(251, 191, 36, 0.1);
-    --amber-border: rgba(251, 191, 36, 0.2);
-    --red: #f87171;
-    --red-dim: rgba(248, 113, 113, 0.08);
-    --rose: #fb7185;
-    --cyan: #22d3ee;
-    --radius: 10px;
-    --radius-sm: 6px;
-    --radius-lg: 14px;
-  }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YEON — 학원 학생관리 + AI 상담 기록 플랫폼 목업 v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #09090b;
+        --surface: #111113;
+        --surface2: #18181b;
+        --surface3: #222225;
+        --surface4: #2c2c30;
+        --border: #27272a;
+        --border-light: #333338;
+        --text: #fafafa;
+        --text-secondary: #a1a1aa;
+        --text-dim: #52525b;
+        --accent: #818cf8;
+        --accent-hover: #6366f1;
+        --accent-dim: rgba(129, 140, 248, 0.1);
+        --accent-border: rgba(129, 140, 248, 0.2);
+        --green: #34d399;
+        --green-dim: rgba(52, 211, 153, 0.1);
+        --green-border: rgba(52, 211, 153, 0.2);
+        --amber: #fbbf24;
+        --amber-dim: rgba(251, 191, 36, 0.1);
+        --amber-border: rgba(251, 191, 36, 0.2);
+        --red: #f87171;
+        --red-dim: rgba(248, 113, 113, 0.08);
+        --rose: #fb7185;
+        --cyan: #22d3ee;
+        --radius: 10px;
+        --radius-sm: 6px;
+        --radius-lg: 14px;
+      }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  body {
-    font-family: 'Noto Sans KR', 'Outfit', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
+      body {
+        font-family: "Noto Sans KR", "Outfit", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
 
-  /* ── Nav ── */
-  .top-nav {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(9,9,11,0.85);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    padding: 0 32px; height: 52px;
-    gap: 24px;
-  }
-  .top-nav .logo {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 700; font-size: 16px;
-    letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--accent), var(--cyan));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .nav-tabs { display: flex; gap: 0; margin-left: 24px; }
-  .nav-tab {
-    background: none; border: none; color: var(--text-dim);
-    padding: 16px 16px; font-size: 13px; cursor: pointer;
-    border-bottom: 2px solid transparent;
-    font-family: inherit; transition: all 0.15s;
-  }
-  .nav-tab:hover { color: var(--text-secondary); }
-  .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-  .nav-spacer { flex: 1; }
-  .nav-meta { font-size: 11px; color: var(--text-dim); }
+      /* ── Nav ── */
+      .top-nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(9, 9, 11, 0.85);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 32px;
+        height: 52px;
+        gap: 24px;
+      }
+      .top-nav .logo {
+        font-family: "Outfit", sans-serif;
+        font-weight: 700;
+        font-size: 16px;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .nav-tabs {
+        display: flex;
+        gap: 0;
+        margin-left: 24px;
+      }
+      .nav-tab {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        padding: 16px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .nav-tab:hover {
+        color: var(--text-secondary);
+      }
+      .nav-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+      }
+      .nav-spacer {
+        flex: 1;
+      }
+      .nav-meta {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
 
-  /* ── Screen container ── */
-  .screen { display: none; }
-  .screen.active { display: block; }
+      /* ── Screen container ── */
+      .screen {
+        display: none;
+      }
+      .screen.active {
+        display: block;
+      }
 
-  /* ── Section headers ── */
-  .section-header {
-    padding: 40px 40px 20px;
-  }
-  .section-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 500; letter-spacing: 0.5px;
-    padding: 4px 10px; border-radius: 20px;
-    margin-bottom: 10px;
-  }
-  .badge-overview { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); }
-  .badge-phase1 { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
-  .badge-phase2 { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border); }
-  .badge-phase3 { background: var(--red-dim); color: var(--rose); border: 1px solid rgba(251,113,133,0.2); }
-  .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
-  .section-desc { font-size: 13px; color: var(--text-secondary); max-width: 600px; }
+      /* ── Section headers ── */
+      .section-header {
+        padding: 40px 40px 20px;
+      }
+      .section-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 10px;
+      }
+      .badge-overview {
+        background: var(--accent-dim);
+        color: var(--accent);
+        border: 1px solid var(--accent-border);
+      }
+      .badge-phase1 {
+        background: var(--green-dim);
+        color: var(--green);
+        border: 1px solid var(--green-border);
+      }
+      .badge-phase2 {
+        background: var(--amber-dim);
+        color: var(--amber);
+        border: 1px solid var(--amber-border);
+      }
+      .badge-phase3 {
+        background: var(--red-dim);
+        color: var(--rose);
+        border: 1px solid rgba(251, 113, 133, 0.2);
+      }
+      .section-title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+      }
+      .section-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        max-width: 600px;
+      }
 
-  /* ── Frame (browser mockup) ── */
-  .frame-wrapper { padding: 0 40px 32px; }
-  .frame-label { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; font-weight: 500; }
-  .frame {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
-  .frame-chrome {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 16px;
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-  }
-  .frame-dots { display: flex; gap: 5px; }
-  .frame-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--surface4); }
-  .frame-url {
-    flex: 1; margin-left: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: var(--text-dim);
-    background: var(--surface3); padding: 4px 12px; border-radius: 6px;
-  }
+      /* ── Frame (browser mockup) ── */
+      .frame-wrapper {
+        padding: 0 40px 32px;
+      }
+      .frame-label {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+      .frame {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+      .frame-chrome {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+      .frame-dots {
+        display: flex;
+        gap: 5px;
+      }
+      .frame-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--surface4);
+      }
+      .frame-url {
+        flex: 1;
+        margin-left: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--text-dim);
+        background: var(--surface3);
+        padding: 4px 12px;
+        border-radius: 6px;
+      }
 
-  /* ── App shell (inside frame) ── */
-  .app-shell { display: flex; min-height: 520px; }
+      /* ── App shell (inside frame) ── */
+      .app-shell {
+        display: flex;
+        min-height: 520px;
+      }
 
-  /* ── Global nav (학원 메뉴) ── */
-  .gnav {
-    width: 56px; border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; align-items: center;
-    padding: 16px 0; gap: 4px;
-    background: var(--bg);
-  }
-  .gnav-item {
-    width: 36px; height: 36px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; cursor: pointer; color: var(--text-dim);
-    transition: all 0.15s;
-  }
-  .gnav-item:hover { background: var(--surface3); color: var(--text-secondary); }
-  .gnav-item.active { background: var(--accent-dim); color: var(--accent); }
-  .gnav-spacer { flex: 1; }
-  .gnav-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--cyan));
-    font-size: 11px; color: #fff; font-weight: 600;
-    display: flex; align-items: center; justify-content: center;
-  }
+      /* ── Global nav (학원 메뉴) ── */
+      .gnav {
+        width: 56px;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 0;
+        gap: 4px;
+        background: var(--bg);
+      }
+      .gnav-item {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        cursor: pointer;
+        color: var(--text-dim);
+        transition: all 0.15s;
+      }
+      .gnav-item:hover {
+        background: var(--surface3);
+        color: var(--text-secondary);
+      }
+      .gnav-item.active {
+        background: var(--accent-dim);
+        color: var(--accent);
+      }
+      .gnav-spacer {
+        flex: 1;
+      }
+      .gnav-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        font-size: 11px;
+        color: #fff;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 240px; border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    background: var(--surface);
-  }
-  .sidebar-header {
-    padding: 16px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .sidebar-title { font-size: 13px; font-weight: 600; }
-  .sidebar-btn-new {
-    background: var(--accent); color: #fff; border: none;
-    padding: 6px 12px; border-radius: var(--radius-sm);
-    font-size: 11px; font-weight: 500; cursor: pointer;
-    font-family: inherit;
-  }
-  .sidebar-search {
-    margin: 8px 12px;
-    background: var(--surface3); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 7px 10px;
-    color: var(--text); font-size: 12px; width: calc(100% - 24px);
-    outline: none; font-family: inherit;
-  }
-  .sidebar-search::placeholder { color: var(--text-dim); }
-  .sidebar-group-label {
-    padding: 10px 16px 4px;
-    font-size: 10px; font-weight: 600; color: var(--text-dim);
-    letter-spacing: 0.5px; text-transform: uppercase;
-  }
-  .sidebar-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
-  .sidebar-item {
-    padding: 10px 12px; border-radius: 8px; cursor: pointer;
-    margin-bottom: 2px; transition: background 0.1s;
-  }
-  .sidebar-item:hover { background: var(--surface3); }
-  .sidebar-item.active { background: var(--surface3); border: 1px solid var(--border-light); }
-  .sidebar-item-row { display: flex; align-items: center; gap: 8px; }
-  .sidebar-item-title { font-size: 12px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-item-meta { font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
-  .status-badge {
-    display: inline-flex; align-items: center; gap: 3px;
-    font-size: 10px; padding: 1px 6px; border-radius: 4px;
-  }
-  .status-ready { background: var(--green-dim); color: var(--green); }
-  .status-processing { background: var(--amber-dim); color: var(--amber); }
+      /* ── Sidebar ── */
+      .sidebar {
+        width: 240px;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+      }
+      .sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .sidebar-title {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .sidebar-btn-new {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .sidebar-search {
+        margin: 8px 12px;
+        background: var(--surface3);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 7px 10px;
+        color: var(--text);
+        font-size: 12px;
+        width: calc(100% - 24px);
+        outline: none;
+        font-family: inherit;
+      }
+      .sidebar-search::placeholder {
+        color: var(--text-dim);
+      }
+      .sidebar-group-label {
+        padding: 10px 16px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-dim);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .sidebar-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 8px;
+      }
+      .sidebar-item {
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 2px;
+        transition: background 0.1s;
+      }
+      .sidebar-item:hover {
+        background: var(--surface3);
+      }
+      .sidebar-item.active {
+        background: var(--surface3);
+        border: 1px solid var(--border-light);
+      }
+      .sidebar-item-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sidebar-item-title {
+        font-size: 12px;
+        font-weight: 500;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sidebar-item-meta {
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+      .status-ready {
+        background: var(--green-dim);
+        color: var(--green);
+      }
+      .status-processing {
+        background: var(--amber-dim);
+        color: var(--amber);
+      }
 
-  /* ── Center content ── */
-  .center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .center-header {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-start; justify-content: space-between;
-  }
-  .center-title { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-  .center-meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px; display: flex; align-items: center; gap: 8px; }
-  .center-actions { display: flex; gap: 4px; }
-  .icon-btn {
-    background: none; border: 1px solid var(--border); color: var(--text-secondary);
-    width: 30px; height: 30px; border-radius: var(--radius-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; cursor: pointer;
-  }
-  .icon-btn:hover { background: var(--surface3); color: var(--text); }
+      /* ── Center content ── */
+      .center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .center-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .center-title {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+      }
+      .center-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .center-actions {
+        display: flex;
+        gap: 4px;
+      }
+      .icon-btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        width: 30px;
+        height: 30px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .icon-btn:hover {
+        background: var(--surface3);
+        color: var(--text);
+      }
 
-  .center-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+      .center-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+      }
 
-  /* Audio player */
-  .audio-player {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 14px; margin-bottom: 16px;
-  }
-  .play-btn {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--text); color: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; border: none; cursor: pointer; flex-shrink: 0;
-  }
-  .audio-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); }
-  .audio-track { flex: 1; height: 3px; background: var(--surface4); border-radius: 2px; position: relative; }
-  .audio-track-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 35%; background: var(--accent); border-radius: 2px; }
+      /* Audio player */
+      .audio-player {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 14px;
+        margin-bottom: 16px;
+      }
+      .play-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--text);
+        color: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        border: none;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .audio-time {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .audio-track {
+        flex: 1;
+        height: 3px;
+        background: var(--surface4);
+        border-radius: 2px;
+        position: relative;
+      }
+      .audio-track-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 35%;
+        background: var(--accent);
+        border-radius: 2px;
+      }
 
-  /* Transcript segment */
-  .segment { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
-  .seg-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); min-width: 38px; padding-top: 3px; }
-  .seg-speaker { font-size: 10px; font-weight: 600; min-width: 32px; padding-top: 3px; }
-  .seg-speaker.teacher { color: #60a5fa; }
-  .seg-speaker.student { color: var(--green); }
-  .seg-speaker.guardian { color: var(--amber); }
-  .seg-text { flex: 1; color: var(--text); }
+      /* Transcript segment */
+      .segment {
+        display: flex;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        font-size: 13px;
+      }
+      .seg-time {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        color: var(--text-dim);
+        min-width: 38px;
+        padding-top: 3px;
+      }
+      .seg-speaker {
+        font-size: 10px;
+        font-weight: 600;
+        min-width: 32px;
+        padding-top: 3px;
+      }
+      .seg-speaker.teacher {
+        color: #60a5fa;
+      }
+      .seg-speaker.student {
+        color: var(--green);
+      }
+      .seg-speaker.guardian {
+        color: var(--amber);
+      }
+      .seg-text {
+        flex: 1;
+        color: var(--text);
+      }
 
-  /* ── AI Panel ── */
-  .ai-panel {
-    width: 340px; border-left: 1px solid var(--border);
-    display: flex; flex-direction: column; background: var(--surface);
-  }
-  .ai-header {
-    padding: 14px 16px; border-bottom: 1px solid var(--border);
-    font-size: 13px; font-weight: 600;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .ai-header-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-  .ai-summary {
-    margin: 12px; padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(129,140,248,0.06), rgba(34,211,238,0.04));
-    border: 1px solid var(--accent-border);
-    border-radius: var(--radius);
-    font-size: 12px;
-  }
-  .ai-summary-badge {
-    font-size: 10px; font-weight: 600; color: var(--accent);
-    letter-spacing: 0.3px; margin-bottom: 10px;
-    display: flex; align-items: center; gap: 5px;
-  }
-  .ai-kv { display: flex; gap: 8px; margin-bottom: 5px; }
-  .ai-kv-label { color: var(--text-dim); min-width: 48px; font-size: 11px; }
-  .ai-kv-value { color: var(--text); font-size: 12px; }
-  .ai-divider { border-top: 1px solid var(--accent-border); margin: 10px 0; }
-  .ai-summary-text { color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
+      /* ── AI Panel ── */
+      .ai-panel {
+        width: 340px;
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+      }
+      .ai-header {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ai-header-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+      .ai-summary {
+        margin: 12px;
+        padding: 14px 16px;
+        background: linear-gradient(
+          135deg,
+          rgba(129, 140, 248, 0.06),
+          rgba(34, 211, 238, 0.04)
+        );
+        border: 1px solid var(--accent-border);
+        border-radius: var(--radius);
+        font-size: 12px;
+      }
+      .ai-summary-badge {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--accent);
+        letter-spacing: 0.3px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .ai-kv {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 5px;
+      }
+      .ai-kv-label {
+        color: var(--text-dim);
+        min-width: 48px;
+        font-size: 11px;
+      }
+      .ai-kv-value {
+        color: var(--text);
+        font-size: 12px;
+      }
+      .ai-divider {
+        border-top: 1px solid var(--accent-border);
+        margin: 10px 0;
+      }
+      .ai-summary-text {
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.7;
+      }
 
-  .ai-messages { flex: 1; padding: 12px 16px; overflow-y: auto; }
-  .ai-msg { padding: 10px 14px; border-radius: var(--radius); font-size: 12.5px; margin-bottom: 8px; max-width: 92%; line-height: 1.6; }
-  .ai-msg.assistant { background: var(--surface2); border: 1px solid var(--border); }
-  .ai-msg.user { background: var(--accent-dim); border: 1px solid var(--accent-border); margin-left: auto; }
-  .ai-msg.system { background: none; color: var(--text-dim); font-size: 11px; text-align: center; max-width: 100%; padding: 16px; }
+      .ai-messages {
+        flex: 1;
+        padding: 12px 16px;
+        overflow-y: auto;
+      }
+      .ai-msg {
+        padding: 10px 14px;
+        border-radius: var(--radius);
+        font-size: 12.5px;
+        margin-bottom: 8px;
+        max-width: 92%;
+        line-height: 1.6;
+      }
+      .ai-msg.assistant {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+      }
+      .ai-msg.user {
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-border);
+        margin-left: auto;
+      }
+      .ai-msg.system {
+        background: none;
+        color: var(--text-dim);
+        font-size: 11px;
+        text-align: center;
+        max-width: 100%;
+        padding: 16px;
+      }
 
-  .ai-quick { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 16px; }
-  .ai-chip {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 5px 10px; font-size: 11px;
-    color: var(--text-secondary); cursor: pointer; font-family: inherit;
-  }
-  .ai-chip:hover { border-color: var(--accent-border); color: var(--text); }
+      .ai-quick {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 6px 16px;
+      }
+      .ai-chip {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .ai-chip:hover {
+        border-color: var(--accent-border);
+        color: var(--text);
+      }
 
-  .ai-input-wrap { padding: 10px 14px; border-top: 1px solid var(--border); }
-  .ai-input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; color: var(--text);
-    font-size: 12.5px; outline: none; font-family: inherit;
-  }
-  .ai-input::placeholder { color: var(--text-dim); }
-  .ai-input:focus { border-color: var(--accent-border); }
+      .ai-input-wrap {
+        padding: 10px 14px;
+        border-top: 1px solid var(--border);
+      }
+      .ai-input {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        color: var(--text);
+        font-size: 12.5px;
+        outline: none;
+        font-family: inherit;
+      }
+      .ai-input::placeholder {
+        color: var(--text-dim);
+      }
+      .ai-input:focus {
+        border-color: var(--accent-border);
+      }
 
-  /* ── Empty state ── */
-  .empty-state {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 60px 40px; text-align: center;
-  }
-  .empty-icon-wrap {
-    width: 72px; height: 72px; border-radius: 18px;
-    background: linear-gradient(135deg, var(--accent-dim), rgba(34,211,238,0.08));
-    border: 1px solid var(--accent-border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 30px; margin-bottom: 20px;
-  }
-  .empty-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.3px; }
-  .empty-desc { font-size: 13px; color: var(--text-secondary); max-width: 320px; margin-bottom: 28px; }
-  .empty-cta { display: flex; gap: 10px; }
-  .btn-lg {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 24px; border-radius: var(--radius);
-    font-size: 13px; font-weight: 500; cursor: pointer;
-    font-family: inherit; border: none; transition: all 0.15s;
-  }
-  .btn-accent { background: var(--accent); color: #fff; }
-  .btn-accent:hover { background: var(--accent-hover); }
-  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border-light); }
-  .btn-outline:hover { background: var(--surface3); }
+      /* ── Empty state ── */
+      .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 40px;
+        text-align: center;
+      }
+      .empty-icon-wrap {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-dim),
+          rgba(34, 211, 238, 0.08)
+        );
+        border: 1px solid var(--accent-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        margin-bottom: 20px;
+      }
+      .empty-title {
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        letter-spacing: -0.3px;
+      }
+      .empty-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        max-width: 320px;
+        margin-bottom: 28px;
+      }
+      .empty-cta {
+        display: flex;
+        gap: 10px;
+      }
+      .btn-lg {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+        border: none;
+        transition: all 0.15s;
+      }
+      .btn-accent {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-accent:hover {
+        background: var(--accent-hover);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border-light);
+      }
+      .btn-outline:hover {
+        background: var(--surface3);
+      }
 
-  /* ── Recording state ── */
-  .rec-bar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 20px; margin-top: 20px; max-width: 400px;
-    background: var(--red-dim);
-    border: 1px solid rgba(248,113,113,0.2);
-    border-radius: var(--radius);
-  }
-  .rec-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: pulse 1.2s infinite; flex-shrink: 0; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-  .rec-info { flex: 1; }
-  .rec-label { font-size: 12px; font-weight: 500; color: var(--red); }
-  .rec-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); }
-  .btn-stop { background: var(--red); color: #fff; border: none; padding: 7px 16px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; }
+      /* ── Recording state ── */
+      .rec-bar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px;
+        margin-top: 20px;
+        max-width: 400px;
+        background: var(--red-dim);
+        border: 1px solid rgba(248, 113, 113, 0.2);
+        border-radius: var(--radius);
+      }
+      .rec-pulse {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--red);
+        animation: pulse 1.2s infinite;
+        flex-shrink: 0;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+      .rec-info {
+        flex: 1;
+      }
+      .rec-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--red);
+      }
+      .rec-time {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .btn-stop {
+        background: var(--red);
+        color: #fff;
+        border: none;
+        padding: 7px 16px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 500;
+      }
 
-  /* ── Processing state ── */
-  .processing-state {
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 80px 40px; text-align: center;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--surface4);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    margin-bottom: 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+      /* ── Processing state ── */
+      .processing-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 40px;
+        text-align: center;
+      }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid var(--surface4);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        margin-bottom: 16px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
-  /* ── Student management tab ── */
-  .student-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px; padding: 20px;
-  }
-  .student-card {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .student-card:hover { border-color: var(--border-light); background: var(--surface3); }
-  .student-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .student-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0;
-  }
-  .student-name { font-size: 14px; font-weight: 600; }
-  .student-sub { font-size: 11px; color: var(--text-secondary); }
-  .student-stats { display: flex; gap: 16px; margin-top: 8px; }
-  .student-stat-label { font-size: 10px; color: var(--text-dim); }
-  .student-stat-value { font-size: 14px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+      /* ── Student management tab ── */
+      .student-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+        padding: 20px;
+      }
+      .student-card {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .student-card:hover {
+        border-color: var(--border-light);
+        background: var(--surface3);
+      }
+      .student-card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .student-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        flex-shrink: 0;
+      }
+      .student-name {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .student-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .student-stats {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+      }
+      .student-stat-label {
+        font-size: 10px;
+        color: var(--text-dim);
+      }
+      .student-stat-value {
+        font-size: 14px;
+        font-weight: 600;
+        font-family: "JetBrains Mono", monospace;
+      }
 
-  /* ── Year tabs ── */
-  .year-tabs {
-    display: flex; gap: 0; padding: 0 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .year-tab {
-    background: none; border: none; color: var(--text-dim);
-    padding: 10px 14px; font-size: 12px; cursor: pointer;
-    border-bottom: 2px solid transparent;
-    font-family: inherit;
-  }
-  .year-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-  .year-tab:hover { color: var(--text-secondary); }
+      /* ── Year tabs ── */
+      .year-tabs {
+        display: flex;
+        gap: 0;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .year-tab {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        padding: 10px 14px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-family: inherit;
+      }
+      .year-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+      }
+      .year-tab:hover {
+        color: var(--text-secondary);
+      }
 
-  /* ── Student detail panel ── */
-  .student-detail-header {
-    padding: 20px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 14px;
-  }
-  .student-detail-avatar {
-    width: 48px; height: 48px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 600; color: #fff;
-  }
-  .student-detail-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-  .student-detail-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-  .student-detail-stats {
-    display: flex; gap: 24px; padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .sds-item { }
-  .sds-label { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
-  .sds-value { font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+      /* ── Student detail panel ── */
+      .student-detail-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .student-detail-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .student-detail-name {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+      }
+      .student-detail-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+      }
+      .student-detail-stats {
+        display: flex;
+        gap: 24px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .sds-item {
+      }
+      .sds-label {
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-bottom: 2px;
+      }
+      .sds-value {
+        font-size: 16px;
+        font-weight: 600;
+        font-family: "JetBrains Mono", monospace;
+      }
 
-  /* ── Editable field ── */
-  .editable {
-    border-bottom: 1px dashed var(--text-dim);
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .editable:hover { border-bottom-color: var(--accent); }
+      /* ── Editable field ── */
+      .editable {
+        border-bottom: 1px dashed var(--text-dim);
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .editable:hover {
+        border-bottom-color: var(--accent);
+      }
 
-  /* ── Flow diagram ── */
-  .flow-diagram { display: flex; align-items: center; flex-wrap: wrap; gap: 0; padding: 24px 40px; }
-  .flow-node {
-    padding: 8px 16px; border-radius: 8px; font-size: 12px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .flow-user { background: var(--accent-dim); border: 1px solid var(--accent-border); color: var(--accent); }
-  .flow-auto { background: var(--green-dim); border: 1px solid var(--green-border); color: var(--green); }
-  .flow-removed { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.15); color: var(--text-dim); text-decoration: line-through; }
-  .flow-arrow { color: var(--text-dim); padding: 0 6px; font-size: 14px; }
+      /* ── Flow diagram ── */
+      .flow-diagram {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0;
+        padding: 24px 40px;
+      }
+      .flow-node {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .flow-user {
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-border);
+        color: var(--accent);
+      }
+      .flow-auto {
+        background: var(--green-dim);
+        border: 1px solid var(--green-border);
+        color: var(--green);
+      }
+      .flow-removed {
+        background: var(--red-dim);
+        border: 1px solid rgba(248, 113, 113, 0.15);
+        color: var(--text-dim);
+        text-decoration: line-through;
+      }
+      .flow-arrow {
+        color: var(--text-dim);
+        padding: 0 6px;
+        font-size: 14px;
+      }
 
-  /* ── Info box ── */
-  .info-box {
-    margin: 20px 40px; padding: 20px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius);
-    max-width: 640px;
-  }
-  .info-box h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
-  .info-list { list-style: none; }
-  .info-list li {
-    font-size: 12px; color: var(--text-secondary); padding: 4px 0;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .info-list .badge-sm {
-    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
-  }
+      /* ── Info box ── */
+      .info-box {
+        margin: 20px 40px;
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        max-width: 640px;
+      }
+      .info-box h3 {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .info-list {
+        list-style: none;
+      }
+      .info-list li {
+        font-size: 12px;
+        color: var(--text-secondary);
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .info-list .badge-sm {
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 500;
+      }
 
-  /* ── Comparison ── */
-  .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 0 40px 32px; }
+      /* ── Comparison ── */
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        padding: 0 40px 32px;
+      }
 
-  /* ── 학생 관리 테이블 ── */
-  .table-wrap { padding: 0 20px 20px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; padding: 10px 12px; color: var(--text-dim); font-weight: 500; font-size: 11px; border-bottom: 1px solid var(--border); }
-  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  tr:hover td { background: var(--surface2); }
+      /* ── 학생 관리 테이블 ── */
+      .table-wrap {
+        padding: 0 20px 20px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th {
+        text-align: left;
+        padding: 10px 12px;
+        color: var(--text-dim);
+        font-weight: 500;
+        font-size: 11px;
+        border-bottom: 1px solid var(--border);
+      }
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      }
+      tr:hover td {
+        background: var(--surface2);
+      }
 
-  .tag-sm {
-    display: inline-block; font-size: 10px; padding: 2px 7px;
-    border-radius: 4px; font-weight: 500;
-  }
-  .tag-math { background: rgba(96,165,250,0.12); color: #60a5fa; }
-  .tag-eng { background: rgba(52,211,153,0.12); color: var(--green); }
-  .tag-kor { background: rgba(251,191,36,0.12); color: var(--amber); }
-  .tag-sci { background: rgba(248,113,113,0.1); color: var(--red); }
-</style>
-</head>
-<body>
-
-<!-- ════ Top Navigation ════ -->
-<nav class="top-nav">
-  <span class="logo">YEON</span>
-  <div class="nav-tabs" id="mainNav">
-    <button class="nav-tab active" data-screen="sc-overview">개요</button>
-    <button class="nav-tab" data-screen="sc-empty">첫 화면</button>
-    <button class="nav-tab" data-screen="sc-recording">녹음 → 즉시 진입</button>
-    <button class="nav-tab" data-screen="sc-result">전사 + AI 요약</button>
-    <button class="nav-tab" data-screen="sc-students">학생 관리</button>
-    <button class="nav-tab" data-screen="sc-student-detail">학생 상세</button>
-  </div>
-  <div class="nav-spacer"></div>
-  <span class="nav-meta">Design Mockup v2 · 2026.04.08</span>
-</nav>
-
-<!-- ═══════════════ 개요 ═══════════════ -->
-<section class="screen active" id="sc-overview">
-  <div class="section-header">
-    <div class="section-badge badge-overview">OVERVIEW</div>
-    <h2 class="section-title">YEON — 학원 학생관리 + AI 상담 기록</h2>
-    <p class="section-desc">사설 학원/아카데미에서 학생 상담·수업 기록을 녹음하면 AI가 자동 정리. 년도별 학생 관리까지 한 곳에서.</p>
-  </div>
-
-  <div class="section-header" style="padding-top:12px;">
-    <p class="section-desc" style="font-weight:500; color:var(--text);">사용자 플로우 (TO-BE)</p>
-  </div>
-  <div class="flow-diagram">
-    <div class="flow-node flow-user">🎙 녹음 시작</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-user">⏹ 녹음 종료</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-auto">자동 업로드</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-auto">STT 전사</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-auto">AI 메타 추출</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-auto">원문 + AI 요약 + 채팅</div>
-  </div>
-  <div style="padding:0 40px 8px;">
-    <p style="font-size:11px; color:var(--text-dim);">제거되는 단계:</p>
-  </div>
-  <div class="flow-diagram" style="padding-top:0;">
-    <div class="flow-node flow-removed">오디오 프리뷰</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-removed">"저장하러 가기"</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-removed">학생이름 입력</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-removed">상담유형 선택</div>
-    <span class="flow-arrow">→</span>
-    <div class="flow-node flow-removed">"기록 저장" 버튼</div>
-  </div>
-
-  <div class="info-box">
-    <h3>플랫폼 구조</h3>
-    <ul class="info-list">
-      <li><span class="badge-sm" style="background:var(--accent-dim);color:var(--accent);">메뉴 1</span> 상담 기록 — 녹음/업로드 → AI 전사·요약·채팅</li>
-      <li><span class="badge-sm" style="background:var(--green-dim);color:var(--green);">메뉴 2</span> 학생 관리 — 년도별 학생 목록, 과목/반 그룹, 상담 이력</li>
-      <li><span class="badge-sm" style="background:var(--amber-dim);color:var(--amber);">메뉴 3</span> 대시보드 — 학원 전체 통계, 최근 상담, 주의 학생 (향후)</li>
-    </ul>
-  </div>
-
-  <div class="info-box">
-    <h3>차수별 구현</h3>
-    <ul class="info-list">
-      <li><span class="badge-sm badge-phase1">1차</span> 폼 제거 + 즉시 업로드 → 바로 워크스페이스 진입</li>
-      <li><span class="badge-sm badge-phase2">2차</span> AI 자동 메타데이터 추출 (학생명·제목·요약)</li>
-      <li><span class="badge-sm badge-phase3">3차</span> 학생 관리 탭 + AI 요약 카드 + 인라인 수정</li>
-    </ul>
-  </div>
-</section>
-
-<!-- ═══════════════ 첫 화면 (Empty) ═══════════════ -->
-<section class="screen" id="sc-empty">
-  <div class="section-header">
-    <div class="section-badge badge-phase1">1차</div>
-    <h2 class="section-title">첫 화면 — 기록 0건</h2>
-    <p class="section-desc">좌측에 글로벌 네비게이션(상담기록 / 학생관리), 중앙에 CTA. 녹음 버튼 하나로 시작.</p>
-  </div>
-  <div class="frame-wrapper">
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/counseling-records</div>
+      .tag-sm {
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+      .tag-math {
+        background: rgba(96, 165, 250, 0.12);
+        color: #60a5fa;
+      }
+      .tag-eng {
+        background: rgba(52, 211, 153, 0.12);
+        color: var(--green);
+      }
+      .tag-kor {
+        background: rgba(251, 191, 36, 0.12);
+        color: var(--amber);
+      }
+      .tag-sci {
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--red);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ════ Top Navigation ════ -->
+    <nav class="top-nav">
+      <span class="logo">YEON</span>
+      <div class="nav-tabs" id="mainNav">
+        <button class="nav-tab active" data-screen="sc-overview">개요</button>
+        <button class="nav-tab" data-screen="sc-empty">첫 화면</button>
+        <button class="nav-tab" data-screen="sc-recording">
+          녹음 → 즉시 진입
+        </button>
+        <button class="nav-tab" data-screen="sc-result">전사 + AI 요약</button>
+        <button class="nav-tab" data-screen="sc-students">학생 관리</button>
+        <button class="nav-tab" data-screen="sc-student-detail">
+          학생 상세
+        </button>
       </div>
-      <div class="app-shell">
-        <div class="gnav">
-          <div class="gnav-item active" title="상담 기록">📝</div>
-          <div class="gnav-item" title="학생 관리">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-item" title="설정">⚙</div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div style="flex:1; display:flex;">
-          <div class="empty-state">
-            <div class="empty-icon-wrap">🎙</div>
-            <p class="empty-title">상담을 녹음해 보세요</p>
-            <p class="empty-desc">녹음하면 AI가 자동으로 전사하고, 학생 이름·상담 요약까지 정리합니다.</p>
-            <div class="empty-cta">
-              <button class="btn-lg btn-accent">🎙 녹음 시작</button>
-              <button class="btn-lg btn-outline">📁 파일 업로드</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      <div class="nav-spacer"></div>
+      <span class="nav-meta">Design Mockup v2 · 2026.04.08</span>
+    </nav>
 
-<!-- ═══════════════ 녹음 → 즉시 진입 ═══════════════ -->
-<section class="screen" id="sc-recording">
-  <div class="section-header">
-    <div class="section-badge badge-phase1">1차</div>
-    <h2 class="section-title">녹음 중 → 녹음 종료 → 즉시 워크스페이스</h2>
-    <p class="section-desc">녹음 중지 순간 자동 업로드. 폼 없이 바로 전사 처리 중 화면으로 전환.</p>
-  </div>
+    <!-- ═══════════════ 개요 ═══════════════ -->
+    <section class="screen active" id="sc-overview">
+      <div class="section-header">
+        <div class="section-badge badge-overview">OVERVIEW</div>
+        <h2 class="section-title">YEON — 학원 학생관리 + AI 상담 기록</h2>
+        <p class="section-desc">
+          사설 학원/아카데미에서 학생 상담·수업 기록을 녹음하면 AI가 자동 정리.
+          년도별 학생 관리까지 한 곳에서.
+        </p>
+      </div>
 
-  <div class="frame-wrapper">
-    <div class="frame-label">녹음 중</div>
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/counseling-records</div>
+      <div class="section-header" style="padding-top: 12px">
+        <p class="section-desc" style="font-weight: 500; color: var(--text)">
+          사용자 플로우 (TO-BE)
+        </p>
       </div>
-      <div class="app-shell" style="min-height:320px;">
-        <div class="gnav">
-          <div class="gnav-item active">📝</div>
-          <div class="gnav-item">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div style="flex:1; display:flex;">
-          <div class="empty-state">
-            <div class="empty-icon-wrap" style="background:var(--red-dim); border-color:rgba(248,113,113,0.2);">🎙</div>
-            <p class="empty-title">녹음 중입니다</p>
-            <div class="rec-bar">
-              <div class="rec-pulse"></div>
-              <div class="rec-info">
-                <p class="rec-label">녹음 중</p>
-                <p class="rec-time">02:34 경과</p>
-              </div>
-              <button class="btn-stop">⏹ 녹음 종료</button>
-            </div>
-          </div>
-        </div>
+      <div class="flow-diagram">
+        <div class="flow-node flow-user">🎙 녹음 시작</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-user">⏹ 녹음 종료</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-auto">자동 업로드</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-auto">STT 전사</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-auto">AI 메타 추출</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-auto">원문 + AI 요약 + 채팅</div>
       </div>
-    </div>
-  </div>
+      <div style="padding: 0 40px 8px">
+        <p style="font-size: 11px; color: var(--text-dim)">제거되는 단계:</p>
+      </div>
+      <div class="flow-diagram" style="padding-top: 0">
+        <div class="flow-node flow-removed">오디오 프리뷰</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-removed">"저장하러 가기"</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-removed">학생이름 입력</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-removed">상담유형 선택</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node flow-removed">"기록 저장" 버튼</div>
+      </div>
 
-  <div class="frame-wrapper">
-    <div class="frame-label">녹음 종료 → 즉시 워크스페이스 (전사 처리 중)</div>
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/counseling-records</div>
+      <div class="info-box">
+        <h3>플랫폼 구조</h3>
+        <ul class="info-list">
+          <li>
+            <span
+              class="badge-sm"
+              style="background: var(--accent-dim); color: var(--accent)"
+              >메뉴 1</span
+            >
+            상담 기록 — 녹음/업로드 → AI 전사·요약·채팅
+          </li>
+          <li>
+            <span
+              class="badge-sm"
+              style="background: var(--green-dim); color: var(--green)"
+              >메뉴 2</span
+            >
+            학생 관리 — 년도별 학생 목록, 과목/반 그룹, 상담 이력
+          </li>
+          <li>
+            <span
+              class="badge-sm"
+              style="background: var(--amber-dim); color: var(--amber)"
+              >메뉴 3</span
+            >
+            대시보드 — 학원 전체 통계, 최근 상담, 주의 학생 (향후)
+          </li>
+        </ul>
       </div>
-      <div class="app-shell">
-        <div class="gnav">
-          <div class="gnav-item active">📝</div>
-          <div class="gnav-item">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div class="sidebar">
-          <div class="sidebar-header">
-            <span class="sidebar-title">상담 기록</span>
-            <button class="sidebar-btn-new">+ 새 녹음</button>
-          </div>
-          <div class="sidebar-list">
-            <div class="sidebar-item active">
-              <div class="sidebar-item-title">녹음 2026.04.08 03:46</div>
-              <div class="sidebar-item-meta">
-                <span class="status-badge status-processing">● 전사 중</span>
-                2분 34초
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="center">
-          <div class="center-header">
-            <div>
-              <p class="center-title">녹음 2026.04.08 03:46</p>
-              <p class="center-meta">2분 34초 · 전사 처리 중</p>
-            </div>
-          </div>
-          <div class="processing-state">
-            <div class="spinner"></div>
-            <p style="font-size:14px; font-weight:500; margin-bottom:4px;">음성을 분석하고 있습니다</p>
-            <p style="font-size:12px; color:var(--text-secondary);">보통 1~2분 이내 완료</p>
-          </div>
-        </div>
-        <div class="ai-panel">
-          <div class="ai-header"><span class="ai-header-dot" style="background:var(--amber);"></span> AI 어시스턴트</div>
-          <div class="ai-messages">
-            <div class="ai-msg system">전사가 완료되면 자동으로<br>상담 요약을 생성합니다</div>
-          </div>
-          <div class="ai-input-wrap">
-            <input class="ai-input" placeholder="전사 완료 후 질문 가능" disabled style="opacity:0.5;">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- ═══════════════ 전사 + AI 요약 완료 ═══════════════ -->
-<section class="screen" id="sc-result">
-  <div class="section-header">
-    <div class="section-badge badge-phase2">2차</div>
-    <h2 class="section-title">전사 완료 + AI 자동 요약</h2>
-    <p class="section-desc">AI가 학생 이름, 상담 제목, 유형, 핵심 요약을 자동 추출. 헤더에서 인라인 수정 가능.</p>
-  </div>
-  <div class="frame-wrapper">
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/counseling-records</div>
+      <div class="info-box">
+        <h3>차수별 구현</h3>
+        <ul class="info-list">
+          <li>
+            <span class="badge-sm badge-phase1">1차</span> 폼 제거 + 즉시 업로드
+            → 바로 워크스페이스 진입
+          </li>
+          <li>
+            <span class="badge-sm badge-phase2">2차</span> AI 자동 메타데이터
+            추출 (학생명·제목·요약)
+          </li>
+          <li>
+            <span class="badge-sm badge-phase3">3차</span> 학생 관리 탭 + AI
+            요약 카드 + 인라인 수정
+          </li>
+        </ul>
       </div>
-      <div class="app-shell">
-        <div class="gnav">
-          <div class="gnav-item active">📝</div>
-          <div class="gnav-item">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div class="sidebar">
-          <div class="sidebar-header">
-            <span class="sidebar-title">상담 기록</span>
-            <button class="sidebar-btn-new">+ 새 녹음</button>
-          </div>
-          <input class="sidebar-search" placeholder="학생, 제목 검색...">
-          <div class="sidebar-list">
-            <div class="sidebar-item active">
-              <div class="sidebar-item-title">수학 과제 누락 상담</div>
-              <div class="sidebar-item-meta">
-                <span class="status-badge status-ready">✓ 완료</span>
-                김민수 · 4.8
-              </div>
-            </div>
-            <div class="sidebar-item">
-              <div class="sidebar-item-title">교우 관계 고민 상담</div>
-              <div class="sidebar-item-meta">
-                <span class="status-badge status-ready">✓ 완료</span>
-                이서윤 · 4.7
-              </div>
-            </div>
-            <div class="sidebar-item">
-              <div class="sidebar-item-title">녹음 2026.04.08 10:30</div>
-              <div class="sidebar-item-meta">
-                <span class="status-badge status-processing">● 전사 중</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="center">
-          <div class="center-header">
-            <div>
-              <p class="center-title"><span class="editable">수학 과제 누락 상담</span></p>
-              <p class="center-meta">
-                <span class="editable">김민수</span> ·
-                <span class="editable">대면 상담</span> ·
-                2분 34초 · 원문 완료
-              </p>
-            </div>
-            <div class="center-actions">
-              <button class="icon-btn">🔊</button>
-              <button class="icon-btn">📋</button>
-              <button class="icon-btn" style="color:var(--red);">🗑</button>
-            </div>
-          </div>
-          <div class="center-body">
-            <div class="audio-player">
-              <button class="play-btn">▶</button>
-              <span class="audio-time">0:08</span>
-              <div class="audio-track"><div class="audio-track-fill"></div></div>
-              <span class="audio-time">2:34</span>
-            </div>
-            <div class="segment"><span class="seg-time">00:00</span><span class="seg-speaker teacher">교사</span><span class="seg-text">민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?</span></div>
-            <div class="segment"><span class="seg-time">00:08</span><span class="seg-speaker student">학생</span><span class="seg-text">아... 네, 어제 학원이 늦게 끝나서 못 했어요.</span></div>
-            <div class="segment"><span class="seg-time">00:15</span><span class="seg-speaker teacher">교사</span><span class="seg-text">그랬구나. 학원 스케줄이 빡빡한 편이야?</span></div>
-            <div class="segment"><span class="seg-time">00:22</span><span class="seg-speaker student">학생</span><span class="seg-text">네, 월수금 수학이랑 화목 영어 다녀요.</span></div>
-            <div class="segment"><span class="seg-time">00:30</span><span class="seg-speaker teacher">교사</span><span class="seg-text">그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로 여유를 주면 어때?</span></div>
-            <div class="segment"><span class="seg-time">00:42</span><span class="seg-speaker student">학생</span><span class="seg-text">그러면 할 수 있을 것 같아요. 감사합니다 선생님.</span></div>
-          </div>
-        </div>
-        <div class="ai-panel">
-          <div class="ai-header"><span class="ai-header-dot"></span> AI 어시스턴트</div>
-          <div class="ai-summary">
-            <div class="ai-summary-badge">✦ AI 상담 요약</div>
-            <div class="ai-kv"><span class="ai-kv-label">학생</span><span class="ai-kv-value">김민수</span></div>
-            <div class="ai-kv"><span class="ai-kv-label">유형</span><span class="ai-kv-value">대면 상담</span></div>
-            <div class="ai-kv"><span class="ai-kv-label">주제</span><span class="ai-kv-value">수학 과제 미제출</span></div>
-            <div class="ai-divider"></div>
-            <div class="ai-summary-text">
-              학원 일정(주 5회)으로 과제 시간 부족. 제출 기한을 익일 오전으로 조정하기로 합의. 2주 후 학습 루틴 재점검 예정.
-            </div>
-          </div>
-          <div class="ai-messages" style="flex:1;">
-            <div class="ai-msg user">보호자 안내 문자 초안 만들어줘</div>
-            <div class="ai-msg assistant">
-              [학원명] 김민수 학생 상담 안내<br><br>
-              안녕하세요. 오늘 민수와 수학 과제 제출 관련 상담을 진행했습니다.<br><br>
-              학원 일정이 빡빡해 과제 시간 확보가 어려운 상황이라, 제출 기한을 익일 오전으로 조정했습니다. 2주간 적용 후 다시 점검하겠습니다.<br><br>
-              문의사항은 편하게 연락주세요.
-            </div>
-          </div>
-          <div class="ai-quick">
-            <button class="ai-chip">후속 조치 정리</button>
-            <button class="ai-chip">이전 상담 비교</button>
-            <button class="ai-chip">학습 루틴 제안</button>
-          </div>
-          <div class="ai-input-wrap">
-            <input class="ai-input" placeholder="질문을 입력하세요...">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ═══════════════ 학생 관리 ═══════════════ -->
-<section class="screen" id="sc-students">
-  <div class="section-header">
-    <div class="section-badge badge-phase3">3차</div>
-    <h2 class="section-title">학생 관리 — 년도별 · 과목별</h2>
-    <p class="section-desc">학원 학생을 년도별로 관리. 카드 뷰 / 테이블 뷰 전환. 상담 횟수, 마지막 상담일, 과목 태그 한눈에.</p>
-  </div>
-  <div class="frame-wrapper">
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/students</div>
+    <!-- ═══════════════ 첫 화면 (Empty) ═══════════════ -->
+    <section class="screen" id="sc-empty">
+      <div class="section-header">
+        <div class="section-badge badge-phase1">1차</div>
+        <h2 class="section-title">첫 화면 — 기록 0건</h2>
+        <p class="section-desc">
+          좌측에 글로벌 네비게이션(상담기록 / 학생관리), 중앙에 CTA. 녹음 버튼
+          하나로 시작.
+        </p>
       </div>
-      <div class="app-shell" style="min-height:560px;">
-        <div class="gnav">
-          <div class="gnav-item">📝</div>
-          <div class="gnav-item active">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column;">
-          <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
-            <div>
-              <p style="font-size:16px; font-weight:600;">학생 관리</p>
-              <p style="font-size:12px; color:var(--text-secondary);">총 24명 · 2026학년도</p>
+      <div class="frame-wrapper">
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <input class="sidebar-search" style="width:200px; margin:0;" placeholder="학생 검색...">
-              <button class="sidebar-btn-new">+ 학생 추가</button>
+            <div class="frame-url">yeon.world/counseling-records</div>
+          </div>
+          <div class="app-shell">
+            <div class="gnav">
+              <div class="gnav-item active" title="상담 기록">📝</div>
+              <div class="gnav-item" title="학생 관리">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-item" title="설정">⚙</div>
+              <div class="gnav-avatar">최</div>
             </div>
-          </div>
-          <div class="year-tabs">
-            <button class="year-tab active">2026</button>
-            <button class="year-tab">2025</button>
-            <button class="year-tab">2024</button>
-            <button class="year-tab">전체</button>
-          </div>
-          <div class="student-grid">
-            <div class="student-card">
-              <div class="student-card-header">
-                <div class="student-avatar" style="background:linear-gradient(135deg,#60a5fa,#818cf8);">민</div>
-                <div>
-                  <p class="student-name">김민수</p>
-                  <p class="student-sub"><span class="tag-sm tag-math">수학</span> <span class="tag-sm tag-eng">영어</span> · 중2</p>
+            <div style="flex: 1; display: flex">
+              <div class="empty-state">
+                <div class="empty-icon-wrap">🎙</div>
+                <p class="empty-title">상담을 녹음해 보세요</p>
+                <p class="empty-desc">
+                  녹음하면 AI가 자동으로 전사하고, 학생 이름·상담 요약까지
+                  정리합니다.
+                </p>
+                <div class="empty-cta">
+                  <button class="btn-lg btn-accent">🎙 녹음 시작</button>
+                  <button class="btn-lg btn-outline">📁 파일 업로드</button>
                 </div>
               </div>
-              <div class="student-stats">
-                <div><p class="student-stat-label">상담</p><p class="student-stat-value">12</p></div>
-                <div><p class="student-stat-label">마지막</p><p class="student-stat-value">4.8</p></div>
-                <div><p class="student-stat-label">메모</p><p class="student-stat-value">3</p></div>
-              </div>
-            </div>
-            <div class="student-card">
-              <div class="student-card-header">
-                <div class="student-avatar" style="background:linear-gradient(135deg,var(--green),#22d3ee);">서</div>
-                <div>
-                  <p class="student-name">이서윤</p>
-                  <p class="student-sub"><span class="tag-sm tag-kor">국어</span> <span class="tag-sm tag-eng">영어</span> · 중3</p>
-                </div>
-              </div>
-              <div class="student-stats">
-                <div><p class="student-stat-label">상담</p><p class="student-stat-value">8</p></div>
-                <div><p class="student-stat-label">마지막</p><p class="student-stat-value">4.7</p></div>
-                <div><p class="student-stat-label">메모</p><p class="student-stat-value">1</p></div>
-              </div>
-            </div>
-            <div class="student-card">
-              <div class="student-card-header">
-                <div class="student-avatar" style="background:linear-gradient(135deg,var(--amber),#fb923c);">도</div>
-                <div>
-                  <p class="student-name">박도현</p>
-                  <p class="student-sub"><span class="tag-sm tag-math">수학</span> <span class="tag-sm tag-sci">과학</span> · 중1</p>
-                </div>
-              </div>
-              <div class="student-stats">
-                <div><p class="student-stat-label">상담</p><p class="student-stat-value">5</p></div>
-                <div><p class="student-stat-label">마지막</p><p class="student-stat-value">4.6</p></div>
-                <div><p class="student-stat-label">메모</p><p class="student-stat-value">0</p></div>
-              </div>
-            </div>
-            <div class="student-card">
-              <div class="student-card-header">
-                <div class="student-avatar" style="background:linear-gradient(135deg,var(--rose),#c084fc);">지</div>
-                <div>
-                  <p class="student-name">최지우</p>
-                  <p class="student-sub"><span class="tag-sm tag-eng">영어</span> · 고1</p>
-                </div>
-              </div>
-              <div class="student-stats">
-                <div><p class="student-stat-label">상담</p><p class="student-stat-value">3</p></div>
-                <div><p class="student-stat-label">마지막</p><p class="student-stat-value">4.5</p></div>
-                <div><p class="student-stat-label">메모</p><p class="student-stat-value">2</p></div>
-              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ═══════════════ 학생 상세 ═══════════════ -->
-<section class="screen" id="sc-student-detail">
-  <div class="section-header">
-    <div class="section-badge badge-phase3">3차</div>
-    <h2 class="section-title">학생 상세 — 상담 이력 + AI 종합 분석</h2>
-    <p class="section-desc">학생별 전체 상담 이력을 타임라인으로 보고, AI가 종합 분석 제공. 보호자 소통 자료 생성.</p>
-  </div>
-  <div class="frame-wrapper">
-    <div class="frame">
-      <div class="frame-chrome">
-        <div class="frame-dots"><div class="frame-dot"></div><div class="frame-dot"></div><div class="frame-dot"></div></div>
-        <div class="frame-url">yeon.world/students/김민수</div>
+    <!-- ═══════════════ 녹음 → 즉시 진입 ═══════════════ -->
+    <section class="screen" id="sc-recording">
+      <div class="section-header">
+        <div class="section-badge badge-phase1">1차</div>
+        <h2 class="section-title">녹음 중 → 녹음 종료 → 즉시 워크스페이스</h2>
+        <p class="section-desc">
+          녹음 중지 순간 자동 업로드. 폼 없이 바로 전사 처리 중 화면으로 전환.
+        </p>
       </div>
-      <div class="app-shell" style="min-height:520px;">
-        <div class="gnav">
-          <div class="gnav-item">📝</div>
-          <div class="gnav-item active">👥</div>
-          <div class="gnav-spacer"></div>
-          <div class="gnav-avatar">최</div>
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column;">
-          <div class="student-detail-header">
-            <div class="student-detail-avatar" style="background:linear-gradient(135deg,#60a5fa,#818cf8);">민</div>
-            <div>
-              <p class="student-detail-name">김민수</p>
-              <p class="student-detail-sub"><span class="tag-sm tag-math">수학</span> <span class="tag-sm tag-eng">영어</span> · 중2 · 2026.03 등록</p>
-            </div>
-          </div>
-          <div class="student-detail-stats">
-            <div class="sds-item"><p class="sds-label">총 상담</p><p class="sds-value">12<span style="font-size:11px;color:var(--text-dim);font-weight:400;">회</span></p></div>
-            <div class="sds-item"><p class="sds-label">이번 달</p><p class="sds-value">3<span style="font-size:11px;color:var(--text-dim);font-weight:400;">회</span></p></div>
-            <div class="sds-item"><p class="sds-label">마지막 상담</p><p class="sds-value">4.8</p></div>
-            <div class="sds-item"><p class="sds-label">주요 이슈</p><p class="sds-value" style="font-family:inherit;font-size:13px;">과제 관리</p></div>
-          </div>
-          <div class="table-wrap" style="flex:1;">
-            <table>
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th>제목</th>
-                  <th>유형</th>
-                  <th>상태</th>
-                  <th>AI 요약</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="font-family:'JetBrains Mono',monospace; font-size:11px;">2026.04.08</td>
-                  <td style="font-weight:500;">수학 과제 누락 상담</td>
-                  <td>대면</td>
-                  <td><span class="status-badge status-ready">✓ 완료</span></td>
-                  <td style="color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">학원 일정으로 과제 시간 부족, 제출 기한 조정 합의</td>
-                </tr>
-                <tr>
-                  <td style="font-family:'JetBrains Mono',monospace; font-size:11px;">2026.04.05</td>
-                  <td style="font-weight:500;">월간 학습 점검</td>
-                  <td>대면</td>
-                  <td><span class="status-badge status-ready">✓ 완료</span></td>
-                  <td style="color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">수학 중간고사 대비 계획 수립, 주 3회 자습 권장</td>
-                </tr>
-                <tr>
-                  <td style="font-family:'JetBrains Mono',monospace; font-size:11px;">2026.03.28</td>
-                  <td style="font-weight:500;">보호자 통화</td>
-                  <td>전화</td>
-                  <td><span class="status-badge status-ready">✓ 완료</span></td>
-                  <td style="color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">학원-집 학습 연계 방안 논의, 부모 협조 요청</td>
-                </tr>
-                <tr>
-                  <td style="font-family:'JetBrains Mono',monospace; font-size:11px;">2026.03.20</td>
-                  <td style="font-weight:500;">수업 태도 점검</td>
-                  <td>대면</td>
-                  <td><span class="status-badge status-ready">✓ 완료</span></td>
-                  <td style="color:var(--text-secondary);">집중력 저하 원인 파악, 자리 배치 변경</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="ai-panel">
-          <div class="ai-header"><span class="ai-header-dot"></span> AI 종합 분석</div>
-          <div class="ai-summary">
-            <div class="ai-summary-badge">✦ 김민수 종합 리포트</div>
-            <div class="ai-summary-text">
-              <strong>핵심 패턴:</strong> 학원 일정 과밀로 자기주도 학습 시간 부족. 과제 미제출이 반복되는 경향.<br><br>
-              <strong>개선 추이:</strong> 3월 대비 과제 완수율 향상 (60% → 80%). 자리 배치 변경 후 수업 집중도 개선.<br><br>
-              <strong>권장 조치:</strong><br>
-              • 과제 양 조절 (현행 유지)<br>
-              • 중간고사 전 보호자 면담 1회<br>
-              • 월 2회 정기 학습 점검 유지
-            </div>
-          </div>
-          <div class="ai-messages" style="flex:1;">
-          </div>
-          <div class="ai-quick">
-            <button class="ai-chip">보호자 상담일지 생성</button>
-            <button class="ai-chip">월간 리포트 PDF</button>
-            <button class="ai-chip">다음 상담 안건 제안</button>
-          </div>
-          <div class="ai-input-wrap">
-            <input class="ai-input" placeholder="이 학생에 대해 질문하세요...">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<script>
-  document.getElementById('mainNav').addEventListener('click', e => {
-    const btn = e.target.closest('.nav-tab');
-    if (!btn) return;
-    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.screen).classList.add('active');
-  });
-</script>
-</body>
+      <div class="frame-wrapper">
+        <div class="frame-label">녹음 중</div>
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+            </div>
+            <div class="frame-url">yeon.world/counseling-records</div>
+          </div>
+          <div class="app-shell" style="min-height: 320px">
+            <div class="gnav">
+              <div class="gnav-item active">📝</div>
+              <div class="gnav-item">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-avatar">최</div>
+            </div>
+            <div style="flex: 1; display: flex">
+              <div class="empty-state">
+                <div
+                  class="empty-icon-wrap"
+                  style="
+                    background: var(--red-dim);
+                    border-color: rgba(248, 113, 113, 0.2);
+                  "
+                >
+                  🎙
+                </div>
+                <p class="empty-title">녹음 중입니다</p>
+                <div class="rec-bar">
+                  <div class="rec-pulse"></div>
+                  <div class="rec-info">
+                    <p class="rec-label">녹음 중</p>
+                    <p class="rec-time">02:34 경과</p>
+                  </div>
+                  <button class="btn-stop">⏹ 녹음 종료</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame-wrapper">
+        <div class="frame-label">
+          녹음 종료 → 즉시 워크스페이스 (전사 처리 중)
+        </div>
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+            </div>
+            <div class="frame-url">yeon.world/counseling-records</div>
+          </div>
+          <div class="app-shell">
+            <div class="gnav">
+              <div class="gnav-item active">📝</div>
+              <div class="gnav-item">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-avatar">최</div>
+            </div>
+            <div class="sidebar">
+              <div class="sidebar-header">
+                <span class="sidebar-title">상담 기록</span>
+                <button class="sidebar-btn-new">+ 새 녹음</button>
+              </div>
+              <div class="sidebar-list">
+                <div class="sidebar-item active">
+                  <div class="sidebar-item-title">녹음 2026.04.08 03:46</div>
+                  <div class="sidebar-item-meta">
+                    <span class="status-badge status-processing"
+                      >● 전사 중</span
+                    >
+                    2분 34초
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="center">
+              <div class="center-header">
+                <div>
+                  <p class="center-title">녹음 2026.04.08 03:46</p>
+                  <p class="center-meta">2분 34초 · 전사 처리 중</p>
+                </div>
+              </div>
+              <div class="processing-state">
+                <div class="spinner"></div>
+                <p
+                  style="font-size: 14px; font-weight: 500; margin-bottom: 4px"
+                >
+                  음성을 분석하고 있습니다
+                </p>
+                <p style="font-size: 12px; color: var(--text-secondary)">
+                  보통 1~2분 이내 완료
+                </p>
+              </div>
+            </div>
+            <div class="ai-panel">
+              <div class="ai-header">
+                <span
+                  class="ai-header-dot"
+                  style="background: var(--amber)"
+                ></span>
+                AI 어시스턴트
+              </div>
+              <div class="ai-messages">
+                <div class="ai-msg system">
+                  전사가 완료되면 자동으로<br />상담 요약을 생성합니다
+                </div>
+              </div>
+              <div class="ai-input-wrap">
+                <input
+                  class="ai-input"
+                  placeholder="전사 완료 후 질문 가능"
+                  disabled
+                  style="opacity: 0.5"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ 전사 + AI 요약 완료 ═══════════════ -->
+    <section class="screen" id="sc-result">
+      <div class="section-header">
+        <div class="section-badge badge-phase2">2차</div>
+        <h2 class="section-title">전사 완료 + AI 자동 요약</h2>
+        <p class="section-desc">
+          AI가 학생 이름, 상담 제목, 유형, 핵심 요약을 자동 추출. 헤더에서
+          인라인 수정 가능.
+        </p>
+      </div>
+      <div class="frame-wrapper">
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+            </div>
+            <div class="frame-url">yeon.world/counseling-records</div>
+          </div>
+          <div class="app-shell">
+            <div class="gnav">
+              <div class="gnav-item active">📝</div>
+              <div class="gnav-item">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-avatar">최</div>
+            </div>
+            <div class="sidebar">
+              <div class="sidebar-header">
+                <span class="sidebar-title">상담 기록</span>
+                <button class="sidebar-btn-new">+ 새 녹음</button>
+              </div>
+              <input class="sidebar-search" placeholder="학생, 제목 검색..." />
+              <div class="sidebar-list">
+                <div class="sidebar-item active">
+                  <div class="sidebar-item-title">수학 과제 누락 상담</div>
+                  <div class="sidebar-item-meta">
+                    <span class="status-badge status-ready">✓ 완료</span>
+                    김민수 · 4.8
+                  </div>
+                </div>
+                <div class="sidebar-item">
+                  <div class="sidebar-item-title">교우 관계 고민 상담</div>
+                  <div class="sidebar-item-meta">
+                    <span class="status-badge status-ready">✓ 완료</span>
+                    이서윤 · 4.7
+                  </div>
+                </div>
+                <div class="sidebar-item">
+                  <div class="sidebar-item-title">녹음 2026.04.08 10:30</div>
+                  <div class="sidebar-item-meta">
+                    <span class="status-badge status-processing"
+                      >● 전사 중</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="center">
+              <div class="center-header">
+                <div>
+                  <p class="center-title">
+                    <span class="editable">수학 과제 누락 상담</span>
+                  </p>
+                  <p class="center-meta">
+                    <span class="editable">김민수</span> ·
+                    <span class="editable">대면 상담</span> · 2분 34초 · 원문
+                    완료
+                  </p>
+                </div>
+                <div class="center-actions">
+                  <button class="icon-btn">🔊</button>
+                  <button class="icon-btn">📋</button>
+                  <button class="icon-btn" style="color: var(--red)">🗑</button>
+                </div>
+              </div>
+              <div class="center-body">
+                <div class="audio-player">
+                  <button class="play-btn">▶</button>
+                  <span class="audio-time">0:08</span>
+                  <div class="audio-track">
+                    <div class="audio-track-fill"></div>
+                  </div>
+                  <span class="audio-time">2:34</span>
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:00</span
+                  ><span class="seg-speaker teacher">교사</span
+                  ><span class="seg-text"
+                    >민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일
+                    있었어?</span
+                  >
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:08</span
+                  ><span class="seg-speaker student">학생</span
+                  ><span class="seg-text"
+                    >아... 네, 어제 학원이 늦게 끝나서 못 했어요.</span
+                  >
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:15</span
+                  ><span class="seg-speaker teacher">교사</span
+                  ><span class="seg-text"
+                    >그랬구나. 학원 스케줄이 빡빡한 편이야?</span
+                  >
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:22</span
+                  ><span class="seg-speaker student">학생</span
+                  ><span class="seg-text"
+                    >네, 월수금 수학이랑 화목 영어 다녀요.</span
+                  >
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:30</span
+                  ><span class="seg-speaker teacher">교사</span
+                  ><span class="seg-text"
+                    >그러면 과제 제출 시간을 조정해볼까? 다음날 아침까지로
+                    여유를 주면 어때?</span
+                  >
+                </div>
+                <div class="segment">
+                  <span class="seg-time">00:42</span
+                  ><span class="seg-speaker student">학생</span
+                  ><span class="seg-text"
+                    >그러면 할 수 있을 것 같아요. 감사합니다 선생님.</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="ai-panel">
+              <div class="ai-header">
+                <span class="ai-header-dot"></span> AI 어시스턴트
+              </div>
+              <div class="ai-summary">
+                <div class="ai-summary-badge">✦ AI 상담 요약</div>
+                <div class="ai-kv">
+                  <span class="ai-kv-label">학생</span
+                  ><span class="ai-kv-value">김민수</span>
+                </div>
+                <div class="ai-kv">
+                  <span class="ai-kv-label">유형</span
+                  ><span class="ai-kv-value">대면 상담</span>
+                </div>
+                <div class="ai-kv">
+                  <span class="ai-kv-label">주제</span
+                  ><span class="ai-kv-value">수학 과제 미제출</span>
+                </div>
+                <div class="ai-divider"></div>
+                <div class="ai-summary-text">
+                  학원 일정(주 5회)으로 과제 시간 부족. 제출 기한을 익일
+                  오전으로 조정하기로 합의. 2주 후 학습 루틴 재점검 예정.
+                </div>
+              </div>
+              <div class="ai-messages" style="flex: 1">
+                <div class="ai-msg user">보호자 안내 문자 초안 만들어줘</div>
+                <div class="ai-msg assistant">
+                  [학원명] 김민수 학생 상담 안내<br /><br />
+                  안녕하세요. 오늘 민수와 수학 과제 제출 관련 상담을
+                  진행했습니다.<br /><br />
+                  학원 일정이 빡빡해 과제 시간 확보가 어려운 상황이라, 제출
+                  기한을 익일 오전으로 조정했습니다. 2주간 적용 후 다시
+                  점검하겠습니다.<br /><br />
+                  문의사항은 편하게 연락주세요.
+                </div>
+              </div>
+              <div class="ai-quick">
+                <button class="ai-chip">후속 조치 정리</button>
+                <button class="ai-chip">이전 상담 비교</button>
+                <button class="ai-chip">학습 루틴 제안</button>
+              </div>
+              <div class="ai-input-wrap">
+                <input class="ai-input" placeholder="질문을 입력하세요..." />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ 학생 관리 ═══════════════ -->
+    <section class="screen" id="sc-students">
+      <div class="section-header">
+        <div class="section-badge badge-phase3">3차</div>
+        <h2 class="section-title">학생 관리 — 년도별 · 과목별</h2>
+        <p class="section-desc">
+          학원 학생을 년도별로 관리. 카드 뷰 / 테이블 뷰 전환. 상담 횟수, 마지막
+          상담일, 과목 태그 한눈에.
+        </p>
+      </div>
+      <div class="frame-wrapper">
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+            </div>
+            <div class="frame-url">yeon.world/students</div>
+          </div>
+          <div class="app-shell" style="min-height: 560px">
+            <div class="gnav">
+              <div class="gnav-item">📝</div>
+              <div class="gnav-item active">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-avatar">최</div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column">
+              <div
+                style="
+                  padding: 16px 20px;
+                  border-bottom: 1px solid var(--border);
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                "
+              >
+                <div>
+                  <p style="font-size: 16px; font-weight: 600">학생 관리</p>
+                  <p style="font-size: 12px; color: var(--text-secondary)">
+                    총 24명 · 2026학년도
+                  </p>
+                </div>
+                <div style="display: flex; gap: 8px">
+                  <input
+                    class="sidebar-search"
+                    style="width: 200px; margin: 0"
+                    placeholder="학생 검색..."
+                  />
+                  <button class="sidebar-btn-new">+ 학생 추가</button>
+                </div>
+              </div>
+              <div class="year-tabs">
+                <button class="year-tab active">2026</button>
+                <button class="year-tab">2025</button>
+                <button class="year-tab">2024</button>
+                <button class="year-tab">전체</button>
+              </div>
+              <div class="student-grid">
+                <div class="student-card">
+                  <div class="student-card-header">
+                    <div
+                      class="student-avatar"
+                      style="
+                        background: linear-gradient(135deg, #60a5fa, #818cf8);
+                      "
+                    >
+                      민
+                    </div>
+                    <div>
+                      <p class="student-name">김민수</p>
+                      <p class="student-sub">
+                        <span class="tag-sm tag-math">수학</span>
+                        <span class="tag-sm tag-eng">영어</span> · 중2
+                      </p>
+                    </div>
+                  </div>
+                  <div class="student-stats">
+                    <div>
+                      <p class="student-stat-label">상담</p>
+                      <p class="student-stat-value">12</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">마지막</p>
+                      <p class="student-stat-value">4.8</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">메모</p>
+                      <p class="student-stat-value">3</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="student-card">
+                  <div class="student-card-header">
+                    <div
+                      class="student-avatar"
+                      style="
+                        background: linear-gradient(
+                          135deg,
+                          var(--green),
+                          #22d3ee
+                        );
+                      "
+                    >
+                      서
+                    </div>
+                    <div>
+                      <p class="student-name">이서윤</p>
+                      <p class="student-sub">
+                        <span class="tag-sm tag-kor">국어</span>
+                        <span class="tag-sm tag-eng">영어</span> · 중3
+                      </p>
+                    </div>
+                  </div>
+                  <div class="student-stats">
+                    <div>
+                      <p class="student-stat-label">상담</p>
+                      <p class="student-stat-value">8</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">마지막</p>
+                      <p class="student-stat-value">4.7</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">메모</p>
+                      <p class="student-stat-value">1</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="student-card">
+                  <div class="student-card-header">
+                    <div
+                      class="student-avatar"
+                      style="
+                        background: linear-gradient(
+                          135deg,
+                          var(--amber),
+                          #fb923c
+                        );
+                      "
+                    >
+                      도
+                    </div>
+                    <div>
+                      <p class="student-name">박도현</p>
+                      <p class="student-sub">
+                        <span class="tag-sm tag-math">수학</span>
+                        <span class="tag-sm tag-sci">과학</span> · 중1
+                      </p>
+                    </div>
+                  </div>
+                  <div class="student-stats">
+                    <div>
+                      <p class="student-stat-label">상담</p>
+                      <p class="student-stat-value">5</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">마지막</p>
+                      <p class="student-stat-value">4.6</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">메모</p>
+                      <p class="student-stat-value">0</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="student-card">
+                  <div class="student-card-header">
+                    <div
+                      class="student-avatar"
+                      style="
+                        background: linear-gradient(
+                          135deg,
+                          var(--rose),
+                          #c084fc
+                        );
+                      "
+                    >
+                      지
+                    </div>
+                    <div>
+                      <p class="student-name">최지우</p>
+                      <p class="student-sub">
+                        <span class="tag-sm tag-eng">영어</span> · 고1
+                      </p>
+                    </div>
+                  </div>
+                  <div class="student-stats">
+                    <div>
+                      <p class="student-stat-label">상담</p>
+                      <p class="student-stat-value">3</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">마지막</p>
+                      <p class="student-stat-value">4.5</p>
+                    </div>
+                    <div>
+                      <p class="student-stat-label">메모</p>
+                      <p class="student-stat-value">2</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ 학생 상세 ═══════════════ -->
+    <section class="screen" id="sc-student-detail">
+      <div class="section-header">
+        <div class="section-badge badge-phase3">3차</div>
+        <h2 class="section-title">학생 상세 — 상담 이력 + AI 종합 분석</h2>
+        <p class="section-desc">
+          학생별 전체 상담 이력을 타임라인으로 보고, AI가 종합 분석 제공. 보호자
+          소통 자료 생성.
+        </p>
+      </div>
+      <div class="frame-wrapper">
+        <div class="frame">
+          <div class="frame-chrome">
+            <div class="frame-dots">
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+              <div class="frame-dot"></div>
+            </div>
+            <div class="frame-url">yeon.world/students/김민수</div>
+          </div>
+          <div class="app-shell" style="min-height: 520px">
+            <div class="gnav">
+              <div class="gnav-item">📝</div>
+              <div class="gnav-item active">👥</div>
+              <div class="gnav-spacer"></div>
+              <div class="gnav-avatar">최</div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column">
+              <div class="student-detail-header">
+                <div
+                  class="student-detail-avatar"
+                  style="background: linear-gradient(135deg, #60a5fa, #818cf8)"
+                >
+                  민
+                </div>
+                <div>
+                  <p class="student-detail-name">김민수</p>
+                  <p class="student-detail-sub">
+                    <span class="tag-sm tag-math">수학</span>
+                    <span class="tag-sm tag-eng">영어</span> · 중2 · 2026.03
+                    등록
+                  </p>
+                </div>
+              </div>
+              <div class="student-detail-stats">
+                <div class="sds-item">
+                  <p class="sds-label">총 상담</p>
+                  <p class="sds-value">
+                    12<span
+                      style="
+                        font-size: 11px;
+                        color: var(--text-dim);
+                        font-weight: 400;
+                      "
+                      >회</span
+                    >
+                  </p>
+                </div>
+                <div class="sds-item">
+                  <p class="sds-label">이번 달</p>
+                  <p class="sds-value">
+                    3<span
+                      style="
+                        font-size: 11px;
+                        color: var(--text-dim);
+                        font-weight: 400;
+                      "
+                      >회</span
+                    >
+                  </p>
+                </div>
+                <div class="sds-item">
+                  <p class="sds-label">마지막 상담</p>
+                  <p class="sds-value">4.8</p>
+                </div>
+                <div class="sds-item">
+                  <p class="sds-label">주요 이슈</p>
+                  <p
+                    class="sds-value"
+                    style="font-family: inherit; font-size: 13px"
+                  >
+                    과제 관리
+                  </p>
+                </div>
+              </div>
+              <div class="table-wrap" style="flex: 1">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>날짜</th>
+                      <th>제목</th>
+                      <th>유형</th>
+                      <th>상태</th>
+                      <th>AI 요약</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style="
+                          font-family: &quot;JetBrains Mono&quot;, monospace;
+                          font-size: 11px;
+                        "
+                      >
+                        2026.04.08
+                      </td>
+                      <td style="font-weight: 500">수학 과제 누락 상담</td>
+                      <td>대면</td>
+                      <td>
+                        <span class="status-badge status-ready">✓ 완료</span>
+                      </td>
+                      <td
+                        style="
+                          color: var(--text-secondary);
+                          max-width: 200px;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                          white-space: nowrap;
+                        "
+                      >
+                        학원 일정으로 과제 시간 부족, 제출 기한 조정 합의
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          font-family: &quot;JetBrains Mono&quot;, monospace;
+                          font-size: 11px;
+                        "
+                      >
+                        2026.04.05
+                      </td>
+                      <td style="font-weight: 500">월간 학습 점검</td>
+                      <td>대면</td>
+                      <td>
+                        <span class="status-badge status-ready">✓ 완료</span>
+                      </td>
+                      <td
+                        style="
+                          color: var(--text-secondary);
+                          max-width: 200px;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                          white-space: nowrap;
+                        "
+                      >
+                        수학 중간고사 대비 계획 수립, 주 3회 자습 권장
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          font-family: &quot;JetBrains Mono&quot;, monospace;
+                          font-size: 11px;
+                        "
+                      >
+                        2026.03.28
+                      </td>
+                      <td style="font-weight: 500">보호자 통화</td>
+                      <td>전화</td>
+                      <td>
+                        <span class="status-badge status-ready">✓ 완료</span>
+                      </td>
+                      <td
+                        style="
+                          color: var(--text-secondary);
+                          max-width: 200px;
+                          overflow: hidden;
+                          text-overflow: ellipsis;
+                          white-space: nowrap;
+                        "
+                      >
+                        학원-집 학습 연계 방안 논의, 부모 협조 요청
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          font-family: &quot;JetBrains Mono&quot;, monospace;
+                          font-size: 11px;
+                        "
+                      >
+                        2026.03.20
+                      </td>
+                      <td style="font-weight: 500">수업 태도 점검</td>
+                      <td>대면</td>
+                      <td>
+                        <span class="status-badge status-ready">✓ 완료</span>
+                      </td>
+                      <td style="color: var(--text-secondary)">
+                        집중력 저하 원인 파악, 자리 배치 변경
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="ai-panel">
+              <div class="ai-header">
+                <span class="ai-header-dot"></span> AI 종합 분석
+              </div>
+              <div class="ai-summary">
+                <div class="ai-summary-badge">✦ 김민수 종합 리포트</div>
+                <div class="ai-summary-text">
+                  <strong>핵심 패턴:</strong> 학원 일정 과밀로 자기주도 학습
+                  시간 부족. 과제 미제출이 반복되는 경향.<br /><br />
+                  <strong>개선 추이:</strong> 3월 대비 과제 완수율 향상 (60% →
+                  80%). 자리 배치 변경 후 수업 집중도 개선.<br /><br />
+                  <strong>권장 조치:</strong><br />
+                  • 과제 양 조절 (현행 유지)<br />
+                  • 중간고사 전 보호자 면담 1회<br />
+                  • 월 2회 정기 학습 점검 유지
+                </div>
+              </div>
+              <div class="ai-messages" style="flex: 1"></div>
+              <div class="ai-quick">
+                <button class="ai-chip">보호자 상담일지 생성</button>
+                <button class="ai-chip">월간 리포트 PDF</button>
+                <button class="ai-chip">다음 상담 안건 제안</button>
+              </div>
+              <div class="ai-input-wrap">
+                <input
+                  class="ai-input"
+                  placeholder="이 학생에 대해 질문하세요..."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      document.getElementById("mainNav").addEventListener("click", (e) => {
+        const btn = e.target.closest(".nav-tab");
+        if (!btn) return;
+        document
+          .querySelectorAll(".nav-tab")
+          .forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".screen")
+          .forEach((s) => s.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.screen).classList.add("active");
+      });
+    </script>
+  </body>
 </html>

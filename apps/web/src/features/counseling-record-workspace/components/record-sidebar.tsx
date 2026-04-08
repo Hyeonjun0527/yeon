@@ -86,8 +86,7 @@ export function RecordSidebar({
         className={styles.newRecordButton}
         onClick={onNewRecord}
       >
-        <Upload size={14} strokeWidth={2.2} />
-        새 기록
+        <Upload size={14} strokeWidth={2.2} />새 기록
       </button>
 
       {records.length > 0 || isLoadingList || loadError ? (
@@ -95,9 +94,7 @@ export function RecordSidebar({
           <div className={styles.browseSectionHeader}>
             <h2 className={styles.sidebarSectionTitle}>기록 찾기</h2>
             {!isLoadingList && !loadError ? (
-              <p className={styles.browseCount}>
-                기록 {records.length}건
-              </p>
+              <p className={styles.browseCount}>기록 {records.length}건</p>
             ) : null}
           </div>
 
@@ -139,9 +136,18 @@ export function RecordSidebar({
               <div className={styles.skeletonList}>
                 {Array.from({ length: 3 }, (_, i) => (
                   <div key={i} className={styles.skeletonCard}>
-                    <div className={styles.skeletonLine} style={{ width: "60%" }} />
-                    <div className={styles.skeletonLine} style={{ width: "80%" }} />
-                    <div className={styles.skeletonLine} style={{ width: "40%" }} />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "60%" }}
+                    />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "80%" }}
+                    />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "40%" }}
+                    />
                   </div>
                 ))}
               </div>
@@ -150,9 +156,7 @@ export function RecordSidebar({
                 <p className={styles.emptyStateTitle}>
                   목록을 불러오지 못했습니다.
                 </p>
-                <p className={styles.emptyStateDescription}>
-                  {loadError}
-                </p>
+                <p className={styles.emptyStateDescription}>{loadError}</p>
               </div>
             ) : sidebarViewMode === "student" ? (
               <SidebarStudentGroupList

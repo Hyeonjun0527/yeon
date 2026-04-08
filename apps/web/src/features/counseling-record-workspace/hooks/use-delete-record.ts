@@ -29,9 +29,7 @@ export function useDeleteRecord(
         const body = (await response.json().catch(() => null)) as {
           message?: string;
         } | null;
-        throw new Error(
-          body?.message ?? "상담 기록 삭제에 실패했습니다.",
-        );
+        throw new Error(body?.message ?? "상담 기록 삭제에 실패했습니다.");
       }
 
       setRecords((current) =>
@@ -44,9 +42,7 @@ export function useDeleteRecord(
       setSaveToast("기록이 삭제되었습니다.");
     } catch (error) {
       setSaveToast(
-        error instanceof Error
-          ? error.message
-          : "삭제에 실패했습니다.",
+        error instanceof Error ? error.message : "삭제에 실패했습니다.",
       );
     } finally {
       setIsDeleting(false);

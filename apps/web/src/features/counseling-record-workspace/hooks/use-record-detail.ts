@@ -3,7 +3,13 @@ import {
   type CounselingRecordDetail,
   type CounselingRecordListItem,
 } from "@yeon/api-contract/counseling-records";
-import { useEffect, useState, startTransition, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useState,
+  startTransition,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { UploadTone } from "../types";
 import { PROCESSING_REFRESH_INTERVAL_MS } from "../constants";
 import { fetchApi, buildClientRequestId, upsertRecordList } from "../utils";

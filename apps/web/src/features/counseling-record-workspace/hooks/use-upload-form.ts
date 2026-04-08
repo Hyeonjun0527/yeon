@@ -44,8 +44,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const hasAudioReady =
-    Boolean(selectedAudioFile) && recordingPhase === "idle";
+  const hasAudioReady = Boolean(selectedAudioFile) && recordingPhase === "idle";
 
   // preview URL revoke
   useEffect(() => {

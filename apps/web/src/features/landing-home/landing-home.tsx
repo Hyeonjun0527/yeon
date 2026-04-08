@@ -1,11 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  motion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
@@ -93,9 +89,7 @@ export function LandingHome({
               <br />
               기억에만
               <br />
-              <span className={styles.heroTitleAccent}>
-                남기기 아깝습니다
-              </span>
+              <span className={styles.heroTitleAccent}>남기기 아깝습니다</span>
             </motion.h1>
 
             <motion.p
@@ -106,8 +100,7 @@ export function LandingHome({
             >
               켜두기만 하세요. 상담이 끝나면 기록이 완성되어 있습니다.
               <br />
-              녹음 버튼 하나면 전사부터 요약, 후속 조치까지 자동으로
-              정리됩니다.
+              녹음 버튼 하나면 전사부터 요약, 후속 조치까지 자동으로 정리됩니다.
             </motion.p>
 
             <motion.div

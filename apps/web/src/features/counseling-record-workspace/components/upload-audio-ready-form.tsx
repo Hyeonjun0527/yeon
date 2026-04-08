@@ -39,9 +39,7 @@ export function UploadAudioReadyForm({
     <>
       <div className={styles.selectedAudioCard}>
         <p className={styles.selectedAudioLabel}>선택한 오디오</p>
-        <p className={styles.selectedAudioTitle}>
-          {selectedAudioFile.name}
-        </p>
+        <p className={styles.selectedAudioTitle}>{selectedAudioFile.name}</p>
         <p className={styles.selectedAudioMeta}>
           {formatFileSize(selectedAudioFile.size)} ·{" "}
           {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
@@ -76,9 +74,7 @@ export function UploadAudioReadyForm({
           onClick={() => setIsAdditionalInfoOpen((current) => !current)}
         >
           <span className={styles.additionalInfoLabel}>추가 정보</span>
-          <span className={styles.additionalInfoSummary}>
-            제목, 상담 유형
-          </span>
+          <span className={styles.additionalInfoSummary}>제목, 상담 유형</span>
         </button>
 
         {isAdditionalInfoOpen ? (

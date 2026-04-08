@@ -1,9 +1,4 @@
-import {
-  Mic,
-  FileText,
-  MessageSquare,
-  FolderOpen,
-} from "lucide-react";
+import { Mic, FileText, MessageSquare, FolderOpen } from "lucide-react";
 
 export const STATS = [
   { label: "원문 전체 열람", value: 100, suffix: "%" },

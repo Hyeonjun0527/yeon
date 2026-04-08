@@ -27,9 +27,7 @@ export function SidebarRecordListView({
   if (filteredRecords.length === 0) {
     return (
       <div className={styles.emptyListState}>
-        <p className={styles.emptyStateTitle}>
-          표시할 상담 기록이 없습니다.
-        </p>
+        <p className={styles.emptyStateTitle}>표시할 상담 기록이 없습니다.</p>
       </div>
     );
   }
@@ -67,9 +65,7 @@ export function SidebarRecordListView({
 
                 <div className={styles.recordMetaRow}>
                   <span>{formatDateTimeLabel(record.createdAt)}</span>
-                  <span
-                    className={`${styles.statusBadge} ${status.className}`}
-                  >
+                  <span className={`${styles.statusBadge} ${status.className}`}>
                     <StatusIcon size={10} strokeWidth={2.2} />
                     {status.label}
                   </span>

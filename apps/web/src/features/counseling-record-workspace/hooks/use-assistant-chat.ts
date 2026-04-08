@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { CounselingRecordDetail, CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
+import type {
+  CounselingRecordDetail,
+  CounselingRecordListItem,
+} from "@yeon/api-contract/counseling-records";
 import type { Message } from "../types";
 import { buildInitialAssistantMessages } from "../utils";
 
@@ -67,7 +70,8 @@ export function useAssistantChat(
     }
 
     const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      80;
 
     if (isNearBottom || isAiStreaming) {
       container.scrollTop = container.scrollHeight;
@@ -82,7 +86,10 @@ export function useAssistantChat(
     setAssistantDraft("");
     setAssistantMessagesByRecord((current) => {
       const existingMessages = current[selectedRecord.id];
-      const nextMessages = buildInitialAssistantMessages(selectedRecord, statusMeta);
+      const nextMessages = buildInitialAssistantMessages(
+        selectedRecord,
+        statusMeta,
+      );
 
       if (!existingMessages) {
         return evictOldestIfNeeded(
@@ -144,7 +151,10 @@ export function useAssistantChat(
 
     const capturedRecordId = selectedRecord.id;
     const analysisPrompt = "이 상담 내용을 분석해줘";
-    const welcomeMessages = buildInitialAssistantMessages(selectedRecord, statusMeta);
+    const welcomeMessages = buildInitialAssistantMessages(
+      selectedRecord,
+      statusMeta,
+    );
     const userMessage: Message = {
       id: `${capturedRecordId}-user-auto-${Date.now()}`,
       role: "user",
@@ -158,7 +168,13 @@ export function useAssistantChat(
     }));
 
     streamAssistantResponse(capturedRecordId, allMessages);
-  }, [selectedRecord, selectedRecordDetail, isAiStreaming, assistantMessagesByRecord, statusMeta]);
+  }, [
+    selectedRecord,
+    selectedRecordDetail,
+    isAiStreaming,
+    assistantMessagesByRecord,
+    statusMeta,
+  ]);
 
   async function streamAssistantResponse(
     recordId: string,
@@ -268,9 +284,7 @@ export function useAssistantChat(
               setAssistantMessagesByRecord((current) => ({
                 ...current,
                 [recordId]: (current[recordId] ?? []).map((m) =>
-                  m.id === assistantId
-                    ? { ...m, content: snapshot }
-                    : m,
+                  m.id === assistantId ? { ...m, content: snapshot } : m,
                 ),
               }));
             }
@@ -287,7 +301,11 @@ export function useAssistantChat(
           ...current,
           [recordId]: (current[recordId] ?? []).map((m) =>
             m.id === assistantId
-              ? { ...m, content: m.content || "⚠️ 응답 중 오류가 발생했습니다.", isStreaming: false }
+              ? {
+                  ...m,
+                  content: m.content || "⚠️ 응답 중 오류가 발생했습니다.",
+                  isStreaming: false,
+                }
               : m,
           ),
         }));
@@ -321,8 +339,7 @@ export function useAssistantChat(
       content: trimmedPrompt,
     };
 
-    const currentMessages =
-      assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const currentMessages = assistantMessagesByRecord[selectedRecord.id] ?? [];
 
     const updatedMessages = [...currentMessages, userMessage];
 

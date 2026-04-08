@@ -111,9 +111,8 @@ export function CounselingRecordWorkspace() {
 
   // ── 녹음 콜백 (startRecording에 onAudioReady, onOpenUploadPanel 전달) ──
   const handleStartRecording = useCallback(() => {
-    recording.startRecording(
-      uploadForm.applySelectedAudioFile,
-      () => uploadForm.setIsUploadPanelOpen(true),
+    recording.startRecording(uploadForm.applySelectedAudioFile, () =>
+      uploadForm.setIsUploadPanelOpen(true),
     );
   }, [recording, uploadForm]);
 
@@ -251,12 +250,8 @@ export function CounselingRecordWorkspace() {
                     audioLoadError={audioPlayer.audioLoadError}
                     setAudioLoadError={audioPlayer.setAudioLoadError}
                     handleAudioTimeUpdate={audioPlayer.handleAudioTimeUpdate}
-                    refreshRecordDetail={(id) =>
-                      detail.refreshRecordDetail(id)
-                    }
-                    retryTranscription={(id) =>
-                      detail.retryTranscription(id)
-                    }
+                    refreshRecordDetail={(id) => detail.refreshRecordDetail(id)}
+                    retryTranscription={(id) => detail.retryTranscription(id)}
                   />
 
                   <TranscriptViewer
@@ -277,15 +272,9 @@ export function CounselingRecordWorkspace() {
                     setEditingSegmentText={
                       transcriptEditor.setEditingSegmentText
                     }
-                    editingSegmentSaving={
-                      transcriptEditor.editingSegmentSaving
-                    }
-                    startEditingSegment={
-                      transcriptEditor.startEditingSegment
-                    }
-                    cancelEditingSegment={
-                      transcriptEditor.cancelEditingSegment
-                    }
+                    editingSegmentSaving={transcriptEditor.editingSegmentSaving}
+                    startEditingSegment={transcriptEditor.startEditingSegment}
+                    cancelEditingSegment={transcriptEditor.cancelEditingSegment}
                     saveEditingSegment={transcriptEditor.saveEditingSegment}
                     handleSpeakerLabelChange={
                       transcriptEditor.handleSpeakerLabelChange
@@ -335,14 +324,10 @@ export function CounselingRecordWorkspace() {
                     uploadState={uploadForm.uploadState}
                     selectedAudioFile={uploadForm.selectedAudioFile}
                     selectedAudioDurationMs={uploadForm.selectedAudioDurationMs}
-                    selectedAudioPreviewUrl={
-                      uploadForm.selectedAudioPreviewUrl
-                    }
+                    selectedAudioPreviewUrl={uploadForm.selectedAudioPreviewUrl}
                     hasAudioReady={uploadForm.hasAudioReady}
                     isAdditionalInfoOpen={uploadForm.isAdditionalInfoOpen}
-                    setIsAdditionalInfoOpen={
-                      uploadForm.setIsAdditionalInfoOpen
-                    }
+                    setIsAdditionalInfoOpen={uploadForm.setIsAdditionalInfoOpen}
                     recordingPhase={recording.recordingPhase}
                     recordingElapsedMs={recording.recordingElapsedMs}
                     recordingError={recording.recordingError}

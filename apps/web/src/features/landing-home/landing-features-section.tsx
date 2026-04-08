@@ -17,10 +17,7 @@ export function LandingFeaturesSection() {
           </h2>
         </motion.div>
 
-        <motion.div
-          className={styles.featuresGrid}
-          variants={staggerContainer}
-        >
+        <motion.div className={styles.featuresGrid} variants={staggerContainer}>
           {FEATURES.map((feat) => (
             <motion.div
               key={feat.title}

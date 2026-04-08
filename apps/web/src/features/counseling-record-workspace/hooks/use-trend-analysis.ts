@@ -10,8 +10,9 @@ export function useTrendAnalysis(
   setSelectedRecordId: (id: string | null) => void,
   setSaveToast: (message: string) => void,
 ) {
-  const [trendAnalysis, setTrendAnalysis] =
-    useState<TrendAnalysisState | null>(null);
+  const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysisState | null>(
+    null,
+  );
   const trendAbortControllerRef = useRef<AbortController | null>(null);
 
   async function handleStartTrendAnalysis(
@@ -27,15 +28,12 @@ export function useTrendAnalysis(
     setSelectedRecordId(null);
 
     try {
-      const response = await fetch(
-        "/api/v1/counseling-records/analyze-trend",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recordIds }),
-          signal: controller.signal,
-        },
-      );
+      const response = await fetch("/api/v1/counseling-records/analyze-trend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recordIds }),
+        signal: controller.signal,
+      });
 
       if (!response.ok || !response.body) {
         const body = (await response.json().catch(() => null)) as {
@@ -76,9 +74,7 @@ export function useTrendAnalysis(
 
             if (token) {
               setTrendAnalysis((prev) =>
-                prev
-                  ? { ...prev, content: prev.content + token }
-                  : null,
+                prev ? { ...prev, content: prev.content + token } : null,
               );
             }
           } catch {

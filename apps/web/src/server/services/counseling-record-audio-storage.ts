@@ -28,13 +28,11 @@ type R2Config = {
   endpoint: string;
 };
 
-let cachedClient:
-  | {
-      cacheKey: string;
-      client: S3Client;
-      bucketName: string;
-    }
-  | null = null;
+let cachedClient: {
+  cacheKey: string;
+  client: S3Client;
+  bucketName: string;
+} | null = null;
 
 function sanitizeRequiredEnv(
   value: string | undefined,
@@ -138,7 +136,10 @@ function isRetryableR2Error(error: unknown) {
       ? Number(error.$metadata.httpStatusCode)
       : null;
 
-  if (typeof statusCode === "number" && RETRYABLE_R2_STATUS_CODES.has(statusCode)) {
+  if (
+    typeof statusCode === "number" &&
+    RETRYABLE_R2_STATUS_CODES.has(statusCode)
+  ) {
     return true;
   }
 
@@ -180,7 +181,10 @@ async function runWithR2Retry<T>(
     }
   }
 
-  throw new ServiceError(502, formatStorageErrorMessage(actionLabel, lastError));
+  throw new ServiceError(
+    502,
+    formatStorageErrorMessage(actionLabel, lastError),
+  );
 }
 
 async function bodyToBuffer(body: unknown) {
@@ -188,13 +192,18 @@ async function bodyToBuffer(body: unknown) {
     throw new ServiceError(502, "상담 음성 다운로드 응답이 비어 있습니다.");
   }
 
-  if ("transformToByteArray" in body && typeof body.transformToByteArray === "function") {
+  if (
+    "transformToByteArray" in body &&
+    typeof body.transformToByteArray === "function"
+  ) {
     return Buffer.from(await body.transformToByteArray());
   }
 
   const chunks: Uint8Array[] = [];
 
-  for await (const chunk of body as AsyncIterable<Uint8Array | Buffer | string>) {
+  for await (const chunk of body as AsyncIterable<
+    Uint8Array | Buffer | string
+  >) {
     if (typeof chunk === "string") {
       chunks.push(Buffer.from(chunk));
       continue;
@@ -224,7 +233,10 @@ function bodyToWebStream(body: unknown) {
     throw new ServiceError(502, "상담 음성 다운로드 응답이 비어 있습니다.");
   }
 
-  if ("transformToWebStream" in body && typeof body.transformToWebStream === "function") {
+  if (
+    "transformToWebStream" in body &&
+    typeof body.transformToWebStream === "function"
+  ) {
     return body.transformToWebStream() as ReadableStream<Uint8Array>;
   }
 
@@ -345,9 +357,10 @@ export async function openCounselingAudioObjectStream(params: {
 
   return {
     stream: bodyToWebStream(response.Body),
-    contentLength: typeof response.ContentLength === "number"
-      ? response.ContentLength
-      : null,
+    contentLength:
+      typeof response.ContentLength === "number"
+        ? response.ContentLength
+        : null,
     contentRange: response.ContentRange ?? null,
   };
 }

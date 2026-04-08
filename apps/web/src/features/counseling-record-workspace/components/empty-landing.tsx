@@ -85,16 +85,12 @@ export function EmptyLanding({
               type="button"
               className={styles.recordingActionButton}
               onClick={
-                recordingPhase === "recording"
-                  ? onStopRecording
-                  : undefined
+                recordingPhase === "recording" ? onStopRecording : undefined
               }
               disabled={recordingPhase === "finalizing"}
             >
               <Mic size={16} strokeWidth={2.1} />
-              {recordingPhase === "recording"
-                ? "녹음 중지"
-                : "녹음 정리 중"}
+              {recordingPhase === "recording" ? "녹음 중지" : "녹음 정리 중"}
             </button>
             <div className={styles.recordingStatusRow}>
               <p className={styles.recordingStatusTitle}>
@@ -141,9 +137,7 @@ export function EmptyLanding({
         ) : null}
 
         {recordingError ? (
-          <p
-            className={`${styles.inlineMessage} ${styles.inlineError}`}
-          >
+          <p className={`${styles.inlineMessage} ${styles.inlineError}`}>
             {recordingError}
           </p>
         ) : null}

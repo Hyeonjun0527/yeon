@@ -41,9 +41,7 @@ export function SidebarStudentGroupList({
   if (studentGroups.length === 0) {
     return (
       <div className={styles.emptyListState}>
-        <p className={styles.emptyStateTitle}>
-          표시할 상담 기록이 없습니다.
-        </p>
+        <p className={styles.emptyStateTitle}>표시할 상담 기록이 없습니다.</p>
       </div>
     );
   }
@@ -101,10 +99,7 @@ export function SidebarStudentGroupList({
                       onClick={() => handleSelectRecord(record.id)}
                     >
                       {isSelected ? (
-                        <span
-                          className={styles.recordAccentBar}
-                          aria-hidden
-                        />
+                        <span className={styles.recordAccentBar} aria-hidden />
                       ) : null}
                       <div className={styles.recordItemBody}>
                         <div className={styles.recordItemHeader}>
@@ -114,9 +109,7 @@ export function SidebarStudentGroupList({
                             </span>
                           </div>
                           <div className={styles.recordMetaRow}>
-                            <span>
-                              {formatDateTimeLabel(record.createdAt)}
-                            </span>
+                            <span>{formatDateTimeLabel(record.createdAt)}</span>
                             <span
                               className={`${styles.statusBadge} ${status.className}`}
                             >
