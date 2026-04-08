@@ -2,7 +2,7 @@ import {
   listCounselingRecordsResponseSchema,
   type CounselingRecordListItem,
 } from "@yeon/api-contract/counseling-records";
-import { useEffect, useDeferredValue, useState, startTransition } from "react";
+import { useEffect, useDeferredValue, useMemo, useState, startTransition } from "react";
 import type { RecordFilter, SidebarViewMode } from "../types";
 import { fetchApi, upsertRecordList } from "../utils";
 
@@ -77,25 +77,29 @@ export function useRecordList() {
     };
   }, []);
 
-  const filteredRecords = records.filter((record) => {
-    if (recordFilter !== "all" && record.status !== recordFilter) {
-      return false;
-    }
+  const filteredRecords = useMemo(
+    () =>
+      records.filter((record) => {
+        if (recordFilter !== "all" && record.status !== recordFilter) {
+          return false;
+        }
 
-    if (!normalizedSearchTerm) {
-      return true;
-    }
+        if (!normalizedSearchTerm) {
+          return true;
+        }
 
-    return [
-      record.studentName,
-      record.sessionTitle,
-      record.preview,
-      ...record.tags,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedSearchTerm);
-  });
+        return [
+          record.studentName,
+          record.sessionTitle,
+          record.preview,
+          ...record.tags,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearchTerm);
+      }),
+    [records, recordFilter, normalizedSearchTerm],
+  );
 
   // 필터 보정: 선택된 레코드가 필터에서 안 보이면 첫 번째로 이동
   useEffect(() => {

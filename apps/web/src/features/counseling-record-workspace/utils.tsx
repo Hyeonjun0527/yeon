@@ -8,6 +8,15 @@ import type { ReactNode } from "react";
 import type { ApiRequestError, Message } from "./types";
 import { SPEAKER_CYCLE } from "./constants";
 
+function parseDurationParts(ms: number) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return { hours, minutes, seconds };
+}
+
 export function formatDateTimeLabel(value: string) {
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
@@ -16,14 +25,11 @@ export function formatDateTimeLabel(value: string) {
 }
 
 export function formatDurationLabel(value: number | null) {
-  if (!value || value <= 0) {
+  if (value === null || value <= 0) {
     return "길이 미확인";
   }
 
-  const totalSeconds = Math.max(Math.round(value / 1000), 1);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const { hours, minutes, seconds } = parseDurationParts(value);
 
   if (hours > 0) {
     return `${hours}시간 ${minutes}분 ${seconds}초`;
@@ -33,14 +39,11 @@ export function formatDurationLabel(value: number | null) {
 }
 
 export function formatCompactDuration(value: number | null) {
-  if (!value || value <= 0) {
+  if (value === null || value <= 0) {
     return "미확인";
   }
 
-  const totalSeconds = Math.max(Math.round(value / 1000), 1);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const { hours, minutes, seconds } = parseDurationParts(value);
 
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -54,9 +57,7 @@ export function formatTranscriptTime(value: number | null) {
     return "원문";
   }
 
-  const totalSeconds = Math.floor(value / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const { minutes, seconds } = parseDurationParts(value);
 
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
@@ -293,7 +294,7 @@ export function buildInitialAssistantMessages(
       {
         id: `${record.id}-assistant-status`,
         role: "assistant",
-        content: `${record.studentName} 기록은 현재 ${statusMeta[record.status].label} 상태입니다. 원문이 준비되면 AI 분석을 시작할 수 있습니다.`,
+        content: `${record.studentName} 기록은 현재 ${statusMeta[record.status]?.label ?? record.status} 상태입니다. 원문이 준비되면 AI 분석을 시작할 수 있습니다.`,
       },
     ];
   }

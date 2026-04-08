@@ -5,6 +5,7 @@ import {
 } from "@yeon/api-contract/counseling-records";
 import {
   useEffect,
+  useRef,
   useState,
   startTransition,
   type Dispatch,
@@ -20,7 +21,7 @@ export function useRecordDetail(
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
 ) {
   const [recordDetails, setRecordDetails] = useState<
-    Record<string, CounselingRecordDetail>
+    Record<string, CounselingRecordDetail | null>
   >({});
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDetailMetaOpen, setIsDetailMetaOpen] = useState(false);
@@ -34,13 +35,16 @@ export function useRecordDetail(
     tone: "idle",
   });
 
+  const recordDetailsRef = useRef(recordDetails);
+  recordDetailsRef.current = recordDetails;
+
   const selectedRecordDetail = selectedRecordId
     ? (recordDetails[selectedRecordId] ?? null)
     : null;
 
   // 상세 로드
   useEffect(() => {
-    if (!selectedRecordId || recordDetails[selectedRecordId]) {
+    if (!selectedRecordId || selectedRecordId in recordDetailsRef.current) {
       return;
     }
 
@@ -74,6 +78,11 @@ export function useRecordDetail(
           return;
         }
 
+        // 실패한 ID를 null로 기록하여 무한 재시도 방지
+        setRecordDetails((current) => ({
+          ...current,
+          [selectedRecordId!]: null,
+        }));
         setRetryState({
           isSubmitting: false,
           message:
@@ -94,7 +103,7 @@ export function useRecordDetail(
     return () => {
       ignore = true;
     };
-  }, [recordDetails, selectedRecordId, setRecords]);
+  }, [selectedRecordId, setRecords]);
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {

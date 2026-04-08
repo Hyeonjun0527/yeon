@@ -5,6 +5,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { counselingRecordSpeakerToneSchema } from "@yeon/api-contract/counseling-records";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
@@ -14,7 +15,7 @@ import { isTranscriptSegmentMatched } from "../utils";
 export function useTranscriptEditor(
   selectedRecord: CounselingRecordListItem | null,
   setRecordDetails: Dispatch<
-    SetStateAction<Record<string, CounselingRecordDetail>>
+    SetStateAction<Record<string, CounselingRecordDetail | null>>
   >,
   setSaveToast: (message: string) => void,
 ) {
@@ -121,6 +122,12 @@ export function useTranscriptEditor(
       return;
     }
 
+    const parsedTone = counselingRecordSpeakerToneSchema.safeParse(newTone);
+
+    if (!parsedTone.success) {
+      return;
+    }
+
     try {
       const response = await fetch(
         `/api/v1/counseling-records/${selectedRecord.id}/segments/${segmentId}`,
@@ -129,12 +136,17 @@ export function useTranscriptEditor(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             speakerLabel: newLabel,
-            speakerTone: newTone,
+            speakerTone: parsedTone.data,
           }),
         },
       );
 
       if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as {
+          message?: string;
+        };
+
+        setSaveToast(data.message ?? "화자 변경에 실패했습니다.");
         return;
       }
 
@@ -154,7 +166,7 @@ export function useTranscriptEditor(
                 ? {
                     ...s,
                     speakerLabel: newLabel,
-                    speakerTone: newTone as typeof s.speakerTone,
+                    speakerTone: parsedTone.data,
                   }
                 : s,
             ),
@@ -162,7 +174,7 @@ export function useTranscriptEditor(
         };
       });
     } catch {
-      // 실패 시 무시 (이미 서버에 반영 안 됨)
+      setSaveToast("화자 변경에 실패했습니다.");
     }
   }
 

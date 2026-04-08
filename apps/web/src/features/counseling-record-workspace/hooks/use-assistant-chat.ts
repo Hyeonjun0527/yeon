@@ -43,18 +43,25 @@ export function useAssistantChat(
   const aiAbortControllerRef = useRef<AbortController | null>(null);
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const activeRecordIdRef = useRef<string | null>(null);
+  const prevRecordIdRef = useRef<string | null>(null);
+  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
+  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
+
+  // 컴포넌트 언마운트 시 스트리밍 정리
+  useEffect(() => () => {
+    aiAbortControllerRef.current?.abort();
+  }, []);
 
   // 레코드 전환 시 진행 중인 스트리밍 중단
   useEffect(() => {
     const currentId = selectedRecord?.id ?? null;
-    const previousId = activeRecordIdRef.current;
 
-    activeRecordIdRef.current = currentId;
-
-    if (previousId && previousId !== currentId) {
+    if (prevRecordIdRef.current && prevRecordIdRef.current !== currentId) {
       aiAbortControllerRef.current?.abort();
+      setIsAiStreaming(false);
     }
+
+    prevRecordIdRef.current = currentId;
   }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
@@ -141,7 +148,7 @@ export function useAssistantChat(
       return;
     }
 
-    const existingMessages = assistantMessagesByRecord[selectedRecord.id];
+    const existingMessages = assistantMessagesByRecordRef.current[selectedRecord.id];
 
     if (existingMessages?.some((m) => m.role === "user")) {
       return;
@@ -168,13 +175,7 @@ export function useAssistantChat(
     }));
 
     streamAssistantResponse(capturedRecordId, allMessages);
-  }, [
-    selectedRecord,
-    selectedRecordDetail,
-    isAiStreaming,
-    assistantMessagesByRecord,
-    statusMeta,
-  ]);
+  }, [selectedRecord, selectedRecordDetail, isAiStreaming, statusMeta]);
 
   async function streamAssistantResponse(
     recordId: string,
@@ -250,6 +251,7 @@ export function useAssistantChat(
 
       const decoder = new TextDecoder();
       let accumulated = "";
+      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -258,8 +260,9 @@ export function useAssistantChat(
           break;
         }
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -339,14 +342,16 @@ export function useAssistantChat(
       content: trimmedPrompt,
     };
 
-    const currentMessages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    let updatedMessages: Message[] = [];
 
-    const updatedMessages = [...currentMessages, userMessage];
-
-    setAssistantMessagesByRecord((current) => ({
-      ...current,
-      [selectedRecord.id]: updatedMessages,
-    }));
+    setAssistantMessagesByRecord((current) => {
+      const currentMessages = current[selectedRecord.id] ?? [];
+      updatedMessages = [...currentMessages, userMessage];
+      return {
+        ...current,
+        [selectedRecord.id]: updatedMessages,
+      };
+    });
     setAssistantDraft("");
 
     streamAssistantResponse(selectedRecord.id, updatedMessages);

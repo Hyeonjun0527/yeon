@@ -31,7 +31,7 @@ function getAuthenticatedUserFromRequest(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { sessionToken, userPromise } =
     getAuthenticatedUserFromRequest(request);
-  const currentUser = userPromise ? await userPromise : null;
+  const currentUser = await userPromise;
 
   if (!currentUser) {
     const response = jsonError("로그인이 필요합니다.", 401);
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const { sessionToken, userPromise } =
     getAuthenticatedUserFromRequest(request);
-  const currentUser = userPromise ? await userPromise : null;
+  const currentUser = await userPromise;
 
   if (!currentUser) {
     const response = jsonError("로그인이 필요합니다.", 401);

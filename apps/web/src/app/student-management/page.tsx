@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { StudentListScreen } from "@/features/student-management/screens/student-list-screen";
 
 export default function StudentManagementPage() {
-  redirect("/");
+  return <StudentListScreen />;
 }

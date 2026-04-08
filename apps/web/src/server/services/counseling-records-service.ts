@@ -441,19 +441,27 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
-  // R2 파일을 먼저 삭제 — DB가 source of truth이므로 행이 남아있으면 재시도 가능
+  // DB를 먼저 삭제 — R2보다 DB가 source of truth이므로 DB 삭제 성공 후 R2를 제거
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(counselingTranscriptSegments)
+      .where(eq(counselingTranscriptSegments.recordId, record.id));
+    await tx
+      .delete(counselingRecords)
+      .where(eq(counselingRecords.id, record.id));
+  });
+
+  // R2 삭제 실패는 로그만 남기고 무시 — DB에서 이미 삭제되었으므로 고아 파일은 나중에 정리 가능
   if (!isPlaceholderAudioStoragePath(record.audioStoragePath)) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
       console.error(
-        `상담 기록 ${record.id}의 R2 음성 파일 삭제에 실패했습니다.`,
+        `상담 기록 ${record.id}의 R2 음성 파일 삭제에 실패했습니다. DB 삭제는 완료되었으므로 무시합니다.`,
         error,
       );
     }
   }
-
-  await db.delete(counselingRecords).where(eq(counselingRecords.id, record.id));
 }
 
 export async function updateTranscriptSegment(
