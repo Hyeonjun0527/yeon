@@ -1,4 +1,4 @@
-import { authProviderSchema } from "@yeon/api-contract";
+import { authProviderSchema } from "@yeon/api-contract/auth";
 import { z } from "zod";
 
 import {

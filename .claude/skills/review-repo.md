@@ -20,18 +20,21 @@ user_invocable: true
 아래 기준을 순서대로 점검하되, 해당 사항이 없으면 건너뛴다.
 
 ### Critical (즉시 수정 필요)
+
 1. **상태 정합성**: 거짓 상태가 남을 수 있는 코드 — set/save/write가 있으면 delete/clear/reset도 확인
 2. **source of truth 위반**: 같은 값이 여러 곳에 중복 정의되어 drift 가능성이 있는 경우
 3. **server/client 경계 침범**: server-only 코드가 클라이언트 번들에 포함되거나 그 반대
 4. **보안 취약점**: OWASP top 10 해당 사항 (injection, XSS 등)
 
 ### Major (품질에 영향)
+
 5. **web/mobile 재사용 경계**: Server Action으로 닫아야 할 것을 public API 없이 구현
 6. **API 계약 drift**: api-contract와 실제 구현 사이 불일치
 7. **비동기 레이스 컨디션**: 순서 뒤집힘, 취소 누락, stale closure
 8. **cleanup 누락**: 이벤트 리스너, 타이머, 구독 해제 빠짐
 
 ### Minor (개선 권장)
+
 9. **workspace 경계 위반**: apps/packages 간 잘못된 의존 방향
 10. **CSS Modules 제약**: 전역 셀렉터 단독 사용, dynamic Tailwind class
 

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import type { Message } from "../types";
 import styles from "../counseling-record-workspace.module.css";
 
@@ -157,9 +157,7 @@ export function AssistantPanel({
               ) : null}
             </div>
             {message.supportingNote ? (
-              <p className={styles.messageNote}>
-                {message.supportingNote}
-              </p>
+              <p className={styles.messageNote}>{message.supportingNote}</p>
             ) : null}
           </article>
         ))}
@@ -197,9 +195,7 @@ export function AssistantPanel({
         <label className={styles.composerField}>
           <textarea
             value={assistantDraft}
-            onChange={(event) =>
-              setAssistantDraft(event.target.value)
-            }
+            onChange={(event) => setAssistantDraft(event.target.value)}
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&

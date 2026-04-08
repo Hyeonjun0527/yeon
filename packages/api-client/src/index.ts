@@ -1,12 +1,12 @@
+import { authSessionResponseSchema } from "@yeon/api-contract/auth";
+import { contestOverviewResponseSchema } from "@yeon/api-contract/contest";
+import { errorResponseSchema } from "@yeon/api-contract/error";
+import { healthResponseSchema } from "@yeon/api-contract/health";
 import {
-  authSessionResponseSchema,
-  contestOverviewResponseSchema,
   createUserResponseSchema,
-  errorResponseSchema,
-  healthResponseSchema,
   listUsersResponseSchema,
   type CreateUserBody,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/users";
 
 export class ApiClientError extends Error {
   constructor(

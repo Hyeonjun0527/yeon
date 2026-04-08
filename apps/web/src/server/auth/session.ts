@@ -1,4 +1,4 @@
-import type { AuthUserDto } from "@yeon/api-contract";
+import type { AuthUserDto } from "@yeon/api-contract/auth";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";

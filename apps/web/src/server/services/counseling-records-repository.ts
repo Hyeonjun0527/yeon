@@ -2,7 +2,7 @@ import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
   CounselingTranscriptSegment,
-} from "@yeon/api-contract";
+} from "@yeon/api-contract/counseling-records";
 import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -30,12 +30,9 @@ const VALID_STATUSES = new Set<CounselingRecordListItem["status"]>([
   "error",
 ]);
 
-const VALID_SPEAKER_TONES = new Set<CounselingTranscriptSegment["speakerTone"]>([
-  "teacher",
-  "student",
-  "guardian",
-  "unknown",
-]);
+const VALID_SPEAKER_TONES = new Set<CounselingTranscriptSegment["speakerTone"]>(
+  ["teacher", "student", "guardian", "unknown"],
+);
 
 function toRecordStatus(raw: string): CounselingRecordListItem["status"] {
   if (VALID_STATUSES.has(raw as CounselingRecordListItem["status"])) {
@@ -45,8 +42,12 @@ function toRecordStatus(raw: string): CounselingRecordListItem["status"] {
   return "error";
 }
 
-function toSpeakerTone(raw: string): CounselingTranscriptSegment["speakerTone"] {
-  if (VALID_SPEAKER_TONES.has(raw as CounselingTranscriptSegment["speakerTone"])) {
+function toSpeakerTone(
+  raw: string,
+): CounselingTranscriptSegment["speakerTone"] {
+  if (
+    VALID_SPEAKER_TONES.has(raw as CounselingTranscriptSegment["speakerTone"])
+  ) {
     return raw as CounselingTranscriptSegment["speakerTone"];
   }
 
@@ -204,9 +205,9 @@ function buildPreviewText(record: CounselingRecordRow) {
 }
 
 function buildRecordTags(record: CounselingRecordRow) {
-  return [
-    record.counselingType,
-  ].filter((value): value is string => Boolean(value));
+  return [record.counselingType].filter((value): value is string =>
+    Boolean(value),
+  );
 }
 
 export function mapRecordListItem(

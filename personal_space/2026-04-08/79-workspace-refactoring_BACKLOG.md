@@ -4,23 +4,23 @@
 
 ### 파일별 규모
 
-| 파일 | 줄 수 | 문제 |
-|------|-------|------|
-| `counseling-record-workspace.tsx` | 3,549 | useState 34개, useRef 12개, useEffect 16개, 함수 45개 |
-| `counseling-record-workspace.module.css` | 2,671 | 클래스 231개, 섹션 구분 없이 나열 |
-| `counseling-records-service.ts` | 1,430 | 서비스 하나가 모든 비즈니스 로직 담당 |
+| 파일                                     | 줄 수 | 문제                                                  |
+| ---------------------------------------- | ----- | ----------------------------------------------------- |
+| `counseling-record-workspace.tsx`        | 3,549 | useState 34개, useRef 12개, useEffect 16개, 함수 45개 |
+| `counseling-record-workspace.module.css` | 2,671 | 클래스 231개, 섹션 구분 없이 나열                     |
+| `counseling-records-service.ts`          | 1,430 | 서비스 하나가 모든 비즈니스 로직 담당                 |
 
 ### Health 점수: 35/100
 
-| 항목 | 현재 | 목표 |
-|------|------|------|
-| 단일 책임 원칙 (SRP) | 10/25 | 25/25 |
-| 커스텀 훅 분리 | 0/20 | 20/20 |
-| 컴포넌트 분리 | 5/20 | 20/20 |
-| CSS 모듈 분리 | 5/15 | 15/15 |
-| 타입/상수 정리 | 10/10 | 10/10 |
-| 테스트 가능성 | 5/10 | 10/10 |
-| **합계** | **35/100** | **100/100** |
+| 항목                 | 현재       | 목표        |
+| -------------------- | ---------- | ----------- |
+| 단일 책임 원칙 (SRP) | 10/25      | 25/25       |
+| 커스텀 훅 분리       | 0/20       | 20/20       |
+| 컴포넌트 분리        | 5/20       | 20/20       |
+| CSS 모듈 분리        | 5/15       | 15/15       |
+| 타입/상수 정리       | 10/10      | 10/10       |
+| 테스트 가능성        | 5/10       | 10/10       |
+| **합계**             | **35/100** | **100/100** |
 
 ---
 
@@ -29,6 +29,7 @@
 ### 1차: 타입 및 상수 파일 분리
 
 **작업내용**
+
 - `counseling-record-workspace.tsx` 상단의 7개 타입을 `types.ts`로 이동
 - `COUNSELING_TYPE_OPTIONS`, `STATUS_META` 상수를 `constants.ts`로 이동
 - 기존 파일에서 import로 교체
@@ -42,6 +43,7 @@
 ### 2차: 순수 유틸리티 함수 분리
 
 **작업내용**
+
 - 17개 유틸리티 함수를 `utils.ts`로 이동
   - `formatDateTimeLabel`, `formatDurationLabel`, `formatCompactDuration`, `formatTranscriptTime`
   - `formatFileSize`, `isTranscriptSegmentActive`, `isTranscriptSegmentMatched`
@@ -61,6 +63,7 @@
 ### 3차: useRecordingMachine 훅
 
 **작업내용**
+
 - 녹음 관련 상태 5개 + ref 4개 + effect 2개 + 함수 2개를 단일 훅으로 추출
   - 상태: `isRecording`, `isFinalizingRecording`, `recordingError`, `recordingElapsedMs` + cleanup용 `selectedAudioPreviewUrl` 연동
   - ref: `mediaRecorderRef`, `mediaStreamRef`, `recordedChunksRef`, `recordingStartedAtRef`
@@ -77,6 +80,7 @@
 ### 4차: useAudioPlayer 훅
 
 **작업내용**
+
 - 오디오 재생 관련 상태 + ref + effect 추출
   - 상태: `currentAudioTimeMs`, `audioLoadError`, `isAutoScrollEnabled`
   - ref: `audioPlayerRef`, `activeSegmentRef`
@@ -93,6 +97,7 @@
 ### 5차: useRecordList 훅
 
 **작업내용**
+
 - 목록 조회·필터·검색 관련 상태 + effect 추출
   - 상태: `records`, `selectedRecordId`, `searchTerm`, `recordFilter`, `sidebarViewMode`, `expandedStudents`, `selectedStudentName`, `isFilterOpen`, `isLoadingList`, `loadError`
   - effect: 초기 목록 로드, 필터 변경 시 선택 보정
@@ -109,6 +114,7 @@
 ### 6차: useRecordDetail 훅
 
 **작업내용**
+
 - 상세 조회·폴링 관련 상태 + effect 추출
   - 상태: `recordDetails`, `isLoadingDetail`, `isDetailMetaOpen`
   - effect: 상세 로드, 처리 중 폴링(5초)
@@ -124,6 +130,7 @@
 ### 7차: useAssistantChat 훅
 
 **작업내용**
+
 - AI 채팅 관련 상태 + effect 추출
   - 상태: `assistantDraft`, `assistantMessagesByRecord`, `isAiStreaming`
   - ref: `aiAbortControllerRef`, `autoAnalysisTriggeredRef`, `messageListRef`
@@ -140,6 +147,7 @@
 ### 8차: useUploadForm 훅
 
 **작업내용**
+
 - 업로드 폼 관련 상태 추출
   - 상태: `isUploadPanelOpen`, `formState`, `uploadState`, `retryState`, `selectedAudioFile`, `selectedAudioDurationMs`, `selectedAudioPreviewUrl`, `isAdditionalInfoOpen`
   - ref: `fileInputRef`
@@ -156,6 +164,7 @@
 ### 9차: useTranscriptEditor 훅
 
 **작업내용**
+
 - 세그먼트 편집 관련 상태 추출
   - 상태: `editingSegmentId`, `editingSegmentText`, `editingSegmentSaving`, `transcriptQuery`
   - 파생값: `normalizedTranscriptQuery`, `transcriptMatchCount`
@@ -170,6 +179,7 @@
 ### 10차: useExport 훅
 
 **작업내용**
+
 - 내보내기 관련 상태 + 함수 추출
   - 상태: `isAiExportOpen`
   - ref: `exportDropdownRef`
@@ -185,6 +195,7 @@
 ### 11차: useTrendAnalysis 훅
 
 **작업내용**
+
 - 추이 분석 관련 상태 추출
   - 상태: `trendAnalysis`
   - ref: `trendAbortControllerRef`
@@ -199,6 +210,7 @@
 ### 12차: useDeleteRecord 훅
 
 **작업내용**
+
 - 삭제 관련 상태 추출
   - 상태: `isDeleteConfirmOpen`, `isDeleting`
   - 함수: `handleDeleteRecord()`
@@ -212,6 +224,7 @@
 ### 13차: useSaveToast 훅
 
 **작업내용**
+
 - 토스트 관련 상태 + effect 추출
   - 상태: `saveToast`, `recentlySavedId`
   - effect: 자동 dismiss 2개 (3초, 2초)
@@ -228,6 +241,7 @@
 ### 14차: EmptyLanding 컴포넌트
 
 **작업내용**
+
 - 빈 상태 랜딩 UI를 `empty-landing.tsx`로 추출
 - props: `{ onStartRecording, onFileUpload, recordingPhase, recordingElapsedMs, recordingError, hasAudioReady, selectedAudioFile, ... }`
 - 녹음 상태 블록, 오디오 준비 카드 포함
@@ -241,6 +255,7 @@
 ### 15차: RecordSidebar 컴포넌트
 
 **작업내용**
+
 - 좌측 사이드바 전체를 `record-sidebar.tsx`로 추출
 - 하위 포함: 새 기록 버튼, 검색/필터, 레코드 리스트(전체/학생별), 삭제 확인 모달
 - props: `useRecordList` 반환값 + `useDeleteRecord` 반환값
@@ -254,6 +269,7 @@
 ### 16차: RecordListItem 컴포넌트
 
 **작업내용**
+
 - 레코드 리스트 아이템 렌더링을 `record-list-item.tsx`로 추출
 - 상태 배지, 날짜, 학생명, 상담유형 표시
 - props: `{ record, isSelected, isRecentlySaved, onSelect }`
@@ -267,6 +283,7 @@
 ### 17차: UploadPanel 컴포넌트
 
 **작업내용**
+
 - 업로드 패널(새 기록 만들기 폼)을 `upload-panel.tsx`로 추출
 - 파일 선택, 녹음, 폼 입력, 제출 버튼 포함
 - props: `useUploadForm` 반환값 + `useRecordingMachine` 반환값
@@ -280,6 +297,7 @@
 ### 18차: RecordDetailHeader 컴포넌트
 
 **작업내용**
+
 - 상세 헤더(제목, 메타, 상태, 오디오 플레이어)를 `record-detail-header.tsx`로 추출
 - props: `{ record, detail, audioPlayerRef, onTimeUpdate, onRetry, onRefresh }`
 
@@ -292,6 +310,7 @@
 ### 19차: TranscriptViewer 컴포넌트
 
 **작업내용**
+
 - 원문 뷰어 패널을 `transcript-viewer.tsx`로 추출
 - 검색 바, 세그먼트 목록, 인라인 편집 포함
 - props: `useTranscriptEditor` 반환값 + `useAudioPlayer` 일부
@@ -305,6 +324,7 @@
 ### 20차: TranscriptSegment 컴포넌트
 
 **작업내용**
+
 - 개별 세그먼트 행을 `transcript-segment.tsx`로 추출
 - 일반 모드 / 편집 모드 분기
 - 화자 라벨 클릭 → 톤 변경, 텍스트 클릭 → 편집 전환
@@ -319,6 +339,7 @@
 ### 21차: AssistantPanel 컴포넌트
 
 **작업내용**
+
 - AI 채팅 패널을 `assistant-panel.tsx`로 추출
 - 퀵 프롬프트, 메시지 리스트, 입력 폼, 내보내기 드롭다운 포함
 - props: `useAssistantChat` 반환값 + `useExport` 반환값
@@ -332,6 +353,7 @@
 ### 22차: TrendAnalysisPanel 컴포넌트
 
 **작업내용**
+
 - 추이 분석 영역을 `trend-analysis-panel.tsx`로 추출
 - props: `useTrendAnalysis` 반환값
 
@@ -344,6 +366,7 @@
 ### 23차: DeleteConfirmModal 컴포넌트
 
 **작업내용**
+
 - 삭제 확인 모달을 `delete-confirm-modal.tsx`로 추출
 - props: `{ isOpen, isDeleting, recordTitle, onConfirm, onCancel }`
 
@@ -358,6 +381,7 @@
 ### 24차: CSS 모듈 컴포넌트 단위 분할
 
 **작업내용**
+
 - `counseling-record-workspace.module.css` (2,671줄)를 컴포넌트별로 분할
   - `record-sidebar.module.css` — 사이드바, 리스트, 필터, 검색
   - `upload-panel.module.css` — 업로드 폼, 녹음 상태
@@ -377,6 +401,7 @@
 ### 25차: 공유 CSS 변수 및 공통 스타일 정리
 
 **작업내용**
+
 - 반복되는 CSS 패턴(버튼, 인라인 메시지, 폼 인풋)을 공통 클래스로 추출
 - `_shared.module.css` 또는 Tailwind 유틸리티로 통합
 - 색상 변수 정리: 현재 인라인으로 산재된 `var(--*)` 변수 목록화
@@ -392,6 +417,7 @@
 ### 26차: counseling-records-service.ts 분리
 
 **작업내용**
+
 - 1,430줄 서비스를 역할별로 분리
   - `counseling-records-service.ts` — CRUD 핵심 (생성, 조회, 수정, 삭제)
   - `counseling-transcription-service.ts` — STT 전사 처리, 재시도
@@ -407,6 +433,7 @@
 ### 27차: Repository 패턴 정리
 
 **작업내용**
+
 - `counseling-records-repository.ts` 생성
 - 서비스에서 직접 호출하던 DB 쿼리를 repository로 이동
 - 서비스 → repository → DB 계층 확립
@@ -422,6 +449,7 @@
 ### 28차: 배럴 익스포트 및 디렉토리 구조 최종 정리
 
 **작업내용**
+
 - `counseling-record-workspace/` 디렉토리 최종 구조:
   ```
   counseling-record-workspace/
@@ -474,6 +502,7 @@
 ### 29차: CLAUDE.md 리팩토링 컨벤션 추가
 
 **작업내용**
+
 - `CLAUDE.md`에 컴포넌트 분리 기준, 훅 작성 규칙, CSS 모듈 분리 규칙 추가
   - feature 디렉토리 구조 표준
   - 훅 네이밍 및 반환값 규칙
@@ -490,6 +519,7 @@
 ### 30차: 전체 빌드·린트·타입체크 통과 확인 및 최종 검증
 
 **작업내용**
+
 - `pnpm --filter @yeon/web build` 통과
 - 모든 import 경로 정합성 확인
 - CSS 클래스 미사용/누락 확인
@@ -515,22 +545,22 @@ Phase 6 (통합)    : 28 → 29 → 30
 
 ## 예상 프롬프트 수
 
-| Phase | 차수 | 예상 프롬프트 | 이유 |
-|-------|------|-------------|------|
-| 1 | 1~2 | 2회 | 기계적 이동 |
-| 2 | 3~13 | 11회 | 훅당 1회, 상태 연동 주의 |
-| 3 | 14~23 | 10회 | 컴포넌트당 1회, JSX 이동 |
-| 4 | 24~25 | 2회 | CSS 분할 + 정리 |
-| 5 | 26~27 | 2회 | 서비스 분리 |
-| 6 | 28~30 | 3회 | 구조 정리 + 문서 + 검증 |
-| **합계** | **30** | **~30회** | |
+| Phase    | 차수   | 예상 프롬프트 | 이유                     |
+| -------- | ------ | ------------- | ------------------------ |
+| 1        | 1~2    | 2회           | 기계적 이동              |
+| 2        | 3~13   | 11회          | 훅당 1회, 상태 연동 주의 |
+| 3        | 14~23  | 10회          | 컴포넌트당 1회, JSX 이동 |
+| 4        | 24~25  | 2회           | CSS 분할 + 정리          |
+| 5        | 26~27  | 2회           | 서비스 분리              |
+| 6        | 28~30  | 3회           | 구조 정리 + 문서 + 검증  |
+| **합계** | **30** | **~30회**     |                          |
 
 ## 목표 결과
 
-| Before | After |
-|--------|-------|
-| 컴포넌트 1개 (3,549줄) | 루트 컴포넌트 ~200줄 + 하위 10개 |
-| CSS 1개 (2,671줄) | CSS 7개 (각 ~300줄) |
-| 커스텀 훅 0개 | 11개 (각 ~80줄) |
-| 서비스 1개 (1,430줄) | 서비스 3개 + repo 1개 |
-| 수정 시 3,549줄 전체 파악 필요 | 관련 파일 1~2개만 열면 됨 |
+| Before                         | After                            |
+| ------------------------------ | -------------------------------- |
+| 컴포넌트 1개 (3,549줄)         | 루트 컴포넌트 ~200줄 + 하위 10개 |
+| CSS 1개 (2,671줄)              | CSS 7개 (각 ~300줄)              |
+| 커스텀 훅 0개                  | 11개 (각 ~80줄)                  |
+| 서비스 1개 (1,430줄)           | 서비스 3개 + repo 1개            |
+| 수정 시 3,549줄 전체 파악 필요 | 관련 파일 1~2개만 열면 됨        |

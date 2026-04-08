@@ -242,49 +242,52 @@
 
 ## 카피 개선안
 
-| 상황 | 현재 | 변경 |
-| --- | --- | --- |
-| 녹음 idle | `브라우저 녹음` | 유지 |
-| 녹음 중 버튼 | `녹음 중지 (00:34)` | `녹음 중지` |
-| 녹음 시작 메시지 | `녹음을 시작했습니다. 끝나면 중지 버튼을 눌러 주세요.` | 삭제 |
-| 녹음 중 상태 줄 | 없음 | `현재 녹음 중` / `00:34 경과 · 중지 후 저장 준비` |
-| 정리 중 상태 | 없음 | `녹음 정리 중` / `저장 전 확인을 준비하고 있습니다` |
+| 상황             | 현재                                                   | 변경                                                |
+| ---------------- | ------------------------------------------------------ | --------------------------------------------------- |
+| 녹음 idle        | `브라우저 녹음`                                        | 유지                                                |
+| 녹음 중 버튼     | `녹음 중지 (00:34)`                                    | `녹음 중지`                                         |
+| 녹음 시작 메시지 | `녹음을 시작했습니다. 끝나면 중지 버튼을 눌러 주세요.` | 삭제                                                |
+| 녹음 중 상태 줄  | 없음                                                   | `현재 녹음 중` / `00:34 경과 · 중지 후 저장 준비`   |
+| 정리 중 상태     | 없음                                                   | `녹음 정리 중` / `저장 전 확인을 준비하고 있습니다` |
 
 ## 마크업 방향
 
 ```tsx
-const recordingPhase =
-  isRecording ? "recording"
-  : isFinalizingRecording ? "finalizing"
-  : "idle";
+const recordingPhase = isRecording
+  ? "recording"
+  : isFinalizingRecording
+    ? "finalizing"
+    : "idle";
 
-{recordingPhase === "idle" ? (
-  <button type="button" className={styles.primaryCtaTile}>
-    브라우저 녹음
-  </button>
-) : (
-  <div className={styles.recordingStateBlock}>
-    <button
-      type="button"
-      className={styles.recordingActionButton}
-      onClick={recordingPhase === "recording" ? stopRecording : undefined}
-      disabled={recordingPhase === "finalizing"}
-    >
-      {recordingPhase === "recording" ? "녹음 중지" : "녹음 정리 중"}
+{
+  recordingPhase === "idle" ? (
+    <button type="button" className={styles.primaryCtaTile}>
+      브라우저 녹음
     </button>
+  ) : (
+    <div className={styles.recordingStateBlock}>
+      <button
+        type="button"
+        className={styles.recordingActionButton}
+        onClick={recordingPhase === "recording" ? stopRecording : undefined}
+        disabled={recordingPhase === "finalizing"}
+      >
+        {recordingPhase === "recording" ? "녹음 중지" : "녹음 정리 중"}
+      </button>
 
-    <div className={styles.recordingStatusRow}>
-      <p className={styles.recordingStatusTitle}>
-        {recordingPhase === "recording" ? "현재 녹음 중" : "녹음 정리 중"}
-      </p>
-      <p className={styles.recordingStatusMeta}>
-        {recordingPhase === "recording"
-          ? `${formatCompactDuration(recordingElapsedMs)} 경과 · 중지 후 저장 준비`
-          : "저장 전 확인을 준비하고 있습니다"}
-      </p>
+      <div className={styles.recordingStatusRow}>
+        <p className={styles.recordingStatusTitle}>
+          {recordingPhase === "recording" ? "현재 녹음 중" : "녹음 정리 중"}
+        </p>
+        <p className={styles.recordingStatusMeta}>
+          {recordingPhase === "recording"
+            ? `${formatCompactDuration(recordingElapsedMs)} 경과 · 중지 후 저장 준비`
+            : "저장 전 확인을 준비하고 있습니다"}
+        </p>
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 ## 권장 상태 추가

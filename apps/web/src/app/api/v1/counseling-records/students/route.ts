@@ -1,4 +1,4 @@
-import { listStudentSummariesResponseSchema } from "@yeon/api-contract";
+import { listStudentSummariesResponseSchema } from "@yeon/api-contract/counseling-records";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

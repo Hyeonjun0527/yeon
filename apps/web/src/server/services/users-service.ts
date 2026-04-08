@@ -1,5 +1,5 @@
-import type { CreateUserBody, UserDto } from "@yeon/api-contract";
-import { userDtoSchema } from "@yeon/api-contract";
+import type { CreateUserBody, UserDto } from "@yeon/api-contract/users";
+import { userDtoSchema } from "@yeon/api-contract/users";
 import { randomUUID } from "node:crypto";
 import { DatabaseError } from "pg";
 

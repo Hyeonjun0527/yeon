@@ -11,6 +11,7 @@
 ## 현재 상태 분석
 
 ### 현재 흐름
+
 ```
 EmptyLanding → [파일 선택 or 녹음] → 오디오 프리뷰 → "저장하러 가기" →
 UploadPanel(학생이름*, 상담제목*, 상담유형) → "기록 저장" →
@@ -18,6 +19,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 ```
 
 ### 현재 제약
+
 - DB 스키마: `student_name VARCHAR(80) NOT NULL`, `session_title VARCHAR(160) NOT NULL`
 - API Route: `sanitizeRequiredValue(input.studentName, ...)` — 빈 값이면 400 에러
 - api-contract: `studentName: z.string()`, `sessionTitle: z.string()` — 빈 문자열 허용은 되지만 서비스 계층에서 차단
@@ -32,6 +34,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 ### 1차: 폼 제거 + 즉시 업로드 (프론트 + API + DB)
 
 **작업 내용**
+
 1. DB 마이그레이션: `student_name`, `session_title`에 기본값 추가
    - `student_name DEFAULT ''` (NOT NULL 유지, 빈 문자열 허용)
    - `session_title DEFAULT ''` (NOT NULL 유지, 빈 문자열 허용)
@@ -46,6 +49,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 4. api-contract: 변경 없음 (빈 문자열은 이미 z.string()으로 허용)
 
 **논의 필요**
+
 - 학생 이름 빈 문자열일 때 사이드바 목록에서 어떻게 표시할지
   - 선택지 A: "이름 없음"으로 표시
   - 선택지 B: 상담 제목(자동생성)만 표시
@@ -55,6 +59,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 
 **선행 조건**: 없음
 **예상 변경 파일**:
+
 - `apps/web/src/server/db/migrations/XXXX_*.sql` (새 마이그레이션)
 - `apps/web/src/server/services/counseling-records-service.ts`
 - `apps/web/src/features/counseling-record-workspace/counseling-record-workspace.tsx`
@@ -69,6 +74,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 ### 2차: 전사 완료 후 AI 자동 메타데이터 추출
 
 **작업 내용**
+
 1. AI 메타데이터 추출 함수 신규 작성 (`counseling-ai-service.ts`)
    - 전사 원문을 AI에게 전달하여 학생 이름, 상담 제목(한줄 요약), 상담 유형, 간단 요약 추출
    - 프롬프트: "다음 상담 전사문에서 학생 이름, 상담 주제 한 줄 요약, 상담 유형(대면/전화/온라인/보호자통화), 핵심 내용 3줄 요약을 JSON으로 추출해주세요"
@@ -84,6 +90,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
    - AI가 채운 값을 사용자가 수정할 수 있도록
 
 **논의 필요**
+
 - AI 추출에 사용할 모델
   - 선택지 A: 현재 AI 채팅과 같은 모델 (gpt-5.4-medium) — 정확도 높지만 비용/지연
   - 선택지 B: 경량 모델 (gpt-4o-mini) — 빠르고 저렴, 메타데이터 추출엔 충분
@@ -96,6 +103,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 
 **선행 조건**: 1차 완료
 **예상 변경 파일**:
+
 - `apps/web/src/server/db/migrations/XXXX_*.sql`
 - `apps/web/src/server/db/schema/counseling-records.ts`
 - `apps/web/src/server/services/counseling-ai-service.ts`
@@ -108,6 +116,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 ### 3차: 워크스페이스 UX — 전사 중 실시간 느낌 + AI 자동 요약 표시
 
 **작업 내용**
+
 1. 전사 중 워크스페이스 개선
    - status=processing일 때 "원문" 영역에 로딩 애니메이션 + 진행 메시지
    - AI 채팅 영역은 비활성이 아닌 "전사가 완료되면 AI 분석을 시작합니다" 안내
@@ -124,6 +133,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
    - PATCH API 호출로 저장
 
 **논의 필요**
+
 - AI 자동 요약을 별도 카드로 보여줄지, 첫 번째 AI 메시지로 보여줄지
   - 선택지 A: 요약 카드 (고정 UI, 채팅과 분리)
   - 선택지 B: 시스템 메시지 (채팅 히스토리에 자동 추가)
@@ -132,6 +142,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 
 **선행 조건**: 2차 완료
 **예상 변경 파일**:
+
 - `apps/web/src/features/counseling-record-workspace/counseling-record-workspace.tsx`
 - `apps/web/src/features/counseling-record-workspace/components/record-detail-header.tsx`
 - `apps/web/src/features/counseling-record-workspace/components/assistant-panel.tsx`
@@ -144,6 +155,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 ### 4차 (선택): 실시간 전사 스트리밍
 
 **작업 내용**
+
 1. 전사 진행 상황을 SSE로 프론트에 실시간 전달
    - 새 API: `GET /api/v1/counseling-records/[recordId]/transcribe-stream`
    - 이벤트: `segment-added`, `progress`, `completed`, `error`
@@ -153,6 +165,7 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 3. 폴링 제거, SSE 기반으로 전환
 
 **논의 필요**
+
 - 현재 전사 엔진이 OpenAI API를 한번에 호출하고 결과를 통으로 받는 구조라 세그먼트 단위 스트리밍이 어려움
   - 선택지 A: 청킹된 파트별로 완료 시 이벤트 전송 (파트 단위 스트리밍)
   - 선택지 B: OpenAI streaming transcription API 사용 (세그먼트 단위)
@@ -167,12 +180,12 @@ status=processing(폴링) → status=ready → 원문+AI채팅 사용 가능
 
 ## 차수 요약
 
-| 차수 | 핵심 | 사용자 체감 변화 | 난이도 |
-|------|------|------------------|--------|
-| 1차 | 폼 제거 + 즉시 업로드 | 녹음 끝나면 바로 워크스페이스 진입 | 중 |
-| 2차 | AI 자동 메타데이터 추출 | 학생 이름·제목·유형·요약 자동 생성 | 중 |
-| 3차 | 워크스페이스 UX 개선 | 전사 중 실시간 느낌 + AI 요약 카드 + 인라인 수정 | 중 |
-| 4차 | 실시간 전사 스트리밍 | 텍스트가 실시간으로 쌓이는 느낌 | 상 (보류 추천) |
+| 차수 | 핵심                    | 사용자 체감 변화                                 | 난이도         |
+| ---- | ----------------------- | ------------------------------------------------ | -------------- |
+| 1차  | 폼 제거 + 즉시 업로드   | 녹음 끝나면 바로 워크스페이스 진입               | 중             |
+| 2차  | AI 자동 메타데이터 추출 | 학생 이름·제목·유형·요약 자동 생성               | 중             |
+| 3차  | 워크스페이스 UX 개선    | 전사 중 실시간 느낌 + AI 요약 카드 + 인라인 수정 | 중             |
+| 4차  | 실시간 전사 스트리밍    | 텍스트가 실시간으로 쌓이는 느낌                  | 상 (보류 추천) |
 
 ## 전체 완료 후 사용자 경험
 

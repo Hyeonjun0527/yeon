@@ -1,4 +1,4 @@
-import { contestOverviewResponseSchema } from "@yeon/api-contract";
+import { contestOverviewResponseSchema } from "@yeon/api-contract/contest";
 import { NextResponse } from "next/server";
 
 import { getContestOverview } from "@/lib/contest-overview";
