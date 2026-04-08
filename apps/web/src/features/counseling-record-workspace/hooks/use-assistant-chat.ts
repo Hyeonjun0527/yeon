@@ -118,6 +118,10 @@ export function useAssistantChat(
     });
   }, [selectedRecord, selectedRecordDetail, statusMeta]);
 
+  // assistantMessagesByRecord를 ref로 추적하여 자동 분석 effect에서 불필요한 재실행 방지
+  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
+  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
+
   // 자동 분석 트리거
   useEffect(() => {
     if (
@@ -133,7 +137,7 @@ export function useAssistantChat(
       return;
     }
 
-    const existingMessages = assistantMessagesByRecord[selectedRecord.id];
+    const existingMessages = assistantMessagesByRecordRef.current[selectedRecord.id];
 
     if (existingMessages?.some((m) => m.role === "user")) {
       return;
@@ -157,7 +161,7 @@ export function useAssistantChat(
     }));
 
     streamAssistantResponse(capturedRecordId, allMessages);
-  }, [selectedRecord, selectedRecordDetail, isAiStreaming, assistantMessagesByRecord, statusMeta]);
+  }, [selectedRecord, selectedRecordDetail, isAiStreaming, statusMeta]);
 
   async function streamAssistantResponse(
     recordId: string,
@@ -233,6 +237,7 @@ export function useAssistantChat(
 
       const decoder = new TextDecoder();
       let accumulated = "";
+      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -241,8 +246,9 @@ export function useAssistantChat(
           break;
         }
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
