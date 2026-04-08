@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { CounselingRecordListItem } from "@yeon/api-contract";
+import { readErrorMessage } from "../utils";
 
 export function useDeleteRecord(
   selectedRecord: CounselingRecordListItem | null,
@@ -26,11 +27,8 @@ export function useDeleteRecord(
       );
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
-          message?: string;
-        } | null;
         throw new Error(
-          body?.message ?? "상담 기록 삭제에 실패했습니다.",
+          (await readErrorMessage(response)) ?? "상담 기록 삭제에 실패했습니다.",
         );
       }
 
