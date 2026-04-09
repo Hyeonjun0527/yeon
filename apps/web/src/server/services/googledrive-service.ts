@@ -196,12 +196,7 @@ export async function listFiles(
   folderId?: string,
 ): Promise<GoogleDriveFile[]> {
   const parent = folderId ? `'${folderId}' in parents` : "'root' in parents";
-  const mimeFilter =
-    "(mimeType='application/vnd.google-apps.folder'" +
-    " or mimeType='application/vnd.google-apps.spreadsheet'" +
-    " or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'" +
-    " or mimeType='application/vnd.ms-excel')";
-  const q = `${mimeFilter} and ${parent} and trashed=false`;
+  const q = `${parent} and trashed=false`;
 
   const params = new URLSearchParams({
     q,
