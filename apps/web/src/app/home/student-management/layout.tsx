@@ -160,7 +160,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         {/* 전체 수강생 */}
         <button
           className={`${styles.navItem} ${selectedSpaceId === null ? styles.navItemActive : ""}`}
-          onClick={() => setSelectedSpaceId(null)}
+          onClick={() => { setSelectedSpaceId(null); if (importMode) exitImportMode(); }}
         >
           <Users size={16} />
           <span style={{ flex: 1 }}>전체 수강생</span>
@@ -195,7 +195,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             <button
               key={space.id}
               className={`${styles.navItem} ${selectedSpaceId === space.id ? styles.navItemActive : ""}`}
-              onClick={() => setSelectedSpaceId(space.id)}
+              onClick={() => { setSelectedSpaceId(space.id); if (importMode) exitImportMode(); }}
             >
               <span
                 className={styles.cohortDot}
