@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Users, Plus, GraduationCap, X } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
+import { OneDriveImport } from "@/features/onedrive-import";
 import styles from "./student-management-layout.module.css";
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
@@ -175,13 +176,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               autoFocus
             />
             {createError && (
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--red)",
-                  marginTop: 4,
-                }}
-              >
+              <div style={{ fontSize: 11, color: "var(--red)", marginTop: 4 }}>
                 {createError}
               </div>
             )}
@@ -214,6 +209,17 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             스페이스 만들기
           </button>
         )}
+
+        {/* OneDrive AI 임포트 */}
+        <div
+          style={{
+            marginTop: "auto",
+            paddingTop: 16,
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          <OneDriveImport onImportComplete={refetchSpaces} />
+        </div>
       </nav>
       <main className={styles.main}>{children}</main>
     </div>

@@ -36,6 +36,13 @@
       "when": 1775760259185,
       "tag": "0004_first_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775764809563,
+      "tag": "0005_volatile_luckman",
+      "breakpoints": true
     }
   ]
 }
