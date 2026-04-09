@@ -43,6 +43,13 @@
       "when": 1775764809563,
       "tag": "0005_volatile_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775769479211,
+      "tag": "0006_tense_karnak",
+      "breakpoints": true
     }
   ]
 }
