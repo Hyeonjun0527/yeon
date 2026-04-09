@@ -1,7 +1,15 @@
 import styles from "../../mockdata/mockdata.module.css";
-import { PROCESSING_STEPS } from "../../mockdata/app/_data/mock-data";
 import type { RecordItem, RecordPhase } from "../_lib/types";
-import { fmtTime } from "../_lib/utils";
+import { fmtTime, fmtMs } from "../_lib/utils";
+
+const PROCESSING_STEPS = [
+  { label: "음성 파일 업로드" },
+  { label: "화자 분리" },
+  { label: "음성 전사" },
+  { label: "화자 식별" },
+  { label: "상담 분석" },
+  { label: "요약 생성" },
+];
 
 export interface CenterPanelProps {
   phase: RecordPhase;
@@ -57,11 +65,6 @@ export function CenterPanel({
                 >
                   <span>{i < processingStep ? "✓" : i === processingStep ? "⟳" : "○"}</span>
                   <span>{step.label}</span>
-                  {i === 3 && processingStep > 3 && (
-                    <span style={{ fontSize: 11, color: "var(--mock-accent)", marginLeft: 4 }}>
-                      2명 식별됨
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
@@ -113,17 +116,23 @@ export function CenterPanel({
 
         {/* 전사 텍스트 */}
         <div className={styles.centerBody}>
-          {selected.transcript.map((seg, i) => (
-            <div key={i} className={styles.segment}>
-              <span className={styles.segTime}>{seg.time}</span>
-              <span
-                className={`${styles.segSpeaker} ${seg.speaker === "teacher" ? styles.segTeacher : styles.segStudent}`}
-              >
-                {seg.name} ({seg.label})
-              </span>
-              <span className={styles.segText}>{seg.text}</span>
+          {selected.transcript.length === 0 ? (
+            <div style={{ color: "var(--mock-text-dim)", fontSize: 13, padding: "24px 0" }}>
+              전사 내용을 불러오는 중...
             </div>
-          ))}
+          ) : (
+            selected.transcript.map((seg, i) => (
+              <div key={seg.id ?? i} className={styles.segment}>
+                <span className={styles.segTime}>{fmtMs(seg.startMs)}</span>
+                <span
+                  className={`${styles.segSpeaker} ${seg.speakerTone === "teacher" ? styles.segTeacher : styles.segStudent}`}
+                >
+                  {seg.speakerLabel}
+                </span>
+                <span className={styles.segText}>{seg.text}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     );
