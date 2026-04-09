@@ -1,5 +1,9 @@
+export { activityLogs } from "./activity-logs";
 export { authSessions } from "./auth-sessions";
 export { counselingRecords } from "./counseling-records";
 export { counselingTranscriptSegments } from "./counseling-transcript-segments";
+export { members } from "./members";
+export { sheetIntegrations } from "./sheet-integrations";
+export { spaces } from "./spaces";
 export { userIdentities } from "./user-identities";
 export { users } from "./users";
