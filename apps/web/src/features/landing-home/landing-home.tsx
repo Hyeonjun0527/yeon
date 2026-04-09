@@ -449,6 +449,14 @@ export function LandingHome({
             <span className={styles.footerCopy}>
               &copy; 2026 YEON. All rights reserved.
             </span>
+            <div className={styles.footerLinks}>
+              <a href="/privacy" className={styles.footerLink}>
+                개인정보처리방침
+              </a>
+              <a href="/terms" className={styles.footerLink}>
+                서비스 이용약관
+              </a>
+            </div>
           </div>
         </footer>
       </div>

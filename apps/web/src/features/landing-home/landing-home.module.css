@@ -800,6 +800,22 @@
   color: var(--text-muted);
 }
 
+.footerLinks {
+  display: flex;
+  gap: 16px;
+}
+
+.footerLink {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footerLink:hover {
+  color: var(--text-primary, #171717);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .heroContent {
