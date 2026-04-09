@@ -1,38 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import styles from "../cloud-import.module.css";
-
-const DocViewer = dynamic(
-  () => import("@cyntler/react-doc-viewer").then((mod) => mod.default),
-  { ssr: false },
-);
-
-const TEXT_EXTENSIONS = new Set([
-  "txt", "js", "ts", "jsx", "tsx", "py", "json", "md", "css", "yaml", "yml", "sh",
-]);
-
-function resolveFileType(mimeType: string, fileName: string): string | null {
-  if (mimeType === "application/vnd.google-apps.spreadsheet") return "xlsx";
-
-  const mimeMap: Record<string, string> = {
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-    "application/vnd.ms-excel": "xls",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "application/msword": "doc",
-    "application/pdf": "pdf",
-    "text/csv": "csv",
-  };
-
-  if (mimeMap[mimeType]) return mimeMap[mimeType];
-
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (["xlsx", "xls", "docx", "doc", "pdf", "csv"].includes(ext)) return ext;
-
-  return ext || null;
-}
 
 interface FilePreviewProps {
   uri: string;
@@ -40,37 +10,101 @@ interface FilePreviewProps {
   fileName: string;
 }
 
-export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  const isText = TEXT_EXTENSIONS.has(ext);
+const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".heif"];
+const IMAGE_MIME = ["image/"];
+// 브라우저가 <img>로 렌더할 수 없는 포맷
+const NO_BROWSER_PREVIEW_EXTS = [".heic", ".heif"];
 
-  const [textContent, setTextContent] = useState<string | null>(null);
+function detectType(fileName: string, mimeType: string): "image" | "spreadsheet" | "unsupported" {
+  const lower = fileName.toLowerCase();
+  const isImage =
+    IMAGE_EXTS.some((ext) => lower.endsWith(ext)) ||
+    IMAGE_MIME.some((p) => mimeType.startsWith(p));
+  if (isImage) return "image";
+
+  const isSpreadsheet =
+    lower.endsWith(".xlsx") ||
+    lower.endsWith(".xls") ||
+    mimeType === "application/vnd.google-apps.spreadsheet" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (isSpreadsheet) return "spreadsheet";
+
+  return "unsupported";
+}
+
+function hasBrowserImageSupport(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return !NO_BROWSER_PREVIEW_EXTS.some((ext) => lower.endsWith(ext));
+}
+
+export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
+  const type = detectType(fileName, mimeType);
+
+  if (type === "image") {
+    if (!hasBrowserImageSupport(fileName)) {
+      return (
+        <div className={styles.previewPlaceholder}>
+          HEIC/HEIF 형식은 브라우저에서 미리보기를 지원하지 않습니다.
+        </div>
+      );
+    }
+    return (
+      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "auto" }}>
+        {/* proxy URL로 인증된 이미지 렌더 — Next.js Image는 외부 OAuth URL을 지원하지 않으므로 img 태그 사용 */}
+        <img
+          src={uri}
+          alt={fileName}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+        />
+      </div>
+    );
+  }
+
+  if (type === "spreadsheet") {
+    return <SpreadsheetPreview uri={uri} />;
+  }
+
+  return (
+    <div className={styles.previewPlaceholder}>
+      미리보기를 지원하지 않는 형식입니다.
+    </div>
+  );
+}
+
+function SpreadsheetPreview({ uri }: { uri: string }) {
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setTextContent(null);
+    setHtmlContent(null);
+    let cancelled = false;
 
-    if (isText) {
-      fetch(uri)
-        .then(async (res) => {
-          if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
-          return res.text();
-        })
-        .then((text) => {
-          setTextContent(text);
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
+    (async () => {
+      try {
+        const res = await fetch(uri);
+        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+        const buffer = await res.arrayBuffer();
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) throw new Error("시트를 읽을 수 없습니다.");
+        const html = XLSX.utils.sheet_to_html(ws);
+        if (!cancelled) setHtmlContent(html);
+      } catch (err) {
+        if (!cancelled)
           setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
-  }, [uri, isText]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
 
   if (loading) {
     return (
@@ -85,41 +119,17 @@ export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
     return <div className={styles.errorMsg}>{error}</div>;
   }
 
-  if (isText && textContent !== null) {
+  if (!htmlContent) {
     return (
-      <pre
-        style={{
-          padding: 16,
-          fontSize: 13,
-          lineHeight: 1.6,
-          overflow: "auto",
-          height: "100%",
-          margin: 0,
-          background: "var(--surface2, var(--surface))",
-          color: "var(--text)",
-          borderRadius: 8,
-        }}
-      >
-        {textContent}
-      </pre>
-    );
-  }
-
-  const fileType = resolveFileType(mimeType, fileName);
-  if (!fileType) {
-    return (
-      <div className={styles.previewPlaceholder}>
-        미리보기를 지원하지 않는 형식입니다.
-      </div>
+      <div className={styles.previewPlaceholder}>미리보기를 지원하지 않는 형식입니다.</div>
     );
   }
 
   return (
-    <div style={{ height: "100%", overflow: "auto" }}>
-      <DocViewer
-        documents={[{ uri, fileType }]}
-        config={{ header: { disableHeader: true } }}
-      />
-    </div>
+    <div
+      className={styles.spreadsheetPreview}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: SheetJS가 생성한 테이블 HTML
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
   );
 }
