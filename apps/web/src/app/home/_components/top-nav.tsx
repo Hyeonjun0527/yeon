@@ -1,24 +1,28 @@
 import styles from "../../mockdata/mockdata.module.css";
 import { ChevronDownIcon } from "./icons";
 
-export function TopNav() {
+const SECTION_LABELS: Record<string, string> = {
+  records: "상담 기록",
+  students: "수강생 관리",
+};
+
+type TopNavProps = {
+  section: string;
+};
+
+export function TopNav({ section }: TopNavProps) {
   return (
     <div className={styles.topNav}>
-      {/* 왼쪽: 모델 선택기 스타일 */}
-      <button
-        className={styles.topNavModelBtn}
-        title="모델 선택"
-      >
+      <button className={styles.topNavModelBtn} title="섹션">
         <span className={styles.logo}>YEON</span>
         <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
-          상담 기록
+          {SECTION_LABELS[section] ?? section}
         </span>
         <ChevronDownIcon size={14} />
       </button>
 
       <div style={{ flex: 1 }} />
 
-      {/* 오른쪽: 액션 버튼 */}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <button className={styles.topNavActionBtn} title="공유">
           <ShareIcon size={18} />

@@ -74,8 +74,8 @@ export async function fetchSheetData(
     return [];
   }
 
-  return rows.map((row) =>
-    row.map((cell) => (cell != null ? String(cell) : "")),
+  return rows.map((row: unknown[]) =>
+    row.map((cell: unknown) => (cell != null ? String(cell) : "")),
   );
 }
 

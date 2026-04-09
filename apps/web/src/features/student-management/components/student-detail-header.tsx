@@ -17,7 +17,7 @@ export function StudentDetailHeader({ student }: StudentDetailHeaderProps) {
 
   return (
     <div>
-      <Link href="/student-management" className={styles.backLink}>
+      <Link href="/home/student-management" className={styles.backLink}>
         <ArrowLeft size={16} />
         학생 목록으로
       </Link>
