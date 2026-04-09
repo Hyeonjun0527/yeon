@@ -13,7 +13,7 @@ const AUTH_URL =
 const TOKEN_URL =
   "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
-const SCOPES = ["Files.Read.All", "offline_access", "User.Read"].join(" ");
+const SCOPES = ["Files.ReadWrite.All", "offline_access", "User.Read"].join(" ");
 
 function getClientId(): string {
   const id = process.env.MICROSOFT_CLIENT_ID;
