@@ -71,7 +71,68 @@ export type DetailTab =
   | "counseling"
   | "courses"
   | "guardian"
-  | "memos";
+  | "memos"
+  | "report";
 
 /** Sheet 모드 */
 export type SheetMode = "create" | "edit" | null;
+
+/* ── API 응답 타입 ── */
+
+/** 스페이스 (기존 ClassRoom 대체) */
+export interface Space {
+  id: string;
+  name: string;
+  description?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdByUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 멤버 상태 */
+export type MemberStatus = "active" | "withdrawn" | "graduated";
+
+/** 위험도 레벨 */
+export type RiskLevel = "low" | "medium" | "high";
+
+/** 수강생 (기존 Student 대체) */
+export interface Member {
+  id: string;
+  spaceId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status: string;
+  initialRiskLevel?: string | null;
+  counselingRecordId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 활동 로그 */
+export interface ActivityLog {
+  id: string;
+  memberId: string;
+  spaceId: string;
+  type: string;
+  status?: string | null;
+  recordedAt: string;
+  source: string;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/** 구글 시트 연동 */
+export interface SheetIntegration {
+  id: string;
+  spaceId: string;
+  sheetUrl: string;
+  sheetId: string;
+  dataType: string;
+  columnMapping?: Record<string, unknown> | null;
+  lastSyncedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

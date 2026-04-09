@@ -18,3 +18,5 @@ export { TabMemos } from "./tab-memos";
 export { ClassList } from "./class-list";
 export { ClassCard } from "./class-card";
 export { ClassStudentPanel } from "./class-student-panel";
+export { TabReport } from "./tab-report";
+export { SheetIntegrationPanel } from "./sheet-integration-panel";
