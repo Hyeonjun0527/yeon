@@ -8,6 +8,8 @@ import {
   File,
   FileSpreadsheet,
   Folder,
+  LayoutGrid,
+  List,
   Loader2,
   X,
 } from "lucide-react";
@@ -77,13 +79,8 @@ export function CloudImportInline({
   };
 
   const handleBreadcrumbClick = (index: number) => {
-    const { folderStack } = activeHook;
-    if (index === folderStack.length - 1) return;
-    const target = folderStack[index];
-    /* folderStack을 해당 위치까지 잘라내고 loadFiles */
-    activeHook.resetState();
-    /* resetState 후 다시 세팅 — 대신 직접 loadFiles 호출 */
-    activeHook.loadFiles(target.id);
+    if (index === activeHook.folderStack.length - 1) return;
+    activeHook.navigateToBreadcrumbIndex(index);
   };
 
   const hasSelectedFile = activeHook.selectedFile !== null;
@@ -144,32 +141,70 @@ export function CloudImportInline({
       {activeHook.connected && !activeHook.connecting && (
         <>
           {/* 브레드크럼 */}
-          <div className={styles.breadcrumb}>
-            {activeHook.folderStack.length > 1 && (
-              <button
-                className={styles.breadcrumbItem}
-                onClick={activeHook.navigateBack}
-                type="button"
-                style={{ display: "flex", alignItems: "center", gap: 2 }}
-              >
-                <ArrowLeft size={14} />
-              </button>
-            )}
-            {activeHook.folderStack.map((entry, i) => (
-              <span key={i} style={{ display: "flex", alignItems: "center" }}>
-                {i > 0 && <ChevronRight size={12} className={styles.breadcrumbSep} />}
+          <div className={styles.breadcrumb} style={{ justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, overflow: "hidden" }}>
+              {activeHook.folderStack.length > 1 && (
                 <button
                   className={styles.breadcrumbItem}
-                  onClick={() => handleBreadcrumbClick(i)}
+                  onClick={activeHook.navigateBack}
                   type="button"
-                  style={{
-                    fontWeight: i === activeHook.folderStack.length - 1 ? 600 : 400,
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 2 }}
                 >
-                  {entry.name}
+                  <ArrowLeft size={14} />
                 </button>
-              </span>
-            ))}
+              )}
+              {activeHook.folderStack.map((entry, i) => (
+                <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                  {i > 0 && <ChevronRight size={12} className={styles.breadcrumbSep} />}
+                  <button
+                    className={styles.breadcrumbItem}
+                    onClick={() => handleBreadcrumbClick(i)}
+                    type="button"
+                    style={{
+                      fontWeight: i === activeHook.folderStack.length - 1 ? 600 : 400,
+                    }}
+                  >
+                    {entry.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => activeHook.setViewMode("grid")}
+                style={{
+                  padding: "4px 6px",
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: activeHook.viewMode === "grid" ? "var(--accent)" : "transparent",
+                  color: activeHook.viewMode === "grid" ? "#fff" : "var(--text-dim)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="그리드 보기"
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => activeHook.setViewMode("list")}
+                style={{
+                  padding: "4px 6px",
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: activeHook.viewMode === "list" ? "var(--accent)" : "transparent",
+                  color: activeHook.viewMode === "list" ? "#fff" : "var(--text-dim)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="목록 보기"
+              >
+                <List size={14} />
+              </button>
+            </div>
           </div>
 
           {/* 에러 */}
@@ -200,6 +235,7 @@ export function CloudImportInline({
                 <FileGrid
                   files={activeHook.files}
                   loading={activeHook.filesLoading}
+                  viewMode={activeHook.viewMode}
                   onSelectFile={activeHook.selectFileForPreview}
                   onNavigateFolder={activeHook.navigateToFolder}
                 />
@@ -217,11 +253,12 @@ export function CloudImportInline({
 interface FileGridProps {
   files: DriveFile[];
   loading: boolean;
+  viewMode: "grid" | "list";
   onSelectFile: (file: DriveFile) => void;
   onNavigateFolder: (id: string, name: string) => void;
 }
 
-function FileGrid({ files, loading, onSelectFile, onNavigateFolder }: FileGridProps) {
+function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: FileGridProps) {
   if (loading) {
     return (
       <div className={styles.loadingState}>
@@ -233,6 +270,41 @@ function FileGrid({ files, loading, onSelectFile, onNavigateFolder }: FileGridPr
 
   if (files.length === 0) {
     return <div className={styles.emptyState}>파일이 없습니다.</div>;
+  }
+
+  if (viewMode === "list") {
+    return (
+      <ul className={styles.fileList}>
+        {files.map((file) => (
+          <li key={file.id}>
+            <button
+              className={`${styles.fileListRow} ${file.isSpreadsheet ? styles.fileListRowExcel : ""} ${file.isFolder ? styles.fileListRowFolder : ""}`}
+              onClick={() => {
+                if (file.isFolder) onNavigateFolder(file.id, file.name);
+                else if (file.isSpreadsheet) onSelectFile(file);
+              }}
+              disabled={!file.isFolder && !file.isSpreadsheet}
+              type="button"
+            >
+              <span className={styles.fileListIcon}>
+                {file.isFolder ? (
+                  <Folder size={16} />
+                ) : file.isSpreadsheet ? (
+                  <FileSpreadsheet size={16} />
+                ) : (
+                  <File size={16} />
+                )}
+              </span>
+              <span className={styles.fileListName}>{file.name}</span>
+              <span className={styles.fileListMeta}>
+                {file.isFolder ? "폴더" : formatSize(file.size)}
+              </span>
+              <span className={styles.fileListDate}>{formatDate(file.lastModifiedAt)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type {
   CloudProvider,
   DriveFile,
@@ -64,6 +64,8 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<FolderEntry[]>([ROOT_FOLDER]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const folderCacheRef = useRef<Map<string, DriveFile[]>>(new Map());
 
   const currentFolderId = folderStack[folderStack.length - 1]?.id;
 
@@ -87,6 +89,11 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
 
   const loadFiles = useCallback(
     async (folderId?: string) => {
+      const cacheKey = folderId ?? "__root__";
+      const cached = folderCacheRef.current.get(cacheKey);
+      if (cached) {
+        setFiles(cached);
+      }
       try {
         setFilesLoading(true);
         setError(null);
@@ -104,6 +111,7 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
                 normalizeGoogleDriveFile,
               );
 
+        folderCacheRef.current.set(cacheKey, normalized);
         setFiles(normalized);
       } catch (err) {
         setError(err instanceof Error ? err.message : "파일 목록을 불러오지 못했습니다.");
@@ -137,6 +145,21 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
       return next;
     });
   }, [loadFiles]);
+
+  const navigateToBreadcrumbIndex = useCallback(
+    (index: number) => {
+      setFolderStack((prev) => {
+        const next = prev.slice(0, index + 1);
+        const targetId = next[next.length - 1]?.id;
+        setSelectedFile(null);
+        setPreview(null);
+        setEditablePreview(null);
+        loadFiles(targetId);
+        return next;
+      });
+    },
+    [loadFiles],
+  );
 
   const selectFileForPreview = useCallback((file: DriveFile) => {
     setSelectedFile(file);
@@ -233,11 +256,14 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     folderStack,
     currentFolderId,
     fileProxyUrl,
+    viewMode,
+    setViewMode,
     checkStatus,
     connectDrive,
     loadFiles,
     navigateToFolder,
     navigateBack,
+    navigateToBreadcrumbIndex,
     selectFileForPreview,
     analyzeSelectedFile,
     updatePreview,

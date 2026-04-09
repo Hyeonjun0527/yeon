@@ -232,18 +232,13 @@ export async function listFiles(
     }>;
   };
 
-  return data.value
-    .filter((item) => {
-      const name = item.name.toLowerCase();
-      return name.endsWith(".xlsx") || name.endsWith(".xls") || !item.file;
-    })
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      size: item.size,
-      lastModifiedAt: item.lastModifiedDateTime,
-      mimeType: item.file?.mimeType,
-    }));
+  return data.value.map((item) => ({
+    id: item.id,
+    name: item.name,
+    size: item.size,
+    lastModifiedAt: item.lastModifiedDateTime,
+    mimeType: item.file?.mimeType,
+  }));
 }
 
 /* ── 파일 다운로드 ── */
