@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Users, Plus, GraduationCap, X } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
-import { OneDriveImport } from "@/features/onedrive-import";
+import { CloudImport } from "@/features/cloud-import";
 import styles from "./student-management-layout.module.css";
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
@@ -218,7 +218,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             borderTop: "1px solid var(--border)",
           }}
         >
-          <OneDriveImport onImportComplete={refetchSpaces} />
+          <CloudImport onImportComplete={refetchSpaces} />
         </div>
       </nav>
       <main className={styles.main}>{children}</main>

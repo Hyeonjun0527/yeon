@@ -7,4 +7,5 @@ export { sheetIntegrations } from "./sheet-integrations";
 export { spaces } from "./spaces";
 export { userIdentities } from "./user-identities";
 export { onedriveTokens } from "./onedrive-tokens";
+export { googledriveTokens } from "./googledrive-tokens";
 export { users } from "./users";
