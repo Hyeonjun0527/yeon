@@ -16,7 +16,7 @@ type HomePageProps = {
   }>;
 };
 
-const AUTHENTICATED_HOME_REDIRECT_PATH = "/counseling-records";
+const AUTHENTICATED_HOME_REDIRECT_PATH = "/home";
 
 function pickFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;

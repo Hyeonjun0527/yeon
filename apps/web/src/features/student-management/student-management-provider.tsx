@@ -22,9 +22,14 @@ interface StudentManagementContextValue {
   /* ── 레거시 (mock 기반 로컬 상태) ── */
   students: Student[];
   classes: ClassRoom[];
+  selectedClassId: string | null;
+  setSelectedClassId: (id: string | null) => void;
   addStudent: (student: Student) => void;
   updateStudent: (id: string, patch: Partial<Student>) => void;
   removeStudent: (id: string) => void;
+  addClass: (classRoom: ClassRoom) => void;
+  updateClass: (id: string, patch: Partial<ClassRoom>) => void;
+  removeClass: (id: string) => void;
   assignStudentsToClass: (studentIds: string[], classId: string) => void;
   removeStudentsFromClass: (studentIds: string[], classId: string) => void;
   /* ── API 기반 상태 ── */
@@ -54,7 +59,8 @@ export function StudentManagementProvider({
 }) {
   /* ── 레거시 로컬 상태 ── */
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
-  const [classes] = useState<ClassRoom[]>(MOCK_CLASSES);
+  const [classes, setClasses] = useState<ClassRoom[]>(MOCK_CLASSES);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
   /* ── API 상태: spaces ── */
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -169,6 +175,26 @@ export function StudentManagementProvider({
     setStudents((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
+  const addClass = useCallback((classRoom: ClassRoom) => {
+    setClasses((prev) => [...prev, classRoom]);
+  }, []);
+
+  const updateClass = useCallback((id: string, patch: Partial<ClassRoom>) => {
+    setClasses((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    );
+  }, []);
+
+  const removeClass = useCallback((id: string) => {
+    setClasses((prev) => prev.filter((c) => c.id !== id));
+    setStudents((prev) =>
+      prev.map((s) => ({
+        ...s,
+        classIds: s.classIds.filter((cid) => cid !== id),
+      })),
+    );
+  }, []);
+
   const assignStudentsToClass = useCallback(
     (studentIds: string[], classId: string) => {
       setStudents((prev) =>
@@ -212,9 +238,14 @@ export function StudentManagementProvider({
     () => ({
       students,
       classes,
+      selectedClassId,
+      setSelectedClassId,
       addStudent,
       updateStudent,
       removeStudent,
+      addClass,
+      updateClass,
+      removeClass,
       assignStudentsToClass,
       removeStudentsFromClass,
       spaces,
@@ -234,9 +265,13 @@ export function StudentManagementProvider({
     [
       students,
       classes,
+      selectedClassId,
       addStudent,
       updateStudent,
       removeStudent,
+      addClass,
+      updateClass,
+      removeClass,
       assignStudentsToClass,
       removeStudentsFromClass,
       spaces,

@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { Avatar } from "./avatar";
 import type { ClassRoom, Student } from "../types";
 import styles from "../student-detail.module.css";
@@ -10,6 +11,8 @@ interface ClassCardProps {
   students: Student[];
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: (classId: string) => void;
+  onDelete: (classId: string) => void;
 }
 
 function getCapacityColor(ratio: number): string {
@@ -24,6 +27,8 @@ export function ClassCard({
   students,
   isExpanded,
   onToggle,
+  onEdit,
+  onDelete,
 }: ClassCardProps) {
   const ratio = classRoom.capacity > 0 ? studentCount / classRoom.capacity : 0;
   const widthPct = `${Math.min(ratio * 100, 100).toFixed(1)}%`;
@@ -41,9 +46,40 @@ export function ClassCard({
     >
       <div className={styles.classCardHeader}>
         <span className={styles.className}>{classRoom.name}</span>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>
-          {classRoom.year}년
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+            {classRoom.year}년
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(classRoom.id); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-dim)", padding: 4, borderRadius: 4,
+              display: "flex", alignItems: "center",
+              transition: "color 0.15s",
+            }}
+            title="수정"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`"${classRoom.name}" 코호트를 삭제하시겠습니까?`)) {
+                onDelete(classRoom.id);
+              }
+            }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-dim)", padding: 4, borderRadius: 4,
+              display: "flex", alignItems: "center",
+              transition: "color 0.15s",
+            }}
+            title="삭제"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       <div className={styles.classMeta}>

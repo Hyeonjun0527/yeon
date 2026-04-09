@@ -29,7 +29,7 @@ export function StudentCard({
       />
 
       <Link
-        href={`/student-management/${student.id}`}
+        href={`/home/student-management/${student.id}`}
         style={{ display: "block", textDecoration: "none", color: "inherit" }}
       >
         <div className={styles.cardHeader}>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import styles from "../../mockdata/mockdata.module.css";
 import { SettingsIcon, LogOutIcon } from "./icons";
 
@@ -30,23 +31,23 @@ export function Gnav({ activeMenu, onMenuChange }: GnavProps) {
       </div>
       {/* 메뉴 */}
       <div style={{ marginTop: 8 }}>
-        <div
+        <Link
+          href="/home"
           className={`${styles.gnavItem} ${activeMenu === "records" ? styles.gnavItemActive : ""}`}
           title="상담 기록"
-          style={{ cursor: "pointer" }}
-          onClick={() => onMenuChange?.("records")}
+          style={{ textDecoration: "none", color: "inherit" }}
         >
           <RecordIcon size={16} />
-        </div>
+        </Link>
       </div>
-      <div
+      <Link
+        href="/home/student-management"
         className={`${styles.gnavItem} ${activeMenu === "students" ? styles.gnavItemActive : ""}`}
         title="학생 관리"
-        style={{ cursor: "pointer" }}
-        onClick={() => onMenuChange?.("students")}
+        style={{ textDecoration: "none", color: "inherit" }}
       >
         <StudentsIcon size={16} />
-      </div>
+      </Link>
 
       <div className={styles.gnavSpacer} />
 
