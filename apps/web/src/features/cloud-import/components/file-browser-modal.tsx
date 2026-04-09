@@ -52,6 +52,10 @@ export function FileBrowserModal({
           </button>
         </div>
 
+        <div className={styles.fileHint}>
+          스프레드시트를 선택하면 AI가 수강생 이름·연락처를 분석해 스페이스와 수강생을 자동으로 만들어줍니다. 폴더는 클릭하면 안으로 들어갑니다.
+        </div>
+
         <div className={styles.modalBody}>
           {analyzing && (
             <div className={styles.loadingOverlay}>
@@ -70,11 +74,11 @@ export function FileBrowserModal({
           ) : files.length === 0 ? (
             <div className={styles.emptyState}>파일이 없습니다.</div>
           ) : (
-            <ul className={styles.fileList}>
+            <ul className={styles.fileGrid}>
               {files.map((file) => (
                 <li key={file.id}>
                   <button
-                    className={`${styles.fileItem} ${file.isSpreadsheet ? styles.fileItemExcel : ""}`}
+                    className={`${styles.fileCard} ${file.isSpreadsheet ? styles.fileCardExcel : ""} ${file.isFolder ? styles.fileCardFolder : ""}`}
                     onClick={() => {
                       if (file.isFolder) {
                         onLoadFolder(file.id);
@@ -84,18 +88,24 @@ export function FileBrowserModal({
                     }}
                     disabled={!file.isFolder && !file.isSpreadsheet}
                     type="button"
+                    title={file.isSpreadsheet ? "클릭하면 AI 분석을 시작합니다" : file.isFolder ? "폴더 열기" : "지원하지 않는 파일 형식"}
                   >
-                    {file.isFolder ? (
-                      <Folder size={18} className={styles.fileIcon} />
-                    ) : (
-                      <FileSpreadsheet
-                        size={18}
-                        className={`${styles.fileIcon} ${file.isSpreadsheet ? styles.fileIconExcel : ""}`}
-                      />
+                    <div className={styles.fileCardIcon}>
+                      {file.isFolder ? (
+                        <Folder size={28} />
+                      ) : (
+                        <FileSpreadsheet size={28} />
+                      )}
+                    </div>
+                    <span className={styles.fileCardName}>{file.name}</span>
+                    <span className={styles.fileCardMeta}>
+                      {file.isFolder ? "폴더" : formatSize(file.size)}
+                      {" · "}
+                      {formatDate(file.lastModifiedAt)}
+                    </span>
+                    {file.isSpreadsheet && (
+                      <span className={styles.fileCardAction}>클릭하여 분석</span>
                     )}
-                    <span className={styles.fileName}>{file.name}</span>
-                    <span className={styles.fileMeta}>{formatSize(file.size)}</span>
-                    <span className={styles.fileMeta}>{formatDate(file.lastModifiedAt)}</span>
                   </button>
                 </li>
               ))}
