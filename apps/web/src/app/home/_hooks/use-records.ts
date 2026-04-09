@@ -114,7 +114,7 @@ export function useRecords() {
           })
           .map((item) => item.id);
 
-        const merged = items.map(listItemToRecordItem).map((r) => {
+        const serverMerged = items.map(listItemToRecordItem).map((r) => {
           const existing = prev.find((p) => p.id === r.id);
           if (!existing) return r;
           return {
@@ -124,6 +124,10 @@ export function useRecords() {
               existing.transcript.length > 0 ? existing.transcript : r.transcript,
           };
         });
+
+        // 아직 업로드 중인 임시 레코드(temp- 접두사)는 서버 목록에 없으므로 보존
+        const tempRecords = prev.filter((p) => p.id.startsWith("temp-"));
+        const merged = [...tempRecords, ...serverMerged];
 
         setRecords(merged);
 
@@ -216,6 +220,31 @@ export function useRecords() {
     );
   }, []);
 
+  /** 업로드 완료: 임시 레코드를 실제 서버 레코드로 교체 */
+  const replaceRecord = useCallback((tempId: string, realRecord: RecordItem) => {
+    setRecords((prev) => prev.map((r) => (r.id === tempId ? realRecord : r)));
+    setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
+  }, []);
+
+  /** 업로드 실패: 임시 레코드 제거 후 phase 복구 */
+  const removeRecord = useCallback((id: string) => {
+    setRecords((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      return next;
+    });
+    setSelectedId((prev) => {
+      if (prev !== id) return prev;
+      // 제거된 레코드가 선택된 경우 첫 번째 레코드로 이동
+      const remaining = recordsRef.current.filter((r) => r.id !== id);
+      return remaining[0]?.id ?? null;
+    });
+    setPhase((prev) => {
+      if (prev !== "processing") return prev;
+      const remaining = recordsRef.current.filter((r) => r.id !== id);
+      return remaining.length === 0 ? "empty" : "ready";
+    });
+  }, []);
+
   return {
     records,
     selectedId,
@@ -224,6 +253,8 @@ export function useRecords() {
     processingStep,
     loading,
     addProcessingRecord,
+    replaceRecord,
+    removeRecord,
     selectRecord,
     updateMessages,
     clearMessages,

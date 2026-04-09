@@ -21,7 +21,9 @@ export default function MockV2Workspace() {
   const records = useRecords();
 
   const recording = useRecording({
-    onRecordingStop: (rec) => records.addProcessingRecord(rec),
+    onRecordingStop: (tempRecord) => records.addProcessingRecord(tempRecord),
+    onUploadComplete: (tempId, realRecord) => records.replaceRecord(tempId, realRecord),
+    onUploadError: (tempId) => records.removeRecord(tempId),
   });
 
   const fileUpload = useFileUpload({

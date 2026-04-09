@@ -6,19 +6,29 @@ import type { RecordItem } from "../_lib/types";
 import { fmtDuration, fmtDurationMs, createTimestamp } from "../_lib/utils";
 
 interface UseRecordingParams {
-  onRecordingStop: (record: RecordItem) => void;
+  /** 녹음 중단 즉시 호출 — 임시 레코드로 processing 상태로 즉시 전환 */
+  onRecordingStop: (tempRecord: RecordItem) => void;
+  /** 업로드 완료 후 임시 레코드를 실제 서버 레코드로 교체 */
+  onUploadComplete: (tempId: string, realRecord: RecordItem) => void;
+  /** 업로드 실패 시 임시 레코드 제거 */
+  onUploadError: (tempId: string, message: string) => void;
 }
 
-export function useRecording({ onRecordingStop }: UseRecordingParams) {
+export function useRecording({
+  onRecordingStop,
+  onUploadComplete,
+  onUploadError,
+}: UseRecordingParams) {
   const [elapsed, setElapsed] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const elapsedRef = useRef(0);
+  const tempIdRef = useRef<string>("");
 
   const start = useCallback(async () => {
     setError(null);
@@ -43,12 +53,11 @@ export function useRecording({ onRecordingStop }: UseRecordingParams) {
     };
 
     recorder.onstop = async () => {
-      // 스트림 트랙 종료
       stream.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
 
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-      const durationMs = elapsedRef.current * 1000;
+      const tempId = tempIdRef.current;
 
       setUploading(true);
       try {
@@ -57,7 +66,7 @@ export function useRecording({ onRecordingStop }: UseRecordingParams) {
         formData.append("sessionTitle", `녹음 ${createTimestamp()}`);
         formData.append("studentName", "");
         formData.append("counselingType", "");
-        formData.append("audioDurationMs", String(durationMs));
+        formData.append("audioDurationMs", String(elapsedRef.current * 1000));
 
         const res = await fetch("/api/v1/counseling-records", {
           method: "POST",
@@ -72,7 +81,7 @@ export function useRecording({ onRecordingStop }: UseRecordingParams) {
         const data = (await res.json()) as { record: CounselingRecordDetail };
         const item = data.record;
 
-        const record: RecordItem = {
+        const realRecord: RecordItem = {
           id: item.id,
           title: item.sessionTitle || `녹음 ${createTimestamp()}`,
           status: "processing",
@@ -85,9 +94,11 @@ export function useRecording({ onRecordingStop }: UseRecordingParams) {
           aiMessages: [],
         };
 
-        onRecordingStop(record);
+        onUploadComplete(tempId, realRecord);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "업로드에 실패했습니다.");
+        const msg = err instanceof Error ? err.message : "업로드에 실패했습니다.";
+        setError(msg);
+        onUploadError(tempId, msg);
       } finally {
         setUploading(false);
       }
@@ -101,18 +112,37 @@ export function useRecording({ onRecordingStop }: UseRecordingParams) {
         return p + 1;
       });
     }, 1000);
-  }, [onRecordingStop]);
+  }, [onUploadComplete, onUploadError]);
 
   const stop = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+
+    // 임시 레코드 생성 후 즉시 콜백 호출 → 업로드 전에도 UI가 processing으로 전환됨
+    const tempId = `temp-${Date.now()}`;
+    tempIdRef.current = tempId;
+    const tempRecord: RecordItem = {
+      id: tempId,
+      title: `녹음 ${createTimestamp()}`,
+      status: "processing",
+      meta: "",
+      duration: fmtDuration(elapsedRef.current),
+      studentName: "",
+      type: "",
+      transcript: [],
+      aiSummary: "업로드 중...",
+      aiMessages: [],
+    };
+    onRecordingStop(tempRecord);
+
+    // MediaRecorder 중단 → onstop에서 업로드 후 교체
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
     }
-  }, []);
+    mediaRecorderRef.current = null;
+  }, [onRecordingStop]);
 
   return { elapsed, uploading, error, start, stop };
 }
