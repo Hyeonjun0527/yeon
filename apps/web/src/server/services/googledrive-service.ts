@@ -74,7 +74,13 @@ export async function exchangeCode(code: string): Promise<{
   };
 
   if (!data.refresh_token) {
-    throw new ServiceError(502, "Google refresh token을 받지 못했습니다. 다시 연결해주세요.");
+    // prompt=consent + access_type=offline 사용 중에도 refresh_token이 없으면
+    // 이전에 연동했던 권한을 Google 계정에서 직접 제거 후 재시도 필요
+    // 참고: https://developers.google.com/identity/protocols/oauth2/web-server#offline
+    throw new ServiceError(
+      502,
+      "Google이 refresh_token을 반환하지 않았습니다. Google 계정 > 보안 > 타사 앱 접근에서 이 앱의 접근 권한을 제거한 뒤 다시 연결해주세요.",
+    );
   }
 
   return {

@@ -22,16 +22,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${redirectTarget}?googledrive_error=invalid_state`);
   }
 
+  let tokens: Awaited<ReturnType<typeof exchangeCode>>;
   try {
-    const tokens = await exchangeCode(code);
-    await saveTokens(userId, tokens);
-
-    const res = NextResponse.redirect(`${redirectTarget}?googledrive_connected=true`);
-    res.cookies.delete("googledrive_oauth_state");
-    res.cookies.delete("googledrive_oauth_user");
-    return res;
+    tokens = await exchangeCode(code);
   } catch (error) {
-    console.error("Google Drive OAuth callback 오류:", error);
+    console.error("Google Drive 토큰 교환 실패:", error);
     return NextResponse.redirect(`${redirectTarget}?googledrive_error=exchange_failed`);
   }
+
+  try {
+    await saveTokens(userId, tokens);
+  } catch (error) {
+    console.error("Google Drive 토큰 저장 실패:", error);
+    return NextResponse.redirect(`${redirectTarget}?googledrive_error=save_failed`);
+  }
+
+  const res = NextResponse.redirect(`${redirectTarget}?googledrive_connected=true`);
+  res.cookies.delete("googledrive_oauth_state");
+  res.cookies.delete("googledrive_oauth_user");
+  return res;
 }
