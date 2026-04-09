@@ -1,5 +1,7 @@
 export type CloudProvider = "onedrive" | "googledrive";
 
+export type FolderEntry = { id: string | undefined; name: string };
+
 export interface DriveFile {
   id: string;
   name: string;

@@ -17,6 +17,7 @@ import type {
   Space,
   Student,
 } from "./types";
+import type { CloudProvider } from "@/features/cloud-import/types";
 
 interface StudentManagementContextValue {
   /* ── 레거시 (mock 기반 로컬 상태) ── */
@@ -48,6 +49,11 @@ interface StudentManagementContextValue {
   sheetStudentId: string | null;
   openSheet: (mode: "create" | "edit", studentId?: string) => void;
   closeSheet: () => void;
+  /* ── Import Mode ── */
+  importMode: boolean;
+  importInitialProvider: CloudProvider | null;
+  enterImportMode: (provider: CloudProvider) => void;
+  exitImportMode: () => void;
 }
 
 const StudentManagementContext =
@@ -79,6 +85,10 @@ export function StudentManagementProvider({
   /* ── Sheet UI 상태 ── */
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
+
+  /* ── Import Mode 상태 ── */
+  const [importMode, setImportMode] = useState(false);
+  const [importInitialProvider, setImportInitialProvider] = useState<CloudProvider | null>(null);
 
   const refetchSpaces = useCallback(() => {
     setSpacesFetchKey((k) => k + 1);
@@ -240,6 +250,16 @@ export function StudentManagementProvider({
     setSheetStudentId(null);
   }, []);
 
+  const enterImportMode = useCallback((provider: CloudProvider) => {
+    setImportMode(true);
+    setImportInitialProvider(provider);
+  }, []);
+
+  const exitImportMode = useCallback(() => {
+    setImportMode(false);
+    setImportInitialProvider(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       students,
@@ -268,6 +288,10 @@ export function StudentManagementProvider({
       sheetStudentId,
       openSheet,
       closeSheet,
+      importMode,
+      importInitialProvider,
+      enterImportMode,
+      exitImportMode,
     }),
     [
       students,
@@ -294,6 +318,10 @@ export function StudentManagementProvider({
       sheetStudentId,
       openSheet,
       closeSheet,
+      importMode,
+      importInitialProvider,
+      enterImportMode,
+      exitImportMode,
     ],
   );
 

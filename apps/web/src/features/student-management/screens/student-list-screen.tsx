@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Plus, Search, User } from "lucide-react";
+import { AlertTriangle, Plus, Search, Upload, User } from "lucide-react";
 import { useMemberList } from "../hooks/use-member-list";
 import { useStudentManagement } from "../student-management-provider";
 import { MEMBER_STATUS_META, RISK_LEVEL_META } from "../constants";
@@ -9,7 +9,7 @@ import type { RiskLevel } from "../types";
 import styles from "../student-list.module.css";
 
 export function StudentListScreen() {
-  const { spaces, selectedSpaceId } = useStudentManagement();
+  const { spaces, selectedSpaceId, enterImportMode } = useStudentManagement();
 
   const {
     filteredMembers,
@@ -122,9 +122,53 @@ export function StudentListScreen() {
               : "수강생이 없습니다."}
           </p>
           {!search && statusFilter === "all" && riskLevelFilter === "all" && (
-            <p className={styles.emptyDesc}>
-              왼쪽에서 스페이스를 선택하거나 수강생을 추가해보세요.
-            </p>
+            <>
+              <p className={styles.emptyDesc}>
+                왼쪽에서 스페이스를 선택하거나 수강생을 추가해보세요.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "center" }}>
+                <Link
+                  href="/home/student-management/members/new"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: "1px solid var(--border)",
+                    background: "transparent",
+                    color: "var(--text-secondary)",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus size={14} />
+                  수강생 직접 추가
+                </Link>
+                <button
+                  onClick={() => enterImportMode("onedrive")}
+                  type="button"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: "none",
+                    background: "var(--accent)",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Upload size={14} />
+                  스프레드시트로 가져오기
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

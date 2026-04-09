@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { CloudProvider, DriveFile, ImportPreview, ImportResult } from "../types";
+import type {
+  CloudProvider,
+  DriveFile,
+  FolderEntry,
+  ImportPreview,
+  ImportResult,
+} from "../types";
 
 const API_BASE: Record<CloudProvider, string> = {
   onedrive: "/api/v1/integrations/onedrive",
@@ -41,6 +47,8 @@ function normalizeGoogleDriveFile(f: {
   };
 }
 
+const ROOT_FOLDER: FolderEntry = { id: undefined, name: "루트" };
+
 export function useCloudImport(provider: CloudProvider, onImportComplete?: () => void) {
   const base = API_BASE[provider];
 
@@ -55,8 +63,9 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showFileBrowser, setShowFileBrowser] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [folderStack, setFolderStack] = useState<FolderEntry[]>([ROOT_FOLDER]);
+
+  const currentFolderId = folderStack[folderStack.length - 1]?.id;
 
   const checkStatus = useCallback(async () => {
     try {
@@ -105,46 +114,66 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     [base, provider],
   );
 
-  const analyzeFile = useCallback(
-    async (file: DriveFile) => {
-      try {
-        setAnalyzing(true);
-        setError(null);
-        const body =
-          provider === "googledrive"
-            ? { fileId: file.id, mimeType: file.mimeType }
-            : { fileId: file.id };
+  const navigateToFolder = useCallback(
+    (id: string, name: string) => {
+      setFolderStack((prev) => [...prev, { id, name }]);
+      setSelectedFile(null);
+      setPreview(null);
+      setEditablePreview(null);
+      loadFiles(id);
+    },
+    [loadFiles],
+  );
 
-        const res = await fetch(`${base}/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(text || "파일 분석에 실패했습니다.");
-        }
-        const data = (await res.json()) as ImportPreview;
-        setPreview(data);
-        setEditablePreview(structuredClone(data));
-        setShowFileBrowser(false);
-        setShowPreview(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "파일 분석에 실패했습니다.");
-      } finally {
-        setAnalyzing(false);
+  const navigateBack = useCallback(() => {
+    setFolderStack((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.slice(0, -1);
+      const parentId = next[next.length - 1]?.id;
+      setSelectedFile(null);
+      setPreview(null);
+      setEditablePreview(null);
+      loadFiles(parentId);
+      return next;
+    });
+  }, [loadFiles]);
+
+  const selectFileForPreview = useCallback((file: DriveFile) => {
+    setSelectedFile(file);
+    setPreview(null);
+    setEditablePreview(null);
+    setImportResult(null);
+    setError(null);
+  }, []);
+
+  const analyzeSelectedFile = useCallback(async () => {
+    if (!selectedFile) return;
+    try {
+      setAnalyzing(true);
+      setError(null);
+      const body =
+        provider === "googledrive"
+          ? { fileId: selectedFile.id, mimeType: selectedFile.mimeType }
+          : { fileId: selectedFile.id };
+
+      const res = await fetch(`${base}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "파일 분석에 실패했습니다.");
       }
-    },
-    [base, provider],
-  );
-
-  const selectFile = useCallback(
-    (file: DriveFile) => {
-      setSelectedFile(file);
-      analyzeFile(file);
-    },
-    [analyzeFile],
-  );
+      const data = (await res.json()) as ImportPreview;
+      setPreview(data);
+      setEditablePreview(structuredClone(data));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "파일 분석에 실패했습니다.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [base, provider, selectedFile]);
 
   const updatePreview = useCallback((updated: ImportPreview) => {
     setEditablePreview(updated);
@@ -181,9 +210,13 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     setEditablePreview(null);
     setImportResult(null);
     setError(null);
-    setShowFileBrowser(false);
-    setShowPreview(false);
+    setFolderStack([ROOT_FOLDER]);
   }, []);
+
+  const fileProxyUrl =
+    selectedFile
+      ? `${base}/file/${selectedFile.id}${selectedFile.mimeType ? `?mimeType=${encodeURIComponent(selectedFile.mimeType)}` : ""}`
+      : null;
 
   return {
     connected,
@@ -197,17 +230,18 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     importing,
     importResult,
     error,
-    showFileBrowser,
-    showPreview,
+    folderStack,
+    currentFolderId,
+    fileProxyUrl,
     checkStatus,
     connectDrive,
     loadFiles,
-    selectFile,
-    analyzeFile,
+    navigateToFolder,
+    navigateBack,
+    selectFileForPreview,
+    analyzeSelectedFile,
     updatePreview,
     confirmImport,
     resetState,
-    setShowFileBrowser,
-    setShowPreview,
   };
 }

@@ -3,11 +3,18 @@
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Users, Plus, GraduationCap, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Users, Plus, GraduationCap, X, CheckCircle, AlertCircle, Upload } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
-import { CloudImport } from "@/features/cloud-import";
 import styles from "./student-management-layout.module.css";
+
+const CloudImportInline = dynamic(
+  () =>
+    import("@/features/cloud-import/components/cloud-import-inline").then(
+      (mod) => mod.CloudImportInline,
+    ),
+  { ssr: false },
+);
 
 /* ── OAuth 결과 토스트 ──
  * URL query param으로 OAuth 결과를 전달받아 표시하는 컴포넌트.
@@ -99,6 +106,10 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     setSelectedSpaceId,
     refetchSpaces,
     members,
+    importMode,
+    importInitialProvider,
+    enterImportMode,
+    exitImportMode,
   } = useStudentManagement();
 
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -294,18 +305,46 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           </button>
         )}
 
-        {/* OneDrive AI 임포트 */}
+        {/* 클라우드 가져오기 버튼 */}
         <div
           style={{
             marginTop: "auto",
             paddingTop: 16,
             borderTop: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
           }}
         >
-          <CloudImport onImportComplete={refetchSpaces} />
+          <button
+            className={styles.addCohortBtn}
+            onClick={() => enterImportMode("onedrive")}
+            type="button"
+          >
+            <Upload size={14} />
+            OneDrive에서 가져오기
+          </button>
+          <button
+            className={styles.addCohortBtn}
+            onClick={() => enterImportMode("googledrive")}
+            type="button"
+          >
+            <Upload size={14} />
+            Google Drive에서 가져오기
+          </button>
         </div>
       </nav>
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        {importMode ? (
+          <CloudImportInline
+            initialProvider={importInitialProvider ?? undefined}
+            onClose={exitImportMode}
+            onImportComplete={refetchSpaces}
+          />
+        ) : (
+          children
+        )}
+      </main>
     </div>
   );
 }
