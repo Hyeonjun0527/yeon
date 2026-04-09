@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useStudentManagement } from "../student-management-provider";
+import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
 import { useStudentMemos } from "../hooks/use-student-memos";
 import { StudentDetailHeader } from "../components/student-detail-header";
@@ -11,6 +12,8 @@ import { TabCounseling } from "../components/tab-counseling";
 import { TabCourses } from "../components/tab-courses";
 import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
+import { TabReport } from "../components/tab-report";
+import { SheetIntegrationPanel } from "../components/sheet-integration-panel";
 
 interface StudentDetailScreenProps {
   paramsPromise: Promise<{ studentId: string }>;
@@ -20,13 +23,26 @@ export function StudentDetailScreen({
   paramsPromise,
 }: StudentDetailScreenProps) {
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode } = useStudentManagement();
-  const { student, activeTab, setActiveTab } = useStudentDetail({ studentId });
+  const { sheetMode, selectedSpaceId } = useStudentManagement();
+
+  /* ── API 기반 멤버 조회 ── */
+  const {
+    member,
+    activeTab,
+    setActiveTab,
+    activityLogs,
+    logsLoading,
+    logsError,
+  } = useMemberDetail({ memberId: studentId });
+
+  /* ── 레거시 mock 학생 조회 (member가 없을 때 폴백) ── */
+  const { student } = useStudentDetail({ studentId });
   const { memos, newMemoText, setNewMemoText, addMemo } = useStudentMemos({
     studentId,
   });
 
-  if (!student) {
+  /* ── member가 있으면 API 데이터, 없으면 mock 폴백 ── */
+  if (!member && !student) {
     return (
       <div
         style={{
@@ -36,25 +52,218 @@ export function StudentDetailScreen({
           fontSize: 16,
         }}
       >
-        학생을 찾을 수 없습니다.
+        수강생을 찾을 수 없습니다.
       </div>
     );
   }
 
+  /* member가 있는 경우 API 기반 렌더 */
+  if (member) {
+    return (
+      <div>
+        {/* 이름/상태 헤더 — Member 기반 */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 20,
+          }}
+        >
+          <a
+            href="/student-management"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--text-dim)",
+              textDecoration: "none",
+              fontSize: 14,
+            }}
+          >
+            ← 학생 목록으로
+          </a>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 20,
+            padding: 24,
+            background: "var(--surface2)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "var(--text)",
+                marginBottom: 4,
+              }}
+            >
+              {member.name}
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "var(--text-secondary)",
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              {member.phone && <span>{member.phone}</span>}
+              {member.email && (
+                <>
+                  {member.phone && <span>·</span>}
+                  <span>{member.email}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {activeTab === "overview" && (
+          <div
+            style={{
+              color: "var(--text-secondary)",
+              fontSize: 14,
+              padding: "16px 0",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: 12,
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  padding: 16,
+                  background: "var(--surface2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-dim)",
+                    marginBottom: 4,
+                  }}
+                >
+                  등록일
+                </div>
+                <div
+                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
+                >
+                  {new Date(member.createdAt).toLocaleDateString("ko-KR")}
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: 16,
+                  background: "var(--surface2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-dim)",
+                    marginBottom: 4,
+                  }}
+                >
+                  상태
+                </div>
+                <div
+                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
+                >
+                  {member.status === "active"
+                    ? "수강중"
+                    : member.status === "withdrawn"
+                      ? "중도포기"
+                      : member.status === "graduated"
+                        ? "수료"
+                        : member.status}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "report" && (
+          <TabReport
+            member={member}
+            activityLogs={activityLogs}
+            logsLoading={logsLoading}
+            logsError={logsError}
+          />
+        )}
+
+        {activeTab === "memos" && (
+          <TabMemos
+            memos={memos}
+            newMemoText={newMemoText}
+            setNewMemoText={setNewMemoText}
+            addMemo={addMemo}
+          />
+        )}
+
+        {/* counseling / courses / guardian 탭은 legacy 데이터 없음 안내 */}
+        {(activeTab === "counseling" ||
+          activeTab === "courses" ||
+          activeTab === "guardian") && (
+          <div
+            style={{
+              padding: "32px 0",
+              textAlign: "center",
+              color: "var(--text-dim)",
+              fontSize: 14,
+            }}
+          >
+            해당 탭은 레거시 mock 데이터 기반입니다.
+          </div>
+        )}
+
+        {/* 구글 시트 연동 패널 */}
+        {selectedSpaceId && (
+          <SheetIntegrationPanel spaceId={selectedSpaceId} />
+        )}
+
+        {sheetMode !== null && (
+          <div suppressHydrationWarning />
+        )}
+      </div>
+    );
+  }
+
+  /* ── 레거시 mock 기반 렌더 (API member 없을 때 폴백) ── */
   return (
     <div>
-      <StudentDetailHeader student={student} />
+      <StudentDetailHeader student={student!} />
       <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab === "overview" && <TabOverview student={student} />}
+      {activeTab === "overview" && <TabOverview student={student!} />}
       {activeTab === "counseling" && (
-        <TabCounseling history={student.counselingHistory} />
+        <TabCounseling history={student!.counselingHistory} />
       )}
       {activeTab === "courses" && (
-        <TabCourses history={student.courseHistory} />
+        <TabCourses history={student!.courseHistory} />
       )}
       {activeTab === "guardian" && (
-        <TabGuardian guardians={student.guardians} />
+        <TabGuardian guardians={student!.guardians} />
       )}
       {activeTab === "memos" && (
         <TabMemos
@@ -64,11 +273,28 @@ export function StudentDetailScreen({
           addMemo={addMemo}
         />
       )}
+      {activeTab === "report" && student && (
+        <TabReport
+          member={{
+            id: student.id,
+            spaceId: "",
+            name: student.name,
+            email: student.email,
+            phone: student.phone,
+            status: student.status,
+            initialRiskLevel: null,
+            counselingRecordId: null,
+            createdAt: student.registeredAt,
+            updatedAt: student.registeredAt,
+          }}
+          activityLogs={[]}
+          logsLoading={false}
+          logsError={null}
+        />
+      )}
 
       {sheetMode !== null && (
-        <div suppressHydrationWarning>
-          {/* StudentSheet는 별도 구현 후 여기에 마운트됩니다 */}
-        </div>
+        <div suppressHydrationWarning />
       )}
     </div>
   );
