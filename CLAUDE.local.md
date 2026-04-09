@@ -3,6 +3,17 @@
 이 파일은 공용 `CLAUDE.md`를 보완하는 개인 작업 스타일 문서다.
 팀 규칙과 충돌하지 않는 선에서 개인 습관과 리뷰 기준을 정의한다.
 
+## OAuth 리디렉션 URI 규칙
+
+OAuth 앱(Google, Microsoft 등) 설정 시 리디렉션 URI는 반드시 4개를 등록한다:
+
+```
+http://localhost:3000/api/v1/integrations/<provider>/auth/callback
+https://yeon.world/api/v1/integrations/<provider>/auth/callback
+https://www.yeon.world/api/v1/integrations/<provider>/auth/callback
+https://dev.yeon.world/api/v1/integrations/<provider>/auth/callback
+```
+
 ## 작업 스타일
 
 - 설명은 간결하게, 핵심만 전달한다.
