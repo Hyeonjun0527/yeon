@@ -44,7 +44,7 @@ export function StudentTable({
             </td>
             <td>
               <Link
-                href={`/student-management/${student.id}`}
+                href={`/home/student-management/${student.id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <div className={styles.tableNameCell}>

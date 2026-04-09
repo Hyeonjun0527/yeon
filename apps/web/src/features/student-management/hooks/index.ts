@@ -4,3 +4,5 @@ export { useStudentForm } from "./use-student-form";
 export { useStudentDetail } from "./use-student-detail";
 export { useStudentMemos } from "./use-student-memos";
 export { useClassManagement } from "./use-class-management";
+export { useMemberList } from "./use-member-list";
+export { useMemberDetail } from "./use-member-detail";

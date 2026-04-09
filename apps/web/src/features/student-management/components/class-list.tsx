@@ -9,6 +9,8 @@ interface ClassListProps {
   expandedClassId: string | null;
   onToggleExpand: (classId: string) => void;
   getClassStudents: (classId: string) => Student[];
+  onEdit: (classId: string) => void;
+  onDelete: (classId: string) => void;
 }
 
 export function ClassList({
@@ -16,6 +18,8 @@ export function ClassList({
   expandedClassId,
   onToggleExpand,
   getClassStudents,
+  onEdit,
+  onDelete,
 }: ClassListProps) {
   return (
     <div className={styles.classGrid}>
@@ -29,6 +33,8 @@ export function ClassList({
             students={students}
             isExpanded={expandedClassId === classRoom.id}
             onToggle={() => onToggleExpand(classRoom.id)}
+            onEdit={onEdit}
+            onDelete={onDelete}
           />
         );
       })}

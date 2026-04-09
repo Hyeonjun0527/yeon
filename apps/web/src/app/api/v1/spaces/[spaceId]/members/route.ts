@@ -1,0 +1,84 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { createMember, getMembers } from "@/server/services/members-service";
+import { ServiceError } from "@/server/services/service-error";
+
+import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+
+export const runtime = "nodejs";
+
+const createMemberBodySchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email().max(255).nullish(),
+  phone: z.string().max(20).nullish(),
+  status: z.string().max(20).nullish(),
+  initialRiskLevel: z.string().max(10).nullish(),
+});
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ spaceId: string }> },
+) {
+  const { currentUser, response } = await requireAuthenticatedUser(request);
+
+  if (!currentUser) {
+    return response;
+  }
+
+  const { spaceId } = await params;
+
+  try {
+    const memberList = await getMembers(spaceId);
+
+    return NextResponse.json({ members: memberList });
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return jsonError(error.message, error.status);
+    }
+
+    console.error(error);
+    return jsonError("수강생 목록을 불러오지 못했습니다.", 500);
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ spaceId: string }> },
+) {
+  const { currentUser, response } = await requireAuthenticatedUser(request);
+
+  if (!currentUser) {
+    return response;
+  }
+
+  const { spaceId } = await params;
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
+  }
+
+  const parsed = createMemberBodySchema.safeParse(body);
+
+  if (!parsed.success) {
+    return jsonError("요청 데이터가 올바르지 않습니다.", 400);
+  }
+
+  try {
+    const member = await createMember(spaceId, parsed.data);
+
+    return NextResponse.json({ member }, { status: 201 });
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return jsonError(error.message, error.status);
+    }
+
+    console.error(error);
+    return jsonError("수강생을 추가하지 못했습니다.", 500);
+  }
+}
