@@ -38,6 +38,7 @@ interface StudentManagementContextValue {
   spacesError: string | null;
   selectedSpaceId: string | null;
   setSelectedSpaceId: (id: string | null) => void;
+  refetchSpaces: () => void;
   members: Member[];
   membersLoading: boolean;
   membersError: string | null;
@@ -67,6 +68,7 @@ export function StudentManagementProvider({
   const [spacesLoading, setSpacesLoading] = useState(false);
   const [spacesError, setSpacesError] = useState<string | null>(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [spacesFetchKey, setSpacesFetchKey] = useState(0);
 
   /* ── API 상태: members ── */
   const [members, setMembers] = useState<Member[]>([]);
@@ -77,6 +79,10 @@ export function StudentManagementProvider({
   /* ── Sheet UI 상태 ── */
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
+
+  const refetchSpaces = useCallback(() => {
+    setSpacesFetchKey((k) => k + 1);
+  }, []);
 
   /* ── spaces fetch ── */
   useEffect(() => {
@@ -114,7 +120,7 @@ export function StudentManagementProvider({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [spacesFetchKey]);
 
   /* ── members fetch (selectedSpaceId 변경 시 재조회) ── */
   useEffect(() => {
@@ -253,6 +259,7 @@ export function StudentManagementProvider({
       spacesError,
       selectedSpaceId,
       setSelectedSpaceId,
+      refetchSpaces,
       members,
       membersLoading,
       membersError,
@@ -278,6 +285,7 @@ export function StudentManagementProvider({
       spacesLoading,
       spacesError,
       selectedSpaceId,
+      refetchSpaces,
       members,
       membersLoading,
       membersError,
