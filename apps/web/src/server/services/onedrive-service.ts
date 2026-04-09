@@ -9,9 +9,9 @@ import { ServiceError } from "./service-error";
 /* ── Microsoft OAuth 설정 ── */
 
 const AUTH_URL =
-  "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
 const TOKEN_URL =
-  "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+  "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
 const SCOPES = ["Files.Read.All", "offline_access", "User.Read"].join(" ");
 
