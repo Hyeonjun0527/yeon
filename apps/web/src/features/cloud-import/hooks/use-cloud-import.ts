@@ -14,6 +14,16 @@ const API_BASE: Record<CloudProvider, string> = {
   googledrive: "/api/v1/integrations/googledrive",
 };
 
+const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".heic", ".heif", ".webp", ".gif"];
+const IMAGE_MIME_PREFIXES = ["image/"];
+
+function isImageFile(name: string, mimeType?: string): boolean {
+  const lower = name.toLowerCase();
+  if (IMAGE_EXTS.some((ext) => lower.endsWith(ext))) return true;
+  if (mimeType && IMAGE_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) return true;
+  return false;
+}
+
 function normalizeOneDriveFile(f: {
   id: string;
   name: string;
@@ -26,6 +36,7 @@ function normalizeOneDriveFile(f: {
     ...f,
     isFolder: !f.mimeType,
     isSpreadsheet: lower.endsWith(".xlsx") || lower.endsWith(".xls"),
+    isImage: isImageFile(f.name, f.mimeType),
   };
 }
 
@@ -44,6 +55,7 @@ function normalizeGoogleDriveFile(f: {
       f.mimeType === "application/vnd.google-apps.spreadsheet" ||
       lower.endsWith(".xlsx") ||
       lower.endsWith(".xls"),
+    isImage: isImageFile(f.name, f.mimeType),
   };
 }
 

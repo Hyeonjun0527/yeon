@@ -8,6 +8,7 @@ import {
   File,
   FileSpreadsheet,
   Folder,
+  ImageIcon,
   LayoutGrid,
   List,
   Loader2,
@@ -278,12 +279,12 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
         {files.map((file) => (
           <li key={file.id}>
             <button
-              className={`${styles.fileListRow} ${file.isSpreadsheet ? styles.fileListRowExcel : ""} ${file.isFolder ? styles.fileListRowFolder : ""}`}
+              className={`${styles.fileListRow} ${file.isSpreadsheet ? styles.fileListRowExcel : ""} ${file.isImage ? styles.fileListRowImage : ""} ${file.isFolder ? styles.fileListRowFolder : ""}`}
               onClick={() => {
                 if (file.isFolder) onNavigateFolder(file.id, file.name);
-                else if (file.isSpreadsheet) onSelectFile(file);
+                else if (file.isSpreadsheet || file.isImage) onSelectFile(file);
               }}
-              disabled={!file.isFolder && !file.isSpreadsheet}
+              disabled={!file.isFolder && !file.isSpreadsheet && !file.isImage}
               type="button"
             >
               <span className={styles.fileListIcon}>
@@ -291,6 +292,8 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
                   <Folder size={16} />
                 ) : file.isSpreadsheet ? (
                   <FileSpreadsheet size={16} />
+                ) : file.isImage ? (
+                  <ImageIcon size={16} />
                 ) : (
                   <File size={16} />
                 )}
@@ -312,18 +315,18 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
       {files.map((file) => (
         <li key={file.id}>
           <button
-            className={`${styles.fileCard} ${file.isSpreadsheet ? styles.fileCardExcel : ""} ${file.isFolder ? styles.fileCardFolder : ""}`}
+            className={`${styles.fileCard} ${file.isSpreadsheet ? styles.fileCardExcel : ""} ${file.isImage ? styles.fileCardImage : ""} ${file.isFolder ? styles.fileCardFolder : ""}`}
             onClick={() => {
               if (file.isFolder) {
                 onNavigateFolder(file.id, file.name);
-              } else if (file.isSpreadsheet) {
+              } else if (file.isSpreadsheet || file.isImage) {
                 onSelectFile(file);
               }
             }}
-            disabled={!file.isFolder && !file.isSpreadsheet}
+            disabled={!file.isFolder && !file.isSpreadsheet && !file.isImage}
             type="button"
             title={
-              file.isSpreadsheet
+              file.isSpreadsheet || file.isImage
                 ? "클릭하여 미리보기"
                 : file.isFolder
                   ? "폴더 열기"
@@ -335,6 +338,8 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
                 <Folder size={28} />
               ) : file.isSpreadsheet ? (
                 <FileSpreadsheet size={28} />
+              ) : file.isImage ? (
+                <ImageIcon size={28} />
               ) : (
                 <File size={28} />
               )}
@@ -345,7 +350,7 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
               {" · "}
               {formatDate(file.lastModifiedAt)}
             </span>
-            {file.isSpreadsheet && (
+            {(file.isSpreadsheet || file.isImage) && (
               <span className={styles.fileCardAction}>클릭하여 선택</span>
             )}
           </button>

@@ -10,6 +10,7 @@ export interface DriveFile {
   mimeType?: string;
   isFolder: boolean;
   isSpreadsheet: boolean;
+  isImage: boolean;
 }
 
 export interface ImportStudent {
