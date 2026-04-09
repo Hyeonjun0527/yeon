@@ -8,7 +8,7 @@ type GnavProps = {
   onMenuChange?: (menu: "records" | "students") => void;
 };
 
-export function Gnav({ activeMenu, onMenuChange }: GnavProps) {
+export function Gnav({ activeMenu, onMenuChange: _onMenuChange }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
