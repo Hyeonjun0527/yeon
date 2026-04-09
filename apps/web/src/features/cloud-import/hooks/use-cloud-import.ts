@@ -104,10 +104,10 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
       const cacheKey = folderId ?? "__root__";
       const cached = folderCacheRef.current.get(cacheKey);
       if (cached) {
-        setFiles(cached);
+        setFiles(cached); // 캐시 즉시 표시 → 스피너 없이 바로 보임
       }
       try {
-        setFilesLoading(true);
+        if (!cached) setFilesLoading(true); // 캐시 없을 때만 로딩 표시
         setError(null);
         const url = folderId ? `${base}/files?folderId=${folderId}` : `${base}/files`;
         const res = await fetch(url);
@@ -124,9 +124,20 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
               );
 
         folderCacheRef.current.set(cacheKey, normalized);
-        setFiles(normalized);
+        // 캐시와 다를 때만 업데이트 (불필요한 리렌더 방지)
+        if (
+          !cached ||
+          JSON.stringify(normalized.map((f) => f.id)) !==
+            JSON.stringify(cached.map((f) => f.id))
+        ) {
+          setFiles(normalized);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "파일 목록을 불러오지 못했습니다.");
+        if (!cached) {
+          // 캐시 없는 상태에서 실패 → 에러 표시
+          setError(err instanceof Error ? err.message : "파일 목록을 불러오지 못했습니다.");
+        }
+        // 캐시 있는 상태에서 백그라운드 갱신 실패는 무시 (이미 캐시 데이터 표시 중)
       } finally {
         setFilesLoading(false);
       }
