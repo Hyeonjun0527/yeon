@@ -252,20 +252,6 @@ export function StudentListScreen() {
                       {riskMeta.label}
                     </span>
                   )}
-                  {member.counselingRecordId && (
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: 10,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        color: "#34d399",
-                        background: "rgba(52,211,153,0.1)",
-                      }}
-                    >
-                      상담연결
-                    </span>
-                  )}
                 </div>
               </Link>
             );

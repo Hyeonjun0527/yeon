@@ -283,7 +283,6 @@ export function StudentDetailScreen({
             phone: student.phone,
             status: student.status,
             initialRiskLevel: null,
-            counselingRecordId: null,
             createdAt: student.registeredAt,
             updatedAt: student.registeredAt,
           }}
