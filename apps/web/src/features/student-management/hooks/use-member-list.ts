@@ -51,7 +51,7 @@ function sortMembers(members: Member[], key: MemberSortKey): Member[] {
 }
 
 export function useMemberList() {
-  const { members, membersLoading, membersError } = useStudentManagement();
+  const { members, membersLoading, membersError, spacesLoading } = useStudentManagement();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | "all">("all");
@@ -82,7 +82,7 @@ export function useMemberList() {
     setViewMode,
     sortKey,
     setSortKey,
-    loading: membersLoading,
+    loading: spacesLoading || membersLoading,
     error: membersError,
   };
 }
