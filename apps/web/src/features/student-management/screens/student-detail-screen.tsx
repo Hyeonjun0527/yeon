@@ -9,6 +9,7 @@ import { StudentDetailHeader } from "../components/student-detail-header";
 import { StudentDetailTabs } from "../components/student-detail-tabs";
 import { TabOverview } from "../components/tab-overview";
 import { TabCounseling } from "../components/tab-counseling";
+import { TabCounselingRecords } from "../components/tab-counseling-records";
 import { TabCourses } from "../components/tab-courses";
 import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
@@ -221,10 +222,15 @@ export function StudentDetailScreen({
           />
         )}
 
-        {/* counseling / courses / guardian 탭은 legacy 데이터 없음 안내 */}
-        {(activeTab === "counseling" ||
-          activeTab === "courses" ||
-          activeTab === "guardian") && (
+        {activeTab === "counseling" && (
+          <TabCounselingRecords
+            spaceId={member.spaceId}
+            memberId={member.id}
+          />
+        )}
+
+        {/* courses / guardian 탭은 미구현 안내 */}
+        {(activeTab === "courses" || activeTab === "guardian") && (
           <div
             style={{
               padding: "32px 0",
@@ -233,7 +239,7 @@ export function StudentDetailScreen({
               fontSize: 14,
             }}
           >
-            해당 탭은 레거시 mock 데이터 기반입니다.
+            해당 탭은 준비 중입니다.
           </div>
         )}
 
