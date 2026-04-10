@@ -21,8 +21,10 @@
     "@cyntler/react-doc-viewer": "^1.17.1",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.74",
+    "@types/dompurify": "^3.2.0",
     "@yeon/api-client": "workspace:*",
     "@yeon/api-contract": "workspace:*",
+    "dompurify": "^3.3.3",
     "dotenv": "^17.4.1",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
@@ -42,10 +44,14 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.5.2",
+    "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
     "drizzle-kit": "^0.31.10",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }

@@ -1,5 +1,6 @@
 import { Gnav } from "../_components/gnav";
 import styles from "../mockdata.module.css";
+import { AudioPlayer } from "./_components/audio-player";
 
 const TRANSCRIPT = [
   { time: "00:00", speaker: "teacher", label: "교사", text: "민수야, 오늘 수학 과제가 제출이 안 됐더라. 혹시 무슨 일 있었어?" },
@@ -67,15 +68,7 @@ export default function ResultPage() {
           </div>
         </div>
         <div className={styles.centerBody}>
-          {/* 오디오 플레이어 */}
-          <div className={styles.audioPlayer}>
-            <button className={styles.playBtn}>▶</button>
-            <span className={styles.audioTime}>0:08</span>
-            <div className={styles.audioTrack}>
-              <div className={styles.audioTrackFill} />
-            </div>
-            <span className={styles.audioTime}>2:34</span>
-          </div>
+          <AudioPlayer />
 
           {/* 전사 세그먼트 */}
           {TRANSCRIPT.map((seg) => (

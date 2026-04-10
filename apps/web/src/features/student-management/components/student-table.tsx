@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import styles from "../student-list.module.css";
 import type { Student } from "../types";
 import { Avatar } from "./avatar";
 import { StatusBadge } from "./status-badge";
@@ -18,22 +17,22 @@ export function StudentTable({
   onToggleSelect,
 }: StudentTableProps) {
   return (
-    <table className={styles.table}>
+    <table className="w-full border-collapse bg-surface rounded overflow-hidden border border-border">
       <thead>
         <tr>
-          <th style={{ width: 40 }} />
-          <th>이름</th>
-          <th>기수</th>
-          <th>트랙</th>
-          <th>상태</th>
-          <th>상담 수</th>
-          <th>등록일</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border w-10" />
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">이름</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">기수</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">트랙</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">상태</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">상담 수</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">등록일</th>
         </tr>
       </thead>
       <tbody>
         {students.map((student) => (
-          <tr key={student.id}>
-            <td>
+          <tr key={student.id} className="hover:[&>td]:bg-surface-2">
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <input
                 type="checkbox"
                 checked={selectedIds.has(student.id)}
@@ -42,24 +41,24 @@ export function StudentTable({
                 style={{ accentColor: "#2563eb", cursor: "pointer" }}
               />
             </td>
-            <td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <Link
                 href={`/home/student-management/${student.id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div className={styles.tableNameCell}>
+                <div className="flex items-center gap-[10px]">
                   <Avatar name={student.name} size={32} />
                   <span style={{ fontWeight: 500 }}>{student.name}</span>
                 </div>
               </Link>
             </td>
-            <td>{student.grade}</td>
-            <td>{student.school ?? "-"}</td>
-            <td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.grade}</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.school ?? "-"}</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <StatusBadge status={student.status} />
             </td>
-            <td>{student.counselingHistory.length}건</td>
-            <td>{student.registeredAt}</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.counselingHistory.length}건</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.registeredAt}</td>
           </tr>
         ))}
       </tbody>

@@ -1,7 +1,6 @@
 "use client";
 
 import type { Memo } from "../types";
-import styles from "../student-detail.module.css";
 
 interface TabMemosProps {
   memos: Memo[];
@@ -18,16 +17,16 @@ export function TabMemos({
 }: TabMemosProps) {
   return (
     <div>
-      <div className={styles.memoInput}>
+      <div className="flex gap-2 mb-4">
         <textarea
-          className={styles.memoTextarea}
+          className="flex-1 py-2.5 px-[14px] border border-border rounded-lg text-sm resize-none outline-none min-h-[40px] bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
           placeholder="메모를 입력하세요..."
           value={newMemoText}
           onChange={(e) => setNewMemoText(e.target.value)}
           rows={2}
         />
         <button
-          className={styles.memoSubmitBtn}
+          className="py-2 px-4 bg-accent text-white border-none rounded-lg text-sm font-medium cursor-pointer whitespace-nowrap transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
           onClick={addMemo}
           disabled={!newMemoText.trim()}
         >
@@ -40,16 +39,19 @@ export function TabMemos({
           메모가 없습니다.
         </div>
       ) : (
-        <div className={styles.memoList}>
+        <div className="flex flex-col gap-2">
           {[...memos].reverse().map((memo) => (
-            <div key={memo.id} className={styles.memoItem}>
-              <div className={styles.memoItemHeader}>
-                <span className={styles.memoItemDate}>{memo.date}</span>
+            <div
+              key={memo.id}
+              className="py-3 px-4 bg-surface-2 border border-border rounded-lg"
+            >
+              <div className="flex justify-between mb-1">
+                <span className="text-[11px] text-text-dim font-mono">{memo.date}</span>
                 {memo.author && (
-                  <span className={styles.memoItemAuthor}>{memo.author}</span>
+                  <span className="text-xs text-text-secondary">{memo.author}</span>
                 )}
               </div>
-              <div className={styles.memoItemText}>{memo.text}</div>
+              <div className="text-sm text-text-secondary">{memo.text}</div>
             </div>
           ))}
         </div>

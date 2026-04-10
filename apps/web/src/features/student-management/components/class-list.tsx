@@ -2,7 +2,6 @@
 
 import { ClassCard } from "./class-card";
 import type { ClassRoom, Student } from "../types";
-import styles from "../student-detail.module.css";
 
 interface ClassListProps {
   classes: ClassRoom[];
@@ -22,7 +21,7 @@ export function ClassList({
   onDelete,
 }: ClassListProps) {
   return (
-    <div className={styles.classGrid}>
+    <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))] max-md:grid-cols-1">
       {classes.map((classRoom) => {
         const students = getClassStudents(classRoom.id);
         return (

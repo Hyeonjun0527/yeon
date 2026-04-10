@@ -71,7 +71,7 @@ export function useExport(
 
     const header = [
       "[상담 분석 보고서]",
-      `학생: ${selectedRecord.studentName}`,
+      `수강생: ${selectedRecord.studentName}`,
       `상담 제목: ${selectedRecord.sessionTitle}`,
       `일시: ${formatDateTimeLabel(selectedRecord.createdAt)}`,
     ].join("\n");
@@ -106,7 +106,7 @@ export function useExport(
       "# 상담 기록 종합 보고서",
       "",
       "## 기본 정보",
-      `- **학생**: ${selectedRecord.studentName}`,
+      `- **수강생**: ${selectedRecord.studentName}`,
       `- **상담 유형**: ${selectedRecord.counselingType}`,
       `- **상담 제목**: ${selectedRecord.sessionTitle}`,
       `- **일시**: ${formatDateTimeLabel(selectedRecord.createdAt)}`,

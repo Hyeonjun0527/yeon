@@ -8,7 +8,7 @@ export const COUNSELING_TYPE_OPTIONS = [
   "대면 상담",
   "전화 상담",
   "온라인 상담",
-  "보호자 통화",
+  "외부 미팅",
 ] as const;
 
 export const FILTER_META: Array<{ id: RecordFilter; label: string }> = [
@@ -19,9 +19,8 @@ export const FILTER_META: Array<{ id: RecordFilter; label: string }> = [
 ];
 
 export const SPEAKER_CYCLE = [
-  { label: "교사", tone: "teacher" },
-  { label: "학생", tone: "student" },
-  { label: "보호자", tone: "guardian" },
+  { label: "멘토", tone: "teacher" },
+  { label: "수강생", tone: "student" },
   { label: "기타", tone: "unknown" },
 ] as const;
 

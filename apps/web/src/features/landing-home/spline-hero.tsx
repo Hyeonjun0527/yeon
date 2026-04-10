@@ -30,7 +30,7 @@ class SplineErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return <div className={styles.splineFallback} />;
+      return <div className="w-full h-full bg-[var(--dark-bg)]" />;
     }
     return this.props.children;
   }
@@ -54,7 +54,7 @@ function SplineCanvas() {
   }, []);
 
   if (error) {
-    return <div className={styles.splineFallback} />;
+    return <div className="w-full h-full bg-[var(--dark-bg)]" />;
   }
 
   return <Spline scene={SPLINE_SCENE} onError={handleError} />;
@@ -62,9 +62,9 @@ function SplineCanvas() {
 
 export function SplineHero() {
   return (
-    <div className={styles.splineContainer}>
+    <div className={`${styles.splineContainer} absolute inset-0 w-full h-full`}>
       <SplineErrorBoundary>
-        <Suspense fallback={<div className={styles.splineFallback} />}>
+        <Suspense fallback={<div className="w-full h-full bg-[var(--dark-bg)]" />}>
           <SplineCanvas />
         </Suspense>
       </SplineErrorBoundary>

@@ -1,7 +1,6 @@
 "use client";
 
 import { X } from "lucide-react";
-import styles from "../student-detail.module.css";
 
 interface ClassSheetProps {
   mode: "create" | "edit" | null;
@@ -29,14 +28,17 @@ export function ClassSheet({
 
   return (
     <>
-      <div className={styles.sheetOverlay} onClick={onClose} />
-      <div className={styles.sheetPanel}>
-        <div className={styles.sheetHeader}>
-          <h2 className={styles.sheetTitle}>
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-[4px] z-[100]"
+        onClick={onClose}
+      />
+      <div className="fixed top-0 right-0 bottom-0 w-[480px] max-w-full bg-surface border-l border-border shadow-[-4px_0_24px_rgba(0,0,0,0.3)] z-[101] flex flex-col">
+        <div className="flex items-center justify-between py-5 px-6 border-b border-border">
+          <h2 className="text-lg font-bold text-text">
             {mode === "create" ? "코호트 추가" : "코호트 수정"}
           </h2>
           <button
-            className={styles.sheetCloseBtn}
+            className="p-1 border-none bg-transparent text-text-dim cursor-pointer flex transition-colors duration-150 hover:text-text-secondary"
             onClick={onClose}
             aria-label="닫기"
           >
@@ -44,34 +46,34 @@ export function ClassSheet({
           </button>
         </div>
 
-        <div className={styles.sheetBody}>
-          <div className={styles.formSection}>
-            <h3 className={styles.formSectionTitle}>기본 정보</h3>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">기본 정보</h3>
 
-            <div className={styles.formField}>
-              <label className={styles.formLabel}>코호트 이름 *</label>
+            <div className="mb-3">
+              <label className="block text-[13px] font-medium text-text-dim mb-1">코호트 이름 *</label>
               <input
-                className={styles.formInput}
+                className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.name}
                 onChange={(e) => onUpdateField("name", e.target.value)}
                 placeholder="예: 웹개발 3기"
               />
             </div>
 
-            <div className={styles.formField}>
-              <label className={styles.formLabel}>트랙 (과목)</label>
+            <div className="mb-3">
+              <label className="block text-[13px] font-medium text-text-dim mb-1">트랙 (과목)</label>
               <input
-                className={styles.formInput}
+                className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.subject}
                 onChange={(e) => onUpdateField("subject", e.target.value)}
                 placeholder="예: 풀스택 웹개발"
               />
             </div>
 
-            <div className={styles.formField}>
-              <label className={styles.formLabel}>담당 멘토</label>
+            <div className="mb-3">
+              <label className="block text-[13px] font-medium text-text-dim mb-1">담당 멘토</label>
               <input
-                className={styles.formInput}
+                className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.instructor}
                 onChange={(e) => onUpdateField("instructor", e.target.value)}
                 placeholder="예: 김태호 멘토"
@@ -79,13 +81,13 @@ export function ClassSheet({
             </div>
           </div>
 
-          <div className={styles.formSection}>
-            <h3 className={styles.formSectionTitle}>일정 및 정원</h3>
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">일정 및 정원</h3>
 
-            <div className={styles.formField}>
-              <label className={styles.formLabel}>스케줄</label>
+            <div className="mb-3">
+              <label className="block text-[13px] font-medium text-text-dim mb-1">스케줄</label>
               <input
-                className={styles.formInput}
+                className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.schedule}
                 onChange={(e) => onUpdateField("schedule", e.target.value)}
                 placeholder="예: 월~금 09:00-18:00"
@@ -93,10 +95,10 @@ export function ClassSheet({
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
-              <div className={styles.formField} style={{ flex: 1 }}>
-                <label className={styles.formLabel}>정원</label>
+              <div className="mb-3 flex-1">
+                <label className="block text-[13px] font-medium text-text-dim mb-1">정원</label>
                 <input
-                  className={styles.formInput}
+                  className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                   type="number"
                   min="1"
                   value={form.capacity}
@@ -104,10 +106,10 @@ export function ClassSheet({
                 />
               </div>
 
-              <div className={styles.formField} style={{ flex: 1 }}>
-                <label className={styles.formLabel}>년도</label>
+              <div className="mb-3 flex-1">
+                <label className="block text-[13px] font-medium text-text-dim mb-1">년도</label>
                 <input
-                  className={styles.formInput}
+                  className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                   type="number"
                   value={form.year}
                   onChange={(e) => onUpdateField("year", e.target.value)}
@@ -117,12 +119,15 @@ export function ClassSheet({
           </div>
         </div>
 
-        <div className={styles.sheetFooter}>
-          <button className={styles.cancelBtn} onClick={onClose}>
+        <div className="py-4 px-6 border-t border-border flex justify-end gap-2">
+          <button
+            className="py-2 px-4 border border-border rounded-lg bg-surface-2 text-text-secondary text-sm cursor-pointer transition-[background] duration-150 hover:bg-surface-3"
+            onClick={onClose}
+          >
             취소
           </button>
           <button
-            className={styles.submitBtn}
+            className="py-2 px-5 bg-accent text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
             onClick={onSubmit}
             disabled={!form.name.trim()}
           >

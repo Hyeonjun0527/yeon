@@ -68,27 +68,45 @@ export function TranscriptViewer({
     <section className={styles.viewerPanel}>
       <div className={styles.viewerToolbar}>
         <div className={styles.viewerTools}>
-          <span className={styles.viewerMeta}>
+          <span className="text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
             {`구간 ${selectedRecordDetail ? selectedRecordDetail.transcriptSegments.length : selectedRecord.transcriptSegmentCount}개${normalizedTranscriptQuery ? ` · 일치 ${transcriptMatchCount}개` : ""}`}
           </span>
 
-          <label className={styles.transcriptSearchField}>
+          <label className={`relative flex items-center ${styles.transcriptSearchField}`}>
             <Search
               size={15}
               strokeWidth={2.1}
-              className={styles.transcriptSearchIcon}
+              className="absolute left-[14px]"
+              style={{ color: "var(--text-muted)" }}
             />
             <input
               value={transcriptQuery}
               onChange={(event) => setTranscriptQuery(event.target.value)}
-              className={styles.transcriptSearchInput}
+              className="w-full h-[38px] pl-9 pr-3 rounded-full border outline-none transition-[border-color,background-color] duration-[180ms]"
+              style={{
+                borderColor: "var(--border-primary)",
+                background: "var(--surface-secondary)",
+                color: "var(--text-primary)",
+              }}
               placeholder="원문 검색"
               aria-label="원문 내 단어 검색"
             />
           </label>
           <button
             type="button"
-            className={`${styles.autoScrollToggle} ${isAutoScrollEnabled ? styles.autoScrollToggleActive : ""}`}
+            className="min-h-7 px-[10px] border rounded-full bg-transparent text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-[border-color,background-color,color] duration-[120ms]"
+            style={
+              isAutoScrollEnabled
+                ? {
+                    borderColor: "rgba(99,102,241,0.22)",
+                    background: "var(--accent-soft)",
+                    color: "var(--accent)",
+                  }
+                : {
+                    borderColor: "var(--border-soft)",
+                    color: "var(--text-muted)",
+                  }
+            }
             onClick={() => setIsAutoScrollEnabled((prev) => !prev)}
             aria-pressed={isAutoScrollEnabled}
             title="재생 시 자동 스크롤"
@@ -97,7 +115,11 @@ export function TranscriptViewer({
           </button>
           <button
             type="button"
-            className={styles.autoScrollToggle}
+            className="min-h-7 px-[10px] border rounded-full bg-transparent text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-[border-color,background-color,color] duration-[120ms]"
+            style={{
+              borderColor: "var(--border-soft)",
+              color: "var(--text-muted)",
+            }}
             onClick={handleExportClipboard}
             title="원문 클립보드 복사"
           >
@@ -108,21 +130,12 @@ export function TranscriptViewer({
 
       <div className={styles.transcriptViewport}>
         {isLoadingDetail && !selectedRecordDetail ? (
-          <div className={styles.skeletonTranscript}>
+          <div className="grid gap-4 p-5">
             {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className={styles.skeletonSegment}>
-                <div
-                  className={styles.skeletonLine}
-                  style={{ width: "50px" }}
-                />
-                <div
-                  className={styles.skeletonLine}
-                  style={{ width: "60px" }}
-                />
-                <div
-                  className={styles.skeletonLine}
-                  style={{ width: `${60 + (i % 3) * 15}%` }}
-                />
+              <div key={i} className="flex gap-3 items-center">
+                <div className={styles.skeletonLine} style={{ width: "50px" }} />
+                <div className={styles.skeletonLine} style={{ width: "60px" }} />
+                <div className={styles.skeletonLine} style={{ width: `${60 + (i % 3) * 15}%` }} />
               </div>
             ))}
           </div>
@@ -288,30 +301,35 @@ export function TranscriptViewer({
             },
           )
         ) : selectedRecord.status === "processing" ? (
-          <div className={styles.viewerEmptyState}>
-            <p className={styles.emptyPanelTitle}>
+          <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
+            <p className="m-0 text-[15px] font-bold leading-[1.4]">
               한국어 전사를 처리하고 있습니다.
             </p>
-            <p className={styles.emptyPanelDescription}>
+            <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               길이가 긴 상담은 서버에서 분할 전사한 뒤 자동으로 갱신합니다.
             </p>
           </div>
         ) : selectedRecord.status === "error" ? (
-          <div className={styles.viewerEmptyState}>
-            <p className={styles.emptyPanelTitle}>원문 저장에 실패했습니다.</p>
-            <p className={styles.emptyPanelDescription}>
+          <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
+            <p className="m-0 text-[15px] font-bold leading-[1.4]">
+              원문 저장에 실패했습니다.
+            </p>
+            <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               {selectedRecord.errorMessage ??
                 "원본 음성은 남아 있으므로 전사를 다시 시도할 수 있습니다."}
             </p>
-            <ul className={styles.errorGuideList}>
+            <ul
+              className="mt-2 mb-0 pl-[18px] text-[13px] leading-[1.7] list-disc text-left"
+              style={{ color: "var(--text-secondary)" }}
+            >
               <li>파일이 손상된 경우 → 다른 파일로 교체 후 재시도</li>
               <li>서버 시간초과 → 잠시 후 전사 다시 시도</li>
               <li>형식 미지원 → mp3, wav, m4a 등 일반 형식 사용</li>
             </ul>
           </div>
         ) : (
-          <div className={styles.viewerEmptyState}>
-            <p className={styles.emptyPanelTitle}>
+          <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
+            <p className="m-0 text-[15px] font-bold leading-[1.4]">
               표시할 원문 세그먼트가 없습니다.
             </p>
           </div>

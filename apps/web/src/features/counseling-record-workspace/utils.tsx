@@ -114,8 +114,6 @@ export function getSpeakerToneClass(
       return styles.teacherTone;
     case "student":
       return styles.studentTone;
-    case "guardian":
-      return styles.guardianTone;
     case "unknown":
     default:
       return styles.unknownTone;
@@ -280,7 +278,7 @@ export function buildQuickPrompts(record: CounselingRecordListItem) {
 
   return [
     "이 상담 내용을 분석해줘",
-    "보호자 공유 포인트만 정리해줘",
+    "수강생에게 공유할 핵심 포인트를 정리해줘",
     "다음 상담에서 물어볼 질문을 만들어줘",
   ];
 }

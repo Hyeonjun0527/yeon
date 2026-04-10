@@ -60,19 +60,29 @@ export function RecordDetailHeader({
   retryTranscription,
 }: RecordDetailHeaderProps) {
   return (
-    <header className={styles.detailHeader}>
-      <div className={styles.detailHeaderTop}>
-        <div className={styles.detailHeaderCopy}>
-          <h2 className={styles.detailTitle}>{selectedRecord.studentName}</h2>
-          <p className={styles.detailSessionTitle}>
+    <header
+      className="grid gap-[10px] py-[14px] px-4 border rounded-xl"
+      style={{
+        borderColor: "var(--border-primary)",
+        background: "var(--surface-primary)",
+        boxShadow: "var(--shadow-lg)",
+      }}
+    >
+      <div className={`flex items-start justify-between gap-3 ${styles.detailHeaderTop}`}>
+        <div className="min-w-0 grid gap-1">
+          <h2
+            className="m-0 font-bold tracking-[-0.04em] leading-[1.1]"
+            style={{ fontSize: "clamp(22px, 2.5vw, 28px)" }}
+          >
+            {selectedRecord.studentName}
+          </h2>
+          <p className="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
             {selectedRecord.sessionTitle}
           </p>
         </div>
-        <div className={styles.detailHeaderActions}>
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span
-            className={`${styles.statusBadge} ${
-              statusMeta[selectedRecord.status].className
-            }`}
+            className={`inline-flex items-center gap-1 py-[3px] px-2 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap ${statusMeta[selectedRecord.status].className}`}
           >
             {(() => {
               const StatusIcon = statusMeta[selectedRecord.status].icon;
@@ -82,7 +92,8 @@ export function RecordDetailHeader({
           </span>
           <button
             type="button"
-            className={styles.deleteButton}
+            className="inline-flex items-center justify-center w-8 h-8 border border-transparent rounded-lg bg-transparent cursor-pointer transition-[color,background-color,border-color] duration-[120ms] hover:border-[var(--danger-text)]"
+            style={{ color: "var(--text-muted)" }}
             onClick={() => setIsDeleteConfirmOpen(true)}
             title="기록 삭제"
           >
@@ -92,14 +103,24 @@ export function RecordDetailHeader({
       </div>
 
       {isDeleteConfirmOpen ? (
-        <div className={styles.deleteConfirm}>
-          <p className={styles.deleteConfirmText}>
+        <div
+          className="flex items-center justify-between gap-3 py-[10px] px-[14px] rounded-lg border"
+          style={{
+            background: "var(--danger-soft)",
+            borderColor: "rgba(248,113,113,0.2)",
+          }}
+        >
+          <p className="m-0 text-[13px]" style={{ color: "var(--danger-text)" }}>
             이 기록을 삭제하시겠습니까? 음성 파일도 함께 삭제됩니다.
           </p>
-          <div className={styles.deleteConfirmActions}>
+          <div className="flex gap-2 flex-shrink-0">
             <button
               type="button"
-              className={styles.topbarGhostButton}
+              className="inline-flex items-center gap-[6px] min-h-9 px-3 border rounded-[10px] bg-transparent text-[13px] font-semibold cursor-pointer transition-[background-color,border-color] duration-[180ms]"
+              style={{
+                borderColor: "var(--border-soft)",
+                color: "var(--text-secondary)",
+              }}
               onClick={() => setIsDeleteConfirmOpen(false)}
               disabled={isDeleting}
             >
@@ -107,17 +128,14 @@ export function RecordDetailHeader({
             </button>
             <button
               type="button"
-              className={styles.deleteConfirmButton}
+              className="inline-flex items-center gap-[6px] min-h-8 px-[14px] border-none rounded-lg text-[13px] font-semibold cursor-pointer transition-opacity duration-[120ms] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ background: "var(--danger-text)", color: "#ffffff" }}
               onClick={handleDeleteRecord}
               disabled={isDeleting}
             >
               {isDeleting ? (
                 <>
-                  <LoaderCircle
-                    size={14}
-                    strokeWidth={2.1}
-                    className={styles.spinningIcon}
-                  />
+                  <LoaderCircle size={14} strokeWidth={2.1} className={styles.spinningIcon} />
                   삭제 중
                 </>
               ) : (
@@ -128,20 +146,34 @@ export function RecordDetailHeader({
         </div>
       ) : null}
 
-      {/* 17차: 핵심 3개 메타만 인라인 */}
-      <div className={styles.metaChips}>
-        <span className={styles.metaChip}>
+      {/* 핵심 3개 메타만 인라인 */}
+      <div className="flex flex-wrap items-center gap-[6px]">
+        <span
+          className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+        >
           {formatDateTimeLabel(selectedRecord.createdAt)}
         </span>
-        <span className={styles.metaChip}>
+        <span
+          className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+        >
           {formatDurationLabel(selectedRecord.audioDurationMs)}
         </span>
-        <span className={styles.metaChip}>{selectedRecord.counselingType}</span>
+        <span
+          className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+        >
+          {selectedRecord.counselingType}
+        </span>
 
-        {/* 17차: 나머지는 접힌 상세 정보 토글 */}
         <button
           type="button"
-          className={styles.metaExpandButton}
+          className="inline-flex items-center gap-1 min-h-[26px] px-2 border rounded-full bg-transparent text-[11px] font-semibold cursor-pointer transition-[border-color,background-color] duration-[180ms] hover:bg-[var(--surface-soft)] hover:border-[var(--border-primary)]"
+          style={{
+            borderColor: "var(--border-soft)",
+            color: "var(--text-muted)",
+          }}
           onClick={() => setIsDetailMetaOpen((prev) => !prev)}
           aria-expanded={isDetailMetaOpen}
           aria-controls="detail-extra-meta"
@@ -150,30 +182,48 @@ export function RecordDetailHeader({
           <ChevronDown
             size={12}
             strokeWidth={2.4}
-            className={`${styles.filterToggleChevron} ${isDetailMetaOpen ? styles.filterToggleChevronOpen : ""}`}
+            className="transition-transform duration-[180ms]"
+            style={{ transform: isDetailMetaOpen ? "rotate(180deg)" : undefined }}
           />
         </button>
       </div>
 
       {isDetailMetaOpen ? (
-        <div id="detail-extra-meta" className={styles.metaChips}>
-          <span className={styles.metaChip}>
+        <div id="detail-extra-meta" className="flex flex-wrap items-center gap-[6px]">
+          <span
+            className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+            style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+          >
             세그먼트 {selectedRecord.transcriptSegmentCount}개
           </span>
-          <span className={styles.metaChip}>
+          <span
+            className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+            style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+          >
             원문 {selectedRecord.transcriptTextLength.toLocaleString("ko-KR")}자
           </span>
           {selectedRecord.sttModel ? (
-            <span className={styles.metaChip}>{selectedRecord.sttModel}</span>
+            <span
+              className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+              style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+            >
+              {selectedRecord.sttModel}
+            </span>
           ) : null}
         </div>
       ) : null}
 
-      {/* 18차: 오디오 플레이어 슬림 — 1줄 메타 + 플레이어만 */}
-      <section className={styles.audioPanel}>
-        <p className={styles.audioMeta}>
+      {/* 오디오 패널 슬림 */}
+      <section
+        className="grid gap-2 p-3 rounded-[10px] border"
+        style={{
+          borderColor: "rgba(255,255,255,0.08)",
+          background: "var(--surface-secondary)",
+        }}
+      >
+        <p className="m-0 text-xs leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
           {selectedRecord.audioOriginalName}
-          <span className={styles.audioMetaSeparator}>·</span>
+          <span className="mx-1 opacity-50">·</span>
           {formatFileSize(selectedRecord.audioByteSize)}
         </p>
 
@@ -193,13 +243,19 @@ export function RecordDetailHeader({
             }
           />
         ) : (
-          <p className={styles.audioPanelHint}>
+          <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             원본 음성을 불러오는 중입니다.
           </p>
         )}
 
         {audioLoadError ? (
-          <p className={`${styles.inlineMessage} ${styles.inlineError}`}>
+          <p
+            className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
+            style={{
+              background: "rgba(191,51,61,0.08)",
+              color: "var(--danger-text)",
+            }}
+          >
             {audioLoadError}
           </p>
         ) : null}
@@ -207,35 +263,36 @@ export function RecordDetailHeader({
 
       {retryState.message ? (
         <p
-          className={`${styles.inlineMessage} ${
+          className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
+          style={
             retryState.tone === "error"
-              ? styles.inlineError
+              ? { background: "rgba(191,51,61,0.08)", color: "var(--danger-text)" }
               : retryState.tone === "success"
-                ? styles.inlineSuccess
-                : styles.inlineNeutral
-          }`}
+                ? { background: "rgba(17,132,91,0.08)", color: "var(--success-text)" }
+                : { background: "rgba(99,102,241,0.1)", color: "var(--accent)" }
+          }
         >
           {retryState.message}
         </p>
       ) : null}
 
-      {/* 19차: 상태에 맞는 액션만 노출 */}
-      {selectedRecord.status === "processing" ||
-      selectedRecord.status === "error" ? (
-        <div className={styles.panelActionRow}>
+      {/* 상태에 맞는 액션만 노출 */}
+      {selectedRecord.status === "processing" || selectedRecord.status === "error" ? (
+        <div className={`flex items-start justify-between gap-3 flex-wrap ${styles.panelActionRow}`}>
           {selectedRecord.status === "processing" ? (
             <button
               type="button"
-              className={styles.secondaryButton}
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,border-color,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{
+                borderColor: "var(--border-primary)",
+                background: "var(--surface-secondary)",
+                color: "var(--text-primary)",
+              }}
               onClick={() => refreshRecordDetail(selectedRecord.id)}
               disabled={retryState.isSubmitting}
             >
               {retryState.isSubmitting ? (
-                <LoaderCircle
-                  size={16}
-                  strokeWidth={2.1}
-                  className={styles.spinningIcon}
-                />
+                <LoaderCircle size={16} strokeWidth={2.1} className={styles.spinningIcon} />
               ) : (
                 <RefreshCcw size={16} strokeWidth={2.1} />
               )}
@@ -246,17 +303,14 @@ export function RecordDetailHeader({
           {selectedRecord.status === "error" ? (
             <button
               type="button"
-              className={styles.primaryButton}
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border-none rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{ background: "var(--accent)", color: "#ffffff" }}
               onClick={() => retryTranscription(selectedRecord.id)}
               disabled={retryState.isSubmitting}
             >
               {retryState.isSubmitting ? (
                 <>
-                  <LoaderCircle
-                    size={16}
-                    strokeWidth={2.1}
-                    className={styles.spinningIcon}
-                  />
+                  <LoaderCircle size={16} strokeWidth={2.1} className={styles.spinningIcon} />
                   재전사 요청 중
                 </>
               ) : (

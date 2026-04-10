@@ -1,5 +1,6 @@
 import { Gnav } from "../_components/gnav";
 import styles from "../mockdata.module.css";
+import { RecordingTimer } from "./_components/recording-timer";
 
 export default function RecordingPage() {
   return (
@@ -28,7 +29,7 @@ export default function RecordingPage() {
                   <div className={styles.recPulse} />
                   <div style={{ flex: 1 }}>
                     <p className={styles.recLabel}>녹음 중</p>
-                    <p className={styles.recTime}>02:34 경과</p>
+                    <RecordingTimer />
                   </div>
                   <button className={styles.btnStop}>⏹ 녹음 종료</button>
                 </div>

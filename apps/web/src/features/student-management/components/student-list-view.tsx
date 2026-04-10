@@ -1,6 +1,5 @@
 "use client";
 
-import styles from "../student-list.module.css";
 import type { Student, ViewMode } from "../types";
 import { StudentCard } from "./student-card";
 import { StudentTable } from "./student-table";
@@ -29,7 +28,7 @@ export function StudentListView({
   }
 
   return (
-    <div className={styles.cardGrid}>
+    <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] md:[grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] max-md:grid-cols-1">
       {students.map((student) => (
         <StudentCard
           key={student.id}

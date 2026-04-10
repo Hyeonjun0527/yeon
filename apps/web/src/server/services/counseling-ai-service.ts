@@ -45,18 +45,31 @@ function buildSystemPrompt(
 ) {
   const transcriptBlock = buildTranscriptBlock(segments);
 
-  return `당신은 교육 상담 기록 분석 전문 AI 도우미입니다.
+  const hasDiarization = segments.some(
+    (s) => s.speakerLabel !== "원문" && s.speakerLabel !== "unknown",
+  );
+
+  const diarizationGuide = hasDiarization
+    ? ""
+    : `
+## 화자 분리 안내
+이 녹음은 화자 분리가 수행되지 않아 전체가 하나의 원문으로 제공됩니다.
+대화 맥락(질문↔응답, 존댓말↔반말, 호칭 등)을 바탕으로 멘토와 수강생의 발화를 추론하여 분석에 반영하세요.`;
+
+  return `당신은 부트캠프/교육 프로그램 상담 기록 분석 전문 AI 도우미입니다.
 
 ## 역할
-- 교사가 업로드한 상담 녹음의 전사 원문을 바탕으로 분석, 요약, 후속 조치 제안을 합니다.
+- 멘토/운영자가 업로드한 상담 녹음의 전사 원문을 바탕으로 분석, 요약, 후속 조치 제안을 합니다.
 - 항상 원문에 근거해 답변하고, 원문에 없는 내용을 지어내지 않습니다.
 - 실무에 바로 쓸 수 있는 구체적이고 실용적인 답변을 합니다.
+- 대상은 20~30대 성인 수강생입니다. 학교/초중고 맥락이 아닙니다.
 
 ## 현재 상담 기록 정보
-- 학생: ${meta.studentName}
+- 수강생: ${meta.studentName || "(미지정)"}
 - 상담 제목: ${meta.sessionTitle}
 - 상담 유형: ${meta.counselingType}
 - 기록 일시: ${meta.createdAt}
+${diarizationGuide}
 
 ## 상담 원문 전사
 ${transcriptBlock}
@@ -66,7 +79,96 @@ ${transcriptBlock}
 - 마크다운 서식을 자유롭게 사용합니다 (볼드, 리스트, 헤딩 등).
 - 핵심을 먼저 말하고, 근거를 원문 인용으로 뒷받침합니다.
 - 원문 인용 시 타임스탬프를 함께 표기합니다.
-- 불필요하게 길게 쓰지 말고, 교사가 바로 활용할 수 있는 수준으로 정리합니다.`;
+- 불필요하게 길게 쓰지 말고, 멘토가 바로 활용할 수 있는 수준으로 정리합니다.`;
+}
+
+/** 전사 후 화자 라벨을 실제 이름/역할로 매핑 */
+export type SpeakerMapping = Record<
+  string,
+  { name: string; tone: "teacher" | "student" | "unknown" }
+>;
+
+export async function resolveSpeakerNames(
+  segments: TranscriptSegmentInput[],
+): Promise<{ mapping: SpeakerMapping; studentName: string | null }> {
+  const apiKey = getOpenAiApiKey();
+  const model =
+    process.env.OPENAI_AI_CHAT_MODEL?.trim() || DEFAULT_AI_CHAT_MODEL;
+
+  const uniqueLabels = [...new Set(segments.map((s) => s.speakerLabel))];
+
+  // 이미 의미 있는 이름이면 스킵
+  const isGeneric = uniqueLabels.every(
+    (l) => l === "원문" || /^화자\s/.test(l) || /^[A-Z]$/.test(l) || /^speaker/i.test(l),
+  );
+  if (!isGeneric) {
+    return { mapping: {}, studentName: null };
+  }
+
+  const transcriptPreview = segments
+    .slice(0, 30)
+    .map((s) => `[${s.speakerLabel}] ${s.text}`)
+    .join("\n");
+
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `당신은 상담 녹음 전사문에서 화자를 식별하는 전문가입니다.
+아래 전사문을 분석하여 각 화자 라벨이 누구인지 추론하세요.
+
+규칙:
+- 대화 맥락(호칭, 질문↔응답, 존댓말↔반말)을 활용합니다.
+- 이름이 언급되면 반드시 반영합니다 (예: "민수야" → 상대방이 민수).
+- 질문하고 주도하는 쪽은 "멘토", 답변하는 쪽은 수강생입니다.
+- 멘토의 tone은 "teacher", 수강생의 tone은 "student"입니다.
+
+JSON 형식으로 반환:
+{
+  "mapping": {
+    "화자 A": { "name": "실제이름 또는 역할", "tone": "teacher|student|unknown" },
+    "화자 B": { "name": "실제이름 또는 역할", "tone": "teacher|student|unknown" }
+  },
+  "studentName": "수강생 이름 (확인 불가 시 null)"
+}`,
+        },
+        { role: "user", content: transcriptPreview },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    console.warn("화자 식별 AI 호출 실패:", response.status);
+    return { mapping: {}, studentName: null };
+  }
+
+  try {
+    const data = (await response.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return { mapping: {}, studentName: null };
+
+    const parsed = JSON.parse(content) as {
+      mapping?: SpeakerMapping;
+      studentName?: string | null;
+    };
+    return {
+      mapping: parsed.mapping ?? {},
+      studentName: parsed.studentName ?? null,
+    };
+  } catch {
+    console.warn("화자 식별 응답 파싱 실패");
+    return { mapping: {}, studentName: null };
+  }
 }
 
 function getOpenAiApiKey() {
@@ -80,10 +182,6 @@ function getOpenAiApiKey() {
   }
 
   return apiKey;
-}
-
-export function buildInitialAnalysisPrompt() {
-  return "이 상담 내용을 분석해주세요. 다음을 포함해 주세요:\n1. **핵심 요약** (3-4문장)\n2. **주요 포인트** (3-5개)\n3. **학생 상태 관찰** (감정, 태도 변화)\n4. **후속 조치 제안** (다음 상담 방향, 보호자 공유 포인트)";
 }
 
 export async function streamCounselingAiChat(
@@ -158,10 +256,10 @@ function buildTrendAnalysisSystemPrompt(
     )
     .join("\n\n---\n\n");
 
-  return `당신은 교육 상담 기록 분석 전문 AI 도우미입니다.
+  return `당신은 부트캠프/교육 프로그램 상담 기록 분석 전문 AI 도우미입니다.
 
 ## 역할
-아래는 "${studentName}" 학생의 여러 차례 상담 원문입니다. 시간 순서로 학생의 변화 추이, 반복되는 이슈, 개선된 점, 주의 필요 사항을 분석해주세요.
+아래는 "${studentName}" 수강생의 여러 차례 상담 원문입니다. 시간 순서로 수강생의 변화 추이, 반복되는 이슈, 개선된 점, 주의 필요 사항을 분석해주세요.
 
 ## 상담 기록들
 ${recordBlocks}
@@ -170,11 +268,11 @@ ${recordBlocks}
 - 한국어로 답변합니다.
 - 마크다운 서식을 자유롭게 사용합니다.
 - 다음 구조로 분석합니다:
-  1. **전체 추이 요약** — 학생의 변화 흐름을 3-5문장으로 정리
+  1. **전체 추이 요약** — 수강생의 변화 흐름을 3-5문장으로 정리
   2. **반복되는 이슈** — 여러 상담에 걸쳐 반복 등장하는 문제
   3. **긍정적 변화** — 개선되거나 해소된 부분
   4. **주의 필요 사항** — 악화 경향이나 새로 발견된 위험 신호
-  5. **후속 조치 제안** — 다음 상담 방향, 보호자 공유 포인트
+  5. **후속 조치 제안** — 다음 상담 방향, 수강생에게 공유할 핵심 포인트
 - 원문 인용 시 몇 차 상담인지 표기합니다.
 - 불필요하게 길게 쓰지 않습니다.`;
 }
@@ -206,7 +304,7 @@ export async function streamTrendAnalysis(
     { role: "system", content: systemPrompt },
     {
       role: "user",
-      content: "위 상담 기록들을 바탕으로 학생의 변화 추이를 분석해주세요.",
+      content: "위 상담 기록들을 바탕으로 수강생의 변화 추이를 분석해주세요.",
     },
   ];
 

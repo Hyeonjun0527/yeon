@@ -31,7 +31,7 @@ const VALID_STATUSES = new Set<CounselingRecordListItem["status"]>([
 ]);
 
 const VALID_SPEAKER_TONES = new Set<CounselingTranscriptSegment["speakerTone"]>(
-  ["teacher", "student", "guardian", "unknown"],
+  ["teacher", "student", "unknown"],
 );
 
 function toRecordStatus(raw: string): CounselingRecordListItem["status"] {

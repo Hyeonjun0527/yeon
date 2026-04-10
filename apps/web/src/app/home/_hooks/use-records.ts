@@ -9,18 +9,23 @@ import type { RecordItem, RecordPhase, AiMessage, TranscriptSegment } from "../_
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
-/** processing 화면 최소 표시 시간 — 애니메이션을 충분히 볼 수 있도록 */
-const MIN_PROCESSING_DISPLAY_MS = 5000;
+const PROCESSING_STEP_COUNT = 6;
+const PROCESSING_STEP_INTERVAL_MS = 2000;
+/** 모든 단계 애니메이션이 완료된 뒤 전환 — 6단계 × 2초 + 여유 1초 */
+const MIN_PROCESSING_DISPLAY_MS = PROCESSING_STEP_COUNT * PROCESSING_STEP_INTERVAL_MS + 1000;
 
 function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   return {
     id: item.id,
     title: item.sessionTitle || "제목 없음",
-    status: item.status === "error" ? "ready" : item.status,
+    status: item.status,
+    errorMessage: item.status === "error" ? (item.errorMessage ?? "알 수 없는 오류") : null,
     meta: `${item.studentName || "수강생 미지정"} · ${fmtRelativeDate(item.createdAt)}`,
     duration: fmtDurationMs(item.audioDurationMs),
+    durationMs: item.audioDurationMs ?? 0,
     studentName: item.studentName || "",
     type: item.counselingType || "",
+    audioUrl: null,
     transcript: [],
     aiSummary: item.preview || "",
     aiMessages: [],
@@ -45,6 +50,7 @@ export function useRecords() {
   const [phase, setPhase] = useState<RecordPhase>("empty");
   const [processingStep, setProcessingStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
 
   // ref로 현재 records 미러링 — state updater 바깥에서 비교할 때 사용
   const recordsRef = useRef<RecordItem[]>([]);
@@ -74,8 +80,8 @@ export function useRecords() {
 
     setProcessingStep(0);
     stepTimerRef.current = setInterval(() => {
-      setProcessingStep((prev) => Math.min(prev + 1, 5));
-    }, 2000);
+      setProcessingStep((prev) => Math.min(prev + 1, PROCESSING_STEP_COUNT));
+    }, PROCESSING_STEP_INTERVAL_MS);
 
     return () => {
       if (stepTimerRef.current) {
@@ -86,16 +92,20 @@ export function useRecords() {
   }, [phase]);
 
   const fetchDetail = useCallback(async (id: string) => {
+    setTranscriptLoading(true);
     try {
       const res = await fetch(`/api/v1/counseling-records/${id}`);
       if (!res.ok) return;
       const data = (await res.json()) as { record: CounselingRecordDetail };
       const transcript = detailToTranscript(data.record);
+      const audioUrl = data.record.audioUrl || null;
       setRecords((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, transcript } : r)),
+        prev.map((r) => (r.id === id ? { ...r, transcript, audioUrl } : r)),
       );
     } catch {
       // detail 로드 실패는 무시
+    } finally {
+      setTranscriptLoading(false);
     }
   }, []);
 
@@ -270,12 +280,27 @@ export function useRecords() {
     setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
   }, []);
 
+  /**
+   * 레코드를 목록에서 제거.
+   * temp- 접두사 레코드는 로컬만 제거하고, 실제 서버 레코드는 호출 측에서 별도 삭제 API를 호출해야 한다.
+   */
+  const removeRecord = useCallback((id: string) => {
+    setRecords((prev) => prev.filter((r) => r.id !== id));
+    setSelectedId((prev) => (prev === id ? null : prev));
+    setPhase((prev) => {
+      // 삭제 후 남은 레코드가 없으면 empty로 전환
+      const remaining = recordsRef.current.filter((r) => r.id !== id);
+      if (remaining.length === 0) return "empty";
+      return prev === "processing" ? "ready" : prev;
+    });
+  }, []);
+
   /** 업로드 실패: 임시 레코드를 오류 상태로 표시 — 화면에서 사라지지 않음 */
   const markUploadError = useCallback((id: string, message: string) => {
     setRecords((prev) =>
       prev.map((r) =>
         r.id === id
-          ? { ...r, aiSummary: `업로드 실패: ${message}`, status: "ready" as const }
+          ? { ...r, aiSummary: `업로드 실패: ${message}`, status: "error" as const, errorMessage: message }
           : r,
       ),
     );
@@ -290,9 +315,11 @@ export function useRecords() {
     phase,
     processingStep,
     loading,
+    transcriptLoading,
     addProcessingRecord,
     replaceRecord,
     markUploadError,
+    removeRecord,
     selectRecord,
     updateMessages,
     clearMessages,

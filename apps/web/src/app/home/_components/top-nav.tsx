@@ -1,6 +1,3 @@
-import styles from "../../mockdata/mockdata.module.css";
-import { ChevronDownIcon } from "./icons";
-
 const SECTION_LABELS: Record<string, string> = {
   records: "상담 기록",
   students: "수강생 관리",
@@ -12,23 +9,39 @@ type TopNavProps = {
 
 export function TopNav({ section }: TopNavProps) {
   return (
-    <div className={styles.topNav}>
-      <button className={styles.topNavModelBtn} title="섹션">
-        <span className={styles.logo}>YEON</span>
-        <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+    <div className="sticky top-0 z-[100] bg-[rgba(9,9,11,0.85)] backdrop-blur-[16px] border-b border-border flex items-center px-4 h-12 gap-3">
+      <button
+        className="flex items-center gap-2 bg-none border-none cursor-pointer px-[10px] py-[6px] rounded-[10px] text-text font-[inherit] transition-all duration-150 hover:bg-surface-3"
+        title="섹션"
+      >
+        <span className="font-[Outfit,sans-serif] font-bold text-base tracking-[-0.5px] bg-gradient-to-br from-accent to-cyan bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
+          YEON
+        </span>
+        <span className="text-sm text-text-dim">
           {SECTION_LABELS[section] ?? section}
         </span>
         <ChevronDownIcon size={14} />
       </button>
 
-      <div style={{ flex: 1 }} />
+      <div className="flex-1" />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <button className={styles.topNavActionBtn} title="공유">
+      <div className="flex items-center gap-1">
+        <button
+          className="flex items-center justify-center w-9 h-9 rounded-full bg-none border-none text-text-dim cursor-pointer transition-all duration-150 hover:bg-surface-3 hover:text-text-secondary"
+          title="공유"
+        >
           <ShareIcon size={18} />
         </button>
       </div>
     </div>
+  );
+}
+
+function ChevronDownIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
   );
 }
 

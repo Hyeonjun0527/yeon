@@ -256,7 +256,7 @@ export function InstructorWorkspace({
   const focusConceptCount = workspace.weeklyReport.conceptFocuses.length;
   const displayedMetrics = dashboard.metrics.map((metric) => {
     switch (metric.label) {
-      case "오늘 케어 학생 수":
+      case "오늘 케어 수강생 수":
         return {
           ...metric,
           value: formatCount(needsCareCount, "명"),
@@ -384,7 +384,7 @@ export function InstructorWorkspace({
     }
 
     const outcome =
-      "오늘 개입을 기록하고 학생 상태를 후속 확인 세그먼트로 이동했습니다.";
+      "오늘 개입을 기록하고 수강생 상태를 후속 확인 세그먼트로 이동했습니다.";
 
     setStudents((current) =>
       current.map((student) =>
@@ -466,7 +466,7 @@ export function InstructorWorkspace({
       <div className={styles.shell}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>교강사 학생관리 워크스페이스</p>
+            <p className={styles.eyebrow}>멘토 수강생 관리 워크스페이스</p>
             <h1 className={styles.heroTitle}>{workspace.headline}</h1>
             <p className={styles.heroSummary}>{workspace.summary}</p>
             <div className={styles.heroMetaList}>
@@ -517,7 +517,7 @@ export function InstructorWorkspace({
                 ))}
               </div>
               <div className={styles.briefingFocusCard}>
-                <p className={styles.actionStudentName}>지금 먼저 챙길 학생</p>
+                <p className={styles.actionStudentName}>지금 먼저 챙길 수강생</p>
                 <h3 className={styles.actionTitle}>
                   {heroFocusStudent.name} · {heroFocusStudent.cohortName}
                 </h3>
@@ -544,19 +544,19 @@ export function InstructorWorkspace({
           <section className={styles.queuePanel}>
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.panelEyebrow}>학생 큐</p>
+                <p className={styles.panelEyebrow}>수강생 큐</p>
                 <h2 className={styles.panelTitle}>
-                  오늘 챙길 학생을 바로 고릅니다
+                  오늘 챙길 수강생을 바로 고릅니다
                 </h2>
               </div>
               <p className={styles.panelDescription}>
-                세그먼트와 검색으로 학생을 좁힌 뒤, 카드 안에서 개입 근거와 다음
+                세그먼트와 검색으로 수강생을 좁힌 뒤, 카드 안에서 개입 근거와 다음
                 행동을 바로 읽습니다.
               </p>
             </div>
 
             <div className={styles.queueToolbar}>
-              <div className={styles.segmentChips} aria-label="학생 세그먼트">
+              <div className={styles.segmentChips} aria-label="수강생 세그먼트">
                 <button
                   className={`${styles.segmentChip} ${
                     selectedSegment === "all" ? styles.segmentChipActive : ""
@@ -601,7 +601,7 @@ export function InstructorWorkspace({
               </div>
 
               <label className={styles.searchField}>
-                <span className={styles.searchLabel}>학생 검색</span>
+                <span className={styles.searchLabel}>수강생 검색</span>
                 <input
                   className={styles.searchInput}
                   type="search"
@@ -730,10 +730,10 @@ export function InstructorWorkspace({
                 <article className={styles.emptyState}>
                   <p className={styles.panelEyebrow}>검색 결과 없음</p>
                   <h3 className={styles.emptyStateTitle}>
-                    현재 조건에 맞는 학생이 없습니다
+                    현재 조건에 맞는 수강생이 없습니다
                   </h3>
                   <p className={styles.panelDescription}>
-                    세그먼트나 검색어를 조정해 다른 학생을 확인하세요.
+                    세그먼트나 검색어를 조정해 다른 수강생을 확인하세요.
                   </p>
                 </article>
               )}
@@ -745,7 +745,7 @@ export function InstructorWorkspace({
               <>
                 <div className={styles.panelHeader}>
                   <div>
-                    <p className={styles.panelEyebrow}>학생 상세</p>
+                    <p className={styles.panelEyebrow}>수강생 상세</p>
                     <h2 className={styles.panelTitle}>
                       {selectedStudent.name} · {selectedStudent.cohortName}
                     </h2>
@@ -903,7 +903,7 @@ export function InstructorWorkspace({
                   <div className={styles.detailSectionHeader}>
                     <div>
                       <p className={styles.panelEyebrow}>최근 기록</p>
-                      <h3 className={styles.sectionTitle}>학생별 개입 로그</h3>
+                      <h3 className={styles.sectionTitle}>수강생별 개입 로그</h3>
                     </div>
                     <p className={styles.detailMeta}>
                       {selectedStudent.nextCheckLabel} 재확인 예정
@@ -946,7 +946,7 @@ export function InstructorWorkspace({
                       <div className={styles.actionCardHeader}>
                         <div>
                           <p className={styles.actionStudentName}>
-                            {student?.name ?? "학생"}
+                            {student?.name ?? "수강생"}
                           </p>
                           <h3 className={styles.actionTitle}>{action.title}</h3>
                         </div>
@@ -970,7 +970,7 @@ export function InstructorWorkspace({
                             handleActionFocus(action);
                           }}
                         >
-                          학생 보기
+                          수강생 보기
                         </button>
                         <button
                           className={styles.primaryButton}
@@ -1005,7 +1005,7 @@ export function InstructorWorkspace({
                     <h3 className={styles.cohortTitle}>{cohort.name}</h3>
                     <p className={styles.detailBody}>{cohort.agenda}</p>
                     <div className={styles.cohortStats}>
-                      <span>학생 {cohort.studentCount}명</span>
+                      <span>수강생 {cohort.studentCount}명</span>
                       <span>즉시 케어 {cohort.needsCareCount}명</span>
                       <span>후속 확인 {cohort.followUpCount}명</span>
                     </div>

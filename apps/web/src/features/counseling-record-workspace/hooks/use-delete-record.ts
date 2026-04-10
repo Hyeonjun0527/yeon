@@ -1,11 +1,17 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import type { CounselingRecordListItem } from "@yeon/api-contract";
+import type {
+  CounselingRecordDetail,
+  CounselingRecordListItem,
+} from "@yeon/api-contract";
+import type { Message } from "../types";
 
 export function useDeleteRecord(
   selectedRecord: CounselingRecordListItem | null,
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
   setSelectedRecordId: (id: string | null) => void,
   setSaveToast: (message: string) => void,
+  setRecordDetails: Dispatch<SetStateAction<Record<string, CounselingRecordDetail>>>,
+  setAssistantMessagesByRecord: Dispatch<SetStateAction<Record<string, Message[]>>>,
 ) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -30,9 +36,21 @@ export function useDeleteRecord(
         throw new Error(body?.message ?? "상담 기록 삭제에 실패했습니다.");
       }
 
+      const deletedId = selectedRecord.id;
+
       setRecords((current) =>
-        current.filter((record) => record.id !== selectedRecord.id),
+        current.filter((record) => record.id !== deletedId),
       );
+      setRecordDetails((current) => {
+        const next = { ...current };
+        delete next[deletedId];
+        return next;
+      });
+      setAssistantMessagesByRecord((current) => {
+        const next = { ...current };
+        delete next[deletedId];
+        return next;
+      });
       setSelectedRecordId(null);
       setIsDeleteConfirmOpen(false);
       setSaveToast("기록이 삭제되었습니다.");

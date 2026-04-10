@@ -5,7 +5,6 @@ import { CloudCog, Loader2, Upload } from "lucide-react";
 import { useOnedrive } from "./hooks/use-onedrive";
 import { FileBrowserModal } from "./components/file-browser-modal";
 import { ImportPreviewModal } from "./components/import-preview-modal";
-import styles from "./onedrive-import.module.css";
 
 interface OneDriveImportProps {
   onImportComplete?: () => void;
@@ -25,24 +24,24 @@ export function OneDriveImport({ onImportComplete }: OneDriveImportProps) {
 
   if (od.connecting) {
     return (
-      <div className={styles.wrapper}>
-        <Loader2 size={16} className={styles.spinner} />
-        <span className={styles.statusText}>확인 중...</span>
+      <div className="flex items-center gap-2">
+        <Loader2 size={16} className="animate-spin" />
+        <span className="text-xs text-text-dim">확인 중...</span>
       </div>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className="flex items-center gap-2">
       {od.connected ? (
         <button
-          className={styles.actionBtn}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-[13px] font-medium cursor-pointer border border-border bg-surface text-text-secondary transition-[border-color,color,background] duration-150 w-full justify-center hover:border-accent-border hover:text-accent hover:bg-accent-dim disabled:opacity-60 disabled:cursor-not-allowed"
           onClick={handleOpenBrowser}
           type="button"
           disabled={od.analyzing}
         >
           {od.analyzing ? (
-            <Loader2 size={16} className={styles.spinner} />
+            <Loader2 size={16} className="animate-spin" />
           ) : (
             <Upload size={16} />
           )}
@@ -50,7 +49,7 @@ export function OneDriveImport({ onImportComplete }: OneDriveImportProps) {
         </button>
       ) : (
         <button
-          className={styles.actionBtn}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-[13px] font-medium cursor-pointer border border-border bg-surface text-text-secondary transition-[border-color,color,background] duration-150 w-full justify-center hover:border-accent-border hover:text-accent hover:bg-accent-dim disabled:opacity-60 disabled:cursor-not-allowed"
           onClick={od.connectOneDrive}
           type="button"
         >
