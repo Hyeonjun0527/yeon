@@ -7,11 +7,12 @@ import {
   requireAuthenticatedUser,
 } from "@/app/api/v1/counseling-records/_shared";
 import {
-  analyzeFileWithAI,
   downloadFile,
   getValidAccessToken,
-  parseExcelToText,
 } from "@/server/services/googledrive-service";
+import { analyzeBuffer } from "@/server/services/file-analysis-service";
+import type { ImportPreview, RefineContext } from "@/server/services/file-analysis-service";
+import { detectFileKind } from "@/features/cloud-import/file-kind";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
@@ -19,6 +20,9 @@ export const runtime = "nodejs";
 const bodySchema = z.object({
   fileId: z.string().min(1),
   mimeType: z.string().min(1),
+  fileName: z.string().optional(),
+  instruction: z.string().optional(),
+  previousResult: z.unknown().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -40,8 +44,13 @@ export async function POST(request: NextRequest) {
     if (!accessToken) return jsonError("Google Drive가 연결되어 있지 않습니다.", 401);
 
     const buffer = await downloadFile(accessToken, parsed.data.fileId, parsed.data.mimeType);
-    const text = parseExcelToText(buffer);
-    const preview = await analyzeFileWithAI(text);
+    const fileName = parsed.data.fileName ?? parsed.data.fileId;
+    const kind = detectFileKind(fileName, parsed.data.mimeType);
+    const refine: RefineContext | undefined =
+      parsed.data.instruction?.trim() && parsed.data.previousResult
+        ? { instruction: parsed.data.instruction.trim(), previousResult: parsed.data.previousResult as ImportPreview }
+        : undefined;
+    const preview = await analyzeBuffer(buffer, fileName, parsed.data.mimeType, kind, refine);
     return NextResponse.json(preview);
   } catch (error) {
     if (error instanceof ServiceError) return jsonError(error.message, error.status);

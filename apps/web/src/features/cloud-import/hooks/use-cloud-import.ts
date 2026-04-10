@@ -8,21 +8,12 @@ import type {
   ImportPreview,
   ImportResult,
 } from "../types";
+import { detectFileKind } from "../file-kind";
 
 const API_BASE: Record<CloudProvider, string> = {
   onedrive: "/api/v1/integrations/onedrive",
   googledrive: "/api/v1/integrations/googledrive",
 };
-
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".heic", ".heif", ".webp", ".gif"];
-const IMAGE_MIME_PREFIXES = ["image/"];
-
-function isImageFile(name: string, mimeType?: string): boolean {
-  const lower = name.toLowerCase();
-  if (IMAGE_EXTS.some((ext) => lower.endsWith(ext))) return true;
-  if (mimeType && IMAGE_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) return true;
-  return false;
-}
 
 function normalizeOneDriveFile(f: {
   id: string;
@@ -31,12 +22,14 @@ function normalizeOneDriveFile(f: {
   lastModifiedAt: string;
   mimeType?: string;
 }): DriveFile {
-  const lower = f.name.toLowerCase();
+  const isFolder = !f.mimeType;
+  const kind = isFolder ? "folder" : detectFileKind(f.name, f.mimeType);
   return {
     ...f,
-    isFolder: !f.mimeType,
-    isSpreadsheet: lower.endsWith(".xlsx") || lower.endsWith(".xls"),
-    isImage: isImageFile(f.name, f.mimeType),
+    isFolder,
+    isSpreadsheet: kind === "spreadsheet",
+    isImage: kind === "image",
+    fileKind: kind,
   };
 }
 
@@ -47,15 +40,14 @@ function normalizeGoogleDriveFile(f: {
   lastModifiedAt: string;
   mimeType: string;
 }): DriveFile {
-  const lower = f.name.toLowerCase();
+  const isFolder = f.mimeType === "application/vnd.google-apps.folder";
+  const kind = isFolder ? "folder" : detectFileKind(f.name, f.mimeType);
   return {
     ...f,
-    isFolder: f.mimeType === "application/vnd.google-apps.folder",
-    isSpreadsheet:
-      f.mimeType === "application/vnd.google-apps.spreadsheet" ||
-      lower.endsWith(".xlsx") ||
-      lower.endsWith(".xls"),
-    isImage: isImageFile(f.name, f.mimeType),
+    isFolder,
+    isSpreadsheet: kind === "spreadsheet",
+    isImage: kind === "image",
+    fileKind: kind,
   };
 }
 
@@ -70,7 +62,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
   const [filesLoading, setFilesLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [editablePreview, setEditablePreview] = useState<ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -149,7 +140,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     (id: string, name: string) => {
       setFolderStack((prev) => [...prev, { id, name }]);
       setSelectedFile(null);
-      setPreview(null);
       setEditablePreview(null);
       loadFiles(id);
     },
@@ -162,7 +152,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
       const next = prev.slice(0, -1);
       const parentId = next[next.length - 1]?.id;
       setSelectedFile(null);
-      setPreview(null);
       setEditablePreview(null);
       loadFiles(parentId);
       return next;
@@ -175,7 +164,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
         const next = prev.slice(0, index + 1);
         const targetId = next[next.length - 1]?.id;
         setSelectedFile(null);
-        setPreview(null);
         setEditablePreview(null);
         loadFiles(targetId);
         return next;
@@ -186,7 +174,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
 
   const selectFileForPreview = useCallback((file: DriveFile) => {
     setSelectedFile(file);
-    setPreview(null);
     setEditablePreview(null);
     setImportResult(null);
     setError(null);
@@ -197,10 +184,11 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     try {
       setAnalyzing(true);
       setError(null);
-      const body =
-        provider === "googledrive"
-          ? { fileId: selectedFile.id, mimeType: selectedFile.mimeType }
-          : { fileId: selectedFile.id };
+      const body = {
+        fileId: selectedFile.id,
+        fileName: selectedFile.name,
+        mimeType: selectedFile.mimeType,
+      };
 
       const res = await fetch(`${base}/analyze`, {
         method: "POST",
@@ -212,14 +200,13 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
         throw new Error(text || "파일 분석에 실패했습니다.");
       }
       const data = (await res.json()) as ImportPreview;
-      setPreview(data);
       setEditablePreview(structuredClone(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : "파일 분석에 실패했습니다.");
     } finally {
       setAnalyzing(false);
     }
-  }, [base, provider, selectedFile]);
+  }, [base, selectedFile]);
 
   const updatePreview = useCallback((updated: ImportPreview) => {
     setEditablePreview(updated);
@@ -249,10 +236,45 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     }
   }, [base, editablePreview, onImportComplete]);
 
+  const deselectFile = useCallback(() => {
+    setSelectedFile(null);
+    setEditablePreview(null);
+    setImportResult(null);
+    setError(null);
+  }, []);
+
+  const refineWithInstruction = useCallback(async (instruction: string) => {
+    if (!selectedFile || !editablePreview) return;
+    try {
+      setAnalyzing(true);
+      setError(null);
+      const res = await fetch(`${base}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: selectedFile.id,
+          fileName: selectedFile.name,
+          mimeType: selectedFile.mimeType,
+          instruction,
+          previousResult: editablePreview,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "파일 재분석에 실패했습니다.");
+      }
+      const data = (await res.json()) as ImportPreview;
+      setEditablePreview(structuredClone(data));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "파일 재분석에 실패했습니다.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [base, selectedFile, editablePreview]);
+
   const resetState = useCallback(() => {
     setFiles([]);
     setSelectedFile(null);
-    setPreview(null);
     setEditablePreview(null);
     setImportResult(null);
     setError(null);
@@ -271,7 +293,6 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     filesLoading,
     selectedFile,
     analyzing,
-    preview,
     editablePreview,
     importing,
     importResult,
@@ -288,9 +309,11 @@ export function useCloudImport(provider: CloudProvider, onImportComplete?: () =>
     navigateBack,
     navigateToBreadcrumbIndex,
     selectFileForPreview,
+    deselectFile,
     analyzeSelectedFile,
     updatePreview,
     confirmImport,
+    refineWithInstruction,
     resetState,
   };
 }

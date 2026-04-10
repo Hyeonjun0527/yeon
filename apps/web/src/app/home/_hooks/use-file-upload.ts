@@ -1,5 +1,9 @@
+"use client";
+
 import { useState, useRef, useCallback } from "react";
+import type { CounselingRecordDetail } from "@yeon/api-contract/counseling-records";
 import type { RecordItem } from "../_lib/types";
+import { fmtDurationMs } from "../_lib/utils";
 
 interface UseFileUploadParams {
   onFileUpload: (record: RecordItem) => void;
@@ -7,6 +11,8 @@ interface UseFileUploadParams {
 
 export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
   const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const dragCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -15,20 +21,48 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
   }, []);
 
   const processFile = useCallback(
-    (file: File) => {
-      const record: RecordItem = {
-        id: `rec-${Date.now()}`,
-        title: file.name.replace(/\.[^.]+$/, ""),
-        status: "processing",
-        meta: "",
-        duration: "분석 중",
-        studentName: "",
-        type: "",
-        transcript: [],
-        aiSummary: "",
-        aiMessages: [],
-      };
-      onFileUpload(record);
+    async (file: File) => {
+      setError(null);
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("audio", file);
+        formData.append("sessionTitle", file.name.replace(/\.[^.]+$/, ""));
+        formData.append("studentName", "");
+        formData.append("counselingType", "");
+
+        const res = await fetch("/api/v1/counseling-records", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || "업로드에 실패했습니다.");
+        }
+
+        const data = (await res.json()) as { record: CounselingRecordDetail };
+        const item = data.record;
+
+        const record: RecordItem = {
+          id: item.id,
+          title: item.sessionTitle || file.name.replace(/\.[^.]+$/, ""),
+          status: "processing",
+          meta: "",
+          duration: fmtDurationMs(item.audioDurationMs) || "분석 중",
+          studentName: item.studentName || "",
+          type: item.counselingType || "",
+          transcript: [],
+          aiSummary: "",
+          aiMessages: [],
+        };
+
+        onFileUpload(record);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "업로드에 실패했습니다.");
+      } finally {
+        setUploading(false);
+      }
     },
     [onFileUpload],
   );
@@ -46,28 +80,37 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
     return e.dataTransfer.types.includes("Files");
   }, []);
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (!hasFiles(e)) return;
-    dragCountRef.current += 1;
-    if (dragCountRef.current === 1) setIsDragging(true);
-  }, [hasFiles]);
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (!hasFiles(e)) return;
+      dragCountRef.current += 1;
+      if (dragCountRef.current === 1) setIsDragging(true);
+    },
+    [hasFiles],
+  );
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (!isDragging) return;
-    dragCountRef.current -= 1;
-    if (dragCountRef.current <= 0) {
-      dragCountRef.current = 0;
-      setIsDragging(false);
-    }
-  }, [isDragging]);
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (!isDragging) return;
+      dragCountRef.current -= 1;
+      if (dragCountRef.current <= 0) {
+        dragCountRef.current = 0;
+        setIsDragging(false);
+      }
+    },
+    [isDragging],
+  );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  }, [hasFiles]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    },
+    [hasFiles],
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -85,6 +128,8 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
 
   return {
     isDragging,
+    uploading,
+    error,
     fileInputRef,
     openFilePicker,
     handleInputChange,

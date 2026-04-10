@@ -169,6 +169,11 @@
   overflow-y: auto;
 }
 
+.mainImport {
+  padding: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 768px) {
   .shell {
     flex-direction: column;

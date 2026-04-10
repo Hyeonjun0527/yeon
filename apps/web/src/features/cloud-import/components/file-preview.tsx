@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { detectFileKind } from "../file-kind";
 import styles from "../cloud-import.module.css";
 
 interface FilePreviewProps {
@@ -10,27 +11,8 @@ interface FilePreviewProps {
   fileName: string;
 }
 
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".heif"];
-const IMAGE_MIME = ["image/"];
 // 브라우저가 <img>로 렌더할 수 없는 포맷
 const NO_BROWSER_PREVIEW_EXTS = [".heic", ".heif"];
-
-function detectType(fileName: string, mimeType: string): "image" | "spreadsheet" | "unsupported" {
-  const lower = fileName.toLowerCase();
-  const isImage =
-    IMAGE_EXTS.some((ext) => lower.endsWith(ext)) ||
-    IMAGE_MIME.some((p) => mimeType.startsWith(p));
-  if (isImage) return "image";
-
-  const isSpreadsheet =
-    lower.endsWith(".xlsx") ||
-    lower.endsWith(".xls") ||
-    mimeType === "application/vnd.google-apps.spreadsheet" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  if (isSpreadsheet) return "spreadsheet";
-
-  return "unsupported";
-}
 
 function needsHeicConversion(fileName: string): boolean {
   const lower = fileName.toLowerCase();
@@ -38,15 +20,14 @@ function needsHeicConversion(fileName: string): boolean {
 }
 
 export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
-  const type = detectType(fileName, mimeType);
+  const kind = detectFileKind(fileName, mimeType);
 
-  if (type === "image") {
+  if (kind === "image") {
     if (needsHeicConversion(fileName)) {
       return <HeicPreview uri={uri} fileName={fileName} />;
     }
     return (
       <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "auto" }}>
-        {/* proxy URL로 인증된 이미지 렌더 — Next.js Image는 외부 OAuth URL을 지원하지 않으므로 img 태그 사용 */}
         <img
           src={uri}
           alt={fileName}
@@ -56,8 +37,20 @@ export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
     );
   }
 
-  if (type === "spreadsheet") {
+  if (kind === "spreadsheet") {
     return <SpreadsheetPreview uri={uri} />;
+  }
+
+  if (kind === "csv") {
+    return <CsvPreview uri={uri} />;
+  }
+
+  if (kind === "txt") {
+    return <TxtPreview uri={uri} />;
+  }
+
+  if (kind === "pdf") {
+    return <PdfPreview uri={uri} fileName={fileName} />;
   }
 
   return (
@@ -182,6 +175,128 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
       className={styles.spreadsheetPreview}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: SheetJS가 생성한 테이블 HTML
       dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
+  );
+}
+
+function CsvPreview({ uri }: { uri: string }) {
+  const [rows, setRows] = useState<string[][] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setRows(null);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(uri);
+        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+        const text = await res.text();
+        const lines = text.split("\n").filter((l) => l.trim());
+        const parsed = lines.map((line) => line.split(",").map((cell) => cell.trim()));
+        if (!cancelled) setRows(parsed);
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  if (loading) {
+    return (
+      <div className={styles.loadingState}>
+        <Loader2 size={20} className={styles.spinner} />
+        <span>미리보기 로딩 중...</span>
+      </div>
+    );
+  }
+
+  if (error) return <div className={styles.errorMsg}>{error}</div>;
+  if (!rows || rows.length === 0) {
+    return <div className={styles.previewPlaceholder}>데이터가 없습니다.</div>;
+  }
+
+  return (
+    <div className={styles.spreadsheetPreview}>
+      <table>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => (
+                <td key={ci}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TxtPreview({ uri }: { uri: string }) {
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setText(null);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(uri);
+        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+        const content = await res.text();
+        if (!cancelled) setText(content);
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  if (loading) {
+    return (
+      <div className={styles.loadingState}>
+        <Loader2 size={20} className={styles.spinner} />
+        <span>미리보기 로딩 중...</span>
+      </div>
+    );
+  }
+
+  if (error) return <div className={styles.errorMsg}>{error}</div>;
+  if (text === null) return null;
+
+  return (
+    <div className={styles.txtPreview}>
+      <pre>{text}</pre>
+    </div>
+  );
+}
+
+function PdfPreview({ uri, fileName }: { uri: string; fileName: string }) {
+  return (
+    <iframe
+      src={uri}
+      title={`${fileName} 미리보기`}
+      style={{ width: "100%", height: "100%", border: "none" }}
     />
   );
 }

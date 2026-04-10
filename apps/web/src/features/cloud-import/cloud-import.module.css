@@ -199,6 +199,39 @@
   background: rgba(6, 182, 212, 0.06);
 }
 
+.fileCardCsv {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileCardCsv:hover {
+  border-color: var(--green, #22c55e);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.fileCardTxt {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileCardTxt:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+
+.fileCardPdf {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileCardPdf:hover {
+  border-color: var(--red, #ef4444);
+  background: rgba(239, 68, 68, 0.06);
+}
+
 .fileCardFolder {
   color: var(--text-secondary);
   cursor: pointer;
@@ -223,6 +256,18 @@
 
 .fileCardImage .fileCardIcon {
   color: var(--cyan, #06b6d4);
+}
+
+.fileCardCsv .fileCardIcon {
+  color: var(--green, #22c55e);
+}
+
+.fileCardTxt .fileCardIcon {
+  color: var(--text-secondary);
+}
+
+.fileCardPdf .fileCardIcon {
+  color: var(--red, #ef4444);
 }
 
 .fileCardFolder .fileCardIcon {
@@ -441,6 +486,7 @@
 /* ── Inline Browser ── */
 
 .inlineContainer {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -535,13 +581,75 @@
 
 .splitLeft {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   border-right: 1px solid var(--border);
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.backToListBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+.backToListBtn:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.previewFileName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewBody {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
+
+.resizeHandle {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  border-left: 1px solid var(--border);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.resizeHandle:hover {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
 }
 
 .splitRight {
-  flex: 1;
+  flex-shrink: 0;
   overflow: auto;
   padding: 16px 20px;
 }
@@ -668,6 +776,51 @@
   color: var(--cyan, #06b6d4);
 }
 
+.fileListRowCsv {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileListRowCsv:hover {
+  background: rgba(34, 197, 94, 0.06);
+  color: var(--green, #22c55e);
+}
+
+.fileListRowCsv .fileListIcon {
+  color: var(--green, #22c55e);
+}
+
+.fileListRowTxt {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileListRowTxt:hover {
+  background: var(--accent-dim);
+  color: var(--text-secondary);
+}
+
+.fileListRowTxt .fileListIcon {
+  color: var(--text-secondary);
+}
+
+.fileListRowPdf {
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.fileListRowPdf:hover {
+  background: rgba(239, 68, 68, 0.06);
+  color: var(--red, #ef4444);
+}
+
+.fileListRowPdf .fileListIcon {
+  color: var(--red, #ef4444);
+}
+
 .fileListRowFolder .fileListIcon {
   color: var(--accent);
 }
@@ -697,6 +850,128 @@
   text-align: right;
 }
 
+/* ── Spreadsheet Preview (SheetJS) ── */
+
+.spreadsheetPreview {
+  height: 100%;
+  overflow: auto;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.spreadsheetPreview table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+.spreadsheetPreview td,
+.spreadsheetPreview th {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.spreadsheetPreview tr:first-child td {
+  background: var(--surface2, var(--surface));
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid var(--border);
+}
+
+.spreadsheetPreview tr:not(:first-child):hover td {
+  background: var(--accent-dim);
+}
+
+.spreadsheetPreview tr:not(:first-child):nth-child(even) td {
+  background: var(--surface2, var(--surface));
+}
+
+.spreadsheetPreview tr:not(:first-child):nth-child(even):hover td {
+  background: var(--accent-dim);
+}
+
+/* ── TXT Preview ── */
+
+.txtPreview {
+  height: 100%;
+  overflow: auto;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.txtPreview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+/* ── Local File Upload ── */
+
+.uploadFileBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.uploadFileBtn:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--accent-rgb, 99, 102, 241), 0.08);
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 50;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.dropOverlayTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+}
+
+.dropOverlaySub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .modal {
     width: calc(100vw - 32px);
@@ -720,4 +995,70 @@
     border-bottom: 1px solid var(--border);
     max-height: 40vh;
   }
+}
+
+.refinementBar {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refinementLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.refinementInput {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.refinementInput:focus {
+  border-color: var(--accent-border);
+}
+
+.refinementInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refineBtn {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.refineBtn:hover:not(:disabled) {
+  background: var(--accent-dim);
+}
+
+.refineBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

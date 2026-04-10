@@ -1,5 +1,3 @@
-import type { TranscriptSegment } from "../../mockdata/app/_data/mock-data";
-
 export type RecordPhase = "empty" | "recording" | "processing" | "ready";
 
 export interface AttachedImage {
@@ -13,6 +11,17 @@ export interface AiMessage {
   role: "assistant" | "user" | "system";
   text: string;
   images?: AttachedImage[];
+}
+
+/** 실제 API CounselingTranscriptSegment와 동일한 형태 */
+export interface TranscriptSegment {
+  id: string;
+  segmentIndex: number;
+  startMs: number | null;
+  endMs: number | null;
+  speakerLabel: string;
+  speakerTone: "teacher" | "student" | "guardian" | "unknown";
+  text: string;
 }
 
 export interface RecordItem {
