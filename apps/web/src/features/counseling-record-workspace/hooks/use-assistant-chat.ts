@@ -21,6 +21,8 @@ export function useAssistantChat(
   const autoAnalysisTriggeredRef = useRef<Set<string>>(new Set());
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const activeRecordIdRef = useRef<string | null>(null);
+  const assistantMessagesByRecordRef = useRef(assistantMessagesByRecord);
+  assistantMessagesByRecordRef.current = assistantMessagesByRecord;
 
   // 레코드 전환 시 진행 중인 스트리밍 중단
   useEffect(() => {
@@ -118,7 +120,7 @@ export function useAssistantChat(
       return;
     }
 
-    const existingMessages = assistantMessagesByRecord[selectedRecord.id];
+    const existingMessages = assistantMessagesByRecordRef.current[selectedRecord.id];
 
     if (existingMessages?.some((m) => m.role === "user")) {
       return;
@@ -149,10 +151,10 @@ export function useAssistantChat(
     selectedRecord,
     selectedRecordDetail,
     isAiStreaming,
-    assistantMessagesByRecord,
     statusMeta,
   ]);
 
+  // 내부에서 ref와 state setter만 사용하므로 deps 불필요 — useCallback 불요
   async function streamAssistantResponse(
     recordId: string,
     allMessages: Message[],
@@ -227,6 +229,7 @@ export function useAssistantChat(
 
       const decoder = new TextDecoder();
       let accumulated = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -236,7 +239,9 @@ export function useAssistantChat(
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        buffer += chunk;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -338,6 +343,7 @@ export function useAssistantChat(
     setAssistantDraft,
     assistantMessages,
     assistantMessagesByRecord,
+    setAssistantMessagesByRecord,
     isAiStreaming,
     appendAssistantExchange,
     handleStopStreaming,

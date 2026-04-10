@@ -2,7 +2,6 @@
 
 import { RISK_LEVEL_META } from "../constants";
 import type { ActivityLog, Member, RiskLevel } from "../types";
-import styles from "../student-detail.module.css";
 
 interface TabReportProps {
   member: Member;
@@ -57,24 +56,17 @@ export function TabReport({
       )}
       {logsError && !logsLoading && (
         <div
-          style={{
-            color: "var(--red)",
-            fontSize: 13,
-            marginBottom: 16,
-            padding: "8px 12px",
-            background: "var(--red-dim)",
-            borderRadius: "var(--radius-sm)",
-          }}
+          className="text-red text-[13px] mb-4 py-2 px-3 bg-red-dim rounded-sm"
         >
           활동 로그를 불러오지 못했습니다. 통계가 표시되지 않을 수 있습니다.
         </div>
       )}
 
       {/* 통계 카드 */}
-      <div className={styles.statsGrid} style={{ marginBottom: 24 }}>
-        <div className={styles.statCard}>
-          <div className={styles.statCardLabel}>출석률</div>
-          <div className={styles.statCardValue}>{attendanceRate}%</div>
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] gap-3 mb-6">
+        <div className="p-4 bg-surface-2 border border-border rounded">
+          <div className="text-xs text-text-dim mb-1">출석률</div>
+          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">{attendanceRate}%</div>
           {attendanceTotal > 0 && (
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
               {attendancePresent}회 출석 / {attendanceTotal}회 전체
@@ -87,9 +79,9 @@ export function TabReport({
           )}
         </div>
 
-        <div className={styles.statCard}>
-          <div className={styles.statCardLabel}>과제 완료율</div>
-          <div className={styles.statCardValue}>{assignmentRate}%</div>
+        <div className="p-4 bg-surface-2 border border-border rounded">
+          <div className="text-xs text-text-dim mb-1">과제 완료율</div>
+          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">{assignmentRate}%</div>
           {assignmentTotal > 0 && (
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
               {assignmentDone}건 완료 / {assignmentTotal}건 전체
@@ -102,8 +94,8 @@ export function TabReport({
           )}
         </div>
 
-        <div className={styles.statCard}>
-          <div className={styles.statCardLabel}>위험도</div>
+        <div className="p-4 bg-surface-2 border border-border rounded">
+          <div className="text-xs text-text-dim mb-1">위험도</div>
           <div style={{ marginTop: 8 }}>
             {riskMeta ? (
               <span
@@ -128,8 +120,8 @@ export function TabReport({
           </div>
         </div>
 
-        <div className={styles.statCard}>
-          <div className={styles.statCardLabel}>입학 상담</div>
+        <div className="p-4 bg-surface-2 border border-border rounded">
+          <div className="text-xs text-text-dim mb-1">입학 상담</div>
           <div style={{ marginTop: 8 }}>
             {member.counselingRecordId ? (
               <span
@@ -158,16 +150,19 @@ export function TabReport({
       {/* 출결 상세 */}
       {attendanceTotal > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div className={styles.sectionTitle}>출결 상세</div>
-          <div className={styles.counselingList}>
+          <div className="text-base font-semibold text-text mb-3">출결 상세</div>
+          <div className="flex flex-col gap-2">
             {attendanceLogs.slice(0, 10).map((log) => (
-              <div key={log.id} className={styles.counselingItem}>
-                <span className={styles.counselingDate}>
+              <div
+                key={log.id}
+                className="flex items-center gap-3 py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
+              >
+                <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
                   {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
                 </span>
-                <span className={styles.counselingTitle}>출결</span>
+                <span className="flex-1 font-medium text-text-secondary">출결</span>
                 <span
-                  className={styles.counselingStatus}
+                  className="text-xs py-0.5 px-2 rounded-[10px]"
                   style={{
                     color:
                       log.status === "present"
@@ -198,16 +193,19 @@ export function TabReport({
       {/* 과제 상세 */}
       {assignmentTotal > 0 && (
         <div>
-          <div className={styles.sectionTitle}>과제 상세</div>
-          <div className={styles.counselingList}>
+          <div className="text-base font-semibold text-text mb-3">과제 상세</div>
+          <div className="flex flex-col gap-2">
             {assignmentLogs.slice(0, 10).map((log) => (
-              <div key={log.id} className={styles.counselingItem}>
-                <span className={styles.counselingDate}>
+              <div
+                key={log.id}
+                className="flex items-center gap-3 py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
+              >
+                <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
                   {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
                 </span>
-                <span className={styles.counselingTitle}>과제</span>
+                <span className="flex-1 font-medium text-text-secondary">과제</span>
                 <span
-                  className={styles.counselingStatus}
+                  className="text-xs py-0.5 px-2 rounded-[10px]"
                   style={{
                     color:
                       log.status === "submitted" ? "#34d399" : "#f87171",

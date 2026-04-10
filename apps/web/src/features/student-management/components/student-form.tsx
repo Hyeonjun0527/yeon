@@ -5,7 +5,6 @@ import { useStudentManagement } from "../student-management-provider";
 import { ALL_TAGS } from "../mock-data";
 import { STUDENT_STATUS_META } from "../constants";
 import type { StudentStatus } from "../types";
-import styles from "../student-detail.module.css";
 
 const GRADES = ["1기", "2기", "3기", "4기", "5기"];
 const GUARDIAN_RELATIONS = ["부모", "형제", "기타"];
@@ -63,26 +62,26 @@ export function StudentForm() {
 
   return (
     <>
-      <div className={styles.sheetBody}>
+      <div className="flex-1 overflow-y-auto p-6">
         {/* 기본 정보 */}
-        <div className={styles.formSection}>
-          <p className={styles.formSectionTitle}>기본 정보</p>
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-text-secondary mb-3">기본 정보</p>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>이름 *</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">이름 *</label>
             <input
-              className={`${styles.formInput}${errors.name ? ` ${styles.formInputError}` : ""}`}
+              className={`w-full py-2 px-3 border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border${errors.name ? " border-red" : " border-border"}`}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="학생 이름"
+              placeholder="수강생 이름"
             />
-            {errors.name && <p className={styles.formError}>{errors.name}</p>}
+            {errors.name && <p className="text-xs text-red mt-0.5">{errors.name}</p>}
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>기수 *</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">기수 *</label>
             <select
-              className={`${styles.formSelect}${errors.grade ? ` ${styles.formInputError}` : ""}`}
+              className={`w-full py-2 px-3 border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none${errors.grade ? " border-red" : " border-border"}`}
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
             >
@@ -93,13 +92,13 @@ export function StudentForm() {
                 </option>
               ))}
             </select>
-            {errors.grade && <p className={styles.formError}>{errors.grade}</p>}
+            {errors.grade && <p className="text-xs text-red mt-0.5">{errors.grade}</p>}
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>트랙</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">트랙</label>
             <select
-              className={styles.formSelect}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={school}
               onChange={(e) => setSchool(e.target.value)}
             >
@@ -112,20 +111,20 @@ export function StudentForm() {
             </select>
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>연락처</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">연락처</label>
             <input
-              className={styles.formInput}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="010-0000-0000"
             />
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>이메일</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">이메일</label>
             <input
-              className={styles.formInput}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -134,34 +133,34 @@ export function StudentForm() {
           </div>
         </div>
 
-        {/* 보호자 정보 */}
-        <div className={styles.formSection}>
-          <p className={styles.formSectionTitle}>보호자 정보</p>
+        {/* 비상연락처 — 성인 수강생 대상이므로 보호자 개념 없음 */}
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-text-secondary mb-3">비상연락처</p>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>이름</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">이름</label>
             <input
-              className={styles.formInput}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={guardianName}
               onChange={(e) => setGuardianName(e.target.value)}
-              placeholder="보호자 이름"
+              placeholder="비상연락처 이름"
             />
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>연락처</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">연락처</label>
             <input
-              className={styles.formInput}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={guardianPhone}
               onChange={(e) => setGuardianPhone(e.target.value)}
               placeholder="010-0000-0000"
             />
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>관계</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">관계</label>
             <select
-              className={styles.formSelect}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={guardianRelation}
               onChange={(e) => setGuardianRelation(e.target.value)}
             >
@@ -175,11 +174,11 @@ export function StudentForm() {
         </div>
 
         {/* 분류 */}
-        <div className={styles.formSection}>
-          <p className={styles.formSectionTitle}>분류</p>
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-text-secondary mb-3">분류</p>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>태그</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">태그</label>
             <div
               style={{
                 display: "flex",
@@ -193,7 +192,6 @@ export function StudentForm() {
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={styles.tag}
                   style={{
                     padding: "4px 10px",
                     borderRadius: "12px",
@@ -212,10 +210,10 @@ export function StudentForm() {
             </div>
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>상태</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">상태</label>
             <select
-              className={styles.formSelect}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={status}
               onChange={(e) => setStatus(e.target.value as StudentStatus)}
             >
@@ -229,8 +227,8 @@ export function StudentForm() {
             </select>
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>코호트 배정</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">코호트 배정</label>
             <div
               style={{
                 display: "flex",
@@ -264,13 +262,17 @@ export function StudentForm() {
         </div>
       </div>
 
-      <div className={styles.sheetFooter}>
-        <button type="button" className={styles.cancelBtn} onClick={closeSheet}>
+      <div className="py-4 px-6 border-t border-border flex justify-end gap-2">
+        <button
+          type="button"
+          className="py-2 px-4 border border-border rounded-lg bg-surface-2 text-text-secondary text-sm cursor-pointer transition-[background] duration-150 hover:bg-surface-3"
+          onClick={closeSheet}
+        >
           취소
         </button>
         <button
           type="button"
-          className={styles.submitBtn}
+          className="py-2 px-5 bg-accent text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-opacity duration-150 hover:opacity-90"
           onClick={handleSubmit}
         >
           저장

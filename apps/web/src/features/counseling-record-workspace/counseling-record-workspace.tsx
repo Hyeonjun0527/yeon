@@ -93,6 +93,8 @@ export function CounselingRecordWorkspace() {
     recordList.setRecords,
     recordList.setSelectedRecordId,
     toast.setSaveToast,
+    detail.setRecordDetails,
+    assistantChat.setAssistantMessagesByRecord,
   );
 
   // ── 파생 값 ──
@@ -112,39 +114,60 @@ export function CounselingRecordWorkspace() {
     recording.startRecording(uploadForm.applySelectedAudioFile, () =>
       uploadForm.setIsUploadPanelOpen(true),
     );
-  }, [recording, uploadForm]);
+  }, [recording.startRecording, uploadForm.applySelectedAudioFile, uploadForm.setIsUploadPanelOpen]);
 
   const handleNewRecord = useCallback(() => {
     recordList.setSelectedRecordId(null);
     uploadForm.setIsUploadPanelOpen(true);
-  }, [recordList, uploadForm]);
+  }, [recordList.setSelectedRecordId, uploadForm.setIsUploadPanelOpen]);
 
   // ── 레이아웃 ──
   return (
     <main className={styles.page}>
       {toast.saveToast ? (
-        <div className={styles.toastBar} role="status">
+        <div
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] inline-flex items-center gap-2 px-5 py-[10px] rounded-full text-white text-sm font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.16)]"
+          style={{
+            background: "var(--success-text)",
+            animation: "toastSlideIn 0.3s ease",
+          }}
+          role="status"
+        >
           <CheckCheck size={16} strokeWidth={2.2} />
           {toast.saveToast}
         </div>
       ) : null}
 
-      <div className={styles.shell}>
+      <div className="w-[min(1920px,100%)] min-h-[calc(100vh-32px)] mx-auto grid grid-rows-[auto_minmax(0,1fr)] gap-3">
         {/* 슬림 헤더 */}
-        <header className={styles.topbar}>
-          <div className={styles.topbarCopy}>
-            <p className={styles.topbarLabel}>YEON</p>
-            <h1 className={styles.pageTitle}>상담 기록 워크스페이스</h1>
-            <p className={styles.pageDescription}>
+        <header className="flex items-start justify-between gap-4 pt-4 px-1">
+          <div className="grid gap-[6px] min-w-0">
+            <p className="m-0 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              YEON
+            </p>
+            <h1
+              className="m-0 font-bold leading-none tracking-[-0.05em]"
+              style={{ fontSize: "clamp(28px, 3vw, 36px)" }}
+            >
+              상담 기록 워크스페이스
+            </h1>
+            <p className="m-0 max-w-[42ch] text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               업로드부터 원문 확인까지 한 화면에서 정리합니다.
             </p>
           </div>
           <form
             action="/api/auth/logout"
             method="post"
-            className={styles.topbarActions}
+            className="flex flex-shrink-0"
           >
-            <button type="submit" className={styles.topbarGhostButton}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-[6px] min-h-9 px-3 border rounded-[10px] bg-transparent text-[13px] font-semibold cursor-pointer transition-[background-color,border-color] duration-[180ms]"
+              style={{
+                borderColor: "var(--border-soft)",
+                color: "var(--text-secondary)",
+              }}
+            >
               <LogOut size={15} strokeWidth={2.1} />
               로그아웃
             </button>
@@ -158,7 +181,7 @@ export function CounselingRecordWorkspace() {
           uploadForm.isUploadPanelOpen ? (
             <div className={styles.workspace}>
               <section
-                className={`${styles.centerColumn} ${styles.centerColumnFull}`}
+                className={`${styles.centerColumn} col-[2_/_-1]`}
               >
                 <UploadPanel
                   isUploadPanelOpen={uploadForm.isUploadPanelOpen}
@@ -310,9 +333,7 @@ export function CounselingRecordWorkspace() {
                 />
               </>
             ) : (
-              <section
-                className={`${styles.centerColumn} ${styles.centerColumnFull}`}
-              >
+              <section className={`${styles.centerColumn} col-[2_/_-1]`}>
                 {uploadForm.isUploadPanelOpen ? (
                   <UploadPanel
                     isUploadPanelOpen={uploadForm.isUploadPanelOpen}
@@ -351,16 +372,25 @@ export function CounselingRecordWorkspace() {
                     setSaveToast={toast.setSaveToast}
                   />
                 ) : (
-                  <div className={styles.preSelectionEmpty}>
-                    <div className={styles.preSelectionIcon}>
+                  <div className="grid gap-[10px] place-items-center content-center text-center max-w-[380px] mx-auto min-h-[320px] justify-items-center">
+                    <div
+                      className="inline-flex items-center justify-center w-14 h-14 rounded-[10px] mb-1"
+                      style={{
+                        background: "var(--accent-soft)",
+                        color: "var(--accent)",
+                      }}
+                    >
                       <FileAudio size={32} strokeWidth={1.5} />
                     </div>
-                    <h2 className={styles.preSelectionTitle}>
+                    <h2 className="m-0 text-xl font-bold tracking-[-0.02em]">
                       {recordList.records.length === 0
                         ? "첫 기록을 만들어 보세요"
                         : "기록을 선택하세요"}
                     </h2>
-                    <p className={styles.preSelectionDescription}>
+                    <p
+                      className="m-0 text-sm leading-relaxed"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {recordList.records.length === 0
                         ? "왼쪽 상단의 새 기록 버튼으로 시작합니다."
                         : "왼쪽 목록에서 기록을 선택하면 원문을 바로 열 수 있습니다."}

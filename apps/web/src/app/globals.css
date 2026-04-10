@@ -1,3 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 서비스 다크 테마 변수 (Tailwind config가 참조) ── */
+.app-theme {
+  --bg: #09090b;
+  --surface: #111113;
+  --surface2: #18181b;
+  --surface3: #222225;
+  --surface4: #2c2c30;
+  --border: #27272a;
+  --border-light: #333338;
+  --text: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-dim: #52525b;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-dim: rgba(129, 140, 248, 0.1);
+  --accent-border: rgba(129, 140, 248, 0.2);
+  --green: #34d399;
+  --green-dim: rgba(52, 211, 153, 0.1);
+  --green-border: rgba(52, 211, 153, 0.2);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251, 191, 36, 0.1);
+  --amber-border: rgba(251, 191, 36, 0.2);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.08);
+  --rose: #fb7185;
+  --cyan: #22d3ee;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -40,6 +75,48 @@ select {
   color: #ffffff;
 }
 
+/* ── Spreadsheet Preview (SheetJS) ── */
+.spreadsheet-preview table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+.spreadsheet-preview td,
+.spreadsheet-preview th {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.spreadsheet-preview tr:first-child td {
+  background: var(--surface2, var(--surface));
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid var(--border);
+}
+
+.spreadsheet-preview tr:not(:first-child):hover td {
+  background: var(--accent-dim);
+}
+
+.spreadsheet-preview tr:not(:first-child):nth-child(even) td {
+  background: var(--surface2, var(--surface));
+}
+
+.spreadsheet-preview tr:not(:first-child):nth-child(even):hover td {
+  background: var(--accent-dim);
+}
+
 /* Spline 3D canvas 강제 표시 — Spline이 초기 로드 시 display:none을 넣는 문제 해결 */
 canvas[data-engine],
 div[style*="overflow: hidden"] > canvas {
@@ -51,7 +128,7 @@ div[style*="overflow: hidden"] > canvas {
     scroll-behavior: auto;
   }
 
-  *,
+  *:not(.animate-spin),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;

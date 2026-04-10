@@ -5,7 +5,9 @@ import {
 } from "@yeon/api-contract";
 import {
   useEffect,
+  useRef,
   useState,
+  useCallback,
   startTransition,
   type Dispatch,
   type SetStateAction,
@@ -22,6 +24,8 @@ export function useRecordDetail(
   const [recordDetails, setRecordDetails] = useState<
     Record<string, CounselingRecordDetail>
   >({});
+  const recordDetailsRef = useRef(recordDetails);
+  recordDetailsRef.current = recordDetails;
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDetailMetaOpen, setIsDetailMetaOpen] = useState(false);
   const [retryState, setRetryState] = useState<{
@@ -40,7 +44,7 @@ export function useRecordDetail(
 
   // 상세 로드
   useEffect(() => {
-    if (!selectedRecordId || recordDetails[selectedRecordId]) {
+    if (!selectedRecordId || recordDetailsRef.current[selectedRecordId]) {
       return;
     }
 
@@ -94,7 +98,62 @@ export function useRecordDetail(
     return () => {
       ignore = true;
     };
-  }, [recordDetails, selectedRecordId, setRecords]);
+  }, [selectedRecordId, setRecords]);
+
+  const refreshRecordDetail = useCallback(
+    async (
+      recordId: string,
+      options?: {
+        silent?: boolean;
+      },
+    ) => {
+      if (!options?.silent) {
+        setRetryState({
+          isSubmitting: true,
+          message: null,
+          tone: "idle",
+        });
+      }
+
+      try {
+        const data = await fetchApi(
+          `/api/v1/counseling-records/${recordId}`,
+          {
+            method: "GET",
+          },
+          counselingRecordDetailResponseSchema.parse,
+        );
+
+        startTransition(() => {
+          setRecordDetails((current) => ({
+            ...current,
+            [data.record.id]: data.record,
+          }));
+          setRecords((current) => upsertRecordList(current, data.record));
+        });
+
+        if (!options?.silent) {
+          setRetryState({
+            isSubmitting: false,
+            message: "최신 상태로 새로고침했습니다.",
+            tone: "success",
+          });
+        }
+      } catch (error) {
+        if (!options?.silent) {
+          setRetryState({
+            isSubmitting: false,
+            message:
+              error instanceof Error
+                ? error.message
+                : "상담 기록 상태를 새로고침하지 못했습니다.",
+            tone: "error",
+          });
+        }
+      }
+    },
+    [setRecords],
+  );
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {
@@ -109,59 +168,7 @@ export function useRecordDetail(
     return () => {
       window.clearInterval(timer);
     };
-  }, [selectedRecord?.status, selectedRecordId]);
-
-  async function refreshRecordDetail(
-    recordId: string,
-    options?: {
-      silent?: boolean;
-    },
-  ) {
-    if (!options?.silent) {
-      setRetryState({
-        isSubmitting: true,
-        message: null,
-        tone: "idle",
-      });
-    }
-
-    try {
-      const data = await fetchApi(
-        `/api/v1/counseling-records/${recordId}`,
-        {
-          method: "GET",
-        },
-        counselingRecordDetailResponseSchema.parse,
-      );
-
-      startTransition(() => {
-        setRecordDetails((current) => ({
-          ...current,
-          [data.record.id]: data.record,
-        }));
-        setRecords((current) => upsertRecordList(current, data.record));
-      });
-
-      if (!options?.silent) {
-        setRetryState({
-          isSubmitting: false,
-          message: "최신 상태로 새로고침했습니다.",
-          tone: "success",
-        });
-      }
-    } catch (error) {
-      if (!options?.silent) {
-        setRetryState({
-          isSubmitting: false,
-          message:
-            error instanceof Error
-              ? error.message
-              : "상담 기록 상태를 새로고침하지 못했습니다.",
-          tone: "error",
-        });
-      }
-    }
-  }
+  }, [selectedRecord?.status, selectedRecordId, refreshRecordDetail]);
 
   async function retryTranscription(recordId: string) {
     setRetryState({

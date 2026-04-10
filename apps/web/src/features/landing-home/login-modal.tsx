@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import styles from "./landing-home.module.css";
 
 type LoginModalProps = {
   open: boolean;
@@ -16,7 +15,7 @@ function KakaoTalkIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={styles.kakaoIcon}
+      className="w-[22px] h-[22px] inline-flex shrink-0 text-[rgba(25,25,25,0.9)]"
       focusable="false"
     >
       <path
@@ -32,7 +31,7 @@ function GoogleIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={styles.googleIcon}
+      className="w-5 h-5 inline-flex shrink-0"
       focusable="false"
     >
       <path
@@ -95,7 +94,7 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
     <AnimatePresence>
       {open ? (
         <motion.div
-          className={styles.modalOverlay}
+          className="fixed inset-0 z-20 flex items-center justify-center p-6 bg-[rgba(12,14,18,0.36)] backdrop-blur-[6px] md:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -106,26 +105,30 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="landing-login-title"
-            className={styles.modalCard}
+            className="w-[min(100%,560px)] p-9 rounded-[32px] border border-[rgba(17,19,24,0.08)] bg-gradient-to-b from-[#fffdf9] to-[#faf7f1] text-[#111318] shadow-[0_28px_80px_rgba(15,18,24,0.18)] md:p-[22px]"
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className={styles.modalHeader}>
-              <div className={styles.modalCopy}>
-                <h2 id="landing-login-title" className={styles.modalTitle}>
+            {/* Header */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6">
+              <div className="grid gap-3">
+                <h2
+                  id="landing-login-title"
+                  className="m-0 text-[clamp(24px,3vw,34px)] font-black leading-[1.08] tracking-[-0.04em] text-[#111318]"
+                >
                   회원가입 없이 시작해요
                 </h2>
-                <p className={styles.modalDescription}>
+                <p className="m-0 text-[14px] leading-[1.6] text-[#626b79]">
                   상담 기록 워크스페이스를 바로 열 수 있어요.
                 </p>
               </div>
 
               <button
                 type="button"
-                className={styles.modalClose}
+                className="w-12 h-12 border border-[rgba(17,19,24,0.08)] rounded-full bg-[rgba(17,19,24,0.04)] text-[#2b313d] inline-flex items-center justify-center cursor-pointer transition-[border-color,background-color,color] duration-[220ms] ease-in-out hover:border-[rgba(17,19,24,0.14)] hover:bg-[rgba(17,19,24,0.08)] hover:text-[#111318]"
                 onClick={onClose}
                 aria-label="로그인 모달 닫기"
               >
@@ -133,11 +136,12 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
               </button>
             </div>
 
-            <div className={styles.modalBody}>
-              <div className={styles.loginButtons}>
+            {/* Body */}
+            <div className="grid gap-3 mt-[30px]">
+              <div className="grid gap-[10px]">
                 <button
                   type="button"
-                  className={`${styles.loginButton} ${styles.kakaoButton}`}
+                  className="w-full min-h-16 rounded-[18px] inline-flex items-center justify-center gap-3 px-5 text-[17px] font-black tracking-[-0.02em] cursor-pointer transition-[transform,box-shadow,filter,opacity] duration-[220ms] ease-in-out border-0 bg-[#fee500] text-[#191919] disabled:cursor-not-allowed disabled:opacity-100 hover:enabled:-translate-y-px hover:enabled:shadow-[0_16px_28px_rgba(77,64,0,0.18)]"
                   disabled={pendingProvider !== null}
                   onClick={() => moveToSocialLogin("kakao", kakaoLoginHref)}
                 >
@@ -149,7 +153,7 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
 
                 <button
                   type="button"
-                  className={`${styles.loginButton} ${styles.googleButton}`}
+                  className="w-full min-h-16 rounded-[18px] inline-flex items-center justify-center gap-3 px-5 text-[17px] font-black tracking-[-0.02em] cursor-pointer transition-[transform,box-shadow,filter,opacity] duration-[220ms] ease-in-out border border-[rgba(17,19,24,0.1)] bg-white text-[#111318] disabled:cursor-not-allowed disabled:opacity-100 hover:enabled:-translate-y-px hover:enabled:shadow-[0_14px_24px_rgba(17,19,24,0.08)]"
                   disabled={pendingProvider !== null}
                   onClick={() => moveToSocialLogin("google", googleLoginHref)}
                 >
@@ -159,7 +163,7 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
                     : "구글 로그인"}
                 </button>
               </div>
-              <p className={styles.modalHint}>
+              <p className="m-0 text-[12px] leading-[1.55] tracking-[-0.01em] text-[#626b79]">
                 카카오 로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의한
                 것으로 간주됩니다.
               </p>

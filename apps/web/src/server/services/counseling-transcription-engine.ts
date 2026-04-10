@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
 
 const MAX_OPENAI_TRANSCRIPTION_BYTES = 24 * 1024 * 1024;
 const MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS = 8 * 60;
-const MAX_DIARIZE_CHUNK_DURATION_SECONDS = 30;
+const MAX_DIARIZE_CHUNK_DURATION_SECONDS = 120;
 const DEFAULT_TRANSCRIPTION_MODEL =
   process.env.OPENAI_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-transcribe-diarize";
 const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = (
@@ -23,7 +23,7 @@ const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = (
   .map((value) => value.trim())
   .filter(Boolean);
 const COUNSELING_TRANSCRIPTION_PROMPT =
-  "한국어 교육 상담 녹취를 정확히 전사하세요. 학생, 교사, 보호자 발화를 최대한 원문 그대로 보존하고 과목명, 결석, 지각, 과제, 시험, 제출, 보호자 요청, 상담 일정 같은 표현을 왜곡하지 마세요.";
+  "한국어 교육 상담 녹취를 정확히 전사하세요. 멘토, 수강생 발화를 최대한 원문 그대로 보존하고 과정명, 과제, 프로젝트, 제출, 멘토링 일정 같은 표현을 왜곡하지 마세요.";
 
 export type PersistedTranscriptSegment = {
   id: string;
@@ -283,7 +283,8 @@ function mapSpeakerTone(rawSpeakerLabel: string | null | undefined) {
   if (
     normalized.includes("teacher") ||
     normalized.includes("교사") ||
-    normalized.includes("강사")
+    normalized.includes("강사") ||
+    normalized.includes("멘토")
   ) {
     return "teacher" satisfies CounselingRecordSpeakerTone;
   }
@@ -296,15 +297,6 @@ function mapSpeakerTone(rawSpeakerLabel: string | null | undefined) {
     return "student" satisfies CounselingRecordSpeakerTone;
   }
 
-  if (
-    normalized.includes("guardian") ||
-    normalized.includes("parent") ||
-    normalized.includes("보호자") ||
-    normalized.includes("학부모")
-  ) {
-    return "guardian" satisfies CounselingRecordSpeakerTone;
-  }
-
   return "unknown" satisfies CounselingRecordSpeakerTone;
 }
 
@@ -315,11 +307,16 @@ function formatSpeakerLabel(rawSpeakerLabel: string | null | undefined) {
     return "원문";
   }
 
+  // "speaker_0" → "화자 1"
   if (/speaker[_\s-]?(\d+)/i.test(trimmed)) {
     const match = trimmed.match(/speaker[_\s-]?(\d+)/i);
     const speakerIndex = match ? Number(match[1]) + 1 : null;
-
     return speakerIndex ? `화자 ${speakerIndex}` : "원문";
+  }
+
+  // 단일 대문자 "A", "B" → "화자 A" (generic diarization 결과)
+  if (/^[A-Z]$/.test(trimmed)) {
+    return `화자 ${trimmed}`;
   }
 
   return trimmed.slice(0, 40);
@@ -410,6 +407,15 @@ function mapOpenAiSegments(
     return normalizedSegments;
   }
 
+  console.warn(
+    "화자분리 세그먼트 없음 — fallback 진입",
+    {
+      segmentsReceived: segments?.length ?? 0,
+      transcriptLength: transcriptText.length,
+      offsetMs,
+    },
+  );
+
   return buildFallbackSegments(
     transcriptText,
     durationMs,
@@ -423,6 +429,7 @@ async function requestOpenAiTranscription(params: {
   source: TranscriptionSource;
   model: string;
   clientRequestId?: string | null;
+  speakerHints?: string[];
 }): Promise<OpenAiTranscriptionSuccess> {
   const audioBuffer = await readFile(params.source.absolutePath);
   const formData = new FormData();
@@ -441,7 +448,14 @@ async function requestOpenAiTranscription(params: {
   );
   formData.append("temperature", "0");
 
-  if (!usesDiarization) {
+  if (usesDiarization) {
+    formData.append("chunking_strategy", "auto");
+    if (params.speakerHints && params.speakerHints.length > 0) {
+      for (const name of params.speakerHints) {
+        formData.append("known_speaker_names", name);
+      }
+    }
+  } else {
     formData.append("prompt", COUNSELING_TRANSCRIPTION_PROMPT);
   }
 
@@ -462,10 +476,14 @@ async function requestOpenAiTranscription(params: {
   );
 
   if (response.ok) {
-    return {
-      data: (await response.json()) as OpenAiTranscriptionResponse,
+    const data = (await response.json()) as OpenAiTranscriptionResponse;
+    console.info("전사 API 응답", {
       model: params.model,
-    };
+      segmentsCount: data.segments?.length ?? 0,
+      hasSpeaker: data.segments?.some((s) => s.speaker || s.speaker_label) ?? false,
+      textLength: data.text?.length ?? 0,
+    });
+    return { data, model: params.model };
   }
 
   const message =
@@ -486,6 +504,8 @@ export async function transcribeStoredAudio(params: {
   byteSize: number;
   durationMs: number | null;
   clientRequestId?: string | null;
+  /** 화자 이름 힌트 — diarize 모델의 known_speaker_names에 전달 */
+  speakerHints?: string[];
 }): Promise<TranscriptionResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
@@ -525,6 +545,7 @@ export async function transcribeStoredAudio(params: {
             apiKey,
             source,
             model: candidateModel,
+            speakerHints: params.speakerHints,
             clientRequestId: params.clientRequestId
               ? `${params.clientRequestId}-chunk-${index + 1}`
               : null,
@@ -542,7 +563,11 @@ export async function transcribeStoredAudio(params: {
             [400, 403, 404].includes(error.status) &&
             candidateModel !== modelCandidates[modelCandidates.length - 1];
 
-          if (!shouldFallback) {
+          if (shouldFallback) {
+            console.warn(
+              `전사 모델 fallback: ${candidateModel} → 다음 모델 시도 (HTTP ${error.status})`,
+            );
+          } else {
             throw error;
           }
         }
@@ -607,3 +632,12 @@ export async function transcribeStoredAudio(params: {
         : (resolvedModel ?? DEFAULT_TRANSCRIPTION_MODEL),
   };
 }
+
+/** @internal 테스트 전용 export */
+export const _testing = {
+  mapSpeakerTone,
+  formatSpeakerLabel,
+  splitTranscriptIntoParagraphs,
+  buildFallbackSegments,
+  mapOpenAiSegments,
+};

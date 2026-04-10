@@ -1,84 +1,76 @@
-import { useState, useRef, useEffect } from "react";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import styles from "../../mockdata/mockdata.module.css";
-import { SettingsIcon, LogOutIcon } from "./icons";
+import { SettingsIcon, LogOutIcon, RecordIcon, StudentsIcon } from "./icons";
+import { useClickOutside } from "../_hooks";
 
 type GnavProps = {
   activeMenu: "records" | "students";
-  onMenuChange?: (menu: "records" | "students") => void;
 };
 
-export function Gnav({ activeMenu, onMenuChange: _onMenuChange }: GnavProps) {
+export function Gnav({ activeMenu }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!showMenu) return;
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showMenu]);
+  const menuRef = useClickOutside<HTMLDivElement>(() => setShowMenu(false), showMenu);
 
   return (
-    <div className={styles.gnav}>
-      {/* 상단: 로고 + 새 채팅 */}
-      <div className={styles.gnavItem} title="홈" style={{ marginBottom: 4 }}>
-        <span className={styles.logo} style={{ fontSize: 13 }}>Y</span>
+    <div className="w-14 border-r border-border flex flex-col items-center py-4 gap-1 bg-bg">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer text-text-dim mb-1" title="홈">
+        <span className="font-[Outfit,sans-serif] font-bold text-[13px] tracking-[-0.5px] bg-gradient-to-br from-accent to-cyan bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
+          Y
+        </span>
       </div>
-      {/* 메뉴 */}
-      <div style={{ marginTop: 8 }}>
+      <div className="mt-2">
         <Link
           href="/home"
-          className={`${styles.gnavItem} ${activeMenu === "records" ? styles.gnavItemActive : ""}`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer transition-all duration-150 no-underline ${
+            activeMenu === "records"
+              ? "bg-accent-dim text-accent"
+              : "text-text-dim hover:bg-surface-3 hover:text-text-secondary"
+          }`}
           title="상담 기록"
-          style={{ textDecoration: "none", color: "inherit" }}
         >
           <RecordIcon size={16} />
         </Link>
       </div>
       <Link
         href="/home/student-management"
-        className={`${styles.gnavItem} ${activeMenu === "students" ? styles.gnavItemActive : ""}`}
-        title="학생 관리"
-        style={{ textDecoration: "none", color: "inherit" }}
+        className={`w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer transition-all duration-150 no-underline ${
+          activeMenu === "students"
+            ? "bg-accent-dim text-accent"
+            : "text-text-dim hover:bg-surface-3 hover:text-text-secondary"
+        }`}
+        title="수강생 관리"
       >
         <StudentsIcon size={16} />
       </Link>
 
-      <div className={styles.gnavSpacer} />
+      <div className="flex-1" />
 
-      {/* 하단: 프로필 */}
-      <div ref={menuRef} style={{ position: "relative" }}>
+      <div ref={menuRef} className="relative">
         <button
           onClick={() => setShowMenu((p) => !p)}
-          className={styles.gnavAvatar}
-          style={{ cursor: "pointer", border: "none" }}
+          className="w-7 h-7 rounded-full bg-gradient-to-br from-accent to-cyan text-[11px] text-white font-semibold flex items-center justify-center cursor-pointer border-none"
           title="프로필"
         >
           최
         </button>
         {showMenu && (
           <div
-            className={styles.btnNewDropdown}
+            className="absolute bg-surface-3 border border-border-light rounded-sm py-1 min-w-[140px] z-50 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
             style={{
               bottom: "calc(100% + 8px)",
               top: "auto",
               left: "calc(100% + 8px)",
               right: "auto",
-              minWidth: 140,
             }}
           >
-            <button className={styles.btnNewDropdownItem}>
+            <button className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4">
               <SettingsIcon size={14} />
               설정
             </button>
             <button
-              className={styles.btnNewDropdownItem}
-              style={{ color: "var(--red)" }}
+              className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-red text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4"
               onClick={() => {
                 setShowMenu(false);
                 alert("로그아웃 (시뮬레이션)");
@@ -91,30 +83,5 @@ export function Gnav({ activeMenu, onMenuChange: _onMenuChange }: GnavProps) {
         )}
       </div>
     </div>
-  );
-}
-
-/* ── 네비게이션 전용 아이콘 ── */
-
-function RecordIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <path d="M10 9H8" />
-      <path d="M16 13H8" />
-      <path d="M16 17H8" />
-    </svg>
-  );
-}
-
-function StudentsIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
   );
 }

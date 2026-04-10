@@ -15,6 +15,22 @@ import { Counter } from "./counter";
 import { LoginModal } from "./login-modal";
 import styles from "./landing-home.module.css";
 
+/* ── CSS variable definitions for dark landing theme ── */
+const LANDING_VARS = {
+  "--accent": "#e8630a",
+  "--accent-hover": "#d45a08",
+  "--accent-glow": "rgba(232,99,10,0.4)",
+  "--accent-soft": "rgba(232,99,10,0.12)",
+  "--dark-bg": "#050505",
+  "--dark-surface": "#0c0c0c",
+  "--dark-elevated": "#151515",
+  "--dark-border": "rgba(255,255,255,0.06)",
+  "--dark-border-hover": "rgba(255,255,255,0.12)",
+  "--text-primary": "#f5f5f5",
+  "--text-secondary": "rgba(255,255,255,0.65)",
+  "--text-muted": "rgba(255,255,255,0.38)",
+} as React.CSSProperties;
+
 /* ── Data ── */
 
 const STATS = [
@@ -35,7 +51,7 @@ const FEATURES = [
     icon: FileText,
     title: "구조화 상담 요약",
     description:
-      "핵심 상담 내용, 학생 문제 포인트, 보호자 요청사항, 다음 액션을 실무형 구조로 나눠 정리합니다.",
+      "핵심 상담 내용, 수강생 이슈 포인트, 다음 액션을 실무형 구조로 나눠 정리합니다.",
     accent: "blue" as const,
   },
   {
@@ -47,9 +63,9 @@ const FEATURES = [
   },
   {
     icon: FolderOpen,
-    title: "학생별 상담 히스토리",
+    title: "수강생별 상담 히스토리",
     description:
-      "상담 기록이 학생 단위로 쌓여 이전 약속, 후속 액션, 보호자 요청 맥락을 이어서 볼 수 있습니다.",
+      "상담 기록이 수강생 단위로 쌓여 이전 약속, 후속 액션, 멘토링 맥락을 이어서 볼 수 있습니다.",
     accent: "purple" as const,
   },
 ] as const;
@@ -157,21 +173,31 @@ export function LandingHome({
         onClose={closeLoginModal}
         nextPath={nextPath}
       />
-      <div className={styles.landing}>
+      {/* Landing shell — CSS vars defined here, dot-grid ::before in CSS module */}
+      <div
+        className={`${styles.landing} bg-[var(--dark-bg)] text-[var(--text-primary)] overflow-x-hidden`}
+        style={LANDING_VARS}
+      >
         {/* ── Hero ── */}
-        <section ref={heroRef} className={styles.hero}>
-          <motion.div style={{ y: heroY }} className={styles.splineWrap}>
+        <section
+          ref={heroRef}
+          className="relative min-h-screen flex items-end justify-start overflow-hidden"
+        >
+          <motion.div
+            style={{ y: heroY }}
+            className="absolute inset-0 z-0"
+          >
             <SplineHero />
           </motion.div>
 
           <div className={styles.heroGradient} />
 
           <motion.div
-            className={styles.heroContent}
+            className="relative z-[3] max-w-[820px] px-12 pb-[100px] grid gap-6 md:px-6 md:pb-20"
             style={{ opacity: heroOpacity }}
           >
             <motion.p
-              className={styles.heroEyebrow}
+              className="m-0 text-[13px] font-semibold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -180,7 +206,7 @@ export function LandingHome({
             </motion.p>
 
             <motion.h1
-              className={styles.heroTitle}
+              className="m-0 text-[clamp(44px,7.5vw,84px)] font-black leading-[1.02] tracking-[-0.045em] text-[var(--text-primary)]"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -193,11 +219,11 @@ export function LandingHome({
               <br />
               기억에만
               <br />
-              <span className={styles.heroTitleAccent}>남기기 아깝습니다</span>
+              <span className="text-[var(--accent)] relative">남기기 아깝습니다</span>
             </motion.h1>
 
             <motion.p
-              className={styles.heroDescription}
+              className="m-0 text-[clamp(16px,2vw,20px)] leading-[1.75] text-[var(--text-secondary)] max-w-[520px]"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.7 }}
@@ -208,13 +234,13 @@ export function LandingHome({
             </motion.p>
 
             <motion.div
-              className={styles.heroCta}
+              className="flex gap-4 flex-wrap pt-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1.0 }}
             >
               <button
-                className={styles.btnPrimary}
+                className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
                 type="button"
                 onClick={openLoginModal}
                 aria-haspopup="dialog"
@@ -224,7 +250,7 @@ export function LandingHome({
                 <ArrowRight size={18} strokeWidth={2.5} />
               </button>
               <button
-                className={styles.btnGhost}
+                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
                 type="button"
                 onClick={() => scrollToSection("features")}
               >
@@ -234,7 +260,7 @@ export function LandingHome({
           </motion.div>
 
           <motion.button
-            className={styles.scrollIndicator}
+            className={`${styles.scrollIndicator} absolute bottom-8 left-1/2 -translate-x-1/2 z-[4] bg-[rgba(255,255,255,0.04)] backdrop-blur-sm border border-[var(--dark-border)] rounded-full w-13 h-13 flex items-center justify-center text-[var(--text-muted)] cursor-pointer transition-all duration-300 hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[rgba(232,99,10,0.08)]`}
             type="button"
             onClick={() => scrollToSection("stats")}
             aria-label="아래로 스크롤"
@@ -247,20 +273,22 @@ export function LandingHome({
         </section>
 
         {/* ── Stats ── */}
-        <RevealSection className={styles.statsSection}>
-          <div id="stats" className={styles.statsInner}>
+        <RevealSection className="relative z-[1] py-24 px-12 bg-[var(--dark-surface)] border-t border-[var(--dark-border)] border-b md:px-6">
+          <div id="stats" className="max-w-[1100px] mx-auto grid grid-cols-3 gap-12 md:grid-cols-1">
             {STATS.map((stat) => (
               <motion.div
                 key={stat.label}
-                className={styles.statCard}
+                className="text-center flex flex-col gap-2 items-center"
                 variants={fadeUp}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Counter end={stat.value} suffix={stat.suffix} />
-                <span className={styles.statLabel}>{stat.label}</span>
-                <div className={styles.statBar}>
+                <span className="text-[14px] font-medium text-[var(--text-muted)] tracking-[0.04em] uppercase">
+                  {stat.label}
+                </span>
+                <div className="w-16 h-[3px] bg-[var(--dark-border)] rounded-sm mt-2 overflow-hidden">
                   <motion.div
-                    className={styles.statBarFill}
+                    className="w-full h-full bg-[var(--accent)] rounded-sm origin-left"
                     initial={{ scaleX: 0 }}
                     whileInView={{ scaleX: 1 }}
                     viewport={{ once: true }}
@@ -273,17 +301,17 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Mission ── */}
-        <RevealSection className={styles.missionSection}>
-          <div className={styles.missionInner}>
+        <RevealSection className="relative z-[1] py-40 px-12 flex justify-center text-center bg-[var(--dark-bg)] md:px-6 md:py-[100px]">
+          <div className="max-w-[720px] grid gap-7">
             <motion.p
-              className={styles.sectionEyebrow}
+              className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
               variants={fadeUp}
               transition={{ duration: 0.5 }}
             >
               왜 지금 필요한가
             </motion.p>
             <motion.h2
-              className={styles.missionTitle}
+              className="m-0 text-[clamp(34px,5.5vw,60px)] font-black leading-[1.1] tracking-[-0.035em]"
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
@@ -292,37 +320,36 @@ export function LandingHome({
               기록이 다음 상담이 됩니다
             </motion.h2>
             <motion.p
-              className={styles.missionDescription}
+              className="m-0 text-[18px] leading-[1.85] text-[var(--text-secondary)]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
               상담 메모를 다시 정리하느라 시간을 쓰지 않습니다.
               <br />
-              원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로
-              이어갑니다.
+              원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로 이어갑니다.
             </motion.p>
           </div>
         </RevealSection>
 
         {/* ── Features ── */}
-        <RevealSection className={styles.featuresSection}>
-          <div id="features" className={styles.featuresInner}>
+        <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
+          <div id="features" className="max-w-[1100px] mx-auto grid gap-[72px]">
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className={styles.sectionEyebrow}>핵심 기능</p>
-              <h2 className={styles.featuresTitle}>
+              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">핵심 기능</p>
+              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
                 원문, 요약, 액션을
                 <br />한 화면에서
               </h2>
             </motion.div>
 
             <motion.div
-              className={styles.featuresGrid}
+              className="grid grid-cols-2 gap-5 md:grid-cols-1"
               variants={staggerContainer}
             >
               {FEATURES.map((feat) => (
                 <motion.div
                   key={feat.title}
-                  className={styles.featureCard}
+                  className={`${styles.featureCard} p-10 bg-[var(--dark-elevated)] border border-[var(--dark-border)] rounded-3xl grid gap-4 cursor-default transition-[border-color,box-shadow] duration-[350ms] ease-in-out hover:border-[var(--dark-border-hover)] hover:shadow-[0_24px_56px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] md:p-8`}
                   data-accent={feat.accent}
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -331,11 +358,11 @@ export function LandingHome({
                     transition: { duration: 0.25 },
                   }}
                 >
-                  <div className={styles.featureIconWrap}>
+                  <div className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}>
                     <feat.icon size={24} strokeWidth={2} />
                   </div>
-                  <h3 className={styles.featureCardTitle}>{feat.title}</h3>
-                  <p className={styles.featureCardDesc}>{feat.description}</p>
+                  <h3 className="m-0 text-[21px] font-bold">{feat.title}</h3>
+                  <p className="m-0 text-[15px] leading-[1.75] text-[var(--text-secondary)]">{feat.description}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -343,18 +370,18 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Philosophy (full-bleed quote) ── */}
-        <RevealSection className={styles.philosophySection}>
+        <RevealSection className="relative z-[1] py-[180px] px-12 flex items-center justify-center text-center bg-[var(--dark-bg)] overflow-hidden md:px-6 md:py-[100px]">
           <div className={styles.philosophyGlow} />
-          <div className={styles.philosophyContent}>
+          <div className="relative max-w-[800px] grid gap-9">
             <motion.p
-              className={styles.sectionEyebrow}
+              className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
               variants={fadeUp}
               transition={{ duration: 0.5 }}
             >
               원칙
             </motion.p>
             <motion.blockquote
-              className={styles.philosophyQuote}
+              className="m-0 text-[clamp(30px,5.5vw,56px)] font-black leading-[1.2] tracking-[-0.035em] text-[var(--text-primary)]"
               variants={fadeUp}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
@@ -363,7 +390,7 @@ export function LandingHome({
               AI를 믿을 수 없습니다&rdquo;
             </motion.blockquote>
             <motion.p
-              className={styles.philosophyCaption}
+              className="m-0 text-[17px] leading-[1.85] text-[var(--text-muted)]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
@@ -375,18 +402,18 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Flow Steps ── */}
-        <RevealSection className={styles.flowSection}>
-          <div id="flow" className={styles.flowInner}>
+        <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
+          <div id="flow" className="max-w-[800px] mx-auto grid gap-[72px]">
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className={styles.sectionEyebrow}>사용 흐름</p>
-              <h2 className={styles.flowTitle}>시작부터 저장까지 단순하게</h2>
+              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">사용 흐름</p>
+              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">시작부터 저장까지 단순하게</h2>
             </motion.div>
 
-            <div className={styles.flowTimeline}>
+            <div className="grid gap-0">
               {FLOW_STEPS.map((step, i) => (
                 <motion.div
                   key={step.number}
-                  className={styles.flowStep}
+                  className="flex gap-7 py-9 border-b border-[var(--dark-border)] items-start first:border-t first:border-[var(--dark-border)] md:gap-5 md:py-7"
                   initial={{ opacity: 0, x: -30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, amount: 0.3 }}
@@ -396,10 +423,12 @@ export function LandingHome({
                     ease: [0.16, 1, 0.3, 1],
                   }}
                 >
-                  <span className={styles.flowNumber}>{step.number}</span>
-                  <div className={styles.flowStepBody}>
-                    <h3 className={styles.flowStepTitle}>{step.title}</h3>
-                    <p className={styles.flowStepDesc}>{step.description}</p>
+                  <span className="text-[44px] font-black text-[var(--accent)] tracking-[-0.04em] leading-none shrink-0 w-[68px] tabular-nums font-mono md:text-[36px] md:w-[52px]">
+                    {step.number}
+                  </span>
+                  <div className="grid gap-1.5 pt-2">
+                    <h3 className="m-0 text-[21px] font-bold">{step.title}</h3>
+                    <p className="m-0 text-[15px] text-[var(--text-secondary)] leading-[1.65]">{step.description}</p>
                   </div>
                 </motion.div>
               ))}
@@ -408,20 +437,20 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── CTA ── */}
-        <RevealSection className={styles.ctaSection}>
+        <RevealSection className="relative z-[1] py-40 px-12 flex justify-center text-center bg-[var(--dark-bg)] overflow-hidden md:px-6 md:py-[100px]">
           <div className={styles.ctaGlow} />
-          <div className={styles.ctaInner}>
+          <div className="relative max-w-[600px] grid gap-7 justify-items-center">
             <motion.h2
-              className={styles.ctaTitle}
+              className="m-0 text-[clamp(34px,5.5vw,60px)] font-black leading-[1.1] tracking-[-0.035em]"
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
               상담 기록을
               <br />
-              <span className={styles.ctaTitleAccent}>YEON</span>으로 정리하세요
+              <span className="text-[var(--accent)]">YEON</span>으로 정리하세요
             </motion.h2>
             <motion.p
-              className={styles.ctaDescription}
+              className="m-0 text-[18px] text-[var(--text-secondary)] leading-[1.75]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
@@ -429,7 +458,7 @@ export function LandingHome({
             </motion.p>
             <motion.div variants={fadeUp} transition={{ duration: 0.5 }}>
               <button
-                className={styles.btnPrimary}
+                className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
                 type="button"
                 onClick={openLoginModal}
                 aria-haspopup="dialog"
@@ -443,17 +472,23 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Footer ── */}
-        <footer className={styles.footer}>
-          <div className={styles.footerInner}>
-            <span className={styles.footerBrand}>YEON</span>
-            <span className={styles.footerCopy}>
+        <footer className="relative z-[1] py-9 px-12 bg-[var(--dark-bg)] border-t border-[var(--dark-border)] md:p-6">
+          <div className="max-w-[1100px] mx-auto flex justify-between items-center md:flex-col md:gap-3 md:text-center">
+            <span className="text-[22px] font-black tracking-[-0.03em]">YEON</span>
+            <span className="text-[13px] text-[var(--text-muted)]">
               &copy; 2026 YEON. All rights reserved.
             </span>
-            <div className={styles.footerLinks}>
-              <a href="/privacy" className={styles.footerLink}>
+            <div className="flex gap-4">
+              <a
+                href="/privacy"
+                className="text-[13px] text-[var(--text-muted)] no-underline transition-colors duration-150 hover:text-[var(--text-primary)]"
+              >
                 개인정보처리방침
               </a>
-              <a href="/terms" className={styles.footerLink}>
+              <a
+                href="/terms"
+                className="text-[13px] text-[var(--text-muted)] no-underline transition-colors duration-150 hover:text-[var(--text-primary)]"
+              >
                 서비스 이용약관
               </a>
             </div>

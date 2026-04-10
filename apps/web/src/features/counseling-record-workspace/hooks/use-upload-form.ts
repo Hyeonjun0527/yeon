@@ -137,7 +137,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
     if (!formState.studentName.trim()) {
       setUploadState({
         isUploading: false,
-        message: "학생 이름을 입력해 주세요.",
+        message: "수강생 이름을 입력해 주세요.",
         tone: "error",
       });
       return;

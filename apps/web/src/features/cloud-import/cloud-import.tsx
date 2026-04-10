@@ -10,7 +10,6 @@ import { useEffect } from "react";
 import { CloudCog, Loader2, Upload } from "lucide-react";
 import type { CloudProvider } from "./types";
 import { useCloudImport } from "./hooks/use-cloud-import";
-import styles from "./cloud-import.module.css";
 
 interface ProviderImportProps {
   provider: CloudProvider;
@@ -27,18 +26,18 @@ function ProviderImport({ provider, onImportComplete }: ProviderImportProps) {
 
   if (hook.connecting) {
     return (
-      <div className={styles.wrapper}>
-        <Loader2 size={16} className={styles.spinner} />
-        <span className={styles.statusText}>확인 중...</span>
+      <div className="flex items-center gap-2">
+        <Loader2 size={16} className="animate-spin" />
+        <span className="text-xs text-text-dim">확인 중...</span>
       </div>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className="flex items-center gap-2">
       {hook.connected ? (
         <button
-          className={styles.actionBtn}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-[13px] font-medium cursor-pointer border border-border bg-surface text-text-secondary transition-[border-color,color,background] duration-150 w-full justify-center hover:border-accent-border hover:text-accent hover:bg-accent-dim disabled:opacity-60 disabled:cursor-not-allowed"
           onClick={() => {
             hook.loadFiles();
           }}
@@ -46,14 +45,18 @@ function ProviderImport({ provider, onImportComplete }: ProviderImportProps) {
           disabled={hook.analyzing}
         >
           {hook.analyzing ? (
-            <Loader2 size={16} className={styles.spinner} />
+            <Loader2 size={16} className="animate-spin" />
           ) : (
             <Upload size={16} />
           )}
           {hook.analyzing ? "분석 중..." : `${label}에서 가져오기`}
         </button>
       ) : (
-        <button className={styles.actionBtn} onClick={hook.connectDrive} type="button">
+        <button
+          className="flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-[13px] font-medium cursor-pointer border border-border bg-surface text-text-secondary transition-[border-color,color,background] duration-150 w-full justify-center hover:border-accent-border hover:text-accent hover:bg-accent-dim disabled:opacity-60 disabled:cursor-not-allowed"
+          onClick={hook.connectDrive}
+          type="button"
+        >
           <CloudCog size={16} />
           {label} 연결
         </button>
@@ -68,7 +71,7 @@ interface CloudImportProps {
 
 export function CloudImport({ onImportComplete }: CloudImportProps) {
   return (
-    <div className={styles.providerList}>
+    <div className="flex flex-col gap-1.5">
       <ProviderImport provider="onedrive" onImportComplete={onImportComplete} />
       <ProviderImport provider="googledrive" onImportComplete={onImportComplete} />
     </div>

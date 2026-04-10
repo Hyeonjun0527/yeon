@@ -5,10 +5,9 @@ import { usePathname } from "next/navigation";
 import { Users, GraduationCap, Plus } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
-import styles from "./student-management-layout.module.css";
 
 const NAV_ITEMS = [
-  { href: "/student-management", label: "학생 목록", icon: Users, exact: true },
+  { href: "/student-management", label: "수강생 목록", icon: Users, exact: true },
   {
     href: "/student-management/classes",
     label: "코호트 관리",
@@ -26,10 +25,19 @@ function SidebarInner() {
   } = useStudentManagement();
 
   return (
-    <nav className={styles.sidebar}>
-      <div className={styles.logo}>
+    <nav className="w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
+      <div className="flex items-center gap-2.5 px-2.5 pb-4 text-text max-md:hidden">
         <GraduationCap size={24} style={{ color: "#818cf8" }} />
-        <span className={styles.logoText}>학생 관리</span>
+        <span
+          className="text-[15px] font-bold tracking-[-0.02em]"
+          style={{
+            background: "linear-gradient(135deg, var(--accent), var(--cyan))",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          수강생 관리
+        </span>
       </div>
 
       {/* 스페이스 선택 */}
@@ -108,7 +116,7 @@ function SidebarInner() {
         </Link>
       </div>
 
-      <ul className={styles.navList}>
+      <ul className="list-none p-0 m-0 flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {
           const active =
             "exact" in item && item.exact
@@ -118,7 +126,11 @@ function SidebarInner() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`${styles.navItem} ${active ? styles.navItemActive : ""}`}
+                className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium no-underline transition-[background,color] duration-[120ms] max-md:whitespace-nowrap${
+                  active
+                    ? " bg-accent-dim text-accent font-semibold"
+                    : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
+                }`}
               >
                 <item.icon size={18} />
                 <span>{item.label}</span>
@@ -138,9 +150,9 @@ export default function StudentManagementLayout({
 }) {
   return (
     <StudentManagementProvider>
-      <div className={styles.shell}>
+      <div className="flex flex-1 overflow-hidden max-md:flex-col">
         <SidebarInner />
-        <main className={styles.main}>{children}</main>
+        <main className="flex-1 p-8 overflow-y-auto max-md:px-4 max-md:py-5">{children}</main>
       </div>
     </StudentManagementProvider>
   );

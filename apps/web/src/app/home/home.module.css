@@ -1,0 +1,51 @@
+/* ── 애니메이션 전용 클래스 ── */
+/* Tailwind로 표현할 수 없는 keyframe 애니메이션만 남긴다 */
+
+/* center-panel: fade-in 진입 애니메이션 */
+.centerFadeIn {
+  animation: centerFadeIn 0.2s ease-out;
+}
+
+@keyframes centerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* recording-state: 녹음 중 펄스 */
+.recPulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: mockPulse 1.2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes mockPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* recording-state: 오디오 시각화 바 */
+.vizBar1,
+.vizBar2,
+.vizBar3,
+.vizBar4,
+.vizBar5 {
+  display: inline-block;
+  width: 3px;
+  background: var(--red);
+  border-radius: 2px;
+  animation: mockVizBar 0.6s ease-in-out infinite alternate;
+}
+
+.vizBar1 { animation-delay: 0s; }
+.vizBar2 { animation-delay: 0.12s; }
+.vizBar3 { animation-delay: 0.24s; }
+.vizBar4 { animation-delay: 0.36s; }
+.vizBar5 { animation-delay: 0.48s; }
+
+@keyframes mockVizBar {
+  from { height: 4px; }
+  to { height: 24px; }
+}

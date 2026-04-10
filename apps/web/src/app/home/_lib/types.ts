@@ -20,18 +20,21 @@ export interface TranscriptSegment {
   startMs: number | null;
   endMs: number | null;
   speakerLabel: string;
-  speakerTone: "teacher" | "student" | "guardian" | "unknown";
+  speakerTone: "teacher" | "student" | "unknown";
   text: string;
 }
 
 export interface RecordItem {
   id: string;
   title: string;
-  status: "ready" | "processing";
+  status: "ready" | "processing" | "error";
+  errorMessage: string | null;
   meta: string;
   duration: string;
+  durationMs: number;
   studentName: string;
   type: string;
+  audioUrl: string | null;
   transcript: TranscriptSegment[];
   aiSummary: string;
   aiMessages: AiMessage[];
