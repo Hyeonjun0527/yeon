@@ -19,13 +19,15 @@ import {
   openCounselingAudioObjectStream,
 } from "./counseling-record-audio-storage";
 import { transcribeStoredAudio } from "./counseling-transcription-engine";
-import { resolveSpeakerNames } from "./counseling-ai-service";
+import { analyzeCounselingRecord, resolveSpeakerNames } from "./counseling-ai-service";
 import {
   type CounselingRecordRow,
   DEFAULT_COUNSELING_TYPE,
   findOwnedRecord,
+  findRecordsByMemberId,
   findTranscriptSegments,
   isPlaceholderAudioStoragePath,
+  linkRecordToMember,
   mapRecordDetail,
   mapRecordListItem,
   mapSegmentRow,
@@ -481,6 +483,59 @@ export async function getCounselingRecordAudio(
         : null),
     status: byteRange ? 206 : 200,
   };
+}
+
+export async function runAnalysisForRecord(userId: string, recordId: string) {
+  const detail = await getCounselingRecordDetail(userId, recordId);
+
+  if (detail.status !== "ready" || detail.transcriptSegments.length === 0) {
+    throw new ServiceError(400, "전사가 완료된 레코드만 분석할 수 있습니다.");
+  }
+
+  // 이미 분석 결과가 있으면 캐시 반환
+  if (detail.analysisResult) {
+    return detail.analysisResult;
+  }
+
+  const result = await analyzeCounselingRecord(
+    {
+      studentName: detail.studentName,
+      sessionTitle: detail.sessionTitle,
+      counselingType: detail.counselingType,
+      createdAt: detail.createdAt,
+    },
+    detail.transcriptSegments.map((s) => ({
+      speakerLabel: s.speakerLabel,
+      text: s.text,
+      startMs: s.startMs ?? 0,
+    })),
+  );
+
+  // DB에 분석 결과 저장
+  const db = getDb();
+  await db
+    .update(counselingRecords)
+    .set({ analysisResult: result, updatedAt: new Date() })
+    .where(eq(counselingRecords.id, recordId));
+
+  return result;
+}
+
+export async function linkCounselingRecordMember(
+  userId: string,
+  recordId: string,
+  memberId: string | null,
+) {
+  await findOwnedRecord(userId, recordId);
+  await linkRecordToMember(recordId, memberId);
+}
+
+export async function listCounselingRecordsByMember(
+  userId: string,
+  memberId: string,
+) {
+  const records = await findRecordsByMemberId(userId, memberId);
+  return records.map(mapRecordListItem);
 }
 
 export async function deleteCounselingRecord(userId: string, recordId: string) {

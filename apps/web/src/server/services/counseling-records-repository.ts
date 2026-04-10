@@ -215,6 +215,7 @@ export function mapRecordListItem(
 ): CounselingRecordListItem {
   return {
     id: record.id,
+    memberId: record.memberId ?? null,
     studentName: record.studentName,
     sessionTitle: record.sessionTitle,
     counselingType: record.counselingType,
@@ -262,10 +263,39 @@ export function mapRecordDetail(
     transcriptText: record.transcriptText,
     transcriptSegments: segments.map(mapSegmentRow),
     audioUrl: `/api/v1/counseling-records/${record.id}/audio`,
+    analysisResult: (record.analysisResult as CounselingRecordDetail["analysisResult"]) ?? null,
   };
 }
 
 // ── DB 쿼리 ──
+
+export async function linkRecordToMember(
+  recordId: string,
+  memberId: string | null,
+) {
+  const db = getDb();
+  await db
+    .update(counselingRecords)
+    .set({ memberId, updatedAt: new Date() })
+    .where(eq(counselingRecords.id, recordId));
+}
+
+export async function findRecordsByMemberId(
+  userId: string,
+  memberId: string,
+): Promise<CounselingRecordRow[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(counselingRecords)
+    .where(
+      and(
+        eq(counselingRecords.memberId, memberId),
+        eq(counselingRecords.createdByUserId, userId),
+      ),
+    )
+    .orderBy(asc(counselingRecords.createdAt));
+}
 
 export async function findOwnedRecord(userId: string, recordId: string) {
   const db = getDb();
