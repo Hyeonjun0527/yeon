@@ -10,6 +10,7 @@ import { StudentDetailTabs } from "../components/student-detail-tabs";
 import { TabOverview } from "../components/tab-overview";
 import { TabCounseling } from "../components/tab-counseling";
 import { TabCounselingRecords } from "../components/tab-counseling-records";
+import { TabMemberOverview } from "../components/tab-member-overview";
 import { TabCourses } from "../components/tab-courses";
 import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
@@ -133,75 +134,7 @@ export function StudentDetailScreen({
         <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === "overview" && (
-          <div
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: 14,
-              padding: "16px 0",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 12,
-                marginBottom: 24,
-              }}
-            >
-              <div
-                style={{
-                  padding: 16,
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    marginBottom: 4,
-                  }}
-                >
-                  등록일
-                </div>
-                <div
-                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
-                >
-                  {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: 16,
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    marginBottom: 4,
-                  }}
-                >
-                  상태
-                </div>
-                <div
-                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
-                >
-                  {member.status === "active"
-                    ? "수강중"
-                    : member.status === "withdrawn"
-                      ? "중도포기"
-                      : member.status === "graduated"
-                        ? "수료"
-                        : member.status}
-                </div>
-              </div>
-            </div>
-          </div>
+          <TabMemberOverview member={member} />
         )}
 
         {activeTab === "report" && (
