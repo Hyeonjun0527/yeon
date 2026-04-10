@@ -71,7 +71,7 @@ export function StudentManagementProvider({
 
   /* ── API 상태: spaces ── */
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [spacesLoading, setSpacesLoading] = useState(false);
+  const [spacesLoading, setSpacesLoading] = useState(true);
   const [spacesError, setSpacesError] = useState<string | null>(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [spacesFetchKey, setSpacesFetchKey] = useState(0);
