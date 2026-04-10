@@ -139,7 +139,11 @@ export function useRecords() {
         }
 
         if (opts?.initialLoad) {
-          setPhase(items.length === 0 ? "empty" : "ready");
+          // recording/processing 중이면 사용자 액션이 진행 중 — phase를 덮어쓰지 않음
+          setPhase((prev) => {
+            if (prev === "recording" || prev === "processing") return prev;
+            return items.length === 0 ? "empty" : "ready";
+          });
         }
       } finally {
         if (opts?.initialLoad) setLoading(false);
