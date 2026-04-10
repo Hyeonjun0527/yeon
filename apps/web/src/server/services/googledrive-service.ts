@@ -3,10 +3,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { googledriveTokens } from "@/server/db/schema";
 import { ServiceError } from "./service-error";
-import { analyzeFileWithAI, parseExcelToText } from "./onedrive-service";
-
-export { analyzeFileWithAI, parseExcelToText };
-export type { ImportPreview } from "./onedrive-service";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
