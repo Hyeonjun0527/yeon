@@ -38,11 +38,12 @@ export function useSpaceMembers(
   loading: boolean;
 } {
   const [rawMembers, setRawMembers] = useState<SpaceMember[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!spaceId) {
       setRawMembers([]);
+      setLoading(false);
       return;
     }
 

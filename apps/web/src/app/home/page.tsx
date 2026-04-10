@@ -130,7 +130,7 @@ export default function MockV2Workspace() {
         </div>
       )}
 
-      {records.phase === "empty" && !selectedMember && (
+      {records.phase === "empty" && !records.loading && !selectedMember && (
         <EmptyState
           onStartRecording={handleStartRecording}
           onFileUpload={fileUpload.openFilePicker}
