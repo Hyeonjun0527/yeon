@@ -10,8 +10,7 @@ import {
   downloadFile,
   getValidAccessToken,
 } from "@/server/services/googledrive-service";
-import { analyzeBuffer } from "@/server/services/file-analysis-service";
-import type { ImportPreview, RefineContext } from "@/server/services/file-analysis-service";
+import { analyzeBuffer, type ImportPreview, type RefineContext } from "@/server/services/file-analysis-service";
 import { detectFileKind } from "@/features/cloud-import/file-kind";
 import { ServiceError } from "@/server/services/service-error";
 
