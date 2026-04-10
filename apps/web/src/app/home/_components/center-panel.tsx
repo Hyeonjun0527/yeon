@@ -208,33 +208,36 @@ export function CenterPanel({
   if (selected.status === "ready") {
     return (
       <div key={selected.id} className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
-        <div className="px-5 py-4 border-b border-border flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-[15px] font-semibold tracking-[-0.3px] border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <h1 className="text-[15px] font-semibold tracking-[-0.3px] truncate">
               {selected.title}
             </h1>
+            <div className="text-[11px] text-text-dim flex items-center gap-1.5 flex-wrap">
+              <span>{selected.studentName || "수강생 미지정"}</span>
+              <span>·</span>
+              <span>{selected.type}</span>
+              <span>·</span>
+              <span>{selected.duration}</span>
+              <span>·</span>
+              <span>원문 완료</span>
+            </div>
           </div>
-          <div className="text-[11px] text-text-secondary mt-[3px] flex items-center gap-2">
-            <span className="border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">{selected.studentName}</span>
-            {" · "}
-            <span className="border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">{selected.type}</span>
-            {" · "}
-            {selected.duration}
-            {" · 원문 완료"}
-            {" · "}
-            <button
-              onClick={onLinkMember}
-              className="flex items-center gap-1 transition-colors hover:text-accent"
-              title={selected.memberId ? "수강생 연결됨 (클릭하여 변경)" : "수강생 연결"}
-            >
-              {selected.memberId ? (
-                <Link2 size={11} className="text-accent" />
-              ) : (
-                <Link2Off size={11} />
-              )}
-              <span>{selected.memberId ? "연결됨" : "연결"}</span>
-            </button>
-          </div>
+          <button
+            onClick={onLinkMember}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border flex-shrink-0 transition-all duration-150 ${
+              selected.memberId
+                ? "bg-accent-dim border-accent-border text-accent hover:bg-accent hover:text-bg"
+                : "bg-surface-2 border-border text-text-secondary hover:border-accent hover:text-accent"
+            }`}
+          >
+            {selected.memberId ? (
+              <Link2 size={12} />
+            ) : (
+              <Link2Off size={12} />
+            )}
+            {selected.memberId ? "연결됨" : "수강생 연결"}
+          </button>
         </div>
 
         {/* 오디오 플레이어 */}
