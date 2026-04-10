@@ -9,6 +9,8 @@ import type { RecordItem, RecordPhase, AiMessage, TranscriptSegment } from "../_
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
+/** processing 화면 최소 표시 시간 — 애니메이션을 충분히 볼 수 있도록 */
+const MIN_PROCESSING_DISPLAY_MS = 5000;
 
 function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   return {
@@ -50,6 +52,8 @@ export function useRecords() {
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readyTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processingStartRef = useRef<number | null>(null);
   const phaseRef = useRef<RecordPhase>("empty");
   const selectedIdRef = useRef<string | null>(null);
   phaseRef.current = phase;
@@ -95,6 +99,27 @@ export function useRecords() {
     }
   }, []);
 
+  /**
+   * 서버에서 ready 전환이 감지됐을 때 호출.
+   * MIN_PROCESSING_DISPLAY_MS 만큼의 최소 표시 시간을 보장한 뒤 setPhase("ready").
+   */
+  const scheduleReadyTransition = useCallback((id: string) => {
+    const elapsed = processingStartRef.current != null
+      ? Date.now() - processingStartRef.current
+      : MIN_PROCESSING_DISPLAY_MS;
+    const delay = Math.max(0, MIN_PROCESSING_DISPLAY_MS - elapsed);
+
+    if (readyTransitionTimerRef.current) {
+      clearTimeout(readyTransitionTimerRef.current);
+    }
+    readyTransitionTimerRef.current = setTimeout(() => {
+      readyTransitionTimerRef.current = null;
+      if (selectedIdRef.current === id && phaseRef.current === "processing") {
+        setPhase("ready");
+      }
+    }, delay);
+  }, []);
+
   /** 서버 목록을 가져와 records state를 병합. 기존 aiMessages·transcript 보존. */
   const syncFromServer = useCallback(
     async (opts?: { initialLoad?: boolean }) => {
@@ -125,16 +150,22 @@ export function useRecords() {
           };
         });
 
-        // 아직 업로드 중인 임시 레코드(temp- 접두사)는 서버 목록에 없으므로 보존
-        const tempRecords = prev.filter((p) => p.id.startsWith("temp-"));
-        const merged = [...tempRecords, ...serverMerged];
+        // 서버 응답에 없는 기존 레코드 보존 전략:
+        // - temp- 접두사: 아직 업로드 중인 임시 레코드
+        // - processing 상태의 실제 서버 ID: replaceRecord 직후 폴링이 먼저 도착해
+        //   서버 목록에 아직 반영되지 않은 레코드 (타이밍 경합 방지)
+        const serverIds = new Set(items.map((item) => item.id));
+        const preservedRecords = prev.filter(
+          (p) => !serverIds.has(p.id) && (p.id.startsWith("temp-") || p.status === "processing"),
+        );
+        const merged = [...preservedRecords, ...serverMerged];
 
         setRecords(merged);
 
         for (const id of readyTransitioned) {
           fetchDetail(id);
           if (selectedIdRef.current === id && phaseRef.current === "processing") {
-            setPhase("ready");
+            scheduleReadyTransition(id);
           }
         }
 
@@ -149,8 +180,17 @@ export function useRecords() {
         if (opts?.initialLoad) setLoading(false);
       }
     },
-    [fetchDetail],
+    [fetchDetail, scheduleReadyTransition],
   );
+
+  /* 언마운트 시 지연 전환 타이머 정리 */
+  useEffect(() => {
+    return () => {
+      if (readyTransitionTimerRef.current) {
+        clearTimeout(readyTransitionTimerRef.current);
+      }
+    };
+  }, []);
 
   /* 초기 로드 */
   useEffect(() => {
@@ -191,6 +231,7 @@ export function useRecords() {
     setSelectedId(record.id);
     setPhase("processing");
     setProcessingStep(0);
+    processingStartRef.current = Date.now();
   }, []);
 
   const selectRecord = useCallback(
@@ -230,23 +271,17 @@ export function useRecords() {
     setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
   }, []);
 
-  /** 업로드 실패: 임시 레코드 제거 후 phase 복구 */
-  const removeRecord = useCallback((id: string) => {
-    setRecords((prev) => {
-      const next = prev.filter((r) => r.id !== id);
-      return next;
-    });
-    setSelectedId((prev) => {
-      if (prev !== id) return prev;
-      // 제거된 레코드가 선택된 경우 첫 번째 레코드로 이동
-      const remaining = recordsRef.current.filter((r) => r.id !== id);
-      return remaining[0]?.id ?? null;
-    });
-    setPhase((prev) => {
-      if (prev !== "processing") return prev;
-      const remaining = recordsRef.current.filter((r) => r.id !== id);
-      return remaining.length === 0 ? "empty" : "ready";
-    });
+  /** 업로드 실패: 임시 레코드를 오류 상태로 표시 — 화면에서 사라지지 않음 */
+  const markUploadError = useCallback((id: string, message: string) => {
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, aiSummary: `업로드 실패: ${message}`, status: "ready" as const }
+          : r,
+      ),
+    );
+    // phase는 "processing" → "ready"로만 전환. "empty"로는 절대 내려가지 않음.
+    setPhase((prev) => (prev === "processing" ? "ready" : prev));
   }, []);
 
   return {
@@ -258,7 +293,7 @@ export function useRecords() {
     loading,
     addProcessingRecord,
     replaceRecord,
-    removeRecord,
+    markUploadError,
     selectRecord,
     updateMessages,
     clearMessages,

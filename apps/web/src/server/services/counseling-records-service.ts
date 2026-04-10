@@ -301,7 +301,8 @@ export async function createCounselingRecordAndQueueTranscription(
 ) {
   const db = getDb();
   const recordId = randomUUID();
-  const studentName = sanitizeRequiredValue(input.studentName, 80, "학생 이름");
+  // studentName은 녹음 시점에 미입력 가능 — 빈 문자열 허용
+  const studentName = sanitizeOptionalValue(input.studentName, 80) ?? "";
   const sessionTitle = sanitizeRequiredValue(
     input.sessionTitle,
     160,
