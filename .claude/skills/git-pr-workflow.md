@@ -57,3 +57,12 @@ user_invocable: true
 - suffix 없는 작업 브랜치명
 - 깨진 중간 상태 커밋
 - 서로 다른 landing 단위를 한 PR에 섞는 것
+
+## 동시 작업 인식
+
+이 저장소에는 여러 에이전트가 동시에 작업 중일 수 있다.
+
+- **작업 시작 전**: `git fetch origin && git rebase origin/develop` — 다른 에이전트가 먼저 머지한 내용을 반영한다.
+- **push 직전**: 다시 한번 `git fetch origin && git rebase origin/develop` — 작업 중에 다른 에이전트가 머지했을 수 있다.
+- **같은 파일 수정 충돌 시**: 로컬에서 rebase로 충돌을 해결하고, `--force-with-lease`로 push한다. `--force`는 금지.
+- **브랜치명 충돌 방지**: 다른 에이전트가 사용 중인 브랜치명과 겹치지 않도록 작업 단위가 명확히 드러나는 이름을 사용한다.

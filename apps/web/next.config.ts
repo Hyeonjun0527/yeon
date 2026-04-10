@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -15,4 +16,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry 소스맵 업로드 (프로덕션 빌드 시에만 동작)
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  webpack: {
+    // 자동 instrumentation 비활성화 (instrumentation.ts에서 수동 설정)
+    autoInstrumentServerFunctions: false,
+  },
+});

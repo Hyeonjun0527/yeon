@@ -162,7 +162,7 @@ export function AiPanel({
 
         {/* 채팅 탭 */}
         {tab === "chat" && (
-          <>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* AI 요약 */}
             {selected?.status === "ready" && selected.aiSummary && !selected.aiSummary.startsWith("업로드 실패:") && (
               <AiSummaryCard selected={selected} />
@@ -181,7 +181,7 @@ export function AiPanel({
 
             {/* 메시지 목록 */}
             {selected && selected.aiMessages.length > 0 && (
-              <div className="flex-1 px-4 py-3 overflow-y-auto">
+              <div className="flex-1 px-4 py-3 overflow-y-auto min-h-0">
                 {selected.aiMessages.map((msg, i) => (
                   <div
                     key={i}
@@ -220,7 +220,7 @@ export function AiPanel({
 
             {/* 퀵칩 */}
             {selected?.status === "ready" && (
-              <div className="flex flex-wrap gap-[5px] px-4 py-[6px]">
+              <div className="flex flex-wrap gap-[5px] px-4 py-[6px] flex-shrink-0">
                 {AI_QUICK_CHIPS.map((chip) => (
                   <button
                     key={chip}
@@ -234,7 +234,7 @@ export function AiPanel({
             )}
 
             {/* 입력 */}
-            <div className="p-[10px] border-t border-border mt-auto">
+            <div className="p-[10px] border-t border-border flex-shrink-0">
               {/* 이미지 첨부 칩 */}
               {images.length > 0 && (
                 <div className="flex flex-wrap gap-[6px] px-[10px] pt-2 pb-0">
@@ -348,7 +348,7 @@ export function AiPanel({
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </>

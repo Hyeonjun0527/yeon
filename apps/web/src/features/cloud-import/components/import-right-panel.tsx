@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
-import type { ImportHook, ImportPreview } from "../types";
+import type { ChatMessage, ImportHook, ImportPreview } from "../types";
 
 interface ImportRightPanelProps {
   hook: ImportHook;
@@ -13,10 +13,12 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
   const {
     selectedFile,
     analyzing,
+    streamingText,
     editablePreview,
     importing,
     importResult,
     error,
+    chatMessages,
     analyzeSelectedFile,
     updatePreview,
     confirmImport,
@@ -46,7 +48,7 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
         </div>
         <div className="mt-4 text-center">
           <button
-            className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] text-[13px] font-medium border-0 bg-accent text-white cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] text-[13px] font-medium border-0 bg-accent text-white cursor-pointer transition-opacity duration-150 hover:opacity-90"
             onClick={onClose}
             type="button"
           >
@@ -69,7 +71,7 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
     );
   }
 
-  /* 분석 결과 미리보기 (재분석 중에도 표시 — RefinementBar가 disabled 상태로 보임) */
+  /* 분석 결과 미리보기 */
   if (editablePreview) {
     return (
       <div className="h-full flex flex-col">
@@ -82,24 +84,24 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           preview={editablePreview}
           onUpdate={updatePreview}
           onConfirm={confirmImport}
-          onCancel={() => {
-            hook.selectFileForPreview(selectedFile);
-          }}
+          onCancel={() => hook.selectFileForPreview(selectedFile)}
           onRefine={hook.refineWithInstruction}
           analyzing={analyzing}
+          streamingText={streamingText}
           importing={importing}
+          chatMessages={chatMessages}
         />
       </div>
     );
   }
 
-  /* 초기 분석 중 (editablePreview 없음 — 재분석 중은 위 editablePreview 분기에서 처리) */
+  /* 초기 분석 중 */
   if (analyzing) {
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-center gap-2.5 p-6 mb-3 bg-accent-dim rounded-lg text-accent text-[13px] font-medium">
           <Loader2 size={24} className="animate-spin" />
-          <span>AI가 파일을 분석하고 있습니다...</span>
+          <span>{streamingText ?? "파일을 분석하고 있습니다..."}</span>
         </div>
       </div>
     );
@@ -128,7 +130,7 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
   );
 }
 
-/* ── Preview Editor (분석 결과 편집) ── */
+/* ── Preview Editor ── */
 
 interface PreviewEditorProps {
   preview: ImportPreview;
@@ -137,7 +139,9 @@ interface PreviewEditorProps {
   onCancel: () => void;
   onRefine: (instruction: string) => Promise<void>;
   analyzing: boolean;
+  streamingText: string | null;
   importing: boolean;
+  chatMessages: ChatMessage[];
 }
 
 function PreviewEditor({
@@ -147,12 +151,15 @@ function PreviewEditor({
   onCancel,
   onRefine,
   analyzing,
+  streamingText,
   importing,
+  chatMessages,
 }: PreviewEditorProps) {
   const updateCohortName = (ci: number, name: string) => {
-    const updated = structuredClone(preview);
-    updated.cohorts[ci].name = name;
-    onUpdate(updated);
+    const cohorts = preview.cohorts.map((c, i) =>
+      i === ci ? { ...c, name } : c,
+    );
+    onUpdate({ cohorts });
   };
 
   const updateStudent = (
@@ -161,102 +168,107 @@ function PreviewEditor({
     field: "name" | "email" | "phone",
     value: string,
   ) => {
-    const updated = structuredClone(preview);
-    const student = updated.cohorts[ci].students[si];
-    if (field === "name") {
-      student.name = value;
-    } else {
-      student[field] = value || null;
-    }
-    onUpdate(updated);
+    const cohorts = preview.cohorts.map((c, i) => {
+      if (i !== ci) return c;
+      const students = c.students.map((s, j) =>
+        j === si ? { ...s, [field]: field === "name" ? value : (value || null) } : s,
+      );
+      return { ...c, students };
+    });
+    onUpdate({ cohorts });
   };
 
   const removeStudent = (ci: number, si: number) => {
-    const updated = structuredClone(preview);
-    updated.cohorts[ci].students.splice(si, 1);
-    onUpdate(updated);
+    const cohorts = preview.cohorts.map((c, i) => {
+      if (i !== ci) return c;
+      return { ...c, students: c.students.filter((_, j) => j !== si) };
+    });
+    onUpdate({ cohorts });
   };
 
-  const totalStudents = preview.cohorts.reduce(
-    (sum, c) => sum + c.students.length,
-    0,
-  );
+  const totalStudents = preview.cohorts.reduce((sum, c) => sum + c.students.length, 0);
 
   return (
-    <div className="py-3">
-      <div className="text-[13px] text-text-dim mb-4">
-        {preview.cohorts.length}개 스페이스, {totalStudents}명 수강생
+    <div className="flex flex-col h-full">
+      {/* 스크롤 가능한 미리보기 테이블 */}
+      <div className="flex-1 overflow-y-auto py-3 min-h-0">
+        <div className="text-[13px] text-text-dim mb-4">
+          {preview.cohorts.length}개 스페이스, {totalStudents}명 수강생
+        </div>
+
+        {preview.cohorts.map((cohort, ci) => (
+          <div key={ci} className="mb-5">
+            <input
+              className="text-sm font-semibold text-text bg-[var(--surface2,var(--surface))] border border-border rounded-[6px] px-3 py-2 w-full mb-2.5 focus:outline-none focus:border-accent"
+              value={cohort.name}
+              onChange={(e) => updateCohortName(ci, e.target.value)}
+              placeholder="스페이스명"
+            />
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이름</th>
+                  <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이메일</th>
+                  <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">전화번호</th>
+                  <th className="text-left px-2 py-1.5 border-b border-border" style={{ width: 40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {cohort.students.map((student, si) => (
+                  <tr key={si}>
+                    <td className="px-2 py-1 border-b border-border">
+                      <input
+                        className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
+                        value={student.name}
+                        onChange={(e) => updateStudent(ci, si, "name", e.target.value)}
+                      />
+                    </td>
+                    <td className="px-2 py-1 border-b border-border">
+                      <input
+                        className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
+                        value={student.email ?? ""}
+                        onChange={(e) => updateStudent(ci, si, "email", e.target.value)}
+                        placeholder="-"
+                      />
+                    </td>
+                    <td className="px-2 py-1 border-b border-border">
+                      <input
+                        className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
+                        value={student.phone ?? ""}
+                        onChange={(e) => updateStudent(ci, si, "phone", e.target.value)}
+                        placeholder="-"
+                      />
+                    </td>
+                    <td className="px-2 py-1 border-b border-border">
+                      <button
+                        className="flex items-center justify-center w-6 h-6 rounded bg-transparent text-text-dim cursor-pointer border-0 transition-[background,color] duration-[120ms] hover:bg-[rgba(239,68,68,0.1)] hover:text-red"
+                        onClick={() => removeStudent(ci, si)}
+                        type="button"
+                        title="삭제"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       </div>
 
-      {preview.cohorts.map((cohort, ci) => (
-        <div key={ci} className="mb-5">
-          <input
-            className="text-sm font-semibold text-text bg-[var(--surface2,var(--surface))] border border-border rounded-[6px] px-3 py-2 w-full mb-2.5 focus:outline-none focus:border-accent"
-            value={cohort.name}
-            onChange={(e) => updateCohortName(ci, e.target.value)}
-            placeholder="스페이스명"
-          />
-          <table className="w-full border-collapse text-[13px]">
-            <thead>
-              <tr>
-                <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이름</th>
-                <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이메일</th>
-                <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">전화번호</th>
-                <th className="text-left px-2 py-1.5 border-b border-border" style={{ width: 40 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {cohort.students.map((student, si) => (
-                <tr key={si}>
-                  <td className="px-2 py-1 border-b border-border">
-                    <input
-                      className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
-                      value={student.name}
-                      onChange={(e) =>
-                        updateStudent(ci, si, "name", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="px-2 py-1 border-b border-border">
-                    <input
-                      className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
-                      value={student.email ?? ""}
-                      onChange={(e) =>
-                        updateStudent(ci, si, "email", e.target.value)
-                      }
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-2 py-1 border-b border-border">
-                    <input
-                      className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
-                      value={student.phone ?? ""}
-                      onChange={(e) =>
-                        updateStudent(ci, si, "phone", e.target.value)
-                      }
-                      placeholder="-"
-                    />
-                  </td>
-                  <td className="px-2 py-1 border-b border-border">
-                    <button
-                      className="flex items-center justify-center w-6 h-6 rounded bg-transparent text-text-dim cursor-pointer border-0 transition-[background,color] duration-[120ms] hover:bg-[rgba(239,68,68,0.1)] hover:text-red"
-                      onClick={() => removeStudent(ci, si)}
-                      type="button"
-                      title="삭제"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+      {/* 채팅 영역 — 고정 */}
+      <div className="flex-shrink-0 border-t border-border">
+        <ChatSection
+          messages={chatMessages}
+          analyzing={analyzing}
+          streamingText={streamingText}
+          onSend={onRefine}
+        />
+      </div>
 
-      <RefinementBar onRefine={onRefine} analyzing={analyzing} />
-
-      <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
+      {/* 확인/취소 버튼 */}
+      <div className="flex justify-end gap-2 pt-3 pb-1 border-t border-border flex-shrink-0">
         <button
           className="px-4 py-2 rounded-[6px] text-[13px] font-medium border border-border bg-transparent text-text-secondary cursor-pointer hover:bg-[var(--surface3)]"
           onClick={onCancel}
@@ -285,53 +297,129 @@ function PreviewEditor({
   );
 }
 
-/* ── Refinement Bar (AI 추가 요청) ── */
+/* ── Chat Section ── */
 
-function RefinementBar({
-  onRefine,
+function SparkleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 L13.5 8.5 L19 10 L13.5 11.5 L12 17 L10.5 11.5 L5 10 L10.5 8.5 Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ChatSection({
+  messages,
   analyzing,
+  streamingText,
+  onSend,
 }: {
-  onRefine: (instruction: string) => Promise<void>;
+  messages: ChatMessage[];
   analyzing: boolean;
+  streamingText: string | null;
+  onSend: (text: string) => Promise<void>;
 }) {
-  const [instruction, setInstruction] = useState("");
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = async () => {
-    const trimmed = instruction.trim();
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, analyzing]);
+
+  const handleSend = async () => {
+    const trimmed = input.trim();
     if (!trimmed || analyzing) return;
-    await onRefine(trimmed);
-    setInstruction("");
+    setInput("");
+    await onSend(trimmed);
   };
 
+  const isEmpty = messages.length === 0 && !analyzing;
+
   return (
-    <div className="px-4 py-3 border-t border-border bg-[var(--surface2)] flex flex-col gap-2">
-      <p className="text-xs font-semibold text-text-dim m-0">AI에게 추가 요청</p>
-      <textarea
-        className="w-full px-2.5 py-2 text-[13px] border border-border rounded-[6px] bg-surface text-text resize-none outline-none box-border font-[inherit] leading-relaxed transition-[border-color] duration-150 focus:border-accent-border disabled:opacity-60 disabled:cursor-not-allowed"
-        value={instruction}
-        onChange={(e) => setInstruction(e.target.value)}
-        placeholder="예: 출결 정보도 뽑아줘 / 이메일이 빠진 수강생 다시 확인해줘"
-        rows={2}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-        }}
-        disabled={analyzing}
-      />
-      <button
-        className="self-end flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-medium border border-accent-border rounded-[6px] bg-transparent text-accent cursor-pointer transition-[background,color] duration-150 hover:not-disabled:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed"
-        onClick={handleSubmit}
-        disabled={!instruction.trim() || analyzing}
-        type="button"
+    <div className="flex flex-col" style={{ height: 220 }}>
+      {/* 메시지 목록 */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2"
       >
-        {analyzing ? (
-          <>
-            <Loader2 size={14} className="animate-spin" />
-            재분석 중...
-          </>
-        ) : (
-          "AI 재분석 요청"
+        {isEmpty && (
+          <div className="flex flex-col items-center justify-center h-full gap-1.5 text-center">
+            <SparkleIcon />
+            <p className="text-[12px] text-text-dim m-0 leading-relaxed">
+              AI에게 수정을 요청해 보세요<br />
+              <span className="text-text-dim opacity-70">예: 김민지 이름 김민제로 바꿔</span>
+            </p>
+          </div>
         )}
-      </button>
+
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+          >
+            {msg.role === "ai" && (
+              <div className="w-6 h-6 rounded-full bg-accent-dim flex items-center justify-center flex-shrink-0 mt-0.5 text-accent">
+                <SparkleIcon />
+              </div>
+            )}
+            <div
+              className={`max-w-[80%] px-3 py-2 rounded-xl text-[12px] leading-relaxed ${
+                msg.role === "user"
+                  ? "bg-accent text-white rounded-tr-sm"
+                  : "bg-surface-3 text-text-secondary rounded-tl-sm"
+              }`}
+            >
+              {msg.text}
+            </div>
+          </div>
+        ))}
+
+        {analyzing && (
+          <div className="flex gap-2 flex-row">
+            <div className="w-6 h-6 rounded-full bg-accent-dim flex items-center justify-center flex-shrink-0 mt-0.5 text-accent">
+              <SparkleIcon />
+            </div>
+            <div className="px-3 py-2 rounded-xl rounded-tl-sm bg-surface-3 text-[12px] text-text-dim flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              <span>{streamingText ?? "처리 중..."}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 입력창 */}
+      <div className="flex items-end gap-2 px-3 py-2 border-t border-border">
+        <textarea
+          ref={textareaRef}
+          className="flex-1 resize-none text-[12px] bg-surface-2 border border-border rounded-lg px-2.5 py-2 text-text outline-none leading-relaxed transition-[border-color] duration-150 focus:border-accent-border disabled:opacity-50 disabled:cursor-not-allowed font-[inherit]"
+          rows={1}
+          placeholder="수정 요청... (Enter로 전송)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          disabled={analyzing}
+          style={{ minHeight: 32, maxHeight: 80 }}
+        />
+        <button
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent text-white border-0 cursor-pointer flex-shrink-0 transition-opacity duration-150 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={handleSend}
+          disabled={!input.trim() || analyzing}
+          type="button"
+          title="전송"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,365 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement } from "react";
+import type { ReactNode } from "react";
+import { useRecords } from "../use-records";
+
+/* ── fetch 모킹 ── */
+
+function mockFetch(responses: Record<string, unknown>) {
+  vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+    const url = typeof input === "string" ? input : (input as Request).url;
+    const match = Object.entries(responses).find(([pattern]) => url.includes(pattern));
+    const body = match ? match[1] : { records: [] };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+}
+
+/* ── 헬퍼 ── */
+
+function makeServerRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "rec-001",
+    spaceId: "space-1",
+    memberId: null,
+    studentName: "김철수",
+    sessionTitle: "3월 멘토링",
+    counselingType: "1:1",
+    status: "ready",
+    preview: "요약입니다",
+    audioDurationMs: 60000,
+    errorMessage: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+function makeTempRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "temp-001",
+    spaceId: null,
+    memberId: null,
+    createdAt: new Date().toISOString(),
+    title: "처리 중",
+    status: "processing" as const,
+    errorMessage: null,
+    meta: "수강생 미지정",
+    duration: "0:00",
+    durationMs: 0,
+    studentName: "",
+    type: "",
+    audioUrl: null,
+    transcript: [],
+    aiSummary: "",
+    aiMessages: [],
+    analysisResult: null,
+    ...overrides,
+  };
+}
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 0 },
+    },
+  });
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children);
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/* ── 초기 상태 ── */
+
+describe("초기 상태", () => {
+  it("서버에 레코드가 없으면 phase가 'empty'다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.phase).toBe("empty");
+    expect(result.current.records).toHaveLength(0);
+  });
+
+  it("서버에 레코드가 있으면 phase가 'ready'가 된다", async () => {
+    mockFetch({
+      "/api/v1/counseling-records": { records: [makeServerRecord()] },
+    });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.phase).toBe("ready");
+    expect(result.current.records).toHaveLength(1);
+    expect(result.current.records[0].title).toBe("3월 멘토링");
+  });
+
+  it("selectedId와 selected가 null로 초기화된다", () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.selectedId).toBeNull();
+    expect(result.current.selected).toBeNull();
+  });
+});
+
+/* ── addProcessingRecord ── */
+
+describe("addProcessingRecord", () => {
+  it("임시 레코드를 목록에 추가하고 phase를 processing으로 전환한다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord();
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+
+    expect(result.current.phase).toBe("processing");
+    expect(result.current.selectedId).toBe("temp-001");
+    expect(result.current.records.some((r) => r.id === "temp-001")).toBe(true);
+  });
+
+  it("같은 ID를 두 번 추가해도 중복되지 않는다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord();
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+      result.current.addProcessingRecord(tempRec);
+    });
+
+    const count = result.current.records.filter((r) => r.id === "temp-001").length;
+    expect(count).toBe(1);
+  });
+});
+
+/* ── replaceRecord ── */
+
+describe("replaceRecord", () => {
+  it("임시 레코드를 실제 레코드로 교체하고 selectedId를 갱신한다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord({ id: "temp-xyz" });
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+
+    const realRec = makeTempRecord({ id: "real-001", status: "processing" });
+    act(() => {
+      result.current.replaceRecord("temp-xyz", realRec);
+    });
+
+    expect(result.current.selectedId).toBe("real-001");
+    expect(result.current.records.some((r) => r.id === "temp-xyz")).toBe(false);
+  });
+});
+
+/* ── markUploadError ── */
+
+describe("markUploadError", () => {
+  it("임시 레코드를 error 상태로 표시하고 phase를 ready로 전환한다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord({ id: "temp-fail" });
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+    expect(result.current.phase).toBe("processing");
+
+    act(() => {
+      result.current.markUploadError("temp-fail", "네트워크 오류");
+    });
+
+    expect(result.current.phase).toBe("ready");
+  });
+});
+
+/* ── updateMessages / clearMessages ── */
+
+describe("updateMessages", () => {
+  it("레코드의 aiMessages를 로컬 오버라이드로 업데이트한다", async () => {
+    mockFetch({
+      "/api/v1/counseling-records": { records: [makeServerRecord({ id: "rec-msg" })] },
+    });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.records).toHaveLength(1));
+
+    act(() => {
+      result.current.updateMessages("rec-msg", () => [
+        { role: "user", text: "안녕" },
+      ]);
+    });
+
+    const rec = result.current.records.find((r) => r.id === "rec-msg");
+    expect(rec?.aiMessages).toHaveLength(1);
+    expect(rec?.aiMessages[0].text).toBe("안녕");
+  });
+
+  it("clearMessages 호출 후 aiMessages가 빈 배열이 된다", async () => {
+    mockFetch({
+      "/api/v1/counseling-records": { records: [makeServerRecord({ id: "rec-clr" })] },
+    });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.records).toHaveLength(1));
+
+    act(() => {
+      result.current.updateMessages("rec-clr", () => [
+        { role: "user", text: "테스트" },
+      ]);
+    });
+    act(() => {
+      result.current.clearMessages("rec-clr");
+    });
+
+    const rec = result.current.records.find((r) => r.id === "rec-clr");
+    expect(rec?.aiMessages).toHaveLength(0);
+  });
+});
+
+/* ── updateMemberId ── */
+
+describe("updateMemberId", () => {
+  it("레코드의 memberId를 로컬 오버라이드로 업데이트한다", async () => {
+    mockFetch({
+      "/api/v1/counseling-records": {
+        records: [makeServerRecord({ id: "rec-member", memberId: null })],
+      },
+    });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.records).toHaveLength(1));
+
+    act(() => {
+      result.current.updateMemberId("rec-member", "member-99");
+    });
+
+    const rec = result.current.records.find((r) => r.id === "rec-member");
+    expect(rec?.memberId).toBe("member-99");
+  });
+
+  it("null로 업데이트하면 수강생 연결이 해제된다", async () => {
+    mockFetch({
+      "/api/v1/counseling-records": {
+        records: [makeServerRecord({ id: "rec-unlink", memberId: "member-1" })],
+      },
+    });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.records).toHaveLength(1));
+
+    act(() => {
+      result.current.updateMemberId("rec-unlink", null);
+    });
+
+    const rec = result.current.records.find((r) => r.id === "rec-unlink");
+    expect(rec?.memberId).toBeNull();
+  });
+});
+
+/* ── removeRecord ── */
+
+describe("removeRecord", () => {
+  it("레코드를 제거하고 selectedId를 초기화한다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord({ id: "temp-del" });
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+    expect(result.current.selectedId).toBe("temp-del");
+
+    act(() => {
+      result.current.removeRecord("temp-del");
+    });
+
+    expect(result.current.selectedId).toBeNull();
+    expect(result.current.records.some((r) => r.id === "temp-del")).toBe(false);
+  });
+
+  it("마지막 레코드 제거 후 phase가 'empty'가 된다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const tempRec = makeTempRecord({ id: "temp-last" });
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+    act(() => {
+      result.current.removeRecord("temp-last");
+    });
+
+    expect(result.current.phase).toBe("empty");
+  });
+});

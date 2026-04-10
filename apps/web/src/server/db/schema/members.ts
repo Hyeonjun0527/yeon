@@ -12,7 +12,6 @@ export const members = pgTable("members", {
   phone: varchar("phone", { length: 20 }),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   initialRiskLevel: varchar("initial_risk_level", { length: 10 }),
-  counselingRecordId: uuid("counseling_record_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

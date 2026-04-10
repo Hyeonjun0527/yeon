@@ -13,6 +13,7 @@ user_invocable: true
 - 구현이 완료된 상태여야 한다.
 - 현재 브랜치가 develop에서 분기한 작업 브랜치여야 한다.
 - develop이나 main에서 직접 실행하지 않는다.
+- **동시 작업 인식**: push 직전 반드시 `git fetch origin && git rebase origin/develop`을 실행한다. 다른 에이전트가 먼저 develop에 머지했을 수 있다. develop → main PR 생성 전에도 동일하게 확인한다.
 
 ## 플로우
 

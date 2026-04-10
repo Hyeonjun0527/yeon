@@ -1,3 +1,4 @@
+import { type AnalysisResult, analysisResultSchema } from "@yeon/api-contract";
 import { ServiceError } from "./service-error";
 
 const OPENAI_CHAT_COMPLETIONS_URL =
@@ -39,17 +40,20 @@ function buildTranscriptBlock(segments: TranscriptSegmentInput[]) {
     .join("\n");
 }
 
+/** 화자 분리 여부 — generic 라벨(원문/unknown)만 있으면 미분리로 판단 */
+function hasDiarization(segments: TranscriptSegmentInput[]): boolean {
+  return segments.some(
+    (s) => s.speakerLabel !== "원문" && s.speakerLabel !== "unknown",
+  );
+}
+
 function buildSystemPrompt(
   meta: RecordMetaInput,
   segments: TranscriptSegmentInput[],
 ) {
   const transcriptBlock = buildTranscriptBlock(segments);
 
-  const hasDiarization = segments.some(
-    (s) => s.speakerLabel !== "원문" && s.speakerLabel !== "unknown",
-  );
-
-  const diarizationGuide = hasDiarization
+  const diarizationGuide = hasDiarization(segments)
     ? ""
     : `
 ## 화자 분리 안내
@@ -182,6 +186,118 @@ function getOpenAiApiKey() {
   }
 
   return apiKey;
+}
+
+/** 상담 기록을 JSON 구조로 분석하여 반환 (비스트리밍) */
+export async function analyzeCounselingRecord(
+  meta: RecordMetaInput,
+  segments: TranscriptSegmentInput[],
+): Promise<AnalysisResult> {
+  const apiKey = getOpenAiApiKey();
+  const model =
+    process.env.OPENAI_AI_CHAT_MODEL?.trim() || DEFAULT_AI_CHAT_MODEL;
+
+  const transcriptBlock = buildTranscriptBlock(segments);
+
+  const diarizationGuide = hasDiarization(segments)
+    ? ""
+    : `\n화자 분리가 수행되지 않아 전체가 하나의 원문으로 제공됩니다. 대화 맥락을 바탕으로 멘토와 수강생의 발화를 추론하세요.`;
+
+  const systemPrompt = `당신은 부트캠프/교육 프로그램 상담 기록 분석 전문 AI입니다.
+
+## 역할
+멘토/운영자가 업로드한 상담 녹음의 전사 원문을 분석하여 구조화된 JSON으로 반환합니다.
+항상 원문에 근거하고, 원문에 없는 내용을 지어내지 않습니다.
+대상은 20~30대 성인 수강생입니다.
+${diarizationGuide}
+
+## 현재 상담 기록
+- 수강생: ${meta.studentName || "(미지정)"}
+- 상담 제목: ${meta.sessionTitle}
+- 상담 유형: ${meta.counselingType}
+- 기록 일시: ${meta.createdAt}
+
+## 상담 원문 전사
+${transcriptBlock}
+
+## 응답 규칙
+- 한국어로 작성합니다.
+- 원문 인용 시 타임스탬프를 포함합니다 (예: "[01:23]").
+- 반드시 아래 JSON 스키마를 따릅니다:
+
+{
+  "summary": "3-4문장의 핵심 요약",
+  "member": {
+    "name": "원문에서 파악된 수강생 이름 (없으면 null)",
+    "traits": ["성격", "학습 스타일", "현재 상황 등 관찰 특징"],
+    "emotion": "상담 중 드러난 감정/태도 변화 요약"
+  },
+  "issues": [
+    {
+      "title": "이슈 제목",
+      "detail": "상세 설명 (원문 인용 포함)",
+      "timestamp": "관련 타임스탬프 (없으면 null)"
+    }
+  ],
+  "actions": {
+    "mentor": ["멘토가 취해야 할 구체적 행동"],
+    "member": ["수강생에게 권하는 다음 단계"],
+    "nextSession": ["후속 상담에서 확인할 사항"]
+  },
+  "keywords": ["상담 핵심 키워드 3-5개"]
+}`;
+
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: "위 상담 기록을 분석하여 JSON으로 반환하세요." },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = "AI 분석에 실패했습니다.";
+    try {
+      const errorData = (await response.json()) as { error?: { message?: string } };
+      if (errorData.error?.message) errorMessage = errorData.error.message;
+    } catch {
+      // 기본 메시지 사용
+    }
+    throw new ServiceError(response.status >= 500 ? 502 : response.status, errorMessage);
+  }
+
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const raw = data.choices?.[0]?.message?.content;
+
+  if (!raw) {
+    throw new ServiceError(502, "AI 분석 응답이 비어 있습니다.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ServiceError(502, "AI 분석 응답 JSON 파싱 실패");
+  }
+
+  const validated = analysisResultSchema.safeParse(parsed);
+  if (!validated.success) {
+    console.warn("AI 분석 응답 스키마 검증 실패:", validated.error.message);
+    throw new ServiceError(502, "AI 분석 응답이 예상 스키마와 다릅니다.");
+  }
+
+  return validated.data;
 }
 
 export async function streamCounselingAiChat(

@@ -194,3 +194,205 @@ describe("mapOpenAiSegments", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+// ─── 추가 엣지케이스 ────────────────────────────────────────────────────────
+
+describe("mapSpeakerTone 추가 엣지케이스", () => {
+  it("대소문자 조합 TEACHER → teacher", () => {
+    expect(mapSpeakerTone("TEACHER")).toBe("teacher");
+  });
+
+  it("대소문자 혼합 TeAcHeR → teacher", () => {
+    expect(mapSpeakerTone("TeAcHeR")).toBe("teacher");
+  });
+
+  it("숫자만 포함 레이블 '123' → unknown", () => {
+    expect(mapSpeakerTone("123")).toBe("unknown");
+  });
+
+  it("특수문자 레이블 '@#$' → unknown", () => {
+    expect(mapSpeakerTone("@#$")).toBe("unknown");
+  });
+
+  it("공백만 있는 레이블 '   ' → unknown", () => {
+    expect(mapSpeakerTone("   ")).toBe("unknown");
+  });
+
+  it("100자 teacher 포함 레이블 → teacher", () => {
+    const long = "teacher" + "x".repeat(93);
+    expect(mapSpeakerTone(long)).toBe("teacher");
+  });
+});
+
+describe("formatSpeakerLabel 추가 엣지케이스", () => {
+  it("'speaker_10' → '화자 11'", () => {
+    expect(formatSpeakerLabel("speaker_10")).toBe("화자 11");
+  });
+
+  it("'SPEAKER_0' 대문자 → '화자 1'", () => {
+    expect(formatSpeakerLabel("SPEAKER_0")).toBe("화자 1");
+  });
+
+  it("한글 레이블은 그대로 반환", () => {
+    expect(formatSpeakerLabel("김철수")).toBe("김철수");
+  });
+
+  it("정확히 40자 레이블 → 그대로 반환", () => {
+    const label = "b".repeat(40);
+    expect(formatSpeakerLabel(label)).toBe(label);
+  });
+
+  it("41자 레이블 → 40자 잘림", () => {
+    const label = "c".repeat(41);
+    expect(formatSpeakerLabel(label)).toBe("c".repeat(40));
+  });
+});
+
+describe("splitTranscriptIntoParagraphs 추가 케이스", () => {
+  it("빈 문자열 입력 → 빈 배열", () => {
+    const result = splitTranscriptIntoParagraphs("");
+    expect(result).toEqual([]);
+  });
+
+  it("줄바꿈만 연속으로 있는 입력 '\\n\\n\\n' → 빈 배열", () => {
+    const result = splitTranscriptIntoParagraphs("\n\n\n");
+    expect(result).toEqual([]);
+  });
+
+  it("매우 긴 단일 문단 → 단일 요소 배열", () => {
+    const text = "단어 ".repeat(200).trim();
+    const result = splitTranscriptIntoParagraphs(text);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(text);
+  });
+
+  it("\\r\\n 줄바꿈으로 분할", () => {
+    const result = splitTranscriptIntoParagraphs("첫째\r\n둘째\r\n셋째");
+    expect(result).toEqual(["첫째", "둘째", "셋째"]);
+  });
+
+  it("앞뒤 공백이 있는 줄은 trim 후 포함", () => {
+    const result = splitTranscriptIntoParagraphs("  첫째  \n  둘째  ");
+    expect(result).toEqual(["첫째", "둘째"]);
+  });
+});
+
+describe("buildFallbackSegments 추가 케이스", () => {
+  it("빈 transcriptText → 단일 세그먼트 (safeParagraphs fallback)", () => {
+    const result = buildFallbackSegments("", 2000, 0, 0);
+    // splitTranscriptIntoParagraphs("") returns [], safeParagraphs = [""]
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("");
+  });
+
+  it("단일 줄 입력 → 세그먼트 1개", () => {
+    const result = buildFallbackSegments("안녕하세요.", 3000, 0, 0);
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("안녕하세요.");
+  });
+
+  it("여러 줄 입력 → 줄 수만큼 세그먼트 생성", () => {
+    const result = buildFallbackSegments("A\nB\nC\nD", 8000, 0, 0);
+    expect(result).toHaveLength(4);
+    expect(result.map((s) => s.text)).toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("각 segment의 speakerLabel, speakerTone, segmentIndex 확인", () => {
+    const result = buildFallbackSegments("X\nY", 4000, 0, 3);
+    expect(result[0].speakerLabel).toBe("원문");
+    expect(result[0].speakerTone).toBe("unknown");
+    expect(result[0].segmentIndex).toBe(3);
+    expect(result[1].speakerLabel).toBe("원문");
+    expect(result[1].speakerTone).toBe("unknown");
+    expect(result[1].segmentIndex).toBe(4);
+  });
+
+  it("durationMs가 양수이면 startMs/endMs가 null이 아님", () => {
+    const result = buildFallbackSegments("P\nQ", 6000, 0, 0);
+    expect(result[0].startMs).not.toBeNull();
+    expect(result[0].endMs).not.toBeNull();
+    expect(result[1].startMs).not.toBeNull();
+    expect(result[1].endMs).not.toBeNull();
+  });
+});
+
+describe("mapOpenAiSegments 추가 케이스", () => {
+  it("빈 배열 입력 → fallback 전환 (segments=[])", () => {
+    const result = mapOpenAiSegments("단일 문장.", 5000, [], 0, 0);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result[0].speakerLabel).toBe("원문");
+  });
+
+  it("speaker가 null인 세그먼트 → speakerTone unknown, speakerLabel 원문", () => {
+    const segments = [{ start: 0, end: 2, text: "테스트", speaker: null }];
+    const result = mapOpenAiSegments("테스트", 2000, segments as never, 0, 0);
+    expect(result[0].speakerTone).toBe("unknown");
+    expect(result[0].speakerLabel).toBe("원문");
+  });
+
+  it("start/end가 정상인 세그먼트 → startMs/endMs 변환 정확", () => {
+    const segments = [{ start: 1.5, end: 3.25, text: "정상", speaker: "A" }];
+    const result = mapOpenAiSegments("정상", 3250, segments, 0, 0);
+    expect(result[0].startMs).toBe(1500);
+    expect(result[0].endMs).toBe(3250);
+  });
+
+  it("text가 빈 문자열인 세그먼트는 건너뜀", () => {
+    const segments = [
+      { start: 0, end: 1, text: "", speaker: "A" },
+      { start: 1, end: 2, text: "내용", speaker: "A" },
+    ];
+    const result = mapOpenAiSegments("내용", 2000, segments, 0, 0);
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("내용");
+  });
+
+  it("speakerTone 매핑이 올바른지 — 여러 화자 혼재", () => {
+    const segments = [
+      { start: 0, end: 1, text: "멘토 발화", speaker: "Teacher" },
+      { start: 1, end: 2, text: "수강생 발화", speaker: "Student" },
+      { start: 2, end: 3, text: "기타 발화", speaker: "speaker_2" },
+    ];
+    const result = mapOpenAiSegments("전체", 3000, segments, 0, 0);
+    expect(result[0].speakerTone).toBe("teacher");
+    expect(result[1].speakerTone).toBe("student");
+    expect(result[2].speakerTone).toBe("unknown");
+  });
+
+  it("segmentIndex 순서 — startingSegmentIndex 반영", () => {
+    const segments = [
+      { start: 0, end: 1, text: "첫번째", speaker: "A" },
+      { start: 1, end: 2, text: "두번째", speaker: "B" },
+      { start: 2, end: 3, text: "세번째", speaker: "A" },
+    ];
+    const result = mapOpenAiSegments("전체", 3000, segments, 0, 10);
+    expect(result[0].segmentIndex).toBe(10);
+    expect(result[1].segmentIndex).toBe(11);
+    expect(result[2].segmentIndex).toBe(12);
+  });
+
+  it("startMs가 초→밀리초 변환 (start * 1000)", () => {
+    const segments = [{ start: 2.0, end: 5.0, text: "변환 확인", speaker: "A" }];
+    const result = mapOpenAiSegments("변환 확인", 5000, segments, 0, 0);
+    expect(result[0].startMs).toBe(2000);
+    expect(result[0].endMs).toBe(5000);
+  });
+
+  it("speaker가 'Teacher'인 경우 speakerTone = 'teacher'", () => {
+    const segments = [{ start: 0, end: 2, text: "강사 발화", speaker: "Teacher" }];
+    const result = mapOpenAiSegments("강사 발화", 2000, segments, 0, 0);
+    expect(result[0].speakerTone).toBe("teacher");
+  });
+
+  it("speaker가 'Student'인 경우 speakerTone = 'student'", () => {
+    const segments = [{ start: 0, end: 2, text: "수강생 발화", speaker: "Student" }];
+    const result = mapOpenAiSegments("수강생 발화", 2000, segments, 0, 0);
+    expect(result[0].speakerTone).toBe("student");
+  });
+
+  it("speaker가 알 수 없는 경우 speakerTone = 'unknown'", () => {
+    const segments = [{ start: 0, end: 2, text: "알 수 없음", speaker: "speaker_99" }];
+    const result = mapOpenAiSegments("알 수 없음", 2000, segments, 0, 0);
+    expect(result[0].speakerTone).toBe("unknown");
+  });
+});

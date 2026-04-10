@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useStudentManagement } from "../student-management-provider";
-import type { ActivityLog, DetailTab, Member } from "../types";
+import type { ActivityLog, Member } from "../types";
 
 interface UseMemberDetailParams {
   memberId: string;
@@ -10,7 +10,7 @@ interface UseMemberDetailParams {
 
 export function useMemberDetail({ memberId }: UseMemberDetailParams) {
   const { members, selectedSpaceId } = useStudentManagement();
-  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);

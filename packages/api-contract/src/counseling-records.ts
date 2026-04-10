@@ -24,6 +24,8 @@ export const counselingTranscriptSegmentSchema = z.object({
 
 export const counselingRecordListItemSchema = z.object({
   id: z.string().uuid(),
+  spaceId: z.string().uuid().nullable(),
+  memberId: z.string().uuid().nullable(),
   studentName: z.string(),
   sessionTitle: z.string(),
   counselingType: z.string(),
@@ -45,11 +47,40 @@ export const counselingRecordListItemSchema = z.object({
   transcriptionCompletedAt: z.string().datetime().nullable(),
 });
 
+// ── AI 분석 결과 구조화 스키마 ──
+
+export const analysisIssueSchema = z.object({
+  title: z.string(),
+  detail: z.string(),
+  timestamp: z.string().nullable().optional(),
+});
+
+export const analysisActionsSchema = z.object({
+  mentor: z.array(z.string()),
+  member: z.array(z.string()),
+  nextSession: z.array(z.string()),
+});
+
+export const analysisResultSchema = z.object({
+  summary: z.string(),
+  member: z.object({
+    name: z.string().nullable(),
+    traits: z.array(z.string()),
+    emotion: z.string(),
+  }),
+  issues: z.array(analysisIssueSchema),
+  actions: analysisActionsSchema,
+  keywords: z.array(z.string()),
+});
+
+export type AnalysisResult = z.infer<typeof analysisResultSchema>;
+
 export const counselingRecordDetailSchema =
   counselingRecordListItemSchema.extend({
     transcriptText: z.string(),
     transcriptSegments: z.array(counselingTranscriptSegmentSchema),
-    audioUrl: z.string(),
+    audioUrl: z.string().nullable(),
+    analysisResult: analysisResultSchema.nullable(),
   });
 
 export const listCounselingRecordsResponseSchema = z.object({
@@ -106,6 +137,25 @@ export type UpdateSegmentRequest = z.infer<typeof updateSegmentRequestSchema>;
 export type BulkUpdateSpeakerRequest = z.infer<
   typeof bulkUpdateSpeakerRequestSchema
 >;
+
+// ── AI 분석 응답 ──
+
+export const analyzeRecordResponseSchema = z.object({
+  analysisResult: analysisResultSchema,
+});
+
+export type AnalyzeRecordResponse = z.infer<typeof analyzeRecordResponseSchema>;
+
+// ── 수강생 연결 ──
+
+export const linkMemberRequestSchema = z.object({
+  memberId: z.string().uuid().nullable(),
+});
+
+export const linkMemberResponseSchema = z.object({ ok: z.literal(true) });
+
+export type LinkMemberRequest = z.infer<typeof linkMemberRequestSchema>;
+export type LinkMemberResponse = z.infer<typeof linkMemberResponseSchema>;
 
 // 78차: 학생별 요약
 export const studentSummarySchema = z.object({

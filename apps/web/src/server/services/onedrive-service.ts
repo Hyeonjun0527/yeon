@@ -218,6 +218,13 @@ export async function listFiles(
   );
 
   if (!res.ok) {
+    if (res.status === 403 || res.status === 401) {
+      const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+      if (body.error?.code === "accessDenied") {
+        throw new ServiceError(403, "이 폴더는 Personal Vault로 보호되어 있어 접근할 수 없습니다. OneDrive 앱에서 직접 잠금을 해제한 뒤 다시 시도해 주세요.");
+      }
+      throw new ServiceError(403, "OneDrive 접근 권한이 없습니다. 다시 연결해 주세요.");
+    }
     throw new ServiceError(502, "OneDrive 파일 목록 조회 실패");
   }
 

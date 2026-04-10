@@ -1,12 +1,16 @@
+import { z } from "zod";
 import type { NextRequest } from "next/server";
 
 import { getMultipleRecordsWithSegments } from "@/server/services/counseling-records-service";
 import { streamTrendAnalysis } from "@/server/services/counseling-ai-service";
-import { ServiceError } from "@/server/services/service-error";
 
-import { jsonError, requireAuthenticatedUser } from "../_shared";
+import { jsonError, requireAuthenticatedUser, withHandler } from "../_shared";
 
 export const runtime = "nodejs";
+
+const analyzeTrendBodySchema = z.object({
+  recordIds: z.array(z.string()).min(1, "recordIds는 비어 있을 수 없습니다."),
+});
 
 export async function POST(request: NextRequest) {
   const { currentUser, response } = await requireAuthenticatedUser(request);
@@ -15,28 +19,24 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  let body: { recordIds?: unknown };
-
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return jsonError("요청 본문 형식이 올바르지 않습니다.", 400);
   }
 
-  const { recordIds } = body;
-
-  if (
-    !Array.isArray(recordIds) ||
-    recordIds.length === 0 ||
-    !recordIds.every((id) => typeof id === "string")
-  ) {
-    return jsonError("recordIds는 문자열 배열이어야 합니다.", 400);
+  const parsed = analyzeTrendBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return jsonError(parsed.error.issues[0]?.message ?? "잘못된 요청입니다.", 400);
   }
 
-  try {
+  const { recordIds } = parsed.data;
+
+  return withHandler(async () => {
     const records = await getMultipleRecordsWithSegments(
       currentUser.id,
-      recordIds as string[],
+      recordIds,
     );
 
     if (records.length === 0) {
@@ -53,12 +53,5 @@ export async function POST(request: NextRequest) {
         Connection: "keep-alive",
       },
     });
-  } catch (error) {
-    if (error instanceof ServiceError) {
-      return jsonError(error.message, error.status);
-    }
-
-    console.error(error);
-    return jsonError("추이 분석에 실패했습니다.", 500);
-  }
+  });
 }

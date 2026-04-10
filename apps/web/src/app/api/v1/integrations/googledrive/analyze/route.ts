@@ -11,6 +11,7 @@ import {
   getValidAccessToken,
 } from "@/server/services/googledrive-service";
 import { analyzeBuffer, type ImportPreview, type RefineContext } from "@/server/services/file-analysis-service";
+import { createImportSSEStream } from "@/server/services/import-stream";
 import { detectFileKind } from "@/features/cloud-import/file-kind";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -49,6 +50,11 @@ export async function POST(request: NextRequest) {
       parsed.data.instruction?.trim() && parsed.data.previousResult
         ? { instruction: parsed.data.instruction.trim(), previousResult: parsed.data.previousResult as ImportPreview }
         : undefined;
+
+    if (request.headers.get("accept")?.includes("text/event-stream")) {
+      return createImportSSEStream(buffer, fileName, parsed.data.mimeType, kind, refine);
+    }
+
     const preview = await analyzeBuffer(buffer, fileName, parsed.data.mimeType, kind, refine);
     return NextResponse.json(preview);
   } catch (error) {

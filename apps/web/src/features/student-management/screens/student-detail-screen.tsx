@@ -5,15 +5,19 @@ import { useStudentManagement } from "../student-management-provider";
 import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
 import { useStudentMemos } from "../hooks/use-student-memos";
+import { useDynamicMemberTabs } from "../hooks/use-dynamic-member-tabs";
 import { StudentDetailHeader } from "../components/student-detail-header";
 import { StudentDetailTabs } from "../components/student-detail-tabs";
 import { TabOverview } from "../components/tab-overview";
 import { TabCounseling } from "../components/tab-counseling";
+import { TabCounselingRecords } from "../components/tab-counseling-records";
+import { TabMemberOverview } from "../components/tab-member-overview";
 import { TabCourses } from "../components/tab-courses";
 import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { SheetIntegrationPanel } from "../components/sheet-integration-panel";
+import { CustomTabContent } from "../components/custom-tab-content";
 
 interface StudentDetailScreenProps {
   paramsPromise: Promise<{ studentId: string }>;
@@ -23,7 +27,7 @@ export function StudentDetailScreen({
   paramsPromise,
 }: StudentDetailScreenProps) {
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode, selectedSpaceId } = useStudentManagement();
+  const { sheetMode, selectedSpaceId, refetchMembers } = useStudentManagement();
 
   /* ── API 기반 멤버 조회 ── */
   const {
@@ -34,6 +38,17 @@ export function StudentDetailScreen({
     logsLoading,
     logsError,
   } = useMemberDetail({ memberId: studentId });
+
+  /* ── 동적 탭 목록 ── */
+  const { tabs: dynamicTabs } = useDynamicMemberTabs(selectedSpaceId);
+  const tabItems = dynamicTabs.length > 0
+    ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
+    : undefined;
+  // 현재 탭이 시스템 키가 아닌 UUID이면 커스텀 탭
+  const activeCustomTab = dynamicTabs.find(
+    (t) => t.tabType === "custom" && t.id === activeTab,
+  );
+  const overviewTab = dynamicTabs.find((t) => t.systemKey === "overview");
 
   /* ── 레거시 mock 학생 조회 (member가 없을 때 폴백) ── */
   const { student } = useStudentDetail({ studentId });
@@ -129,78 +144,18 @@ export function StudentDetailScreen({
           </div>
         </div>
 
-        <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <StudentDetailTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={tabItems}
+        />
 
         {activeTab === "overview" && (
-          <div
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: 14,
-              padding: "16px 0",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 12,
-                marginBottom: 24,
-              }}
-            >
-              <div
-                style={{
-                  padding: 16,
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    marginBottom: 4,
-                  }}
-                >
-                  등록일
-                </div>
-                <div
-                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
-                >
-                  {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: 16,
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    marginBottom: 4,
-                  }}
-                >
-                  상태
-                </div>
-                <div
-                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}
-                >
-                  {member.status === "active"
-                    ? "수강중"
-                    : member.status === "withdrawn"
-                      ? "중도포기"
-                      : member.status === "graduated"
-                        ? "수료"
-                        : member.status}
-                </div>
-              </div>
-            </div>
-          </div>
+          <TabMemberOverview
+            member={member}
+            onMemberUpdated={refetchMembers}
+            overviewTabId={overviewTab?.id}
+          />
         )}
 
         {activeTab === "report" && (
@@ -221,10 +176,15 @@ export function StudentDetailScreen({
           />
         )}
 
-        {/* counseling / courses / guardian 탭은 legacy 데이터 없음 안내 */}
-        {(activeTab === "counseling" ||
-          activeTab === "courses" ||
-          activeTab === "guardian") && (
+        {activeTab === "counseling" && (
+          <TabCounselingRecords
+            spaceId={member.spaceId}
+            memberId={member.id}
+          />
+        )}
+
+        {/* courses / guardian 탭은 미구현 안내 */}
+        {(activeTab === "courses" || activeTab === "guardian") && (
           <div
             style={{
               padding: "32px 0",
@@ -233,8 +193,17 @@ export function StudentDetailScreen({
               fontSize: 14,
             }}
           >
-            해당 탭은 레거시 mock 데이터 기반입니다.
+            해당 탭은 준비 중입니다.
           </div>
+        )}
+
+        {/* 커스텀 탭 */}
+        {activeCustomTab && selectedSpaceId && (
+          <CustomTabContent
+            spaceId={selectedSpaceId}
+            memberId={member.id}
+            tabId={activeCustomTab.id}
+          />
         )}
 
         {/* 구글 시트 연동 패널 */}
@@ -283,7 +252,6 @@ export function StudentDetailScreen({
             phone: student.phone,
             status: student.status,
             initialRiskLevel: null,
-            counselingRecordId: null,
             createdAt: student.registeredAt,
             updatedAt: student.registeredAt,
           }}

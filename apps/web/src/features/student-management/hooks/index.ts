@@ -6,3 +6,4 @@ export { useStudentMemos } from "./use-student-memos";
 export { useClassManagement } from "./use-class-management";
 export { useMemberList } from "./use-member-list";
 export { useMemberDetail } from "./use-member-detail";
+export { useDynamicMemberTabs } from "./use-dynamic-member-tabs";

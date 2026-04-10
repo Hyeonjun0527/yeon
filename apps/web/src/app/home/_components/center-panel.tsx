@@ -1,7 +1,96 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, Link2, Link2Off } from "lucide-react";
 import styles from "../home.module.css";
-import type { RecordItem, RecordPhase } from "../_lib/types";
+import type { AnalysisResult, RecordItem, RecordPhase } from "../_lib/types";
 import { fmtTime, fmtMs } from "../_lib/utils";
+
+function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
+  return (
+    <div className="flex flex-col gap-3 mb-4">
+      {/* 핵심 요약 */}
+      <div className="bg-surface-2 border border-border rounded-lg p-4">
+        <h3 className="text-[13px] font-semibold text-accent mb-2">핵심 요약</h3>
+        <p className="text-[13px] leading-relaxed text-text-secondary m-0">{analysis.summary}</p>
+      </div>
+
+      {/* 수강생 정보 */}
+      {analysis.member.name && (
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <h3 className="text-[13px] font-semibold text-accent mb-2">수강생 정보</h3>
+          <div className="flex flex-col gap-1 text-[13px]">
+            <div><span className="text-text-dim">이름:</span> <span className="text-text font-medium">{analysis.member.name}</span></div>
+            {analysis.member.traits.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {analysis.member.traits.map((trait) => (
+                  <span key={trait} className="px-2 py-0.5 bg-surface-3 rounded text-[11px] text-text-secondary">{trait}</span>
+                ))}
+              </div>
+            )}
+            <div className="mt-1"><span className="text-text-dim">감정/태도:</span> <span className="text-text-secondary">{analysis.member.emotion}</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* 주요 이슈 */}
+      {analysis.issues.length > 0 && (
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <h3 className="text-[13px] font-semibold text-accent mb-2">주요 이슈</h3>
+          <div className="flex flex-col gap-2">
+            {analysis.issues.map((issue, i) => (
+              <div key={i} className="flex gap-2 text-[13px]">
+                <span className="text-accent font-semibold flex-shrink-0">{i + 1}.</span>
+                <div>
+                  <div className="font-medium text-text">{issue.title}</div>
+                  <div className="text-text-secondary leading-relaxed mt-0.5">{issue.detail}</div>
+                  {issue.timestamp && <span className="text-[11px] text-text-dim font-mono">{issue.timestamp}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 후속 조치 */}
+      <div className="bg-surface-2 border border-border rounded-lg p-4">
+        <h3 className="text-[13px] font-semibold text-accent mb-2">후속 조치</h3>
+        <div className="flex flex-col gap-3 text-[13px]">
+          {analysis.actions.mentor.length > 0 && (
+            <div>
+              <div className="text-text-dim font-medium mb-1">멘토 액션</div>
+              <ul className="m-0 pl-4 flex flex-col gap-0.5">
+                {analysis.actions.mentor.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+              </ul>
+            </div>
+          )}
+          {analysis.actions.member.length > 0 && (
+            <div>
+              <div className="text-text-dim font-medium mb-1">수강생 과제</div>
+              <ul className="m-0 pl-4 flex flex-col gap-0.5">
+                {analysis.actions.member.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+              </ul>
+            </div>
+          )}
+          {analysis.actions.nextSession.length > 0 && (
+            <div>
+              <div className="text-text-dim font-medium mb-1">다음 상담 방향</div>
+              <ul className="m-0 pl-4 flex flex-col gap-0.5">
+                {analysis.actions.nextSession.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 키워드 */}
+      {analysis.keywords.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {analysis.keywords.map((kw) => (
+            <span key={kw} className="px-2 py-0.5 bg-accent-dim border border-accent-border rounded text-[11px] text-accent font-medium">{kw}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const PROCESSING_STEPS = [
   { label: "음성 파일 업로드" },
@@ -17,12 +106,14 @@ export interface CenterPanelProps {
   selected: RecordItem | null;
   processingStep: number;
   transcriptLoading: boolean;
+  analyzing: boolean;
   /* 오디오 */
   isPlaying: boolean;
   audioPosition: number;
   totalSeconds: number;
   onTogglePlay: () => void;
   onSeek: (pct: number) => void;
+  onLinkMember: () => void;
 }
 
 export function CenterPanel({
@@ -30,11 +121,13 @@ export function CenterPanel({
   selected,
   processingStep,
   transcriptLoading,
+  analyzing,
   isPlaying,
   audioPosition,
   totalSeconds,
   onTogglePlay,
   onSeek,
+  onLinkMember,
 }: CenterPanelProps) {
   /* 기록 목록은 있지만 아직 선택하지 않은 상태 */
   if (!selected) {
@@ -115,20 +208,36 @@ export function CenterPanel({
   if (selected.status === "ready") {
     return (
       <div key={selected.id} className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
-        <div className="px-5 py-4 border-b border-border flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-[15px] font-semibold tracking-[-0.3px] border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <h1 className="text-[15px] font-semibold tracking-[-0.3px] truncate">
               {selected.title}
             </h1>
+            <div className="text-[11px] text-text-dim flex items-center gap-1.5 flex-wrap">
+              <span>{selected.studentName || "수강생 미지정"}</span>
+              <span>·</span>
+              <span>{selected.type}</span>
+              <span>·</span>
+              <span>{selected.duration}</span>
+              <span>·</span>
+              <span>원문 완료</span>
+            </div>
           </div>
-          <div className="text-[11px] text-text-secondary mt-[3px] flex items-center gap-2">
-            <span className="border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">{selected.studentName}</span>
-            {" · "}
-            <span className="border-b border-dashed border-text-dim cursor-pointer transition-[border-color] duration-150 hover:border-accent">{selected.type}</span>
-            {" · "}
-            {selected.duration}
-            {" · 원문 완료"}
-          </div>
+          <button
+            onClick={onLinkMember}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border flex-shrink-0 transition-all duration-150 ${
+              selected.memberId
+                ? "bg-accent-dim border-accent-border text-accent hover:bg-accent hover:text-bg"
+                : "bg-surface-2 border-border text-text-secondary hover:border-accent hover:text-accent"
+            }`}
+          >
+            {selected.memberId ? (
+              <Link2 size={12} />
+            ) : (
+              <Link2Off size={12} />
+            )}
+            {selected.memberId ? "연결됨" : "수강생 연결"}
+          </button>
         </div>
 
         {/* 오디오 플레이어 */}
@@ -165,33 +274,50 @@ export function CenterPanel({
           <span className="font-mono text-[11px] text-text-secondary">{fmtTime(totalSeconds)}</span>
         </div>
 
-        {/* 전사 텍스트 */}
+        {/* AI 분석 결과 */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {transcriptLoading ? (
-            <div className="text-text-dim text-[13px] py-6">
-              전사 내용을 불러오는 중...
+          {analyzing && !selected.analysisResult && (
+            <div className="flex items-center gap-2 mb-4 px-4 py-3 bg-accent-dim border border-accent-border rounded-lg text-accent text-[13px] font-medium">
+              <Loader2 size={14} className="animate-spin" />
+              AI 분석 중...
             </div>
-          ) : selected.transcript.length === 0 ? (
-            <div className="text-text-dim text-[13px] py-6">
-              전사 내용이 없습니다.
-            </div>
-          ) : (
-            selected.transcript.map((seg, i) => (
-              <div key={seg.id ?? i} className="flex gap-[10px] py-2 border-b border-[rgba(255,255,255,0.03)] text-[13px]">
-                <span className="font-mono text-[10px] text-text-dim min-w-[38px] pt-[3px]">
-                  {fmtMs(seg.startMs)}
-                </span>
-                <span
-                  className={`text-[10px] font-semibold min-w-[32px] pt-[3px] ${
-                    seg.speakerTone === "teacher" ? "text-[#60a5fa]" : "text-green"
-                  }`}
-                >
-                  {seg.speakerLabel}
-                </span>
-                <span className="flex-1 text-text">{seg.text}</span>
-              </div>
-            ))
           )}
+
+          {selected.analysisResult && (
+            <AnalysisCards analysis={selected.analysisResult} />
+          )}
+
+          {/* 전사 텍스트 */}
+          <details className="mt-4" open={!selected.analysisResult}>
+            <summary className="text-[13px] font-semibold text-text-secondary cursor-pointer select-none mb-3 hover:text-text transition-colors">
+              전사 원문 {selected.transcript.length > 0 && `(${selected.transcript.length}개 세그먼트)`}
+            </summary>
+            {transcriptLoading ? (
+              <div className="text-text-dim text-[13px] py-6">
+                전사 내용을 불러오는 중...
+              </div>
+            ) : selected.transcript.length === 0 ? (
+              <div className="text-text-dim text-[13px] py-6">
+                전사 내용이 없습니다.
+              </div>
+            ) : (
+              selected.transcript.map((seg, i) => (
+                <div key={seg.id ?? i} className="flex gap-[10px] py-2 border-b border-[rgba(255,255,255,0.03)] text-[13px]">
+                  <span className="font-mono text-[10px] text-text-dim min-w-[38px] pt-[3px]">
+                    {fmtMs(seg.startMs)}
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold min-w-[32px] pt-[3px] ${
+                      seg.speakerTone === "teacher" ? "text-[#60a5fa]" : "text-green"
+                    }`}
+                  >
+                    {seg.speakerLabel}
+                  </span>
+                  <span className="flex-1 text-text">{seg.text}</span>
+                </div>
+              ))
+            )}
+          </details>
         </div>
       </div>
     );

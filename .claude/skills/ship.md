@@ -10,6 +10,7 @@ user_invocable: true
 
 - 구현이 완료된 상태여야 한다.
 - code-quality-guardian 체크리스트를 통과한 상태여야 한다.
+- **동시 작업 인식**: push 직전 반드시 `git fetch origin && git rebase origin/develop`을 실행한다. 다른 에이전트가 먼저 develop에 머지했을 수 있다. rebase 없이 push하면 충돌이 생기거나 다른 에이전트의 작업이 누락될 수 있다.
 
 ## 플로우
 
