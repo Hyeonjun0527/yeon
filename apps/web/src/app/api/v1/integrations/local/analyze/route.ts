@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
     return jsonError("file 필드가 필요합니다.", 400);
   }
 
-  const fileName = (file as File).name ?? "";
-  const mimeType = file.type ?? "";
+  const fileName = (file as File).name;
+  const mimeType = file.type;
 
   const instruction = formData.get("instruction");
   const previousResultRaw = formData.get("previousResult");
