@@ -54,3 +54,18 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright auth state
+e2e/.auth/session.json
+apps/web/e2e/.auth/
+
+# OMC state
+.omc/
+apps/web/.omc/
+
+# Playwright test results
+test-results/
+apps/web/test-results/
+
+# Worktree artifacts
+apps/web/apps/

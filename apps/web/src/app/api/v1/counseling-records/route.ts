@@ -7,7 +7,10 @@ import { NextResponse } from "next/server";
 
 import {
   createCounselingRecordAndQueueTranscription,
+  createTextMemoRecord,
   listCounselingRecords,
+  listCounselingRecordsBySpace,
+  listUnlinkedCounselingRecords,
 } from "@/server/services/counseling-records-service";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -36,13 +39,23 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
+  const { searchParams } = new URL(request.url);
+  const spaceId = searchParams.get("spaceId");
+  const unlinked = searchParams.get("unlinked") === "true";
+
   try {
-    const records = await listCounselingRecords(currentUser.id);
+    let records;
+
+    if (spaceId) {
+      records = await listCounselingRecordsBySpace(currentUser.id, spaceId);
+    } else if (unlinked) {
+      records = await listUnlinkedCounselingRecords(currentUser.id);
+    } else {
+      records = await listCounselingRecords(currentUser.id);
+    }
 
     return NextResponse.json(
-      listCounselingRecordsResponseSchema.parse({
-        records,
-      }),
+      listCounselingRecordsResponseSchema.parse({ records }),
     );
   } catch (error) {
     if (error instanceof ServiceError) {
@@ -67,6 +80,32 @@ export async function POST(request: NextRequest) {
     formData = await request.formData();
   } catch {
     return jsonError("음성 업로드 요청 형식이 올바르지 않습니다.", 400);
+  }
+
+  /* 텍스트 메모 분기 */
+  if (formData.get("recordType") === "text_memo") {
+    const sessionTitle = String(formData.get("sessionTitle") ?? "").trim();
+    const content = String(formData.get("content") ?? "").trim();
+
+    if (!sessionTitle) return jsonError("메모 제목을 입력해 주세요.", 400);
+    if (!content) return jsonError("메모 내용을 입력해 주세요.", 400);
+
+    try {
+      const record = await createTextMemoRecord({
+        currentUser,
+        sessionTitle,
+        content,
+        counselingType: String(formData.get("counselingType") ?? ""),
+      });
+      return NextResponse.json(
+        counselingRecordDetailResponseSchema.parse({ record }),
+        { status: 201 },
+      );
+    } catch (error) {
+      if (error instanceof ServiceError) return jsonError(error.message, error.status);
+      console.error(error);
+      return jsonError("텍스트 메모 생성에 실패했습니다.", 500);
+    }
   }
 
   const fileEntry = formData.get("audio");

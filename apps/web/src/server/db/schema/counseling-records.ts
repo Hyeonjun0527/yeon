@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { members } from "./members";
+import { spaces } from "./spaces";
 import { users } from "./users";
 
 export const counselingRecords = pgTable("counseling_records", {
@@ -33,6 +34,9 @@ export const counselingRecords = pgTable("counseling_records", {
   transcriptSegmentCount: integer("transcript_segment_count")
     .notNull()
     .default(0),
+  spaceId: uuid("space_id").references(() => spaces.id, {
+    onDelete: "set null",
+  }),
   memberId: uuid("member_id").references(() => members.id, {
     onDelete: "set null",
   }),

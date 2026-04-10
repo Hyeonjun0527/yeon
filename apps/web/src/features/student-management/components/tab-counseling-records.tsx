@@ -3,18 +3,11 @@
 import { useEffect, useState } from "react";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { Loader2, FileAudio, Link2Off } from "lucide-react";
+import { fmtDate } from "../utils";
 
 interface TabCounselingRecordsProps {
   spaceId: string;
   memberId: string;
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }
 
 function fmtDuration(ms: number | null) {

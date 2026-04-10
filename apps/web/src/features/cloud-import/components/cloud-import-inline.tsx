@@ -91,13 +91,13 @@ export function CloudImportInline({
 
   useEffect(() => {
     activeHook.checkStatus();
-  }, [activeProvider]); // eslint-disable-line
+  }, [activeProvider]);
 
   useEffect(() => {
     if (activeHook.connected && activeHook.files.length === 0 && !activeHook.filesLoading) {
       activeHook.loadFiles();
     }
-  }, [activeHook.connected]); // eslint-disable-line
+  }, [activeHook.connected]);
 
   useEffect(() => {
     if (activeHook.importResult) {

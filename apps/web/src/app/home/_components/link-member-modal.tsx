@@ -46,7 +46,6 @@ export function LinkMemberModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* 스페이스 목록 로드 */
   useEffect(() => {
     (async () => {
       try {
@@ -67,7 +66,6 @@ export function LinkMemberModal({
     })();
   }, []);
 
-  /* 스페이스 변경 시 수강생 목록 로드 */
   const fetchMembers = useCallback(async (spaceId: string) => {
     if (!spaceId) return;
     setMembersLoading(true);
@@ -94,7 +92,6 @@ export function LinkMemberModal({
       )
     : members;
 
-  /* 연결 API 호출 */
   const patchMember = async (memberId: string | null) => {
     const res = await fetch(`/api/v1/counseling-records/${recordId}`, {
       method: "PATCH",
@@ -170,12 +167,9 @@ export function LinkMemberModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {/* 백드롭 */}
       <div className="absolute inset-0 bg-[rgba(0,0,0,0.6)]" />
 
-      {/* 모달 */}
       <div className="relative z-10 w-full max-w-[480px] mx-4 bg-surface-2 border border-border rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
           <h2 className="text-[15px] font-semibold">수강생 연결</h2>
           <button
@@ -186,7 +180,6 @@ export function LinkMemberModal({
           </button>
         </div>
 
-        {/* 이미 연결된 경우 해제 옵션 */}
         {currentMemberId && (
           <div className="mx-5 mt-4 px-4 py-3 bg-accent-dim border border-accent-border rounded-lg flex items-center justify-between flex-shrink-0">
             <span className="text-[13px] text-accent font-medium">
@@ -202,7 +195,6 @@ export function LinkMemberModal({
           </div>
         )}
 
-        {/* 탭 */}
         <div className="flex gap-0 mx-5 mt-4 flex-shrink-0 border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setMode("existing")}
@@ -228,7 +220,6 @@ export function LinkMemberModal({
           </button>
         </div>
 
-        {/* 스페이스 선택 (공통) */}
         <div className="px-5 mt-4 flex-shrink-0">
           <label className="block text-[12px] text-text-dim mb-1">스페이스</label>
           {spacesLoading ? (
@@ -258,7 +249,6 @@ export function LinkMemberModal({
           )}
         </div>
 
-        {/* 기존 수강생 탭 */}
         {mode === "existing" && (
           <div className="px-5 mt-3 flex flex-col gap-3 overflow-hidden flex-1 min-h-0">
             <div className="relative flex-shrink-0">
@@ -315,7 +305,6 @@ export function LinkMemberModal({
           </div>
         )}
 
-        {/* 새로 등록 탭 */}
         {mode === "new" && (
           <div className="px-5 mt-3 flex-shrink-0">
             <label className="block text-[12px] text-text-dim mb-1">이름</label>
@@ -329,12 +318,10 @@ export function LinkMemberModal({
           </div>
         )}
 
-        {/* 에러 */}
         {error && (
           <p className="mx-5 mt-3 text-[12px] text-error flex-shrink-0">{error}</p>
         )}
 
-        {/* 액션 버튼 */}
         <div className="px-5 py-4 border-t border-border mt-4 flex gap-2 flex-shrink-0">
           <button
             onClick={onClose}

@@ -1,3 +1,5 @@
+import type { AnalysisResult } from "@yeon/api-contract/counseling-records";
+export type { AnalysisResult };
 export type RecordPhase = "empty" | "recording" | "processing" | "ready";
 
 export interface AttachedImage {
@@ -24,29 +26,11 @@ export interface TranscriptSegment {
   text: string;
 }
 
-export interface AnalysisResult {
-  summary: string;
-  member: {
-    name: string | null;
-    traits: string[];
-    emotion: string;
-  };
-  issues: Array<{
-    title: string;
-    detail: string;
-    timestamp?: string | null;
-  }>;
-  actions: {
-    mentor: string[];
-    member: string[];
-    nextSession: string[];
-  };
-  keywords: string[];
-}
-
 export interface RecordItem {
   id: string;
+  spaceId: string | null;
   memberId: string | null;
+  createdAt: string;
   title: string;
   status: "ready" | "processing" | "error";
   errorMessage: string | null;

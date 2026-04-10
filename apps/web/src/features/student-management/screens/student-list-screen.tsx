@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Plus, Search, Upload, User } from "lucide-react";
+import { AlertTriangle, Plus, Search, Settings, Upload, User } from "lucide-react";
+import { useState } from "react";
 import { useMemberList } from "../hooks/use-member-list";
 import { useStudentManagement } from "../student-management-provider";
 import { MEMBER_STATUS_META, RISK_LEVEL_META } from "../constants";
 import type { RiskLevel } from "../types";
+import { SpaceSettingsModal } from "../../space-settings";
 
 export function StudentListScreen() {
   const { spaces, selectedSpaceId, enterImportMode } = useStudentManagement();
@@ -18,12 +20,16 @@ export function StudentListScreen() {
     setStatusFilter,
     riskLevelFilter,
     setRiskLevelFilter,
+    sortKey,
+    setSortKey,
     loading,
     error,
   } = useMemberList();
 
-  const spaceName =
-    spaces.find((s) => s.id === selectedSpaceId)?.name ?? null;
+  const [showSettings, setShowSettings] = useState(false);
+
+  const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
+  const spaceName = currentSpace?.name ?? null;
 
   return (
     <div>
@@ -90,7 +96,36 @@ export function StudentListScreen() {
           <option value="medium">보통</option>
           <option value="high">높음</option>
         </select>
+
+        <select
+          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as "name" | "createdAt" | "status")}
+        >
+          <option value="createdAt">최근 등록순</option>
+          <option value="name">이름순</option>
+          <option value="status">상태순</option>
+        </select>
+
+        {selectedSpaceId && (
+          <button
+            className="ml-auto flex items-center gap-1.5 py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer hover:border-border-light transition-colors"
+            onClick={() => setShowSettings(true)}
+            title="스페이스 설정"
+          >
+            <Settings size={14} />
+            설정
+          </button>
+        )}
       </div>
+
+      {showSettings && selectedSpaceId && currentSpace && (
+        <SpaceSettingsModal
+          spaceId={selectedSpaceId}
+          spaceName={currentSpace.name}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       {/* 로딩 */}
       {loading && (

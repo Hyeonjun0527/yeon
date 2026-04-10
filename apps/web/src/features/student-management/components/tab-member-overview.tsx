@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Member } from "../types";
+import { fmtDate, fmtRelative } from "../utils";
+import { ProfileImportPanel } from "./profile-import-panel";
+import { CustomTabContent } from "./custom-tab-content";
 
 interface TabMemberOverviewProps {
   member: Member;
+  onMemberUpdated?: () => void;
+  overviewTabId?: string;
 }
 
 interface CounselingStats {
@@ -24,24 +29,6 @@ const RISK_LABEL: Record<string, { label: string; color: string }> = {
   high: { label: "높음", color: "#f87171" },
 };
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-function fmtRelative(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (diff === 0) return "오늘";
-  if (diff === 1) return "어제";
-  if (diff < 7) return `${diff}일 전`;
-  if (diff < 30) return `${Math.floor(diff / 7)}주 전`;
-  return `${Math.floor(diff / 30)}개월 전`;
-}
-
-/* ── 개별 데이터 행 ── */
 function DataRow({
   label,
   value,
@@ -84,7 +71,6 @@ function DataRow({
   );
 }
 
-/* ── 섹션 래퍼 ── */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
@@ -98,7 +84,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function TabMemberOverview({ member }: TabMemberOverviewProps) {
+export function TabMemberOverview({ member, onMemberUpdated, overviewTabId }: TabMemberOverviewProps) {
   const [counseling, setCounseling] = useState<CounselingStats | null>(null);
 
   useEffect(() => {
@@ -121,7 +107,6 @@ export function TabMemberOverview({ member }: TabMemberOverviewProps) {
       });
   }, [member.spaceId, member.id]);
 
-  /* 완성도 계산 */
   const fields = [
     !!member.name,
     !!member.email,
@@ -215,12 +200,22 @@ export function TabMemberOverview({ member }: TabMemberOverviewProps) {
         />
       </Section>
 
-      {/* 미구현 항목 안내 */}
-      <div className="mt-2 px-1">
-        <p className="text-[11px] text-text-dim leading-relaxed">
-          트랙, 수강료, GitHub 등 추가 항목은 추후 지원 예정입니다.
-        </p>
-      </div>
+      {/* 커스텀 필드 (개요 탭에 연결된 필드) */}
+      {overviewTabId && (
+        <Section title="추가 정보">
+          <CustomTabContent
+            spaceId={member.spaceId}
+            memberId={member.id}
+            tabId={overviewTabId}
+          />
+        </Section>
+      )}
+
+      {/* AI 프로필 자동완성 */}
+      <ProfileImportPanel
+        member={member}
+        onSaved={() => onMemberUpdated?.()}
+      />
     </div>
   );
 }

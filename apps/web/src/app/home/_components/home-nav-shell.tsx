@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Gnav } from "./gnav";
 import { TopNav } from "./top-nav";
+import { ExportProvider } from "../_lib/export-context";
 
 type Section = "records" | "students";
 
@@ -17,12 +18,12 @@ export function HomeNavShell({ children }: { children: ReactNode }) {
   const section = getSectionFromPathname(pathname);
 
   return (
-    <>
+    <ExportProvider>
       <TopNav section={section} />
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <Gnav activeMenu={section} />
         {children}
       </div>
-    </>
+    </ExportProvider>
   );
 }

@@ -5,6 +5,7 @@ import { useStudentManagement } from "../student-management-provider";
 import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
 import { useStudentMemos } from "../hooks/use-student-memos";
+import { useDynamicMemberTabs } from "../hooks/use-dynamic-member-tabs";
 import { StudentDetailHeader } from "../components/student-detail-header";
 import { StudentDetailTabs } from "../components/student-detail-tabs";
 import { TabOverview } from "../components/tab-overview";
@@ -16,6 +17,7 @@ import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { SheetIntegrationPanel } from "../components/sheet-integration-panel";
+import { CustomTabContent } from "../components/custom-tab-content";
 
 interface StudentDetailScreenProps {
   paramsPromise: Promise<{ studentId: string }>;
@@ -25,7 +27,7 @@ export function StudentDetailScreen({
   paramsPromise,
 }: StudentDetailScreenProps) {
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode, selectedSpaceId } = useStudentManagement();
+  const { sheetMode, selectedSpaceId, refetchMembers } = useStudentManagement();
 
   /* ── API 기반 멤버 조회 ── */
   const {
@@ -36,6 +38,17 @@ export function StudentDetailScreen({
     logsLoading,
     logsError,
   } = useMemberDetail({ memberId: studentId });
+
+  /* ── 동적 탭 목록 ── */
+  const { tabs: dynamicTabs } = useDynamicMemberTabs(selectedSpaceId);
+  const tabItems = dynamicTabs.length > 0
+    ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
+    : undefined;
+  // 현재 탭이 시스템 키가 아닌 UUID이면 커스텀 탭
+  const activeCustomTab = dynamicTabs.find(
+    (t) => t.tabType === "custom" && t.id === activeTab,
+  );
+  const overviewTab = dynamicTabs.find((t) => t.systemKey === "overview");
 
   /* ── 레거시 mock 학생 조회 (member가 없을 때 폴백) ── */
   const { student } = useStudentDetail({ studentId });
@@ -131,10 +144,18 @@ export function StudentDetailScreen({
           </div>
         </div>
 
-        <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <StudentDetailTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={tabItems}
+        />
 
         {activeTab === "overview" && (
-          <TabMemberOverview member={member} />
+          <TabMemberOverview
+            member={member}
+            onMemberUpdated={refetchMembers}
+            overviewTabId={overviewTab?.id}
+          />
         )}
 
         {activeTab === "report" && (
@@ -174,6 +195,15 @@ export function StudentDetailScreen({
           >
             해당 탭은 준비 중입니다.
           </div>
+        )}
+
+        {/* 커스텀 탭 */}
+        {activeCustomTab && selectedSpaceId && (
+          <CustomTabContent
+            spaceId={selectedSpaceId}
+            memberId={member.id}
+            tabId={activeCustomTab.id}
+          />
         )}
 
         {/* 구글 시트 연동 패널 */}

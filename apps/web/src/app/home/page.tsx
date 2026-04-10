@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   useRecords,
   useRecording,
@@ -8,7 +8,11 @@ import {
   useAudioPlayer,
   useAiChat,
   useAiPanel,
+  useCurrentSpace,
+  useSpaceMembers,
 } from "./_hooks";
+import { useExport } from "./_lib/export-context";
+import { exportRecordDocx, exportMemberReportDocx } from "./_lib/export-docx";
 import {
   EmptyState,
   RecordingState,
@@ -16,11 +20,20 @@ import {
   CenterPanel,
   AiPanel,
   LinkMemberModal,
+  MemberPanel,
+  QuickMemoModal,
+  InsightBanner,
 } from "./_components";
 
 export default function MockV2Workspace() {
   const records = useRecords();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  // 모달 열림 시점의 recordId를 캡처 — async 완료 전에 selected가 바뀌어도 안전
+  const [linkTargetId, setLinkTargetId] = useState<string | null>(null);
+  const [quickMemoOpen, setQuickMemoOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const { spaces, currentSpace, currentSpaceId, setCurrentSpaceId, addSpace } = useCurrentSpace();
+  const { members, loading: membersLoading } = useSpaceMembers(currentSpaceId, records.records);
 
   const recording = useRecording({
     onRecordingStop: (tempRecord) => records.addProcessingRecord(tempRecord),
@@ -47,15 +60,47 @@ export default function MockV2Workspace() {
 
   const aiPanel = useAiPanel();
 
-  const handleSelectRecord = (id: string) => {
-    records.selectRecord(id);
-    audio.reset();
-  };
+  const { register } = useExport();
 
-  const handleStartRecording = () => {
+  const handleSelectRecord = useCallback(
+    (id: string) => {
+      setSelectedMemberId(null);
+      records.selectRecord(id);
+      audio.reset();
+    },
+    [records, audio],
+  );
+
+  const handleSelectMember = useCallback((id: string) => {
+    setSelectedMemberId((prev) => (prev === id ? null : id));
+    // 멤버 선택 시 레코드 선택 해제
+    records.setPhase((prev) =>
+      prev === "recording" || prev === "processing" ? prev : "ready",
+    );
+  }, [records]);
+
+  const handleStartRecording = useCallback(() => {
+    setSelectedMemberId(null);
     records.setPhase("recording");
     recording.start();
-  };
+  }, [records, recording]);
+
+  const selectedMember = members.find((m) => m.id === selectedMemberId) ?? null;
+
+  /* 멤버가 선택되면 레코드 선택 해제 */
+  const showMemberPanel = selectedMember !== null && records.phase !== "recording" && records.phase !== "empty";
+  const showCenterPanel = !showMemberPanel && (records.phase === "processing" || records.phase === "ready");
+
+  useEffect(() => {
+    if (showMemberPanel && selectedMember) {
+      register(() => exportMemberReportDocx(selectedMember, records.records));
+    } else if (records.selected?.status === "ready") {
+      const sel = records.selected;
+      register(() => exportRecordDocx(sel));
+    } else {
+      register(null);
+    }
+  }, [showMemberPanel, selectedMember, records.selected, records.records, register]);
 
   return (
     <div
@@ -85,7 +130,7 @@ export default function MockV2Workspace() {
         </div>
       )}
 
-      {records.phase === "empty" && (
+      {records.phase === "empty" && !selectedMember && (
         <EmptyState
           onStartRecording={handleStartRecording}
           onFileUpload={fileUpload.openFilePicker}
@@ -99,69 +144,113 @@ export default function MockV2Workspace() {
         />
       )}
 
-      {(records.phase === "processing" || records.phase === "ready") && (
-        <>
-          <Sidebar
-            records={records.records}
-            selectedId={records.selectedId}
-            onSelect={handleSelectRecord}
-            onStartRecording={handleStartRecording}
-            onFileUpload={fileUpload.openFilePicker}
-          />
-
-          <CenterPanel
-            phase={records.phase}
-            selected={records.selected}
-            processingStep={records.processingStep}
-            transcriptLoading={records.transcriptLoading}
-            analyzing={aiChat.analyzing}
-            isPlaying={audio.isPlaying}
-            audioPosition={audio.position}
-            totalSeconds={audio.totalSeconds}
-            onTogglePlay={audio.toggle}
-            onSeek={audio.seek}
-            onLinkMember={() => setLinkModalOpen(true)}
-          />
-
-          <AiPanel
-            width={aiPanel.width}
-            collapsed={aiPanel.collapsed}
-            tab={aiPanel.tab}
-            panelRef={aiPanel.panelRef}
-            model={aiPanel.model}
-            onSetTab={aiPanel.setTab}
-            onToggleCollapsed={aiPanel.toggleCollapsed}
-            onExpand={aiPanel.expand}
-            onToggleModel={aiPanel.toggleModel}
-            onStartResize={aiPanel.startResize}
-            phase={records.phase}
-            selected={records.selected}
-            selectedId={records.selectedId}
-            onClearMessages={records.clearMessages}
-            aiInput={aiChat.input}
-            onAiInputChange={aiChat.setInput}
-            onSend={aiChat.send}
-            onSendQuickChip={aiChat.sendQuickChip}
-            canSend={aiChat.canSend}
-            endRef={aiChat.endRef}
-            textareaRef={aiChat.textareaRef}
-            images={aiChat.images}
-            onAddImages={aiChat.addImages}
-            onRemoveImage={aiChat.removeImage}
-            imageInputRef={aiChat.imageInputRef}
-          />
-        </>
+      {(records.phase === "processing" || records.phase === "ready" || showMemberPanel) && (
+        <Sidebar
+          records={records.records}
+          selectedId={records.selectedId}
+          onSelect={handleSelectRecord}
+          onStartRecording={handleStartRecording}
+          onFileUpload={fileUpload.openFilePicker}
+          spaces={spaces}
+          currentSpace={currentSpace}
+          onSpaceChange={setCurrentSpaceId}
+          onSpaceCreated={addSpace}
+          members={members}
+          membersLoading={membersLoading}
+          selectedMemberId={selectedMemberId}
+          onSelectMember={handleSelectMember}
+            onOpenQuickMemo={() => setQuickMemoOpen(true)}
+        />
       )}
-      {linkModalOpen && records.selected && (
+
+      {showMemberPanel && selectedMember && (
+        <div className="flex flex-1 overflow-hidden">
+          <MemberPanel
+            member={selectedMember}
+            records={records.records}
+            onSelectRecord={handleSelectRecord}
+            onStartRecording={handleStartRecording}
+          />
+        </div>
+      )}
+
+      {showCenterPanel && (
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <InsightBanner
+            members={members}
+            onHighlightWarning={() => {
+              const target = members.find((m) => m.indicator === "warning") ?? members.find((m) => m.indicator === "none");
+              if (target) handleSelectMember(target.id);
+            }}
+          />
+          <div className="flex flex-1 overflow-hidden">
+            <CenterPanel
+              phase={records.phase}
+              selected={records.selected}
+              processingStep={records.processingStep}
+              transcriptLoading={records.transcriptLoading}
+              analyzing={aiChat.analyzing}
+              isPlaying={audio.isPlaying}
+              audioPosition={audio.position}
+              totalSeconds={audio.totalSeconds}
+              onTogglePlay={audio.toggle}
+              onSeek={audio.seek}
+              onLinkMember={() => {
+                if (records.selected) {
+                  setLinkTargetId(records.selected.id);
+                  setLinkModalOpen(true);
+                }
+              }}
+            />
+
+            <AiPanel
+              width={aiPanel.width}
+              collapsed={aiPanel.collapsed}
+              tab={aiPanel.tab}
+              panelRef={aiPanel.panelRef}
+              model={aiPanel.model}
+              onSetTab={aiPanel.setTab}
+              onToggleCollapsed={aiPanel.toggleCollapsed}
+              onExpand={aiPanel.expand}
+              onToggleModel={aiPanel.toggleModel}
+              onStartResize={aiPanel.startResize}
+              phase={records.phase}
+              selected={records.selected}
+              selectedId={records.selectedId}
+              onClearMessages={records.clearMessages}
+              aiInput={aiChat.input}
+              onAiInputChange={aiChat.setInput}
+              onSend={aiChat.send}
+              onSendQuickChip={aiChat.sendQuickChip}
+              canSend={aiChat.canSend}
+              endRef={aiChat.endRef}
+              textareaRef={aiChat.textareaRef}
+              images={aiChat.images}
+              onAddImages={aiChat.addImages}
+              onRemoveImage={aiChat.removeImage}
+              imageInputRef={aiChat.imageInputRef}
+            />
+          </div>
+        </div>
+      )}
+
+      {quickMemoOpen && (
+        <QuickMemoModal
+          onClose={() => setQuickMemoOpen(false)}
+          onCreated={(rec) => {
+            records.addReadyRecord(rec);
+          }}
+        />
+      )}
+
+      {linkModalOpen && linkTargetId && records.selected && (
         <LinkMemberModal
-          recordId={records.selected.id}
+          recordId={linkTargetId}
           studentName={records.selected.studentName}
           currentMemberId={records.selected.memberId}
           onClose={() => setLinkModalOpen(false)}
           onLinked={(memberId) => {
-            if (records.selected) {
-              records.updateMemberId(records.selected.id, memberId);
-            }
+            records.updateMemberId(linkTargetId, memberId);
           }}
         />
       )}

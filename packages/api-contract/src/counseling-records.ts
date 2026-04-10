@@ -24,6 +24,7 @@ export const counselingTranscriptSegmentSchema = z.object({
 
 export const counselingRecordListItemSchema = z.object({
   id: z.string().uuid(),
+  spaceId: z.string().uuid().nullable(),
   memberId: z.string().uuid().nullable(),
   studentName: z.string(),
   sessionTitle: z.string(),
@@ -78,7 +79,7 @@ export const counselingRecordDetailSchema =
   counselingRecordListItemSchema.extend({
     transcriptText: z.string(),
     transcriptSegments: z.array(counselingTranscriptSegmentSchema),
-    audioUrl: z.string(),
+    audioUrl: z.string().nullable(),
     analysisResult: analysisResultSchema.nullable(),
   });
 
@@ -136,6 +137,14 @@ export type UpdateSegmentRequest = z.infer<typeof updateSegmentRequestSchema>;
 export type BulkUpdateSpeakerRequest = z.infer<
   typeof bulkUpdateSpeakerRequestSchema
 >;
+
+// ── AI 분석 응답 ──
+
+export const analyzeRecordResponseSchema = z.object({
+  analysisResult: analysisResultSchema,
+});
+
+export type AnalyzeRecordResponse = z.infer<typeof analyzeRecordResponseSchema>;
 
 // ── 수강생 연결 ──
 

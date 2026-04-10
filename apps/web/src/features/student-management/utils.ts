@@ -1,6 +1,23 @@
 import { AVATAR_COLORS } from "./constants";
 import type { Student, StudentStatus } from "./types";
 
+export function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+export function fmtRelative(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (diff === 0) return "오늘";
+  if (diff === 1) return "어제";
+  if (diff < 7) return `${diff}일 전`;
+  if (diff < 30) return `${Math.floor(diff / 7)}주 전`;
+  return `${Math.floor(diff / 30)}개월 전`;
+}
+
 /** 이름 해시 → 파스텔 배경색 */
 export function getAvatarColor(name: string): string {
   let hash = 0;

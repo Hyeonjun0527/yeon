@@ -46,7 +46,9 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
 
         const record: RecordItem = {
           id: item.id,
+          spaceId: null,
           memberId: null,
+          createdAt: item.createdAt,
           title: item.sessionTitle || file.name.replace(/\.[^.]+$/, ""),
           status: "processing",
           errorMessage: null,
