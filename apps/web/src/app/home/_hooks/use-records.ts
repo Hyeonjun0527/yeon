@@ -5,7 +5,7 @@ import type {
   CounselingRecordListItem,
   CounselingRecordDetail,
 } from "@yeon/api-contract/counseling-records";
-import type { RecordItem, RecordPhase, AiMessage, TranscriptSegment } from "../_lib/types";
+import type { RecordItem, RecordPhase, AiMessage, AnalysisResult, TranscriptSegment } from "../_lib/types";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
@@ -17,6 +17,7 @@ const MIN_PROCESSING_DISPLAY_MS = PROCESSING_STEP_COUNT * PROCESSING_STEP_INTERV
 function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   return {
     id: item.id,
+    memberId: item.memberId ?? null,
     title: item.sessionTitle || "제목 없음",
     status: item.status,
     errorMessage: item.status === "error" ? (item.errorMessage ?? "알 수 없는 오류") : null,
@@ -29,6 +30,7 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
     transcript: [],
     aiSummary: item.preview || "",
     aiMessages: [],
+    analysisResult: null,
   };
 }
 
@@ -99,8 +101,9 @@ export function useRecords() {
       const data = (await res.json()) as { record: CounselingRecordDetail };
       const transcript = detailToTranscript(data.record);
       const audioUrl = data.record.audioUrl || null;
+      const analysisResult = (data.record.analysisResult as AnalysisResult | null) ?? null;
       setRecords((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, transcript, audioUrl } : r)),
+        prev.map((r) => (r.id === id ? { ...r, transcript, audioUrl, analysisResult } : r)),
       );
     } catch {
       // detail 로드 실패는 무시
@@ -274,6 +277,18 @@ export function useRecords() {
     );
   }, []);
 
+  const updateAnalysisResult = useCallback((id: string, result: AnalysisResult) => {
+    setRecords((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, analysisResult: result } : r)),
+    );
+  }, []);
+
+  const updateMemberId = useCallback((id: string, memberId: string | null) => {
+    setRecords((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, memberId } : r)),
+    );
+  }, []);
+
   /** 업로드 완료: 임시 레코드를 실제 서버 레코드로 교체 */
   const replaceRecord = useCallback((tempId: string, realRecord: RecordItem) => {
     setRecords((prev) => prev.map((r) => (r.id === tempId ? realRecord : r)));
@@ -323,6 +338,8 @@ export function useRecords() {
     selectRecord,
     updateMessages,
     clearMessages,
+    updateAnalysisResult,
+    updateMemberId,
     setPhase,
   };
 }

@@ -83,6 +83,7 @@ export function useRecording({
 
         const realRecord: RecordItem = {
           id: item.id,
+          memberId: null,
           title: item.sessionTitle || `녹음 ${createTimestamp()}`,
           status: "processing",
           errorMessage: null,
@@ -95,6 +96,7 @@ export function useRecording({
           transcript: [],
           aiSummary: "",
           aiMessages: [],
+          analysisResult: null,
         };
 
         onUploadComplete(tempId, realRecord);
@@ -128,6 +130,7 @@ export function useRecording({
     tempIdRef.current = tempId;
     const tempRecord: RecordItem = {
       id: tempId,
+      memberId: null,
       title: `녹음 ${createTimestamp()}`,
       status: "processing",
       errorMessage: null,
@@ -140,6 +143,7 @@ export function useRecording({
       transcript: [],
       aiSummary: "업로드 중...",
       aiMessages: [],
+      analysisResult: null,
     };
     onRecordingStop(tempRecord);
 

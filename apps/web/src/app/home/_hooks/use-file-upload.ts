@@ -46,6 +46,7 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
 
         const record: RecordItem = {
           id: item.id,
+          memberId: null,
           title: item.sessionTitle || file.name.replace(/\.[^.]+$/, ""),
           status: "processing",
           errorMessage: null,
@@ -58,6 +59,7 @@ export function useFileUpload({ onFileUpload }: UseFileUploadParams) {
           transcript: [],
           aiSummary: "",
           aiMessages: [],
+          analysisResult: null,
         };
 
         onFileUpload(record);

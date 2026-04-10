@@ -24,8 +24,29 @@ export interface TranscriptSegment {
   text: string;
 }
 
+export interface AnalysisResult {
+  summary: string;
+  member: {
+    name: string | null;
+    traits: string[];
+    emotion: string;
+  };
+  issues: Array<{
+    title: string;
+    detail: string;
+    timestamp?: string | null;
+  }>;
+  actions: {
+    mentor: string[];
+    member: string[];
+    nextSession: string[];
+  };
+  keywords: string[];
+}
+
 export interface RecordItem {
   id: string;
+  memberId: string | null;
   title: string;
   status: "ready" | "processing" | "error";
   errorMessage: string | null;
@@ -38,4 +59,5 @@ export interface RecordItem {
   transcript: TranscriptSegment[];
   aiSummary: string;
   aiMessages: AiMessage[];
+  analysisResult: AnalysisResult | null;
 }

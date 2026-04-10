@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   useRecords,
   useRecording,
@@ -14,10 +15,12 @@ import {
   Sidebar,
   CenterPanel,
   AiPanel,
+  LinkMemberModal,
 } from "./_components";
 
 export default function MockV2Workspace() {
   const records = useRecords();
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
 
   const recording = useRecording({
     onRecordingStop: (tempRecord) => records.addProcessingRecord(tempRecord),
@@ -37,7 +40,9 @@ export default function MockV2Workspace() {
     selectedId: records.selectedId,
     selectedMessages: records.selected?.aiMessages ?? [],
     selectedStatus: records.selected?.status ?? null,
+    selectedAnalysisResult: records.selected?.analysisResult ?? null,
     onUpdateMessages: records.updateMessages,
+    onUpdateAnalysisResult: records.updateAnalysisResult,
   });
 
   const aiPanel = useAiPanel();
@@ -109,11 +114,13 @@ export default function MockV2Workspace() {
             selected={records.selected}
             processingStep={records.processingStep}
             transcriptLoading={records.transcriptLoading}
+            analyzing={aiChat.analyzing}
             isPlaying={audio.isPlaying}
             audioPosition={audio.position}
             totalSeconds={audio.totalSeconds}
             onTogglePlay={audio.toggle}
             onSeek={audio.seek}
+            onLinkMember={() => setLinkModalOpen(true)}
           />
 
           <AiPanel
@@ -144,6 +151,19 @@ export default function MockV2Workspace() {
             imageInputRef={aiChat.imageInputRef}
           />
         </>
+      )}
+      {linkModalOpen && records.selected && (
+        <LinkMemberModal
+          recordId={records.selected.id}
+          studentName={records.selected.studentName}
+          currentMemberId={records.selected.memberId}
+          onClose={() => setLinkModalOpen(false)}
+          onLinked={(memberId) => {
+            if (records.selected) {
+              records.updateMemberId(records.selected.id, memberId);
+            }
+          }}
+        />
       )}
     </div>
   );
