@@ -3,7 +3,8 @@ import type {
   CounselingRecordListItem,
   CounselingTranscriptSegment,
 } from "@yeon/api-contract/counseling-records";
-import { and, asc, eq } from "drizzle-orm";
+import { analysisResultSchema } from "@yeon/api-contract/counseling-records";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
@@ -18,7 +19,7 @@ import { uploadCounselingAudioObject } from "./counseling-record-audio-storage";
 
 export const MAX_AUDIO_UPLOAD_BYTES = 128 * 1024 * 1024;
 const DEFAULT_COUNSELING_TYPE = "대면 상담";
-export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES = ["local://demo/"] as const;
+export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES = ["local://demo/", "text_memo://"] as const;
 
 export type CounselingRecordRow = typeof counselingRecords.$inferSelect;
 type CounselingTranscriptSegmentRow =
@@ -215,6 +216,8 @@ export function mapRecordListItem(
 ): CounselingRecordListItem {
   return {
     id: record.id,
+    spaceId: record.spaceId ?? null,
+    memberId: record.memberId ?? null,
     studentName: record.studentName,
     sessionTitle: record.sessionTitle,
     counselingType: record.counselingType,
@@ -261,11 +264,79 @@ export function mapRecordDetail(
     ...mapRecordListItem(record),
     transcriptText: record.transcriptText,
     transcriptSegments: segments.map(mapSegmentRow),
-    audioUrl: `/api/v1/counseling-records/${record.id}/audio`,
+    audioUrl: isPlaceholderAudioStoragePath(record.audioStoragePath)
+      ? null
+      : `/api/v1/counseling-records/${record.id}/audio`,
+    analysisResult: (() => {
+      const parsed = analysisResultSchema.safeParse(record.analysisResult);
+      return parsed.success ? parsed.data : null;
+    })(),
   };
 }
 
 // ── DB 쿼리 ──
+
+export async function linkRecordToMember(
+  recordId: string,
+  memberId: string | null,
+  spaceId: string | null,
+) {
+  const db = getDb();
+  await db
+    .update(counselingRecords)
+    .set({ memberId, spaceId, updatedAt: new Date() })
+    .where(eq(counselingRecords.id, recordId));
+}
+
+export async function findRecordsBySpaceId(
+  userId: string,
+  spaceId: string,
+): Promise<CounselingRecordRow[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(counselingRecords)
+    .where(
+      and(
+        eq(counselingRecords.spaceId, spaceId),
+        eq(counselingRecords.createdByUserId, userId),
+      ),
+    )
+    .orderBy(desc(counselingRecords.createdAt));
+}
+
+export async function findUnlinkedRecords(
+  userId: string,
+): Promise<CounselingRecordRow[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(counselingRecords)
+    .where(
+      and(
+        isNull(counselingRecords.spaceId),
+        eq(counselingRecords.createdByUserId, userId),
+      ),
+    )
+    .orderBy(desc(counselingRecords.createdAt));
+}
+
+export async function findRecordsByMemberId(
+  userId: string,
+  memberId: string,
+): Promise<CounselingRecordRow[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(counselingRecords)
+    .where(
+      and(
+        eq(counselingRecords.memberId, memberId),
+        eq(counselingRecords.createdByUserId, userId),
+      ),
+    )
+    .orderBy(asc(counselingRecords.createdAt));
+}
 
 export async function findOwnedRecord(userId: string, recordId: string) {
   const db = getDb();

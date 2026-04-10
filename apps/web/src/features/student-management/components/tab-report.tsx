@@ -120,31 +120,6 @@ export function TabReport({
           </div>
         </div>
 
-        <div className="p-4 bg-surface-2 border border-border rounded">
-          <div className="text-xs text-text-dim mb-1">입학 상담</div>
-          <div style={{ marginTop: 8 }}>
-            {member.counselingRecordId ? (
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "4px 12px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#34d399",
-                  background: "rgba(52, 211, 153, 0.1)",
-                  border: "1px solid rgba(52, 211, 153, 0.2)",
-                }}
-              >
-                연결됨
-              </span>
-            ) : (
-              <span style={{ fontSize: 14, color: "var(--text-dim)" }}>
-                미연결
-              </span>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* 출결 상세 */}

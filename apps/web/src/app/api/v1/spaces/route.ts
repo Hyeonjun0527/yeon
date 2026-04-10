@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSpace, getSpaces } from "@/server/services/spaces-service";
+import { createDefaultSystemTabs } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
 
 import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const space = await createSpace(currentUser.id, parsed.data);
+    await createDefaultSystemTabs(space.id, currentUser.id);
 
     return NextResponse.json({ space }, { status: 201 });
   } catch (error) {

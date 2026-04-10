@@ -20,3 +20,8 @@ export { ClassCard } from "./class-card";
 export { ClassStudentPanel } from "./class-student-panel";
 export { TabReport } from "./tab-report";
 export { SheetIntegrationPanel } from "./sheet-integration-panel";
+export { TabCounselingRecords } from "./tab-counseling-records";
+export { TabMemberOverview } from "./tab-member-overview";
+export { ProfileImportPanel } from "./profile-import-panel";
+export { FieldRenderer } from "./field-renderer";
+export { CustomTabContent } from "./custom-tab-content";

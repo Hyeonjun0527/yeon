@@ -37,15 +37,23 @@ export interface ImportResult {
   members: number;
 }
 
+export interface ChatMessage {
+  role: "user" | "ai";
+  text: string;
+  id: string | number;
+}
+
 /** ImportRightPanel과 useLocalImport가 공유하는 최소 인터페이스 */
 export interface ImportHook {
   selectedFile: DriveFile | null;
   fileProxyUrl: string | null;
   analyzing: boolean;
+  streamingText: string | null;
   editablePreview: ImportPreview | null;
   importing: boolean;
   importResult: ImportResult | null;
   error: string | null;
+  chatMessages: ChatMessage[];
   analyzeSelectedFile: () => Promise<void>;
   updatePreview: (preview: ImportPreview) => void;
   confirmImport: () => Promise<void>;

@@ -31,6 +31,9 @@ export function useRecording({
   const tempIdRef = useRef<string>("");
 
   const start = useCallback(async () => {
+    // 이미 녹음 중이면 스트림 누수를 막기 위해 중복 호출 차단
+    if (mediaRecorderRef.current) return;
+
     setError(null);
     setElapsed(0);
     elapsedRef.current = 0;
@@ -83,6 +86,9 @@ export function useRecording({
 
         const realRecord: RecordItem = {
           id: item.id,
+          spaceId: null,
+          memberId: null,
+          createdAt: item.createdAt,
           title: item.sessionTitle || `녹음 ${createTimestamp()}`,
           status: "processing",
           errorMessage: null,
@@ -95,6 +101,7 @@ export function useRecording({
           transcript: [],
           aiSummary: "",
           aiMessages: [],
+          analysisResult: null,
         };
 
         onUploadComplete(tempId, realRecord);
@@ -128,6 +135,9 @@ export function useRecording({
     tempIdRef.current = tempId;
     const tempRecord: RecordItem = {
       id: tempId,
+      spaceId: null,
+      memberId: null,
+      createdAt: new Date().toISOString(),
       title: `녹음 ${createTimestamp()}`,
       status: "processing",
       errorMessage: null,
@@ -140,6 +150,7 @@ export function useRecording({
       transcript: [],
       aiSummary: "업로드 중...",
       aiMessages: [],
+      analysisResult: null,
     };
     onRecordingStop(tempRecord);
 

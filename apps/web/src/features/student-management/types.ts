@@ -106,7 +106,6 @@ export interface Member {
   phone?: string | null;
   status: string;
   initialRiskLevel?: string | null;
-  counselingRecordId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

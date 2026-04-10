@@ -5,3 +5,7 @@ export { useAudioPlayer } from "./use-audio-player";
 export { useAiChat } from "./use-ai-chat";
 export { useAiPanel } from "./use-ai-panel";
 export { useClickOutside } from "./use-click-outside";
+export { useCurrentSpace } from "./use-current-space";
+export { useSpaceMembers } from "./use-space-members";
+export type { Space } from "./use-current-space";
+export type { MemberWithStatus } from "./use-space-members";
