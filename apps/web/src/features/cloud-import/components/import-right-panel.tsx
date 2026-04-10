@@ -1,12 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
-import type { useCloudImport } from "../hooks/use-cloud-import";
-import type { ImportPreview } from "../types";
+import type { ImportHook, ImportPreview } from "../types";
 import styles from "../cloud-import.module.css";
 
 interface ImportRightPanelProps {
-  hook: ReturnType<typeof useCloudImport>;
+  hook: ImportHook;
   onClose: () => void;
 }
 
@@ -66,19 +66,7 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
     );
   }
 
-  /* 분석 중 */
-  if (analyzing) {
-    return (
-      <div className={styles.rightPanel}>
-        <div className={styles.loadingOverlay}>
-          <Loader2 size={24} className={styles.spinner} />
-          <span>AI가 파일을 분석하고 있습니다...</span>
-        </div>
-      </div>
-    );
-  }
-
-  /* 분석 결과 미리보기 */
+  /* 분석 결과 미리보기 (재분석 중에도 표시 — RefinementBar가 disabled 상태로 보임) */
   if (editablePreview) {
     return (
       <div className={styles.rightPanel}>
@@ -90,8 +78,22 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           onCancel={() => {
             hook.selectFileForPreview(selectedFile);
           }}
+          onRefine={hook.refineWithInstruction}
+          analyzing={analyzing}
           importing={importing}
         />
+      </div>
+    );
+  }
+
+  /* 초기 분석 중 (editablePreview 없음 — 재분석 중은 위 editablePreview 분기에서 처리) */
+  if (analyzing) {
+    return (
+      <div className={styles.rightPanel}>
+        <div className={styles.loadingOverlay}>
+          <Loader2 size={24} className={styles.spinner} />
+          <span>AI가 파일을 분석하고 있습니다...</span>
+        </div>
       </div>
     );
   }
@@ -139,6 +141,8 @@ interface PreviewEditorProps {
   onUpdate: (p: ImportPreview) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  onRefine: (instruction: string) => Promise<void>;
+  analyzing: boolean;
   importing: boolean;
 }
 
@@ -147,6 +151,8 @@ function PreviewEditor({
   onUpdate,
   onConfirm,
   onCancel,
+  onRefine,
+  analyzing,
   importing,
 }: PreviewEditorProps) {
   const updateCohortName = (ci: number, name: string) => {
@@ -254,6 +260,8 @@ function PreviewEditor({
         </div>
       ))}
 
+      <RefinementBar onRefine={onRefine} analyzing={analyzing} />
+
       <div className={styles.modalFooter}>
         <button
           className={styles.cancelBtn}
@@ -267,7 +275,7 @@ function PreviewEditor({
           className={styles.importBtn}
           onClick={onConfirm}
           type="button"
-          disabled={importing || totalStudents === 0}
+          disabled={importing || analyzing || totalStudents === 0}
         >
           {importing ? (
             <>
@@ -279,6 +287,57 @@ function PreviewEditor({
           )}
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ── Refinement Bar (AI 추가 요청) ── */
+
+function RefinementBar({
+  onRefine,
+  analyzing,
+}: {
+  onRefine: (instruction: string) => Promise<void>;
+  analyzing: boolean;
+}) {
+  const [instruction, setInstruction] = useState("");
+
+  const handleSubmit = async () => {
+    const trimmed = instruction.trim();
+    if (!trimmed || analyzing) return;
+    await onRefine(trimmed);
+    setInstruction("");
+  };
+
+  return (
+    <div className={styles.refinementBar}>
+      <p className={styles.refinementLabel}>AI에게 추가 요청</p>
+      <textarea
+        className={styles.refinementInput}
+        value={instruction}
+        onChange={(e) => setInstruction(e.target.value)}
+        placeholder="예: 출결 정보도 뽑아줘 / 이메일이 빠진 수강생 다시 확인해줘"
+        rows={2}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+        }}
+        disabled={analyzing}
+      />
+      <button
+        className={styles.refineBtn}
+        onClick={handleSubmit}
+        disabled={!instruction.trim() || analyzing}
+        type="button"
+      >
+        {analyzing ? (
+          <>
+            <Loader2 size={14} className={styles.spinner} />
+            재분석 중...
+          </>
+        ) : (
+          "AI 재분석 요청"
+        )}
+      </button>
     </div>
   );
 }

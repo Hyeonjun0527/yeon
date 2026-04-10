@@ -2,7 +2,7 @@ import { ServiceError } from "./service-error";
 
 const OPENAI_CHAT_COMPLETIONS_URL =
   "https://api.openai.com/v1/chat/completions";
-const DEFAULT_AI_CHAT_MODEL = "gpt-5.4-medium";
+const DEFAULT_AI_CHAT_MODEL = "gpt-4.1-mini";
 
 type TranscriptSegmentInput = {
   speakerLabel: string;

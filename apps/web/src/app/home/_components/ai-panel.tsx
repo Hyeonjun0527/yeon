@@ -154,14 +154,17 @@ export function AiPanel({
         </div>
 
         {/* 채팅 기록 탭 */}
-        {tab === "history" && <ChatHistoryTab onSelectChat={() => onSetTab("chat")} />}
+        {tab === "history" && <ChatHistoryTab />}
 
         {/* 채팅 탭 */}
         {tab === "chat" && (
           <>
             {/* AI 요약 */}
-            {selected?.status === "ready" && selected.aiSummary && (
+            {selected?.status === "ready" && selected.aiSummary && !selected.aiSummary.startsWith("업로드 실패:") && (
               <AiSummaryCard selected={selected} />
+            )}
+            {selected?.status === "ready" && selected.aiSummary?.startsWith("업로드 실패:") && (
+              <UploadErrorCard message={selected.aiSummary} />
             )}
 
             {isProcessing && (
@@ -338,35 +341,12 @@ export function AiPanel({
 
 /* ── 하위 프레젠테이션 컴포넌트 ── */
 
-function ChatHistoryTab({ onSelectChat }: { onSelectChat: () => void }) {
-  const mockHistory = [
-    { title: "수학 과제 누락 상담 분석", date: "오늘 15:30", msgs: 4 },
-    { title: "교우 관계 상담 요약", date: "어제 14:20", msgs: 6 },
-    { title: "월간 학습 리포트 생성", date: "4.6 11:00", msgs: 3 },
-  ];
-
+function ChatHistoryTab() {
   return (
-    <div className={styles.aiMessages} style={{ flex: 1 }}>
-      <div style={{ padding: "16px 0", fontSize: 12, color: "var(--mock-text-dim)", textAlign: "center" }}>
-        이전 채팅 기록
+    <div className={styles.aiMessages} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ fontSize: 12, color: "var(--mock-text-dim)", textAlign: "center", padding: "24px 16px" }}>
+        아직 저장된 채팅 기록이 없습니다
       </div>
-      {mockHistory.map((item, i) => (
-        <div
-          key={i}
-          style={{
-            padding: "10px 16px",
-            borderBottom: "1px solid var(--mock-border)",
-            cursor: "pointer",
-            fontSize: 13,
-          }}
-          onClick={onSelectChat}
-        >
-          <div style={{ fontWeight: 500, marginBottom: 2 }}>{item.title}</div>
-          <div style={{ fontSize: 11, color: "var(--mock-text-dim)" }}>
-            {item.date} · {item.msgs}개 메시지
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -378,39 +358,35 @@ function AiSummaryCard({ selected }: { selected: RecordItem }) {
         ✦ AI 상담 분석
       </div>
       <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        <div style={{ display: "flex", gap: 16, marginBottom: 4 }}>
-          <div><strong>학생:</strong> {selected.studentName}</div>
-          <div><strong>유형:</strong> {selected.type}</div>
+        {(selected.studentName || selected.type) && (
+          <div style={{ display: "flex", gap: 16, marginBottom: 6 }}>
+            {selected.studentName && <div><strong>수강생:</strong> {selected.studentName}</div>}
+            {selected.type && <div><strong>유형:</strong> {selected.type}</div>}
+          </div>
+        )}
+        <div style={{ whiteSpace: "pre-wrap", color: "var(--mock-text-secondary)" }}>
+          {selected.aiSummary}
         </div>
-        <div style={{ marginBottom: 4 }}>
-          <strong>화자:</strong>{" "}
-          <span style={{ fontSize: 12, color: "var(--mock-text-dim)" }}>
-            최현준 (교사), 김민수 (학생) — AI 자동 식별
-          </span>
-        </div>
-        <div style={{ marginBottom: 4 }}>
-          <strong>주제:</strong>{" "}
-          <span style={{ background: "var(--mock-surface)", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>과제관리</span>
-          {" "}
-          <span style={{ background: "var(--mock-surface)", padding: "1px 6px", borderRadius: 4, fontSize: 12 }}>시간관리</span>
-        </div>
-        <hr style={{ border: "none", borderTop: "1px solid var(--mock-border)", margin: "8px 0" }} />
-        <div>{selected.aiSummary}</div>
-        <hr style={{ border: "none", borderTop: "1px solid var(--mock-border)", margin: "8px 0" }} />
-        <div>
-          <strong>후속 조치:</strong>
-          <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: 12, color: "var(--mock-text-secondary)" }}>
-            <li>과제 제출 기한 익일 오전으로 변경</li>
-            <li>2주 후 학습 루틴 재점검 (4/22)</li>
-            <li>수학 기초 강화 우선</li>
-          </ul>
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <strong>키워드:</strong>{" "}
-          <span style={{ fontSize: 12, color: "var(--mock-text-dim)" }}>
-            수학, 과제, 학원일정, 기한조정, 과학
-          </span>
-        </div>
+      </div>
+    </div>
+  );
+}
+
+function UploadErrorCard({ message }: { message: string }) {
+  const detail = message.replace(/^업로드 실패:\s*/, "");
+  return (
+    <div
+      className={styles.aiSummary}
+      style={{ borderColor: "var(--error, #e53e3e)", background: "color-mix(in srgb, var(--error, #e53e3e) 8%, transparent)" }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--error, #e53e3e)", marginBottom: 6 }}>
+        업로드 실패
+      </div>
+      <div style={{ fontSize: 12, color: "var(--mock-text-secondary)", lineHeight: 1.5 }}>
+        {detail}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--mock-text-dim)", marginTop: 6 }}>
+        녹음 파일을 다시 업로드하거나 새 녹음을 시도해 주세요.
       </div>
     </div>
   );
