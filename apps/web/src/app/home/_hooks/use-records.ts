@@ -74,7 +74,7 @@ export function useRecords() {
 
     setProcessingStep(0);
     stepTimerRef.current = setInterval(() => {
-      setProcessingStep((prev) => (prev >= 5 ? 5 : prev + 1));
+      setProcessingStep((prev) => Math.min(prev + 1, 5));
     }, 2000);
 
     return () => {
@@ -230,12 +230,11 @@ export function useRecords() {
     });
     setSelectedId(record.id);
     setPhase("processing");
-    setProcessingStep(0);
     processingStartRef.current = Date.now();
   }, []);
 
   const selectRecord = useCallback(
-    async (id: string) => {
+    (id: string) => {
       const rec = recordsRef.current.find((r) => r.id === id);
       if (!rec) return;
       setSelectedId(id);
