@@ -1,3 +1,5 @@
+import type { FileKind } from "./file-kind";
+
 export type CloudProvider = "onedrive" | "googledrive";
 
 export type FolderEntry = { id: string | undefined; name: string };
@@ -11,6 +13,7 @@ export interface DriveFile {
   isFolder: boolean;
   isSpreadsheet: boolean;
   isImage: boolean;
+  fileKind: FileKind;
 }
 
 export interface ImportStudent {
@@ -32,4 +35,21 @@ export interface ImportPreview {
 export interface ImportResult {
   spaces: number;
   members: number;
+}
+
+/** ImportRightPanel과 useLocalImport가 공유하는 최소 인터페이스 */
+export interface ImportHook {
+  selectedFile: DriveFile | null;
+  fileProxyUrl: string | null;
+  analyzing: boolean;
+  editablePreview: ImportPreview | null;
+  importing: boolean;
+  importResult: ImportResult | null;
+  error: string | null;
+  analyzeSelectedFile: () => Promise<void>;
+  updatePreview: (preview: ImportPreview) => void;
+  confirmImport: () => Promise<void>;
+  selectFileForPreview: (file: DriveFile) => void;
+  deselectFile: () => void;
+  refineWithInstruction: (instruction: string) => Promise<void>;
 }

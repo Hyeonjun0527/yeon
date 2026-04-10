@@ -334,7 +334,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </nav>
-      <main className={styles.main}>
+      <main className={`${styles.main} ${importMode ? styles.mainImport : ""}`}>
         {importMode ? (
           <CloudImportInline
             initialProvider={importInitialProvider ?? undefined}

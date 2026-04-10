@@ -290,15 +290,31 @@ export interface ImportPreview {
   }>;
 }
 
+export interface RefineContext {
+  instruction: string;
+  previousResult: ImportPreview;
+}
+
 export async function analyzeFileWithAI(
   content: string,
+  refine?: RefineContext,
 ): Promise<ImportPreview> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new ServiceError(500, "OPENAI_API_KEY가 설정되지 않았습니다.");
   }
 
-  const model = process.env.OPENAI_AI_CHAT_MODEL ?? "gpt-4o-mini";
+  const model = process.env.OPENAI_AI_IMPORT_MODEL ?? process.env.OPENAI_AI_CHAT_MODEL ?? "gpt-4.1-mini";
+
+  const systemPrompt = `아래 스프레드시트 데이터에서 코호트/기수 정보와 수강생 목록을 추출해라.
+JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated" }] }] }
+- status 기본값은 "active"
+- 이메일, 전화번호 없으면 null
+- 하나의 코호트면 배열에 하나만 넣어라${refine ? "\n- 이전 분석 결과를 참고하고 사용자 보완 요청을 반영해 개선된 결과를 반환해라" : ""}`;
+
+  const userContent = refine
+    ? `${content}\n\n---\n이전 분석 결과:\n${JSON.stringify(refine.previousResult, null, 2)}\n\n사용자 보완 요청: ${refine.instruction}`
+    : content;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -309,15 +325,8 @@ export async function analyzeFileWithAI(
     body: JSON.stringify({
       model,
       messages: [
-        {
-          role: "system",
-          content: `아래 스프레드시트 데이터에서 코호트/기수 정보와 수강생 목록을 추출해라.
-JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated" }] }] }
-- status 기본값은 "active"
-- 이메일, 전화번호 없으면 null
-- 하나의 코호트면 배열에 하나만 넣어라`,
-        },
-        { role: "user", content },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
