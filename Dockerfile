@@ -27,7 +27,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm --filter @yeon/web build
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @yeon/web build
 
 FROM node:22-bookworm-slim AS runner
 
