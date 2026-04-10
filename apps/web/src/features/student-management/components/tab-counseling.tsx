@@ -1,7 +1,6 @@
 "use client";
 
 import type { CounselingHistoryItem } from "../types";
-import styles from "../student-detail.module.css";
 
 const COUNSELING_STATUS_STYLE: Record<
   CounselingHistoryItem["status"],
@@ -26,23 +25,26 @@ export function TabCounseling({ history }: TabCounselingProps) {
   }
 
   return (
-    <div className={styles.counselingList}>
+    <div className="flex flex-col gap-2">
       {history.map((item) => {
         const meta = COUNSELING_STATUS_STYLE[item.status];
         return (
-          <div key={item.id} className={styles.counselingItem}>
-            <span className={styles.counselingDate}>{item.date}</span>
+          <div
+            key={item.id}
+            className="flex items-center gap-3 py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
+          >
+            <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">{item.date}</span>
             <div style={{ flex: 1 }}>
-              <div className={styles.counselingTitle}>{item.title}</div>
+              <div className="font-medium text-text-secondary">{item.title}</div>
               {item.summary && (
                 <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>
                   {item.summary}
                 </div>
               )}
             </div>
-            <span className={styles.counselingStatus}>{item.type}</span>
+            <span className="text-xs py-0.5 px-2 rounded-[10px]">{item.type}</span>
             <span
-              className={styles.counselingStatus}
+              className="text-xs py-0.5 px-2 rounded-[10px]"
               style={{ color: meta.color, background: meta.bgColor }}
             >
               {meta.label}

@@ -1,6 +1,5 @@
 "use client";
 
-import styles from "../mockdata/mockdata.module.css";
 import {
   useRecords,
   useRecording,
@@ -30,12 +29,14 @@ export default function MockV2Workspace() {
     onFileUpload: (rec) => records.addProcessingRecord(rec),
   });
 
-  const audio = useAudioPlayer();
+  const selectedAudioUrl = records.selected?.audioUrl ?? null;
+  const selectedTotalSeconds = Math.round((records.selected?.durationMs ?? 0) / 1000);
+  const audio = useAudioPlayer(selectedAudioUrl, selectedTotalSeconds);
 
   const aiChat = useAiChat({
     selectedId: records.selectedId,
     selectedMessages: records.selected?.aiMessages ?? [],
-    isProcessing: records.phase === "processing",
+    selectedStatus: records.selected?.status ?? null,
     onUpdateMessages: records.updateMessages,
   });
 
@@ -53,7 +54,7 @@ export default function MockV2Workspace() {
 
   return (
     <div
-      style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}
+      className="flex flex-1 overflow-hidden relative"
       onDragEnter={fileUpload.handleDragEnter}
       onDragLeave={fileUpload.handleDragLeave}
       onDragOver={fileUpload.handleDragOver}
@@ -63,16 +64,16 @@ export default function MockV2Workspace() {
         ref={fileUpload.fileInputRef}
         type="file"
         accept="audio/*"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={fileUpload.handleInputChange}
       />
 
       {fileUpload.isDragging && (
-        <div className={styles.dropOverlay}>
-          <div className={styles.dropBox}>
-            <div className={styles.dropBoxIcon}>📁</div>
-            <div className={styles.dropBoxTitle}>녹음 파일을 놓으세요</div>
-            <div className={styles.dropBoxDesc}>
+        <div className="fixed inset-0 z-[200] bg-[rgba(9,9,11,0.8)] flex items-center justify-center pointer-events-none">
+          <div className="border-2 border-dashed border-accent rounded-lg p-12 px-16 text-center bg-[rgba(129,140,248,0.06)]">
+            <div className="text-5xl mb-3">📁</div>
+            <div className="text-lg font-semibold text-text mb-1">녹음 파일을 놓으세요</div>
+            <div className="text-sm text-text-secondary">
               오디오 파일을 드롭하면 자동으로 전사를 시작합니다
             </div>
           </div>
@@ -107,6 +108,7 @@ export default function MockV2Workspace() {
             phase={records.phase}
             selected={records.selected}
             processingStep={records.processingStep}
+            transcriptLoading={records.transcriptLoading}
             isPlaying={audio.isPlaying}
             audioPosition={audio.position}
             totalSeconds={audio.totalSeconds}

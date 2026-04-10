@@ -1,6 +1,39 @@
 import * as XLSX from "xlsx";
+import { z } from "zod";
 import { ServiceError } from "./service-error";
-import type { FileKind } from "@/features/cloud-import/file-kind";
+import type { FileKind } from "@/lib/file-kind";
+
+/* ── Validation ── */
+
+const StudentSchema = z.object({
+  name: z.string(),
+  email: z.string().nullish(),
+  phone: z.string().nullish(),
+  status: z.string().nullish(),
+});
+
+const ImportPreviewSchema = z.object({
+  cohorts: z.array(
+    z.object({
+      name: z.string(),
+      students: z.array(StudentSchema),
+    }),
+  ),
+});
+
+function parseImportPreview(raw: string): ImportPreview {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ServiceError(500, "AI 응답 JSON 파싱 실패");
+  }
+  const result = ImportPreviewSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new ServiceError(500, `AI 응답 구조 검증 실패: ${result.error.message}`);
+  }
+  return result.data;
+}
 
 /* ── Types ── */
 
@@ -89,14 +122,7 @@ JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{
   const raw = data.choices[0]?.message?.content;
   if (!raw) throw new ServiceError(500, "AI 응답이 비어 있습니다.");
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new ServiceError(500, "AI 응답 JSON 파싱 실패");
-  }
-
-  return parsed as ImportPreview;
+  return parseImportPreview(raw);
 }
 
 /* ── AI 이미지 분석 (Vision) ── */
@@ -117,7 +143,7 @@ export async function analyzeImageWithAI(
 
   const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
-  const basePrompt = `이 이미지에서 수강생/학생 목록을 추출해라.
+  const basePrompt = `이 이미지에서 수강생 목록을 추출해라.
 JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active" }] }] }
 - status 기본값은 "active"
 - 이메일, 전화번호 없으면 null
@@ -159,19 +185,14 @@ JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students":
   const raw = data.choices[0]?.message?.content;
   if (!raw) throw new ServiceError(500, "AI 응답이 비어 있습니다.");
 
-  try {
-    return JSON.parse(raw) as ImportPreview;
-  } catch {
-    throw new ServiceError(500, "AI 응답 JSON 파싱 실패");
-  }
+  return parseImportPreview(raw);
 }
 
 /* ── PDF → 텍스트 변환 ── */
 
 async function parsePdfToText(buffer: Buffer): Promise<string> {
   // pdf-parse v1 은 CommonJS default export
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+  const pdfParse = (await import("pdf-parse")).default as (buf: Buffer) => Promise<{ text: string }>;
   const result = await pdfParse(buffer);
   return result.text;
 }

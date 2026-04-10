@@ -1,4 +1,4 @@
-/* ── 목업 전용 다크 테마 ── */
+/* ── 서비스 다크 테마 (mockdata에서도 동일 변수 사용) ── */
 .mockRoot {
   --bg: #09090b;
   --surface: #111113;
@@ -367,6 +367,8 @@
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .statusReady {
@@ -380,11 +382,17 @@
 }
 
 /* ── Center Content ── */
+@keyframes centerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .center {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: centerFadeIn 0.2s ease-out;
 }
 
 .centerHeader {
@@ -461,7 +469,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   border: none;
   cursor: pointer;
   flex-shrink: 0;

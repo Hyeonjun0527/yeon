@@ -3,7 +3,6 @@
 import { LayoutGrid, List, UserPlus } from "lucide-react";
 import { STUDENT_STATUS_META } from "../constants";
 import { ALL_TAGS, MOCK_CLASSES } from "../mock-data";
-import styles from "../student-list.module.css";
 import type { StudentStatus, ViewMode } from "../types";
 
 export interface StudentListHeaderProps {
@@ -37,29 +36,32 @@ export function StudentListHeader({
 }: StudentListHeaderProps) {
   return (
     <>
-      <div className={styles.pageHeader}>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4 md:flex-row flex-col md:items-center items-start">
         <div>
-          <h1 className={styles.pageTitle}>학생 관리</h1>
-          <p className={styles.pageSubtitle}>총 {totalCount}명</p>
+          <h1 className="text-2xl font-bold text-text tracking-[-0.02em]">수강생 관리</h1>
+          <p className="text-sm text-text-secondary mt-0.5">총 {totalCount}명</p>
         </div>
-        <div className={styles.headerActions}>
+        <div className="flex items-center gap-[10px] md:w-auto w-full flex-wrap">
           <input
             type="text"
-            className={styles.searchInput}
-            placeholder="이름, 학교, 태그 검색..."
+            className="py-2 px-[14px] border border-border rounded-lg text-sm w-[220px] outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border focus:shadow-[0_0_0_3px_var(--accent-dim)] md:w-[220px] w-full"
+            placeholder="이름, 태그 검색..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
           />
-          <button className={styles.addButton} onClick={onAddStudent}>
+          <button
+            className="flex items-center gap-1.5 py-2 px-4 bg-accent text-white border-none rounded-sm text-sm font-semibold cursor-pointer transition-[opacity,box-shadow] duration-150 hover:opacity-90 hover:shadow-[0_8px_32px_rgba(129,140,248,0.25)]"
+            onClick={onAddStudent}
+          >
             <UserPlus size={16} />
-            학생 추가
+            수강생 추가
           </button>
         </div>
       </div>
 
-      <div className={styles.filterBar}>
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
         <select
-          className={styles.filterSelect}
+          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
           value={statusFilter}
           onChange={(e) =>
             onStatusFilterChange(e.target.value as StudentStatus | "all")
@@ -76,7 +78,7 @@ export function StudentListHeader({
         </select>
 
         <select
-          className={styles.filterSelect}
+          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
           value={classFilter}
           onChange={(e) => onClassFilterChange(e.target.value)}
         >
@@ -89,7 +91,7 @@ export function StudentListHeader({
         </select>
 
         <select
-          className={styles.filterSelect}
+          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
           value={tagFilter}
           onChange={(e) => onTagFilterChange(e.target.value)}
         >
@@ -101,16 +103,16 @@ export function StudentListHeader({
           ))}
         </select>
 
-        <div className={styles.viewToggle}>
+        <div className="flex gap-0.5 ml-auto bg-surface-2 rounded-sm p-0.5">
           <button
-            className={`${styles.viewToggleBtn}${viewMode === "card" ? ` ${styles.viewToggleBtnActive}` : ""}`}
+            className={`py-1.5 px-2.5 border-none rounded-[4px] cursor-pointer transition-all duration-150 flex items-center${viewMode === "card" ? " bg-surface-3 text-text shadow-[0_1px_2px_rgba(0,0,0,0.2)]" : " bg-transparent text-text-dim"}`}
             onClick={() => onViewModeChange("card")}
             aria-label="카드 뷰"
           >
             <LayoutGrid size={16} />
           </button>
           <button
-            className={`${styles.viewToggleBtn}${viewMode === "table" ? ` ${styles.viewToggleBtnActive}` : ""}`}
+            className={`py-1.5 px-2.5 border-none rounded-[4px] cursor-pointer transition-all duration-150 flex items-center${viewMode === "table" ? " bg-surface-3 text-text shadow-[0_1px_2px_rgba(0,0,0,0.2)]" : " bg-transparent text-text-dim"}`}
             onClick={() => onViewModeChange("table")}
             aria-label="테이블 뷰"
           >

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
-import styles from "./landing-home.module.css";
 
 type CounterProps = {
   end: number;
@@ -35,7 +34,7 @@ export function Counter({ end, suffix = "", duration = 2000 }: CounterProps) {
   return (
     <motion.span
       ref={ref}
-      className={styles.statValue}
+      className="text-[clamp(44px,6vw,68px)] font-black tracking-[-0.04em] text-[var(--accent)] tabular-nums leading-none"
       initial={{ opacity: 0, scale: 0.5 }}
       animate={isInView ? { opacity: 1, scale: 1 } : {}}
       transition={{ duration: 0.5, ease: "easeOut" }}

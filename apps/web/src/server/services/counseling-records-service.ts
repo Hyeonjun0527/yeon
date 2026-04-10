@@ -19,6 +19,7 @@ import {
   openCounselingAudioObjectStream,
 } from "./counseling-record-audio-storage";
 import { transcribeStoredAudio } from "./counseling-transcription-engine";
+import { resolveSpeakerNames } from "./counseling-ai-service";
 import {
   type CounselingRecordRow,
   DEFAULT_COUNSELING_TYPE,
@@ -37,6 +38,7 @@ import {
 
 // ── 전사 스케줄러 ──
 
+// TODO: 단일 인스턴스 전제. 다중 인스턴스 배포 시 DB 기반 lock 또는 외부 큐로 교체 필요.
 const scheduledTranscriptionJobs = new Map<string, Promise<void>>();
 
 type CreateCounselingRecordInput = {
@@ -106,18 +108,58 @@ async function runTranscriptionForRecord(params: {
   record: CounselingRecordRow;
   clientRequestId?: string | null;
 }) {
+  const freshRecord = await findOwnedRecord(params.record.createdByUserId, params.record.id);
+  if (freshRecord.status !== "processing") {
+    console.info("전사 스킵: 레코드 상태가 processing이 아님", {
+      recordId: params.record.id,
+      status: freshRecord.status,
+    });
+    return;
+  }
+
   const db = getDb();
 
   try {
+    const speakerHints = ["멘토"];
+    if (freshRecord.studentName) {
+      speakerHints.push(freshRecord.studentName);
+    }
+
     const result = await transcribeStoredAudio({
-      recordId: params.record.id,
-      storagePath: params.record.audioStoragePath,
-      mimeType: params.record.audioMimeType,
-      originalName: params.record.audioOriginalName,
-      byteSize: params.record.audioByteSize,
-      durationMs: params.record.audioDurationMs,
+      recordId: freshRecord.id,
+      storagePath: freshRecord.audioStoragePath,
+      mimeType: freshRecord.audioMimeType,
+      originalName: freshRecord.audioOriginalName,
+      byteSize: freshRecord.audioByteSize,
+      durationMs: freshRecord.audioDurationMs,
       clientRequestId: params.clientRequestId,
+      speakerHints,
     });
+    // AI 화자 식별: generic 라벨(화자 A/B)을 실제 이름/역할로 교체
+    const speakerResolution = await resolveSpeakerNames(
+      result.segments.map((s) => ({
+        speakerLabel: s.speakerLabel,
+        text: s.text,
+        startMs: s.startMs ?? 0,
+      })),
+    ).catch((err) => {
+      console.warn("화자 식별 실패, 원본 라벨 유지:", err);
+      return { mapping: {} as Record<string, { name: string; tone: CounselingRecordSpeakerTone }>, studentName: null };
+    });
+
+    const resolvedSegments = result.segments.map((seg) => {
+      const resolved = speakerResolution.mapping[seg.speakerLabel];
+      if (!resolved) return seg;
+      return {
+        ...seg,
+        speakerLabel: resolved.name,
+        speakerTone: resolved.tone as CounselingRecordSpeakerTone,
+      };
+    });
+
+    const resolvedStudentName =
+      speakerResolution.studentName || params.record.studentName || null;
+
     const now = new Date();
 
     await db.transaction(async (tx) => {
@@ -126,10 +168,13 @@ async function runTranscriptionForRecord(params: {
         .set({
           status: "ready",
           transcriptText: result.transcriptText,
-          transcriptSegmentCount: result.segments.length,
+          transcriptSegmentCount: resolvedSegments.length,
           language: result.language,
           sttModel: result.model,
           audioDurationMs: result.durationMs ?? params.record.audioDurationMs,
+          ...(resolvedStudentName && !params.record.studentName
+            ? { studentName: resolvedStudentName }
+            : {}),
           errorMessage: null,
           transcriptionCompletedAt: now,
           updatedAt: now,
@@ -140,9 +185,9 @@ async function runTranscriptionForRecord(params: {
         .delete(counselingTranscriptSegments)
         .where(eq(counselingTranscriptSegments.recordId, params.record.id));
 
-      if (result.segments.length > 0) {
+      if (resolvedSegments.length > 0) {
         await tx.insert(counselingTranscriptSegments).values(
-          result.segments.map((segment) => ({
+          resolvedSegments.map((segment) => ({
             id: segment.id,
             recordId: params.record.id,
             segmentIndex: segment.segmentIndex,
@@ -290,7 +335,7 @@ export async function getMultipleRecordsWithSegments(
   const names = new Set(results.map((r) => r.studentName));
 
   if (names.size > 1) {
-    throw new ServiceError(400, "같은 학생의 기록만 추이 분석할 수 있습니다.");
+    throw new ServiceError(400, "같은 수강생의 기록만 추이 분석할 수 있습니다.");
   }
 
   return results;
@@ -439,6 +484,9 @@ export async function getCounselingRecordAudio(
 }
 
 export async function deleteCounselingRecord(userId: string, recordId: string) {
+  // 진행 중인 전사 job을 취소해 고아 세그먼트 방지
+  scheduledTranscriptionJobs.delete(recordId);
+
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
 
@@ -448,10 +496,11 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
-      console.error(
-        `상담 기록 ${record.id}의 R2 음성 파일 삭제에 실패했습니다.`,
+      console.error("counseling-record-r2-delete-failed", {
+        recordId: record.id,
+        storagePath: record.audioStoragePath,
         error,
-      );
+      });
     }
   }
 }

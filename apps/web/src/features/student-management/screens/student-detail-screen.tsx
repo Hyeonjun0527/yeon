@@ -81,7 +81,7 @@ export function StudentDetailScreen({
               fontSize: 14,
             }}
           >
-            ← 학생 목록으로
+            ← 수강생 목록으로
           </a>
         </div>
 

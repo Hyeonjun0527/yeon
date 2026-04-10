@@ -79,7 +79,7 @@ export const DETAIL_TABS: { id: DetailTab; label: string }[] = [
   { id: "overview", label: "개요" },
   { id: "counseling", label: "상담기록" },
   { id: "courses", label: "수강이력" },
-  { id: "guardian", label: "보호자" },
+  { id: "guardian", label: "비상연락처" },
   { id: "memos", label: "메모" },
   { id: "report", label: "리포트" },
 ];

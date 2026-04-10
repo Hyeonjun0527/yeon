@@ -9,7 +9,6 @@ export const counselingRecordStatusSchema = z.enum([
 export const counselingRecordSpeakerToneSchema = z.enum([
   "teacher",
   "student",
-  "guardian",
   "unknown",
 ]);
 

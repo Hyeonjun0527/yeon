@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Plus } from "lucide-react";
 import type { SheetIntegration } from "../types";
-import styles from "../student-detail.module.css";
 
 interface SheetIntegrationPanelProps {
   spaceId: string;
@@ -149,21 +148,13 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
 
   return (
     <div style={{ marginTop: 32 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <div className={styles.sectionTitle} style={{ margin: 0 }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-base font-semibold text-text">
           데이터 연동
         </div>
         <button
-          className={styles.assignBtn}
+          className="flex items-center gap-1.5 py-1.5 px-[14px] bg-accent text-white border-none rounded-sm text-[13px] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
           onClick={() => setShowForm((v) => !v)}
-          style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
           <Plus size={14} />
           시트 추가
@@ -171,16 +162,7 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
       </div>
 
       {error && (
-        <div
-          style={{
-            color: "var(--red)",
-            fontSize: 13,
-            marginBottom: 12,
-            padding: "8px 12px",
-            background: "var(--red-dim)",
-            borderRadius: "var(--radius-sm)",
-          }}
-        >
+        <div className="text-red text-[13px] mb-3 py-2 px-3 bg-red-dim rounded-sm">
           {error}
         </div>
       )}
@@ -188,28 +170,22 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
       {/* 새 연동 폼 */}
       {showForm && (
         <div
-          style={{
-            padding: 16,
-            background: "var(--surface3)",
-            borderRadius: "var(--radius)",
-            marginBottom: 16,
-            border: "1px solid var(--border)",
-          }}
+          className="p-4 bg-surface-3 rounded border border-border mb-4"
         >
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>구글 시트 URL</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">구글 시트 URL</label>
             <input
               type="url"
-              className={styles.formInput}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               placeholder="https://docs.google.com/spreadsheets/d/..."
               value={sheetUrl}
               onChange={(e) => setSheetUrl(e.target.value)}
             />
           </div>
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>데이터 유형</label>
+          <div className="mb-3">
+            <label className="block text-[13px] font-medium text-text-dim mb-1">데이터 유형</label>
             <select
-              className={styles.formSelect}
+              className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={dataType}
               onChange={(e) =>
                 setDataType(e.target.value as "attendance" | "assignment")
@@ -220,13 +196,11 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
             </select>
           </div>
           {formError && (
-            <div className={styles.formError} style={{ marginBottom: 8 }}>
-              {formError}
-            </div>
+            <div className="text-xs text-red mb-2">{formError}</div>
           )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
-              className={styles.cancelBtn}
+              className="py-2 px-4 border border-border rounded-lg bg-surface-2 text-text-secondary text-sm cursor-pointer transition-[background] duration-150 hover:bg-surface-3"
               onClick={() => {
                 setShowForm(false);
                 setFormError(null);
@@ -236,7 +210,7 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
               취소
             </button>
             <button
-              className={styles.submitBtn}
+              className="py-2 px-5 bg-accent text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
               onClick={handleSubmit}
               disabled={submitting}
             >
@@ -255,15 +229,7 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
 
       {!loading && integrations.length === 0 && (
         <div
-          style={{
-            padding: "24px 16px",
-            textAlign: "center",
-            color: "var(--text-dim)",
-            fontSize: 14,
-            background: "var(--surface2)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-          }}
+          className="py-6 px-4 text-center text-text-dim text-sm bg-surface-2 border border-border rounded"
         >
           연동된 시트가 없습니다.
         </div>
@@ -275,13 +241,16 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
           const result = syncResults[integ.id];
 
           return (
-            <div key={integ.id} className={styles.courseItem}>
+            <div
+              key={integ.id}
+              className="flex items-center justify-between py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
+            >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className={styles.courseItemName} style={{ marginBottom: 2 }}>
+                <div className="font-medium text-text-secondary" style={{ marginBottom: 2 }}>
                   {integ.dataType === "attendance" ? "출결" : "과제"} 연동
                 </div>
                 <div
-                  className={styles.courseItemMeta}
+                  className="text-[13px] text-text-dim"
                   style={{
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -321,10 +290,9 @@ export function SheetIntegrationPanel({ spaceId }: SheetIntegrationPanelProps) {
                 )}
               </div>
               <button
-                className={styles.assignBtn}
+                className="flex items-center gap-1.5 py-1.5 px-[14px] bg-accent text-white border-none rounded-sm text-[13px] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-50 flex-shrink-0"
                 onClick={() => handleSync(integ.id)}
                 disabled={isSyncing}
-                style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
               >
                 <RefreshCw
                   size={13}

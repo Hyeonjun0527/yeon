@@ -6,7 +6,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Users, Plus, GraduationCap, X, CheckCircle, AlertCircle, Upload } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
-import styles from "./student-management-layout.module.css";
 
 const CloudImportInline = dynamic(
   () =>
@@ -150,16 +149,29 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={styles.shell}>
-      <nav className={styles.sidebar}>
-        <div className={styles.logo}>
+    <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
+      <nav className="w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto md:w-[240px] max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:gap-1 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
+        <div className="flex items-center gap-2.5 px-2.5 pb-4 text-text max-md:hidden">
           <GraduationCap size={20} style={{ color: "var(--accent)" }} />
-          <span className={styles.logoText}>수강생 관리</span>
+          <span
+            className="text-[15px] font-bold tracking-[-0.02em]"
+            style={{
+              background: "linear-gradient(135deg, var(--accent), var(--cyan))",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            수강생 관리
+          </span>
         </div>
 
         {/* 전체 수강생 */}
         <button
-          className={`${styles.navItem} ${selectedSpaceId === null ? styles.navItemActive : ""}`}
+          className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
+            selectedSpaceId === null
+              ? " bg-accent-dim text-accent font-semibold"
+              : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
+          }`}
           onClick={() => { setSelectedSpaceId(null); if (importMode) exitImportMode(); }}
         >
           <Users size={16} />
@@ -167,8 +179,10 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         </button>
 
         {/* 스페이스 목록 */}
-        <div className={styles.sectionLabel}>스페이스</div>
-        <div className={styles.cohortList}>
+        <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-4 pb-1.5 max-md:hidden">
+          스페이스
+        </div>
+        <div className="flex flex-col gap-0.5 max-md:flex-row max-md:gap-1">
           {spacesLoading && (
             <div
               style={{
@@ -194,16 +208,20 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           {spaces.map((space) => (
             <button
               key={space.id}
-              className={`${styles.navItem} ${selectedSpaceId === space.id ? styles.navItemActive : ""}`}
+              className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
+                selectedSpaceId === space.id
+                  ? " bg-accent-dim text-accent font-semibold"
+                  : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
+              }`}
               onClick={() => { setSelectedSpaceId(space.id); if (importMode) exitImportMode(); }}
             >
               <span
-                className={styles.cohortDot}
+                className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: "var(--accent)" }}
               />
-              <span className={styles.cohortName}>{space.name}</span>
+              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{space.name}</span>
               {selectedSpaceId === space.id && (
-                <span className={styles.navCount}>{members.length}</span>
+                <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">{members.length}</span>
               )}
             </button>
           ))}
@@ -297,7 +315,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           </div>
         ) : (
           <button
-            className={styles.addCohortBtn}
+            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim max-md:whitespace-nowrap max-md:w-auto max-md:mt-0"
             onClick={() => setShowCreateForm(true)}
           >
             <Plus size={14} />
@@ -317,7 +335,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           }}
         >
           <button
-            className={styles.addCohortBtn}
+            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
             onClick={() => enterImportMode("onedrive")}
             type="button"
           >
@@ -325,7 +343,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             OneDrive에서 가져오기
           </button>
           <button
-            className={styles.addCohortBtn}
+            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
             onClick={() => enterImportMode("googledrive")}
             type="button"
           >
@@ -334,7 +352,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </nav>
-      <main className={`${styles.main} ${importMode ? styles.mainImport : ""}`}>
+      <main className={`flex-1 overflow-y-auto${importMode ? " p-0 overflow-hidden" : " p-8 max-md:px-4 max-md:py-5"}`}>
         {importMode ? (
           <CloudImportInline
             initialProvider={importInitialProvider ?? undefined}

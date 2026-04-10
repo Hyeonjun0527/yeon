@@ -18,7 +18,7 @@ export const FEATURES = [
     icon: FileText,
     title: "구조화 상담 요약",
     description:
-      "핵심 상담 내용, 학생 문제 포인트, 보호자 요청사항, 다음 액션을 실무형 구조로 나눠 정리합니다.",
+      "핵심 상담 내용, 수강생 이슈 포인트, 다음 액션을 실무형 구조로 나눠 정리합니다.",
     accent: "blue" as const,
   },
   {
@@ -30,9 +30,9 @@ export const FEATURES = [
   },
   {
     icon: FolderOpen,
-    title: "학생별 상담 히스토리",
+    title: "수강생별 상담 히스토리",
     description:
-      "상담 기록이 학생 단위로 쌓여 이전 약속, 후속 액션, 보호자 요청 맥락을 이어서 볼 수 있습니다.",
+      "상담 기록이 수강생 단위로 쌓여 이전 약속, 후속 액션, 멘토링 맥락을 이어서 볼 수 있습니다.",
     accent: "purple" as const,
   },
 ] as const;
