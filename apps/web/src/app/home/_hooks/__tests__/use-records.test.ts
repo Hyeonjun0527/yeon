@@ -92,13 +92,13 @@ describe("초기 상태", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
-    expect(result.current.phase).toBe("empty");
+    expect(result.current.viewState.kind).toBe("empty");
     expect(result.current.records).toHaveLength(0);
   });
 
-  it("서버에 레코드가 있으면 phase가 'ready'가 된다", async () => {
+  it("서버에 레코드가 있으면 viewState가 'ready'가 된다", async () => {
     mockFetch({
       "/api/v1/counseling-records": { records: [makeServerRecord()] },
     });
@@ -107,9 +107,9 @@ describe("초기 상태", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
-    expect(result.current.phase).toBe("ready");
+    expect(result.current.viewState.kind).toBe("ready");
     expect(result.current.records).toHaveLength(1);
     expect(result.current.records[0].title).toBe("3월 멘토링");
   });
@@ -136,14 +136,14 @@ describe("addProcessingRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord();
     act(() => {
       result.current.addProcessingRecord(tempRec);
     });
 
-    expect(result.current.phase).toBe("processing");
+    expect(result.current.viewState.kind).toBe("processing");
     expect(result.current.selectedId).toBe("temp-001");
     expect(result.current.records.some((r) => r.id === "temp-001")).toBe(true);
   });
@@ -155,7 +155,7 @@ describe("addProcessingRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord();
     act(() => {
@@ -178,7 +178,7 @@ describe("replaceRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord({ id: "temp-xyz" });
     act(() => {
@@ -198,26 +198,26 @@ describe("replaceRecord", () => {
 /* ── markUploadError ── */
 
 describe("markUploadError", () => {
-  it("임시 레코드를 error 상태로 표시하고 phase를 ready로 전환한다", async () => {
+  it("임시 레코드를 error 상태로 표시하고 viewState를 ready로 전환한다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
     const { result } = renderHook(() => useRecords(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord({ id: "temp-fail" });
     act(() => {
       result.current.addProcessingRecord(tempRec);
     });
-    expect(result.current.phase).toBe("processing");
+    expect(result.current.viewState.kind).toBe("processing");
 
     act(() => {
       result.current.markUploadError("temp-fail", "네트워크 오류");
     });
 
-    expect(result.current.phase).toBe("ready");
+    expect(result.current.viewState.kind).toBe("ready");
   });
 });
 
@@ -327,7 +327,7 @@ describe("removeRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord({ id: "temp-del" });
     act(() => {
@@ -343,14 +343,14 @@ describe("removeRecord", () => {
     expect(result.current.records.some((r) => r.id === "temp-del")).toBe(false);
   });
 
-  it("마지막 레코드 제거 후 phase가 'empty'가 된다", async () => {
+  it("마지막 레코드 제거 후 viewState가 'empty'가 된다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
     const { result } = renderHook(() => useRecords(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
 
     const tempRec = makeTempRecord({ id: "temp-last" });
     act(() => {
@@ -360,6 +360,6 @@ describe("removeRecord", () => {
       result.current.removeRecord("temp-last");
     });
 
-    expect(result.current.phase).toBe("empty");
+    expect(result.current.viewState.kind).toBe("empty");
   });
 });

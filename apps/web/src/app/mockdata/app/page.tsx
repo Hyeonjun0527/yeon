@@ -1260,6 +1260,7 @@ export default function InteractiveAppPage() {
               >
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={12} /> 메모 추가</span>
               </button>
+              {/* eslint-disable-next-line no-restricted-syntax */}
               {s.memos.length === 0 && (
                 <div style={{ padding: 24, textAlign: "center", fontSize: 12, color: "var(--text-dim)" }}>메모가 없습니다</div>
               )}
@@ -1293,6 +1294,7 @@ export default function InteractiveAppPage() {
             <div className={styles.aiSummaryText} dangerouslySetInnerHTML={{ __html: s.aiReport }} />
           </div>
           <div className={styles.aiMessages} ref={detailChatRef}>
+            {/* eslint-disable-next-line no-restricted-syntax */}
             {detailChatMessages.length === 0 && (
               <div className={`${styles.aiMsg} ${styles.aiMsgSystem}`}>
                 {s.name} 학생에 대해 질문해 보세요

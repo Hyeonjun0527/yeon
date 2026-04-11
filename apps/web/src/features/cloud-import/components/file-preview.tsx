@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import { Loader2 } from "lucide-react";
 import { detectFileKind } from "../file-kind";
@@ -71,6 +72,7 @@ function HeicPreview({ uri, fileName }: { uri: string; fileName: string }) {
 
     (async () => {
       try {
+        // eslint-disable-next-line no-restricted-syntax
         const res = await fetch(uri);
         if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
         const blob = await res.blob();
@@ -89,6 +91,8 @@ function HeicPreview({ uri, fileName }: { uri: string; fileName: string }) {
 
     return () => {
       cancelled = true;
+      // blob URL은 useEffect cleanup에서 revoke해야 메모리 누수를 막을 수 있다.
+      // useQuery로 이전하면 캐시가 blob URL을 살려두므로 의도적으로 useEffect를 유지한다.
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [uri]);
@@ -121,39 +125,19 @@ function HeicPreview({ uri, fileName }: { uri: string; fileName: string }) {
 }
 
 function SpreadsheetPreview({ uri }: { uri: string }) {
-  const [htmlContent, setHtmlContent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setHtmlContent(null);
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(uri);
-        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
-        const buffer = await res.arrayBuffer();
-        const XLSX = await import("xlsx");
-        const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        if (!ws) throw new Error("시트를 읽을 수 없습니다.");
-        const html = XLSX.utils.sheet_to_html(ws);
-        if (!cancelled) setHtmlContent(html);
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [uri]);
+  const { data: htmlContent, isPending: loading, error } = useQuery({
+    queryKey: ["file-preview-spreadsheet", uri],
+    queryFn: async () => {
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+      const buffer = await res.arrayBuffer();
+      const XLSX = await import("xlsx");
+      const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error("시트를 읽을 수 없습니다.");
+      return XLSX.utils.sheet_to_html(ws);
+    },
+  });
 
   if (loading) {
     return (
@@ -167,7 +151,7 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
   if (error) {
     return (
       <div className="px-3 py-2.5 rounded-[6px] bg-[rgba(239,68,68,0.1)] text-red text-[13px] mb-3">
-        {error}
+        {error instanceof Error ? error.message : "파일을 불러올 수 없습니다."}
       </div>
     );
   }
@@ -190,36 +174,16 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
 }
 
 function CsvPreview({ uri }: { uri: string }) {
-  const [rows, setRows] = useState<string[][] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setRows(null);
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(uri);
-        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
-        const text = await res.text();
-        const lines = text.split("\n").filter((l) => l.trim());
-        const parsed = lines.map((line) => line.split(",").map((cell) => cell.trim()));
-        if (!cancelled) setRows(parsed);
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [uri]);
+  const { data: rows, isPending: loading, error } = useQuery({
+    queryKey: ["file-preview-csv", uri],
+    queryFn: async () => {
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+      const text = await res.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      return lines.map((line) => line.split(",").map((cell) => cell.trim()));
+    },
+  });
 
   if (loading) {
     return (
@@ -232,7 +196,7 @@ function CsvPreview({ uri }: { uri: string }) {
 
   if (error) return (
     <div className="px-3 py-2.5 rounded-[6px] bg-[rgba(239,68,68,0.1)] text-red text-[13px] mb-3">
-      {error}
+      {error instanceof Error ? error.message : "파일을 불러올 수 없습니다."}
     </div>
   );
   if (!rows || rows.length === 0) {
@@ -261,34 +225,14 @@ function CsvPreview({ uri }: { uri: string }) {
 }
 
 function TxtPreview({ uri }: { uri: string }) {
-  const [text, setText] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setText(null);
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(uri);
-        if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
-        const content = await res.text();
-        if (!cancelled) setText(content);
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "파일을 불러올 수 없습니다.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [uri]);
+  const { data: text, isPending: loading, error } = useQuery({
+    queryKey: ["file-preview-txt", uri],
+    queryFn: async () => {
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
+      return res.text();
+    },
+  });
 
   if (loading) {
     return (
@@ -301,10 +245,10 @@ function TxtPreview({ uri }: { uri: string }) {
 
   if (error) return (
     <div className="px-3 py-2.5 rounded-[6px] bg-[rgba(239,68,68,0.1)] text-red text-[13px] mb-3">
-      {error}
+      {error instanceof Error ? error.message : "파일을 불러올 수 없습니다."}
     </div>
   );
-  if (text === null) return null;
+  if (text == null) return null;
 
   return (
     <div className="h-full overflow-auto p-4 text-[13px] text-text bg-surface">

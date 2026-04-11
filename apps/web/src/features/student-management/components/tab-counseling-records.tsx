@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { Loader2, FileAudio, Link2Off } from "lucide-react";
 import { fmtDate } from "../utils";
@@ -22,30 +22,19 @@ export function TabCounselingRecords({
   spaceId,
   memberId,
 }: TabCounselingRecordsProps) {
-  const [records, setRecords] = useState<CounselingRecordListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, error } = useQuery({
+    queryKey: ["member-counseling-records", spaceId, memberId],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`);
+      if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
+      return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
+    },
+  });
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
-        const data = (await res.json()) as {
-          records: CounselingRecordListItem[];
-        };
-        setRecords(data.records);
-      })
-      .catch((e: unknown) => {
-        setError(
-          e instanceof Error ? e.message : "상담 기록을 불러오지 못했습니다.",
-        );
-      })
-      .finally(() => setLoading(false));
-  }, [spaceId, memberId]);
+  const records = data ? data.records : ([] as CounselingRecordListItem[]);
+  const errorMessage = error instanceof Error ? error.message : error ? "상담 기록을 불러오지 못했습니다." : null;
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center gap-2 py-10 justify-center text-text-dim text-[14px]">
         <Loader2 size={16} className="animate-spin" />
@@ -54,9 +43,9 @@ export function TabCounselingRecords({
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
-      <div className="py-10 text-center text-[14px] text-error">{error}</div>
+      <div className="py-10 text-center text-[14px] text-error">{errorMessage}</div>
     );
   }
 

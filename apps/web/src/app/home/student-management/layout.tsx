@@ -114,6 +114,8 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   } = useStudentManagement();
   const { openSpaceSettings } = useSpaceSettingsDrawer();
 
+  const noSpaces = !spacesLoading && spaces.length === 0;
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -197,7 +199,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               불러오는 중...
             </div>
           )}
-          {!spacesLoading && spaces.length === 0 && (
+          {noSpaces && (
             <div
               style={{
                 fontSize: 12,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { X, Loader2, Search, UserPlus, Users } from "lucide-react";
 
 const LAST_SPACE_KEY = "yeon_last_space_id";
@@ -33,11 +34,7 @@ export function LinkMemberModal({
   onLinked,
 }: LinkMemberModalProps) {
   const [mode, setMode] = useState<"existing" | "new">("existing");
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [spacesLoading, setSpacesLoading] = useState(true);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
-  const [members, setMembers] = useState<Member[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
     currentMemberId,
@@ -46,45 +43,37 @@ export function LinkMemberModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { data: spacesData, isPending: spacesLoading } = useQuery({
+    queryKey: ["spaces"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/spaces");
+      if (!res.ok) return { spaces: [] as Space[] };
+      return res.json() as Promise<{ spaces: Space[] }>;
+    },
+  });
+  const spaces = spacesData ? spacesData.spaces : ([] as Space[]);
+
+  // spaces 로드 완료 시 localStorage 기반으로 초기 spaceId 설정
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/v1/spaces");
-        if (!res.ok) return;
-        const data = (await res.json()) as { spaces: Space[] };
-        setSpaces(data.spaces);
+    if (!spacesData || spaces.length === 0) return;
+    const lastId = localStorage.getItem(LAST_SPACE_KEY);
+    const defaultId =
+      lastId && spaces.some((s) => s.id === lastId)
+        ? lastId
+        : (spaces[0]?.id ?? "");
+    setSelectedSpaceId(defaultId);
+  }, [spacesData, spaces]);
 
-        const lastId = localStorage.getItem(LAST_SPACE_KEY);
-        const defaultId =
-          lastId && data.spaces.some((s) => s.id === lastId)
-            ? lastId
-            : (data.spaces[0]?.id ?? "");
-        setSelectedSpaceId(defaultId);
-      } finally {
-        setSpacesLoading(false);
-      }
-    })();
-  }, []);
-
-  const fetchMembers = useCallback(async (spaceId: string) => {
-    if (!spaceId) return;
-    setMembersLoading(true);
-    setMembers([]);
-    try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/members`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { members: Member[] };
-      setMembers(data.members);
-    } finally {
-      setMembersLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedSpaceId) {
-      fetchMembers(selectedSpaceId);
-    }
-  }, [selectedSpaceId, fetchMembers]);
+  const { data: membersData, isPending: membersLoading } = useQuery({
+    queryKey: ["modal-space-members", selectedSpaceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`);
+      if (!res.ok) return { members: [] as Member[] };
+      return res.json() as Promise<{ members: Member[] }>;
+    },
+    enabled: !!selectedSpaceId,
+  });
+  const members = membersData ? membersData.members : ([] as Member[]);
 
   const filteredMembers = query.trim()
     ? members.filter((m) =>

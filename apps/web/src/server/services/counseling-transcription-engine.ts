@@ -377,7 +377,7 @@ function mapOpenAiSegments(
 ): PersistedTranscriptSegment[] {
   const normalizedSegments: PersistedTranscriptSegment[] = [];
 
-  for (const [index, segment] of (segments ?? []).entries()) {
+  for (const [index, segment] of (segments || []).entries()) {
     const text = sanitizeSingleLine(segment.text ?? "");
 
     if (!text) {

@@ -32,8 +32,8 @@ export function useStudentForm({
   const [status, setStatus] = useState<StudentStatus>(
     existing?.status ?? "enrolled",
   );
-  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
-  const [classIds, setClassIds] = useState<string[]>(existing?.classIds ?? []);
+  const [tags, setTags] = useState<string[]>(existing?.tags || []);
+  const [classIds, setClassIds] = useState<string[]>(existing?.classIds || []);
   const [guardianName, setGuardianName] = useState(
     existing?.guardians[0]?.name ?? "",
   );
@@ -66,7 +66,7 @@ export function useStudentForm({
             relation: guardianRelation,
           },
         ]
-      : (existing?.guardians ?? []);
+      : (existing?.guardians || []);
 
     if (mode === "create") {
       addStudent({

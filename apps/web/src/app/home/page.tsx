@@ -52,7 +52,7 @@ export default function MockV2Workspace() {
 
   const aiChat = useAiChat({
     selectedId: records.selectedId,
-    selectedMessages: records.selected?.aiMessages ?? [],
+    selectedMessages: records.selected?.aiMessages || [],
     selectedStatus: records.selected?.status ?? null,
     selectedAnalysisResult: records.selected?.analysisResult ?? null,
     onUpdateMessages: records.updateMessages,
@@ -74,23 +74,25 @@ export default function MockV2Workspace() {
 
   const handleSelectMember = useCallback((id: string) => {
     setSelectedMemberId((prev) => (prev === id ? null : id));
-    // 멤버 선택 시 레코드 선택 해제
-    records.setPhase((prev) =>
-      prev === "recording" || prev === "processing" ? prev : "ready",
-    );
-  }, [records]);
+  }, []);
 
   const handleStartRecording = useCallback(() => {
     setSelectedMemberId(null);
-    records.setPhase("recording");
+    records.startRecording();
     recording.start();
   }, [records, recording]);
 
   const selectedMember = members.find((m) => m.id === selectedMemberId) ?? null;
 
   /* 멤버가 선택되면 레코드 선택 해제 */
-  const showMemberPanel = selectedMember !== null && records.phase !== "recording" && records.phase !== "empty";
-  const showCenterPanel = !showMemberPanel && (records.phase === "processing" || records.phase === "ready");
+  const showMemberPanel =
+    selectedMember !== null &&
+    records.viewState.kind !== "recording" &&
+    records.viewState.kind !== "empty" &&
+    records.viewState.kind !== "loading";
+  const showCenterPanel =
+    !showMemberPanel &&
+    (records.viewState.kind === "processing" || records.viewState.kind === "ready");
 
   useEffect(() => {
     if (showMemberPanel && selectedMember) {
@@ -131,21 +133,21 @@ export default function MockV2Workspace() {
         </div>
       )}
 
-      {records.phase === "empty" && !records.loading && !selectedMember && (
+      {records.viewState.kind === "empty" && !selectedMember && (
         <EmptyState
           onStartRecording={handleStartRecording}
           onFileUpload={fileUpload.openFilePicker}
         />
       )}
 
-      {records.phase === "recording" && (
+      {records.viewState.kind === "recording" && (
         <RecordingState
           elapsed={recording.elapsed}
           onStop={recording.stop}
         />
       )}
 
-      {(records.phase === "processing" || records.phase === "ready" || showMemberPanel) && (
+      {(records.viewState.kind === "processing" || records.viewState.kind === "ready" || showMemberPanel) && (
         <Sidebar
           records={records.records}
           selectedId={records.selectedId}
@@ -186,7 +188,7 @@ export default function MockV2Workspace() {
           />
           <div className="flex flex-1 overflow-hidden">
             <CenterPanel
-              phase={records.phase}
+              phase={records.viewState.kind as "processing" | "ready"}
               selected={records.selected}
               processingStep={records.processingStep}
               transcriptLoading={records.transcriptLoading}
@@ -215,7 +217,7 @@ export default function MockV2Workspace() {
               onExpand={aiPanel.expand}
               onToggleModel={aiPanel.toggleModel}
               onStartResize={aiPanel.startResize}
-              phase={records.phase}
+              phase={records.viewState.kind as "processing" | "ready"}
               selected={records.selected}
               selectedId={records.selectedId}
               onClearMessages={records.clearMessages}

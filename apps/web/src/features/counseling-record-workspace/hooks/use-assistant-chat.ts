@@ -37,7 +37,7 @@ export function useAssistantChat(
   }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
-    ? (assistantMessagesByRecord[selectedRecord.id] ?? [])
+    ? (assistantMessagesByRecord[selectedRecord.id] || [])
     : [];
 
   // 메시지 자동 스크롤
@@ -174,7 +174,7 @@ export function useAssistantChat(
 
     setAssistantMessagesByRecord((current) => ({
       ...current,
-      [recordId]: [...(current[recordId] ?? []), streamingMessage],
+      [recordId]: [...(current[recordId] || []), streamingMessage],
     }));
 
     try {
@@ -212,7 +212,7 @@ export function useAssistantChat(
 
         setAssistantMessagesByRecord((current) => ({
           ...current,
-          [recordId]: (current[recordId] ?? []).map((m) =>
+          [recordId]: (current[recordId] || []).map((m) =>
             m.id === assistantId
               ? { ...m, content: `⚠️ ${errorMessage}`, isStreaming: false }
               : m,
@@ -265,7 +265,7 @@ export function useAssistantChat(
 
               setAssistantMessagesByRecord((current) => ({
                 ...current,
-                [recordId]: (current[recordId] ?? []).map((m) =>
+                [recordId]: (current[recordId] || []).map((m) =>
                   m.id === assistantId ? { ...m, content: snapshot } : m,
                 ),
               }));
@@ -281,7 +281,7 @@ export function useAssistantChat(
       } else {
         setAssistantMessagesByRecord((current) => ({
           ...current,
-          [recordId]: (current[recordId] ?? []).map((m) =>
+          [recordId]: (current[recordId] || []).map((m) =>
             m.id === assistantId
               ? {
                   ...m,
@@ -295,7 +295,7 @@ export function useAssistantChat(
     } finally {
       setAssistantMessagesByRecord((current) => ({
         ...current,
-        [recordId]: (current[recordId] ?? []).map((m) =>
+        [recordId]: (current[recordId] || []).map((m) =>
           m.id === assistantId ? { ...m, isStreaming: false } : m,
         ),
       }));
@@ -321,7 +321,7 @@ export function useAssistantChat(
       content: trimmedPrompt,
     };
 
-    const currentMessages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const currentMessages = assistantMessagesByRecord[selectedRecord.id] || [];
 
     const updatedMessages = [...currentMessages, userMessage];
 

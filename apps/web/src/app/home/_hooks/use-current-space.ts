@@ -28,7 +28,7 @@ export function useCurrentSpace() {
     staleTime: 30_000,
   });
 
-  const spaces = data?.spaces ?? [];
+  const spaces = data ? data.spaces : [];
 
   // 초기 로드 시 localStorage에서 복원
   useEffect(() => {
@@ -48,7 +48,7 @@ export function useCurrentSpace() {
 
   const addSpace = useCallback((space: Space) => {
     queryClient.setQueryData<{ spaces: Space[] }>(["spaces"], (old) => ({
-      spaces: [...(old?.spaces ?? []), space],
+      spaces: [...(old ? old.spaces : []), space],
     }));
     setCurrentSpaceIdState(space.id);
     if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, space.id);

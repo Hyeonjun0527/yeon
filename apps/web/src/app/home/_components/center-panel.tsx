@@ -1,6 +1,6 @@
 import { Loader2, Link2, Link2Off } from "lucide-react";
 import styles from "../home.module.css";
-import type { AnalysisResult, RecordItem, RecordPhase } from "../_lib/types";
+import type { AnalysisResult, RecordItem } from "../_lib/types";
 import { fmtTime, fmtMs } from "../_lib/utils";
 
 function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
@@ -102,7 +102,7 @@ const PROCESSING_STEPS = [
 ];
 
 export interface CenterPanelProps {
-  phase: RecordPhase;
+  phase: "processing" | "ready";
   selected: RecordItem | null;
   processingStep: number;
   transcriptLoading: boolean;
