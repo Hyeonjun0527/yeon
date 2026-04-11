@@ -10,27 +10,55 @@
 
 set -euo pipefail
 
-MIGRATION_DIR="apps/web/src/server/db/migrations"
+# 스크립트 위치 기준 절대 경로로 migrations 디렉터리를 찾는다.
+# 어느 디렉터리에서 호출하든 동일하게 동작한다.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
+MIGRATION_DIR="${REPO_ROOT}/apps/web/src/server/db/migrations"
 
 if [ ! -d "${MIGRATION_DIR}" ]; then
-  echo "마이그레이션 디렉터리를 찾을 수 없습니다: ${MIGRATION_DIR}"
+  echo "마이그레이션 디렉터리를 찾을 수 없습니다: ${MIGRATION_DIR}" >&2
   exit 1
 fi
 
-# .env에서 DB 접속 정보 읽기
-source "${DEPLOY_DIR}/.env"
-DB_USER="${POSTGRES_USER:-yeon}"
-DB_NAME="${POSTGRES_DB:-yeon}"
-DB_SERVICE="db"
+# .env에서 DB 접속 정보만 안전하게 추출한다.
+# bash source 대신 grep을 사용해 특수문자·주석·공백 문제를 방지한다.
+_env_val() {
+  grep -E "^${1}=" "${DEPLOY_DIR}/.env" 2>/dev/null \
+    | head -1 \
+    | cut -d= -f2- \
+    | sed "s/^['\"]//; s/['\"]$//" \
+    | tr -d '\r'
+}
 
-# compose 프로젝트 이름 추출 (compose.yml의 name 필드)
-COMPOSE_PROJECT="$(grep -m1 '^name:' "${DEPLOY_DIR}/${COMPOSE_FILE}" | awk '{print $2}' || true)"
-DB_CONTAINER="${COMPOSE_PROJECT:+${COMPOSE_PROJECT}-}${DB_SERVICE}-1"
+DB_USER="$(_env_val POSTGRES_USER)"
+DB_USER="${DB_USER:-yeon}"
+DB_NAME="$(_env_val POSTGRES_DB)"
+DB_NAME="${DB_NAME:-yeon}"
 
-echo "=== DB 마이그레이션 시작 (컨테이너: ${DB_CONTAINER}) ==="
+# docker compose exec 기반으로 DB 접근한다.
+# container 이름 문자열 파싱 불필요 — 서비스명(db)으로 직접 접근한다.
+COMPOSE=(docker compose -f "${DEPLOY_DIR}/${COMPOSE_FILE}" --project-directory "${DEPLOY_DIR}")
+
+echo "=== DB 마이그레이션 시작 ==="
+
+# DB가 실제로 연결 가능한 상태인지 최대 5분 대기한다.
+# docker compose up --wait 를 써도 pg_isready 레벨 확인이 더 확실하다.
+echo "DB 준비 대기 중..."
+for i in $(seq 1 30); do
+  if "${COMPOSE[@]}" exec -T db pg_isready -U "${DB_USER}" -d "${DB_NAME}" -q 2>/dev/null; then
+    echo "DB 준비 완료 (${i}번째 시도)"
+    break
+  fi
+  if [ "${i}" -eq 30 ]; then
+    echo "DB 준비 타임아웃 (300초)" >&2
+    exit 1
+  fi
+  sleep 10
+done
 
 # __drizzle_migrations 테이블이 없으면 생성
-docker exec "${DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}" -q -c "
+"${COMPOSE[@]}" exec -T db psql -U "${DB_USER}" -d "${DB_NAME}" -q -c "
   CREATE TABLE IF NOT EXISTS __drizzle_migrations (
     id serial PRIMARY KEY,
     hash text NOT NULL,
@@ -39,7 +67,7 @@ docker exec "${DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}" -q -c "
 "
 
 # 이미 적용된 마이그레이션 해시 목록
-applied=$(docker exec "${DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}" -tAq -c \
+applied=$("${COMPOSE[@]}" exec -T db psql -U "${DB_USER}" -d "${DB_NAME}" -tAq -c \
   "SELECT hash FROM __drizzle_migrations ORDER BY id;")
 
 for sql_file in "${MIGRATION_DIR}"/*.sql; do
@@ -53,11 +81,9 @@ for sql_file in "${MIGRATION_DIR}"/*.sql; do
 
   echo "  ▶ 적용 중: ${filename}"
 
-  # --> statement-breakpoint 를 기준으로 분리하지 않고 전체를 한번에 실행
-  # Drizzle이 생성하는 SQL은 트랜잭션 안전함
-  sql_content="$(cat "${sql_file}" | sed 's/--> statement-breakpoint//g')"
+  sql_content="$(sed 's/--> statement-breakpoint//g' "${sql_file}")"
 
-  docker exec -i "${DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<EOSQL
+  "${COMPOSE[@]}" exec -T db psql -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<EOSQL
 BEGIN;
 ${sql_content}
 INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', $(date +%s)000);
