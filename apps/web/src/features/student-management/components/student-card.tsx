@@ -17,7 +17,7 @@ export function StudentCard({
   onToggleSelect,
 }: StudentCardProps) {
   return (
-    <div className="bg-surface-2 border border-border rounded p-5 cursor-pointer transition-all duration-150 relative hover:border-border-light hover:bg-surface-3">
+    <div className="bg-surface-2 border border-border rounded p-5 cursor-pointer transition-all duration-150 relative hover:border-border-light hover:bg-surface-3" data-tutorial="member-card">
       <input
         type="checkbox"
         className="absolute top-3 right-3 w-[18px] h-[18px] accent-accent cursor-pointer"
