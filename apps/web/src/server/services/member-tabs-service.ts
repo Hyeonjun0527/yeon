@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 import { getDb } from "@/server/db";
@@ -238,6 +238,46 @@ export async function deleteCustomTab(
   await db
     .delete(memberTabDefinitions)
     .where(eq(memberTabDefinitions.id, tabId));
+}
+
+/**
+ * 스페이스 탭 구성을 기본값으로 초기화
+ * - 커스텀 탭 전부 삭제 (필드 CASCADE 삭제)
+ * - 시스템 탭 이름/순서/isVisible 원래대로 복원
+ */
+export async function resetSpaceTabsToDefaults(spaceId: string): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+
+  // 커스텀 탭 삭제 (필드는 CASCADE로 자동 삭제)
+  await db
+    .delete(memberTabDefinitions)
+    .where(
+      and(
+        eq(memberTabDefinitions.spaceId, spaceId),
+        ne(memberTabDefinitions.tabType, "system"),
+      ),
+    );
+
+  // 시스템 탭 원상 복구
+  await Promise.all(
+    DEFAULT_SYSTEM_TABS.map((def) =>
+      db
+        .update(memberTabDefinitions)
+        .set({
+          name: def.name,
+          displayOrder: def.displayOrder,
+          isVisible: true,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(memberTabDefinitions.spaceId, spaceId),
+            eq(memberTabDefinitions.systemKey, def.systemKey),
+          ),
+        ),
+    ),
+  );
 }
 
 /**

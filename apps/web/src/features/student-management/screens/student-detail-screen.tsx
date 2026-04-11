@@ -16,8 +16,8 @@ import { TabCourses } from "../components/tab-courses";
 import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
-import { SheetIntegrationPanel } from "../components/sheet-integration-panel";
 import { CustomTabContent } from "../components/custom-tab-content";
+import { useSpaceSettingsDrawer } from "../../space-settings";
 
 interface StudentDetailScreenProps {
   paramsPromise: Promise<{ studentId: string }>;
@@ -28,6 +28,7 @@ export function StudentDetailScreen({
 }: StudentDetailScreenProps) {
   const { studentId } = React.use(paramsPromise);
   const { sheetMode, selectedSpaceId, refetchMembers } = useStudentManagement();
+  const { openSpaceSettings } = useSpaceSettingsDrawer();
 
   /* ── API 기반 멤버 조회 ── */
   const {
@@ -40,7 +41,22 @@ export function StudentDetailScreen({
   } = useMemberDetail({ memberId: studentId });
 
   /* ── 동적 탭 목록 ── */
-  const { tabs: dynamicTabs } = useDynamicMemberTabs(selectedSpaceId);
+  const { tabs: dynamicTabs, refetch: refetchTabs } = useDynamicMemberTabs(selectedSpaceId);
+
+function handleRequestAddTab() {
+    if (!selectedSpaceId) return;
+    openSpaceSettings({ spaceId: selectedSpaceId, onAfterClose: refetchTabs });
+  }
+
+  function handleManageFields() {
+    const spaceId = member?.spaceId ?? selectedSpaceId;
+    if (!spaceId) return;
+    openSpaceSettings({
+      spaceId,
+      initialTabId: overviewTab?.id,
+      onAfterClose: refetchTabs,
+    });
+  }
   const tabItems = dynamicTabs.length > 0
     ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
     : undefined;
@@ -86,7 +102,7 @@ export function StudentDetailScreen({
           }}
         >
           <a
-            href="/student-management"
+            href="/home/student-management"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -148,6 +164,7 @@ export function StudentDetailScreen({
           activeTab={activeTab}
           onTabChange={setActiveTab}
           tabs={tabItems}
+          onRequestAddTab={selectedSpaceId ? handleRequestAddTab : undefined}
         />
 
         {activeTab === "overview" && (
@@ -155,6 +172,7 @@ export function StudentDetailScreen({
             member={member}
             onMemberUpdated={refetchMembers}
             overviewTabId={overviewTab?.id}
+            onManageFields={overviewTab ? handleManageFields : undefined}
           />
         )}
 
@@ -206,14 +224,10 @@ export function StudentDetailScreen({
           />
         )}
 
-        {/* 구글 시트 연동 패널 */}
-        {selectedSpaceId && (
-          <SheetIntegrationPanel spaceId={selectedSpaceId} />
-        )}
-
         {sheetMode !== null && (
           <div suppressHydrationWarning />
         )}
+
       </div>
     );
   }

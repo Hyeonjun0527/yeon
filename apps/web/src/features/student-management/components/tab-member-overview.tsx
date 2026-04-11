@@ -10,6 +10,8 @@ interface TabMemberOverviewProps {
   member: Member;
   onMemberUpdated?: () => void;
   overviewTabId?: string;
+  /** 제공 시 "추가 정보" 섹션 헤더에 필드 관리 버튼 표시 */
+  onManageFields?: () => void;
 }
 
 interface CounselingStats {
@@ -71,11 +73,22 @@ function DataRow({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="mb-4">
-      <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-text-dim mb-2 px-1">
-        {title}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-text-dim">
+          {title}
+        </div>
+        {action}
       </div>
       <div className="bg-surface-2 border border-border rounded-lg px-4">
         {children}
@@ -84,7 +97,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function TabMemberOverview({ member, onMemberUpdated, overviewTabId }: TabMemberOverviewProps) {
+export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onManageFields }: TabMemberOverviewProps) {
   const [counseling, setCounseling] = useState<CounselingStats | null>(null);
 
   useEffect(() => {
@@ -202,7 +215,22 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId }: Ta
 
       {/* 커스텀 필드 (개요 탭에 연결된 필드) */}
       {overviewTabId && (
-        <Section title="추가 정보">
+        <Section
+          title="추가 정보"
+          action={
+            onManageFields && (
+              <button
+                className="flex items-center gap-1 text-[10px] text-text-dim hover:text-text-secondary border-none bg-transparent cursor-pointer transition-colors p-0"
+                onClick={onManageFields}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                필드 추가
+              </button>
+            )
+          }
+        >
           <CustomTabContent
             spaceId={member.spaceId}
             memberId={member.id}

@@ -17,7 +17,7 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function useSpaceSettings(spaceId: string | null) {
+export function useSpaceSettings(spaceId: string | null, initialTabId?: string) {
   const [tabs, setTabs] = useState<SpaceTab[]>([]);
   const [tabsLoading, setTabsLoading] = useState(false);
 
@@ -37,14 +37,15 @@ export function useSpaceSettings(spaceId: string | null) {
       );
       setTabs(data.tabs);
       if (!selectedTabId && data.tabs.length > 0) {
-        setSelectedTabId(data.tabs[0].id);
+        const preselect = initialTabId && data.tabs.find((t) => t.id === initialTabId);
+        setSelectedTabId(preselect ? initialTabId! : data.tabs[0].id);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "탭을 불러오지 못했습니다.");
     } finally {
       setTabsLoading(false);
     }
-  }, [spaceId, selectedTabId]);
+  }, [spaceId, selectedTabId, initialTabId]);
 
   const loadFields = useCallback(async (tabId: string) => {
     if (!spaceId) return;
@@ -85,6 +86,37 @@ export function useSpaceSettings(spaceId: string | null) {
       setError(e instanceof Error ? e.message : "탭을 생성하지 못했습니다.");
     }
   }, [spaceId]);
+
+  const renameTab = useCallback(async (tabId: string, name: string) => {
+    if (!spaceId) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const prev = tabs;
+    setTabs((t) => t.map((tab) => (tab.id === tabId ? { ...tab, name: trimmed } : tab)));
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/${tabId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: trimmed }),
+      });
+    } catch (e) {
+      setTabs(prev);
+      setError(e instanceof Error ? e.message : "탭 이름을 변경하지 못했습니다.");
+    }
+  }, [spaceId, tabs]);
+
+  const resetToDefaults = useCallback(async () => {
+    if (!spaceId) return;
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/reset`, { method: "POST" });
+      setSelectedTabId(null);
+      setFields([]);
+      await loadTabs();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "초기화에 실패했습니다.");
+    }
+  }, [spaceId, loadTabs]);
 
   const toggleTabVisibility = useCallback(async (tabId: string) => {
     if (!spaceId) return;
@@ -205,9 +237,11 @@ export function useSpaceSettings(spaceId: string | null) {
     fieldsLoading,
     error,
     createTab,
+    renameTab,
     toggleTabVisibility,
     deleteTab,
     reorderTabs,
+    resetToDefaults,
     createField,
     deleteField,
     reorderFields,
