@@ -221,7 +221,13 @@ jobs:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
         run: |
           first_tag="$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
-          docker buildx imagetools inspect "$first_tag"
+          # GHCR manifest 전파 지연 대응: 최대 3회 재시도
+          for i in 1 2 3; do
+            docker buildx imagetools inspect "$first_tag" && break
+            [ "$i" -eq 3 ] && exit 1
+            echo "inspect 실패 (${i}/3), 20초 후 재시도..."
+            sleep 20
+          done
 
   deploy_production:
     if: github.ref == 'refs/heads/main'
@@ -264,8 +270,16 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
-          docker compose -f "${COMPOSE_FILE}" pull
-          docker compose -f "${COMPOSE_FILE}" up -d --force-recreate
+          # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
+          for i in 1 2 3; do
+            docker compose -f "${COMPOSE_FILE}" pull && break
+            [ "$i" -eq 3 ] && exit 1
+            echo "pull 실패 (${i}/3), 30초 후 재시도..."
+            sleep 30
+          done
+          # --force-recreate 제거: 변경된 서비스(web)만 재시작, DB는 불필요하게 재시작하지 않음
+          # --wait: 모든 서비스가 healthy 상태가 될 때까지 대기 후 반환
+          docker compose -f "${COMPOSE_FILE}" up -d --wait
 
       - name: Run DB migrations
         run: |
@@ -313,8 +327,16 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
-          docker compose -f "${COMPOSE_FILE}" pull
-          docker compose -f "${COMPOSE_FILE}" up -d --force-recreate
+          # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
+          for i in 1 2 3; do
+            docker compose -f "${COMPOSE_FILE}" pull && break
+            [ "$i" -eq 3 ] && exit 1
+            echo "pull 실패 (${i}/3), 30초 후 재시도..."
+            sleep 30
+          done
+          # --force-recreate 제거: 변경된 서비스(web)만 재시작, DB는 불필요하게 재시작하지 않음
+          # --wait: 모든 서비스가 healthy 상태가 될 때까지 대기 후 반환
+          docker compose -f "${COMPOSE_FILE}" up -d --wait
 
       - name: Run DB migrations
         run: |
