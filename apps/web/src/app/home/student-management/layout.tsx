@@ -6,6 +6,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Users, Plus, GraduationCap, X, CheckCircle, AlertCircle, Upload } from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
+import { SpaceSettingsDrawerProvider, SpaceSettingsDrawerHost, useSpaceSettingsDrawer } from "@/features/space-settings";
+import { Settings } from "lucide-react";
 
 const CloudImportInline = dynamic(
   () =>
@@ -110,6 +112,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     enterImportMode,
     exitImportMode,
   } = useStudentManagement();
+  const { openSpaceSettings } = useSpaceSettingsDrawer();
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
@@ -221,7 +224,19 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               />
               <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{space.name}</span>
               {selectedSpaceId === space.id && (
-                <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">{members.length}</span>
+                <>
+                  <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">{members.length}</span>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text cursor-pointer p-0 flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); openSpaceSettings({ spaceId: space.id }); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); openSpaceSettings({ spaceId: space.id }); } }}
+                    title="스페이스 설정"
+                  >
+                    <Settings size={12} />
+                  </div>
+                </>
               )}
             </button>
           ))}
@@ -374,7 +389,10 @@ export default function StudentManagementLayout({
 }) {
   return (
     <StudentManagementProvider>
-      <SidebarContent>{children}</SidebarContent>
+      <SpaceSettingsDrawerProvider>
+        <SidebarContent>{children}</SidebarContent>
+        <SpaceSettingsDrawerHost />
+      </SpaceSettingsDrawerProvider>
       <OAuthResultToast />
     </StudentManagementProvider>
   );
