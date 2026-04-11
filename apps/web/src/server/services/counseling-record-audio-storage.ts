@@ -4,7 +4,9 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { createWriteStream } from "node:fs";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { ServiceError } from "./service-error";
 
@@ -362,6 +364,33 @@ export async function openCounselingAudioObjectStream(params: {
         ? response.ContentLength
         : null,
     contentRange: response.ContentRange ?? null,
+  };
+}
+
+export async function downloadCounselingAudioObjectToFile(params: {
+  objectKey: string;
+  destinationPath: string;
+}) {
+  const response = await openCounselingAudioObjectStream({
+    objectKey: params.objectKey,
+  });
+
+  const nodeReadable = Readable.fromWeb(
+    response.stream as Parameters<typeof Readable.fromWeb>[0],
+  );
+  const writeStream = createWriteStream(params.destinationPath);
+
+  try {
+    await pipeline(nodeReadable, writeStream);
+  } catch (error) {
+    throw new ServiceError(
+      502,
+      formatStorageErrorMessage("상담 음성 다운로드", error),
+    );
+  }
+
+  return {
+    contentLength: response.contentLength,
   };
 }
 

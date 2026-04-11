@@ -34,6 +34,25 @@ export const counselingRecords = pgTable("counseling_records", {
   transcriptSegmentCount: integer("transcript_segment_count")
     .notNull()
     .default(0),
+  processingStage: varchar("processing_stage", { length: 30 })
+    .notNull()
+    .default("queued"),
+  processingProgress: integer("processing_progress").notNull().default(0),
+  processingMessage: text("processing_message"),
+  processingChunkCount: integer("processing_chunk_count").notNull().default(0),
+  processingChunkCompletedCount: integer("processing_chunk_completed_count")
+    .notNull()
+    .default(0),
+  transcriptionAttemptCount: integer("transcription_attempt_count")
+    .notNull()
+    .default(0),
+  transcriptionChunks: jsonb("transcription_chunks").$type<unknown[]>(),
+  analysisStatus: varchar("analysis_status", { length: 20 })
+    .notNull()
+    .default("idle"),
+  analysisProgress: integer("analysis_progress").notNull().default(0),
+  analysisErrorMessage: text("analysis_error_message"),
+  analysisAttemptCount: integer("analysis_attempt_count").notNull().default(0),
   spaceId: uuid("space_id").references(() => spaces.id, {
     onDelete: "set null",
   }),
@@ -43,6 +62,9 @@ export const counselingRecords = pgTable("counseling_records", {
   analysisResult: jsonb("analysis_result"),
   errorMessage: text("error_message"),
   transcriptionCompletedAt: timestamp("transcription_completed_at", {
+    withTimezone: true,
+  }),
+  analysisCompletedAt: timestamp("analysis_completed_at", {
     withTimezone: true,
   }),
   createdAt: timestamp("created_at", { withTimezone: true })

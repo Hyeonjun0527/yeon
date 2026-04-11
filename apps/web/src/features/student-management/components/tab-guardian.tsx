@@ -25,7 +25,9 @@ export function TabGuardian({ guardians }: TabGuardianProps) {
         >
           <Avatar name={guardian.name} size={40} />
           <div>
-            <div className="font-semibold text-text text-sm">{guardian.name}</div>
+            <div className="font-semibold text-text text-sm">
+              {guardian.name}
+            </div>
             <div className="text-[13px] text-text-secondary">
               {guardian.relation} · {guardian.phone}
             </div>

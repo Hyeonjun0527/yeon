@@ -11,7 +11,9 @@ import { useRecords } from "../use-records";
 function mockFetch(responses: Record<string, unknown>) {
   vi.spyOn(global, "fetch").mockImplementation(async (input) => {
     const url = typeof input === "string" ? input : (input as Request).url;
-    const match = Object.entries(responses).find(([pattern]) => url.includes(pattern));
+    const match = Object.entries(responses).find(([pattern]) =>
+      url.includes(pattern),
+    );
     const body = match ? match[1] : { records: [] };
     return new Response(JSON.stringify(body), {
       status: 200,
@@ -70,7 +72,11 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client: queryClient }, children);
+    return createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children,
+    );
   };
 }
 
@@ -92,7 +98,9 @@ describe("초기 상태", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     expect(result.current.viewState.kind).toBe("empty");
     expect(result.current.records).toHaveLength(0);
@@ -107,7 +115,9 @@ describe("초기 상태", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     expect(result.current.viewState.kind).toBe("ready");
     expect(result.current.records).toHaveLength(1);
@@ -136,7 +146,9 @@ describe("addProcessingRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord();
     act(() => {
@@ -155,7 +167,9 @@ describe("addProcessingRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord();
     act(() => {
@@ -163,7 +177,9 @@ describe("addProcessingRecord", () => {
       result.current.addProcessingRecord(tempRec);
     });
 
-    const count = result.current.records.filter((r) => r.id === "temp-001").length;
+    const count = result.current.records.filter(
+      (r) => r.id === "temp-001",
+    ).length;
     expect(count).toBe(1);
   });
 });
@@ -178,7 +194,9 @@ describe("replaceRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord({ id: "temp-xyz" });
     act(() => {
@@ -205,7 +223,9 @@ describe("markUploadError", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord({ id: "temp-fail" });
     act(() => {
@@ -226,7 +246,9 @@ describe("markUploadError", () => {
 describe("updateMessages", () => {
   it("레코드의 aiMessages를 로컬 오버라이드로 업데이트한다", async () => {
     mockFetch({
-      "/api/v1/counseling-records": { records: [makeServerRecord({ id: "rec-msg" })] },
+      "/api/v1/counseling-records": {
+        records: [makeServerRecord({ id: "rec-msg" })],
+      },
     });
 
     const { result } = renderHook(() => useRecords(), {
@@ -248,7 +270,9 @@ describe("updateMessages", () => {
 
   it("clearMessages 호출 후 aiMessages가 빈 배열이 된다", async () => {
     mockFetch({
-      "/api/v1/counseling-records": { records: [makeServerRecord({ id: "rec-clr" })] },
+      "/api/v1/counseling-records": {
+        records: [makeServerRecord({ id: "rec-clr" })],
+      },
     });
 
     const { result } = renderHook(() => useRecords(), {
@@ -327,7 +351,9 @@ describe("removeRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord({ id: "temp-del" });
     act(() => {
@@ -350,7 +376,9 @@ describe("removeRecord", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.viewState.kind).not.toBe("loading"));
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
 
     const tempRec = makeTempRecord({ id: "temp-last" });
     act(() => {

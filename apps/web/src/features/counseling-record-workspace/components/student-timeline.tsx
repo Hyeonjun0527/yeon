@@ -46,16 +46,27 @@ export function StudentTimeline({
 
   return (
     <div className="flex flex-col gap-5 p-6 max-w-[640px] mx-auto overflow-y-auto">
-      <div className="flex items-center gap-[10px]" style={{ color: "var(--text-primary)" }}>
+      <div
+        className="flex items-center gap-[10px]"
+        style={{ color: "var(--text-primary)" }}
+      >
         <Users size={20} strokeWidth={1.8} />
-        <h2 className="m-0 text-xl font-bold tracking-[-0.02em]">{selectedStudentName}</h2>
-        <span className="text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>
+        <h2 className="m-0 text-xl font-bold tracking-[-0.02em]">
+          {selectedStudentName}
+        </h2>
+        <span
+          className="text-[13px] font-semibold"
+          style={{ color: "var(--text-muted)" }}
+        >
           상담 {studentRecords.length}건
         </span>
       </div>
 
       {studentRecords.length === 0 ? (
-        <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="text-sm text-center py-8"
+          style={{ color: "var(--text-muted)" }}
+        >
           해당 수강생의 상담 기록이 없습니다.
         </p>
       ) : (
@@ -88,7 +99,10 @@ export function StudentTimeline({
                   onClick={() => handleSelectRecord(record.id)}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       {formatDateTimeLabel(record.createdAt)}
                     </span>
                     <span
@@ -98,10 +112,16 @@ export function StudentTimeline({
                       {status.label}
                     </span>
                   </div>
-                  <p className="m-0 text-sm font-bold leading-[1.3]" style={{ color: "var(--text-primary)" }}>
+                  <p
+                    className="m-0 text-sm font-bold leading-[1.3]"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {record.sessionTitle}
                   </p>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <div
+                    className="flex items-center gap-2 text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     <span>{record.counselingType}</span>
                     {record.preview ? (
                       <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[280px]">
@@ -139,7 +159,11 @@ export function StudentTimeline({
           {trendAnalysis?.isStreaming &&
           trendAnalysis.studentName === selectedStudentName ? (
             <>
-              <LoaderCircle size={16} strokeWidth={2} className={styles.spinnerIcon} />
+              <LoaderCircle
+                size={16}
+                strokeWidth={2}
+                className={styles.spinnerIcon}
+              />
               분석 중...
             </>
           ) : (

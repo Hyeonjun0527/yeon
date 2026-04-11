@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -39,50 +39,134 @@ function formatDate(iso: string): string {
 }
 
 interface CloudImportInlineProps {
-  initialProvider?: CloudProvider;
   onClose: () => void;
   onImportComplete: () => void;
+  expanded?: boolean;
 }
 
+function getExpandedBottomPanelHeight(hasEditablePreview: boolean) {
+  return hasEditablePreview
+    ? "clamp(320px, 42vh, 520px)"
+    : "clamp(220px, 28vh, 320px)";
+}
+
+const IMPORT_WORKSPACE_SPLIT_STORAGE_KEY = "yeon:import-workspace:split-ratio";
+const IMPORT_WORKSPACE_DEFAULT_RATIO = 0.58;
+const IMPORT_WORKSPACE_MIN_RATIO = 0.32;
+const IMPORT_WORKSPACE_MAX_RATIO = 0.72;
+const IMPORT_WORKSPACE_RESIZER_WIDTH = 12;
+const IMPORT_WORKSPACE_MIN_LEFT_PANE_PX = 480;
+const IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX = 380;
+
 export function CloudImportInline({
-  initialProvider,
   onClose,
   onImportComplete,
+  expanded = false,
 }: CloudImportInlineProps) {
-  const [activeProvider, setActiveProvider] = useState<CloudProvider>(
-    initialProvider ?? "onedrive",
-  );
+  const [activeProvider, setActiveProvider] =
+    useState<CloudProvider>("onedrive");
   const [isDragging, setIsDragging] = useState(false);
-  const [rightPanelWidth, setRightPanelWidth] = useState(300);
+  const [desktopSplitRatio, setDesktopSplitRatio] = useState(
+    IMPORT_WORKSPACE_DEFAULT_RATIO,
+  );
+  const [isDesktopSplitDragging, setIsDesktopSplitDragging] = useState(false);
   const dragCounterRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isResizingRef = useRef(false);
-  const resizeStartRef = useRef({ x: 0, width: 300 });
-  const rightPanelWidthRef = useRef(300);
+  const previewWorkspaceRef = useRef<HTMLDivElement | null>(null);
+  const resizeStateRef = useRef<{
+    startClientX: number;
+    startRatio: number;
+    availableWidth: number;
+  } | null>(null);
+
+  const clampDesktopSplitRatio = useCallback((ratio: number) => {
+    const containerWidth =
+      previewWorkspaceRef.current?.getBoundingClientRect().width ?? 0;
+    const availableWidth = Math.max(
+      containerWidth - IMPORT_WORKSPACE_RESIZER_WIDTH,
+      1,
+    );
+
+    if (!containerWidth) {
+      return Math.min(
+        IMPORT_WORKSPACE_MAX_RATIO,
+        Math.max(IMPORT_WORKSPACE_MIN_RATIO, ratio),
+      );
+    }
+
+    const minRatio = Math.max(
+      IMPORT_WORKSPACE_MIN_RATIO,
+      IMPORT_WORKSPACE_MIN_LEFT_PANE_PX / availableWidth,
+    );
+    const maxRatio = Math.min(
+      IMPORT_WORKSPACE_MAX_RATIO,
+      1 - IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX / availableWidth,
+    );
+
+    if (minRatio >= maxRatio) {
+      return Math.min(
+        IMPORT_WORKSPACE_MAX_RATIO,
+        Math.max(IMPORT_WORKSPACE_MIN_RATIO, ratio),
+      );
+    }
+
+    return Math.min(maxRatio, Math.max(minRatio, ratio));
+  }, []);
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const delta = resizeStartRef.current.x - e.clientX;
-      const next = Math.max(160, Math.min(720, resizeStartRef.current.width + delta));
-      rightPanelWidthRef.current = next;
-      setRightPanelWidth(next);
+    const savedRatio = window.localStorage.getItem(
+      IMPORT_WORKSPACE_SPLIT_STORAGE_KEY,
+    );
+
+    if (!savedRatio) return;
+
+    const parsed = Number(savedRatio);
+    if (!Number.isFinite(parsed)) return;
+
+    setDesktopSplitRatio(clampDesktopSplitRatio(parsed));
+  }, [clampDesktopSplitRatio]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      IMPORT_WORKSPACE_SPLIT_STORAGE_KEY,
+      desktopSplitRatio.toFixed(4),
+    );
+  }, [desktopSplitRatio]);
+
+  useEffect(() => {
+    if (!isDesktopSplitDragging) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeState = resizeStateRef.current;
+      if (!resizeState) return;
+
+      const deltaX = event.clientX - resizeState.startClientX;
+      const nextRatio =
+        resizeState.startRatio + deltaX / resizeState.availableWidth;
+      setDesktopSplitRatio(clampDesktopSplitRatio(nextRatio));
     };
 
-    const onMouseUp = () => {
-      if (!isResizingRef.current) return;
-      isResizingRef.current = false;
+    const stopDragging = () => {
+      resizeStateRef.current = null;
+      setIsDesktopSplitDragging(false);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
-  }, []);
+  }, [clampDesktopSplitRatio, isDesktopSplitDragging]);
 
   const onedrive = useCloudImport("onedrive", onImportComplete);
   const googledrive = useCloudImport("googledrive", onImportComplete);
@@ -94,7 +178,11 @@ export function CloudImportInline({
   }, [activeProvider]);
 
   useEffect(() => {
-    if (activeHook.connected && activeHook.files.length === 0 && !activeHook.filesLoading) {
+    if (
+      activeHook.connected &&
+      activeHook.files.length === 0 &&
+      !activeHook.filesLoading
+    ) {
       activeHook.loadFiles();
     }
   }, [activeHook.connected]);
@@ -153,31 +241,72 @@ export function CloudImportInline({
     e.target.value = "";
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizingRef.current = true;
-    resizeStartRef.current = { x: e.clientX, width: rightPanelWidthRef.current };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
-
   const isLocalMode = localImport.selectedFile !== null;
   const hasSelectedFile = activeHook.selectedFile !== null;
+  const localBottomPanelHeight = getExpandedBottomPanelHeight(
+    Boolean(localImport.editablePreview),
+  );
+  const cloudBottomPanelHeight = getExpandedBottomPanelHeight(
+    Boolean(activeHook.editablePreview),
+  );
+  const expandedPreviewShellClassName = expanded
+    ? "flex-col lg:grid"
+    : "flex-col";
+  const expandedPreviewShellStyle = expanded
+    ? {
+        gridTemplateColumns: `minmax(${IMPORT_WORKSPACE_MIN_LEFT_PANE_PX}px, ${desktopSplitRatio}fr) ${IMPORT_WORKSPACE_RESIZER_WIDTH}px minmax(${IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX}px, ${Math.max(0.05, 1 - desktopSplitRatio)}fr)`,
+      }
+    : undefined;
+
+  const startDesktopSplitResize = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (!expanded || !previewWorkspaceRef.current) return;
+
+    const workspaceWidth =
+      previewWorkspaceRef.current.getBoundingClientRect().width;
+    resizeStateRef.current = {
+      startClientX: event.clientX,
+      startRatio: desktopSplitRatio,
+      availableWidth: Math.max(
+        workspaceWidth - IMPORT_WORKSPACE_RESIZER_WIDTH,
+        1,
+      ),
+    };
+    setIsDesktopSplitDragging(true);
+  };
+
+  const nudgeDesktopSplit = (delta: number) => {
+    setDesktopSplitRatio((currentRatio) =>
+      clampDesktopSplitRatio(currentRatio + delta),
+    );
+  };
+
+  const resetDesktopSplit = () => {
+    setDesktopSplitRatio(
+      clampDesktopSplitRatio(IMPORT_WORKSPACE_DEFAULT_RATIO),
+    );
+  };
 
   return (
     <div
-      className="relative h-full flex flex-col overflow-hidden"
+      className={`relative flex min-h-0 min-w-0 flex-col bg-background ${expanded ? "h-full w-full flex-1 overflow-hidden" : "h-full overflow-hidden"}`}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      {/* fullscreen shell owns the available area; child panels own scrolling */}
       {/* 드래그 오버레이 */}
       {isDragging && (
         <div className="absolute inset-0 bg-[rgba(var(--accent-rgb,99,102,241),0.08)] border-2 border-dashed border-accent rounded-xl flex flex-col items-center justify-center gap-2 z-50 text-accent pointer-events-none">
           <Upload size={36} />
-          <p className="text-base font-semibold text-accent m-0">파일을 놓으세요</p>
-          <p className="text-xs text-text-dim m-0">.xlsx, .xls, .csv, .txt, .pdf, 이미지 파일 지원</p>
+          <p className="text-base font-semibold text-accent m-0">
+            파일을 놓으세요
+          </p>
+          <p className="text-xs text-text-dim m-0">
+            .xlsx, .xls, .csv, .txt, .pdf, 이미지 파일 지원
+          </p>
         </div>
       )}
 
@@ -217,8 +346,12 @@ export function CloudImportInline({
 
       {/* 로컬 프리뷰 모드 */}
       {isLocalMode && localImport.fileProxyUrl ? (
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-hidden border-r border-border flex flex-col">
+        <div
+          ref={expanded ? previewWorkspaceRef : undefined}
+          className={`flex min-h-0 min-w-0 flex-1 overflow-hidden ${expandedPreviewShellClassName}`}
+          style={expandedPreviewShellStyle}
+        >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-b border-border bg-surface lg:border-b-0 lg:border-r-0">
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border flex-shrink-0 bg-surface">
               <button
                 type="button"
@@ -231,8 +364,15 @@ export function CloudImportInline({
               <span className="text-[13px] font-medium text-text overflow-hidden text-ellipsis whitespace-nowrap">
                 {localImport.selectedFile?.name}
               </span>
+              <button
+                type="button"
+                className="ml-auto flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <div className="flex-1 overflow-auto p-0">
+            <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-0">
               <FilePreview
                 uri={localImport.fileProxyUrl}
                 mimeType={localImport.selectedFile?.mimeType ?? ""}
@@ -240,18 +380,56 @@ export function CloudImportInline({
               />
             </div>
           </div>
+          {expanded && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="가져오기 레이아웃 크기 조절"
+              tabIndex={0}
+              className={`hidden lg:flex lg:min-h-0 lg:items-stretch lg:justify-center cursor-col-resize transition-colors duration-150 ${isDesktopSplitDragging ? "bg-accent-border" : "bg-border hover:bg-accent-border"}`}
+              onPointerDown={startDesktopSplitResize}
+              onDoubleClick={resetDesktopSplit}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  nudgeDesktopSplit(-0.02);
+                }
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  nudgeDesktopSplit(0.02);
+                }
+                if (event.key === "Home") {
+                  event.preventDefault();
+                  setDesktopSplitRatio(
+                    clampDesktopSplitRatio(IMPORT_WORKSPACE_MIN_RATIO),
+                  );
+                }
+                if (event.key === "End") {
+                  event.preventDefault();
+                  setDesktopSplitRatio(
+                    clampDesktopSplitRatio(IMPORT_WORKSPACE_MAX_RATIO),
+                  );
+                }
+              }}
+            >
+              <div className="my-3 w-px rounded-full bg-[rgba(255,255,255,0.18)]" />
+            </div>
+          )}
           <div
-            className="w-[5px] flex-shrink-0 cursor-col-resize bg-transparent border-l border-border transition-[background,border-color] duration-150 hover:bg-accent-dim hover:border-l-accent"
-            onMouseDown={handleResizeMouseDown}
-          />
-          <div className="flex-shrink-0 overflow-auto px-5 py-4" style={{ width: rightPanelWidth }}>
+            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expanded ? "shrink-0 max-h-[min(52vh,520px)] px-6 py-4 max-md:px-4 lg:h-full lg:max-h-none lg:min-h-0" : "flex-[2] px-5 py-4"}`}
+            style={!expanded ? { height: localBottomPanelHeight } : undefined}
+          >
             <ImportRightPanel hook={localImport} onClose={onClose} />
           </div>
         </div>
       ) : hasSelectedFile && activeHook.fileProxyUrl ? (
         /* 클라우드 프리뷰 모드 */
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-hidden border-r border-border flex flex-col">
+        <div
+          ref={expanded ? previewWorkspaceRef : undefined}
+          className={`flex min-h-0 min-w-0 flex-1 overflow-hidden ${expandedPreviewShellClassName}`}
+          style={expandedPreviewShellStyle}
+        >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-b border-border bg-surface lg:border-b-0 lg:border-r-0">
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border flex-shrink-0 bg-surface">
               <button
                 type="button"
@@ -264,8 +442,15 @@ export function CloudImportInline({
               <span className="text-[13px] font-medium text-text overflow-hidden text-ellipsis whitespace-nowrap">
                 {activeHook.selectedFile?.name}
               </span>
+              <button
+                type="button"
+                className="ml-auto flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <div className="flex-1 overflow-auto p-0">
+            <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-0">
               <FilePreview
                 uri={activeHook.fileProxyUrl}
                 mimeType={activeHook.selectedFile?.mimeType ?? ""}
@@ -273,17 +458,51 @@ export function CloudImportInline({
               />
             </div>
           </div>
+          {expanded && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="가져오기 레이아웃 크기 조절"
+              tabIndex={0}
+              className={`hidden lg:flex lg:min-h-0 lg:items-stretch lg:justify-center cursor-col-resize transition-colors duration-150 ${isDesktopSplitDragging ? "bg-accent-border" : "bg-border hover:bg-accent-border"}`}
+              onPointerDown={startDesktopSplitResize}
+              onDoubleClick={resetDesktopSplit}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  nudgeDesktopSplit(-0.02);
+                }
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  nudgeDesktopSplit(0.02);
+                }
+                if (event.key === "Home") {
+                  event.preventDefault();
+                  setDesktopSplitRatio(
+                    clampDesktopSplitRatio(IMPORT_WORKSPACE_MIN_RATIO),
+                  );
+                }
+                if (event.key === "End") {
+                  event.preventDefault();
+                  setDesktopSplitRatio(
+                    clampDesktopSplitRatio(IMPORT_WORKSPACE_MAX_RATIO),
+                  );
+                }
+              }}
+            >
+              <div className="my-3 w-px rounded-full bg-[rgba(255,255,255,0.18)]" />
+            </div>
+          )}
           <div
-            className="w-[5px] flex-shrink-0 cursor-col-resize bg-transparent border-l border-border transition-[background,border-color] duration-150 hover:bg-accent-dim hover:border-l-accent"
-            onMouseDown={handleResizeMouseDown}
-          />
-          <div className="flex-shrink-0 overflow-auto px-5 py-4" style={{ width: rightPanelWidth }}>
+            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expanded ? "shrink-0 max-h-[min(52vh,520px)] px-6 py-4 max-md:px-4 lg:h-full lg:max-h-none lg:min-h-0" : "flex-[2] px-5 py-4"}`}
+            style={!expanded ? { height: cloudBottomPanelHeight } : undefined}
+          >
             <ImportRightPanel hook={activeHook} onClose={onClose} />
           </div>
         </div>
       ) : (
         /* 파일 브라우저 모드 */
-        <>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {/* Provider 탭 */}
           <div className="flex gap-0 border-b border-border flex-shrink-0">
             <button
@@ -312,12 +531,29 @@ export function CloudImportInline({
 
           {/* OAuth 미연결 */}
           {!activeHook.connecting && !activeHook.connected && (
-            <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
-              <CloudCog size={32} style={{ color: "var(--text-dim)", marginBottom: 8 }} />
-              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
-                {activeProvider === "onedrive" ? "OneDrive" : "Google Drive"} 연결이 필요합니다
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-10 text-center">
+              <CloudCog
+                size={32}
+                style={{ color: "var(--text-dim)", marginBottom: 8 }}
+              />
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--text)",
+                  marginBottom: 4,
+                }}
+              >
+                {activeProvider === "onedrive" ? "OneDrive" : "Google Drive"}{" "}
+                연결이 필요합니다
               </p>
-              <p style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 16 }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-dim)",
+                  marginBottom: 16,
+                }}
+              >
                 클라우드 드라이브를 연결하면 파일을 바로 가져올 수 있습니다.
               </p>
               <button
@@ -332,7 +568,7 @@ export function CloudImportInline({
 
           {/* 연결 확인 중 */}
           {activeHook.connecting && (
-            <div className="flex items-center justify-center gap-2 py-10 text-text-dim text-[13px]">
+            <div className="flex min-h-0 flex-1 items-center justify-center gap-2 py-10 text-text-dim text-[13px]">
               <Loader2 size={20} className="animate-spin" />
               <span>연결 상태 확인 중...</span>
             </div>
@@ -346,7 +582,14 @@ export function CloudImportInline({
                 className="flex items-center px-5 py-2.5 text-[13px] text-text-dim border-b border-border flex-shrink-0 overflow-x-auto"
                 style={{ justifyContent: "space-between" }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 2, overflow: "hidden" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    overflow: "hidden",
+                  }}
+                >
                   {activeHook.folderStack.length > 1 && (
                     <button
                       className="bg-transparent border-0 px-1 py-0.5 rounded text-[13px] text-text-secondary cursor-pointer whitespace-nowrap hover:bg-[var(--surface3)] hover:text-text"
@@ -358,15 +601,24 @@ export function CloudImportInline({
                     </button>
                   )}
                   {activeHook.folderStack.map((entry, i) => (
-                    <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                    <span
+                      key={i}
+                      style={{ display: "flex", alignItems: "center" }}
+                    >
                       {i > 0 && (
-                        <ChevronRight size={12} className="text-text-dim flex-shrink-0" />
+                        <ChevronRight
+                          size={12}
+                          className="text-text-dim flex-shrink-0"
+                        />
                       )}
                       <button
                         className="bg-transparent border-0 px-1 py-0.5 rounded text-[13px] text-text-secondary cursor-pointer whitespace-nowrap hover:bg-[var(--surface3)] hover:text-text"
                         onClick={() => handleBreadcrumbClick(i)}
                         type="button"
-                        style={{ fontWeight: i === activeHook.folderStack.length - 1 ? 600 : 400 }}
+                        style={{
+                          fontWeight:
+                            i === activeHook.folderStack.length - 1 ? 600 : 400,
+                        }}
                       >
                         {entry.name}
                       </button>
@@ -381,8 +633,14 @@ export function CloudImportInline({
                       padding: "4px 6px",
                       border: "1px solid var(--border)",
                       borderRadius: 4,
-                      background: activeHook.viewMode === "grid" ? "var(--accent)" : "transparent",
-                      color: activeHook.viewMode === "grid" ? "#fff" : "var(--text-dim)",
+                      background:
+                        activeHook.viewMode === "grid"
+                          ? "var(--accent)"
+                          : "transparent",
+                      color:
+                        activeHook.viewMode === "grid"
+                          ? "#fff"
+                          : "var(--text-dim)",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -398,8 +656,14 @@ export function CloudImportInline({
                       padding: "4px 6px",
                       border: "1px solid var(--border)",
                       borderRadius: 4,
-                      background: activeHook.viewMode === "list" ? "var(--accent)" : "transparent",
-                      color: activeHook.viewMode === "list" ? "#fff" : "var(--text-dim)",
+                      background:
+                        activeHook.viewMode === "list"
+                          ? "var(--accent)"
+                          : "transparent",
+                      color:
+                        activeHook.viewMode === "list"
+                          ? "#fff"
+                          : "var(--text-dim)",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -421,8 +685,8 @@ export function CloudImportInline({
               )}
 
               {/* 파일 그리드 */}
-              <div className="flex flex-1 overflow-hidden">
-                <div style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
+              <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-surface">
+                <div className="min-h-0 min-w-0 flex-1 overflow-auto px-5 py-4">
                   <FileGrid
                     files={activeHook.files}
                     loading={activeHook.filesLoading}
@@ -434,7 +698,7 @@ export function CloudImportInline({
               </div>
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -492,13 +756,20 @@ function getCardClasses(fileKind: FileKind): string {
 
 function getIconColor(fileKind: FileKind): string {
   switch (fileKind) {
-    case "folder": return "text-accent";
-    case "spreadsheet": return "text-green";
-    case "csv": return "text-green";
-    case "txt": return "text-text-secondary";
-    case "pdf": return "text-red";
-    case "image": return "text-cyan";
-    default: return "text-inherit";
+    case "folder":
+      return "text-accent";
+    case "spreadsheet":
+      return "text-green";
+    case "csv":
+      return "text-green";
+    case "txt":
+      return "text-text-secondary";
+    case "pdf":
+      return "text-red";
+    case "image":
+      return "text-cyan";
+    default:
+      return "text-inherit";
   }
 }
 
@@ -521,7 +792,13 @@ function FileKindIcon({ file, size }: { file: DriveFile; size: number }) {
   }
 }
 
-function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: FileGridProps) {
+function FileGrid({
+  files,
+  loading,
+  viewMode,
+  onSelectFile,
+  onNavigateFolder,
+}: FileGridProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-10 text-text-dim text-[13px]">
@@ -552,7 +829,10 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
                   ? "text-text-dim cursor-not-allowed opacity-50"
                   : getListRowClasses(file.fileKind)
               }`}
-              style={{ gridTemplateColumns: "20px minmax(100px, 40%) max-content max-content" }}
+              style={{
+                gridTemplateColumns:
+                  "20px minmax(100px, 40%) max-content max-content",
+              }}
               onClick={() => {
                 if (file.isFolder) onNavigateFolder(file.id, file.name);
                 else if (selectable(file)) onSelectFile(file);
@@ -560,7 +840,9 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
               disabled={!file.isFolder && !selectable(file)}
               type="button"
             >
-              <span className={`flex items-center flex-shrink-0 ${getIconColor(file.fileKind)}`}>
+              <span
+                className={`flex items-center flex-shrink-0 ${getIconColor(file.fileKind)}`}
+              >
                 <FileKindIcon file={file} size={16} />
               </span>
               <span className="flex-1 font-medium overflow-hidden text-ellipsis whitespace-nowrap text-text">
@@ -621,7 +903,9 @@ function FileGrid({ files, loading, viewMode, onSelectFile, onNavigateFolder }: 
               {formatDate(file.lastModifiedAt)}
             </span>
             {selectable(file) && (
-              <span className="mt-0.5 text-[11px] font-medium text-green">클릭하여 선택</span>
+              <span className="mt-0.5 text-[11px] font-medium text-green">
+                클릭하여 선택
+              </span>
             )}
           </button>
         </li>

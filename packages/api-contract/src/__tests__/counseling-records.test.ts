@@ -90,7 +90,9 @@ describe("counselingRecordStatusSchema", () => {
   });
 
   it("정의되지 않은 값은 실패한다", () => {
-    expect(counselingRecordStatusSchema.safeParse("pending").success).toBe(false);
+    expect(counselingRecordStatusSchema.safeParse("pending").success).toBe(
+      false,
+    );
   });
 });
 
@@ -112,7 +114,9 @@ describe("counselingRecordSpeakerToneSchema", () => {
   });
 
   it("정의되지 않은 값은 실패한다", () => {
-    expect(counselingRecordSpeakerToneSchema.safeParse("admin").success).toBe(false);
+    expect(counselingRecordSpeakerToneSchema.safeParse("admin").success).toBe(
+      false,
+    );
   });
 });
 
@@ -394,7 +398,9 @@ describe("linkMemberRequestSchema", () => {
   });
 
   it("UUID 형식이 아닌 문자열이면 실패한다", () => {
-    const result = linkMemberRequestSchema.safeParse({ memberId: "not-a-uuid" });
+    const result = linkMemberRequestSchema.safeParse({
+      memberId: "not-a-uuid",
+    });
     expect(result.success).toBe(false);
   });
 });

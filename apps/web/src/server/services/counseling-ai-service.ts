@@ -4,6 +4,8 @@ import { ServiceError } from "./service-error";
 const OPENAI_CHAT_COMPLETIONS_URL =
   "https://api.openai.com/v1/chat/completions";
 const DEFAULT_AI_CHAT_MODEL = "gpt-4.1-mini";
+const MAX_DIRECT_ANALYSIS_CHARS = 14_000;
+const MAX_SECTION_ANALYSIS_CHARS = 9_000;
 
 type TranscriptSegmentInput = {
   speakerLabel: string;
@@ -38,6 +40,34 @@ function buildTranscriptBlock(segments: TranscriptSegmentInput[]) {
         `[${formatTimestamp(segment.startMs)}] ${segment.speakerLabel}: ${segment.text}`,
     )
     .join("\n");
+}
+
+function splitTranscriptSegmentsForAnalysis(
+  segments: TranscriptSegmentInput[],
+  maxChars: number,
+) {
+  const groups: TranscriptSegmentInput[][] = [];
+  let currentGroup: TranscriptSegmentInput[] = [];
+  let currentLength = 0;
+
+  for (const segment of segments) {
+    const segmentLength = segment.text.length + 24;
+
+    if (currentGroup.length > 0 && currentLength + segmentLength > maxChars) {
+      groups.push(currentGroup);
+      currentGroup = [];
+      currentLength = 0;
+    }
+
+    currentGroup.push(segment);
+    currentLength += segmentLength;
+  }
+
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
 }
 
 /** 화자 분리 여부 — generic 라벨(원문/unknown)만 있으면 미분리로 판단 */
@@ -103,7 +133,11 @@ export async function resolveSpeakerNames(
 
   // 이미 의미 있는 이름이면 스킵
   const isGeneric = uniqueLabels.every(
-    (l) => l === "원문" || /^화자\s/.test(l) || /^[A-Z]$/.test(l) || /^speaker/i.test(l),
+    (l) =>
+      l === "원문" ||
+      /^화자\s/.test(l) ||
+      /^[A-Z]$/.test(l) ||
+      /^speaker/i.test(l),
   );
   if (!isGeneric) {
     return { mapping: {}, studentName: null };
@@ -188,10 +222,109 @@ function getOpenAiApiKey() {
   return apiKey;
 }
 
+async function requestChatCompletion(params: {
+  apiKey: string;
+  model: string;
+  messages: ChatMessage[];
+  responseFormat?: { type: "json_object" };
+  temperature?: number;
+}) {
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: params.model,
+      messages: params.messages,
+      ...(params.responseFormat
+        ? {
+            response_format: params.responseFormat,
+          }
+        : {}),
+      temperature: params.temperature ?? 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = "AI 분석에 실패했습니다.";
+    try {
+      const errorData = (await response.json()) as {
+        error?: { message?: string };
+      };
+      if (errorData.error?.message) errorMessage = errorData.error.message;
+    } catch {
+      // noop
+    }
+    throw new ServiceError(
+      response.status >= 500 ? 502 : response.status,
+      errorMessage,
+    );
+  }
+
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const raw = data.choices?.[0]?.message?.content;
+
+  if (!raw) {
+    throw new ServiceError(502, "AI 분석 응답이 비어 있습니다.");
+  }
+
+  return raw;
+}
+
+async function summarizeTranscriptSection(params: {
+  apiKey: string;
+  model: string;
+  meta: RecordMetaInput;
+  segments: TranscriptSegmentInput[];
+  sectionIndex: number;
+  sectionCount: number;
+}) {
+  const transcriptBlock = buildTranscriptBlock(params.segments);
+
+  return requestChatCompletion({
+    apiKey: params.apiKey,
+    model: params.model,
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content: `당신은 상담 원문을 section 단위로 먼저 정리하는 보조 분석기입니다.
+- 한국어로 작성합니다.
+- 이 section에서 확인된 사실만 정리합니다.
+- 추측은 최소화합니다.
+- 아래 형식으로 요약합니다.
+
+## 핵심 요약
+- ...
+
+## 주요 이슈
+- [mm:ss] ...
+
+## 후속 액션 후보
+- ...`,
+      },
+      {
+        role: "user",
+        content: `상담 제목: ${params.meta.sessionTitle}
+수강생: ${params.meta.studentName || "(미지정)"}
+상담 유형: ${params.meta.counselingType}
+구간: ${params.sectionIndex + 1}/${params.sectionCount}
+
+${transcriptBlock}`,
+      },
+    ],
+  });
+}
+
 /** 상담 기록을 JSON 구조로 분석하여 반환 (비스트리밍) */
 export async function analyzeCounselingRecord(
   meta: RecordMetaInput,
   segments: TranscriptSegmentInput[],
+  onProgress?: (progress: number) => Promise<void> | void,
 ): Promise<AnalysisResult> {
   const apiKey = getOpenAiApiKey();
   const model =
@@ -247,42 +380,69 @@ ${transcriptBlock}
   "keywords": ["상담 핵심 키워드 3-5개"]
 }`;
 
-  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: "위 상담 기록을 분석하여 JSON으로 반환하세요." },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    }),
-  });
+  await onProgress?.(10);
 
-  if (!response.ok) {
-    let errorMessage = "AI 분석에 실패했습니다.";
-    try {
-      const errorData = (await response.json()) as { error?: { message?: string } };
-      if (errorData.error?.message) errorMessage = errorData.error.message;
-    } catch {
-      // 기본 메시지 사용
-    }
-    throw new ServiceError(response.status >= 500 ? 502 : response.status, errorMessage);
-  }
+  const raw =
+    transcriptBlock.length <= MAX_DIRECT_ANALYSIS_CHARS
+      ? await requestChatCompletion({
+          apiKey,
+          model,
+          responseFormat: { type: "json_object" },
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: "위 상담 기록을 분석하여 JSON으로 반환하세요.",
+            },
+          ],
+        })
+      : await (async () => {
+          const sections = splitTranscriptSegmentsForAnalysis(
+            segments,
+            MAX_SECTION_ANALYSIS_CHARS,
+          );
+          const sectionSummaries: string[] = [];
 
-  const data = (await response.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const raw = data.choices?.[0]?.message?.content;
+          for (const [index, section] of sections.entries()) {
+            const summary = await summarizeTranscriptSection({
+              apiKey,
+              model,
+              meta,
+              segments: section,
+              sectionIndex: index,
+              sectionCount: sections.length,
+            });
+            sectionSummaries.push(`### 구간 ${index + 1}\n${summary}`);
+            const progress = Math.min(
+              80,
+              15 + Math.round(((index + 1) / sections.length) * 55),
+            );
+            await onProgress?.(progress);
+          }
 
-  if (!raw) {
-    throw new ServiceError(502, "AI 분석 응답이 비어 있습니다.");
-  }
+          return requestChatCompletion({
+            apiKey,
+            model,
+            responseFormat: { type: "json_object" },
+            temperature: 0.2,
+            messages: [
+              {
+                role: "system",
+                content: `${systemPrompt}
+
+아래는 긴 상담 원문을 여러 구간으로 나눠 미리 요약한 결과입니다.
+이 section 요약들을 종합해 최종 JSON만 반환하세요.`,
+              },
+              {
+                role: "user",
+                content: sectionSummaries.join("\n\n"),
+              },
+            ],
+          });
+        })();
+
+  await onProgress?.(95);
 
   let parsed: unknown;
   try {
@@ -296,6 +456,8 @@ ${transcriptBlock}
     console.warn("AI 분석 응답 스키마 검증 실패:", validated.error.message);
     throw new ServiceError(502, "AI 분석 응답이 예상 스키마와 다릅니다.");
   }
+
+  await onProgress?.(100);
 
   return validated.data;
 }

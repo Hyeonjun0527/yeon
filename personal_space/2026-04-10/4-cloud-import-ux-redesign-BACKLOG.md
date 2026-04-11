@@ -7,6 +7,7 @@
 ## 1차: 파일 프록시 API 추가
 
 ### 작업내용
+
 - `GET /api/v1/integrations/onedrive/file/[fileId]/route.ts`
   - 세션 인증 확인
   - OneDrive에서 파일 바이트 스트리밍
@@ -16,15 +17,19 @@
   - 동일 구조
 
 ### 논의 필요
+
 없음
 
 ### 선택지
+
 단일 프록시 엔드포인트 vs provider별 분리
 
 ### 추천
+
 provider별 분리 — 기존 라우트 구조와 일관성 유지
 
 ### 사용자 방향
+
 추천대로
 
 ---
@@ -32,21 +37,26 @@ provider별 분리 — 기존 라우트 구조와 일관성 유지
 ## 2차: react-doc-viewer 설치 및 설정
 
 ### 작업내용
+
 - `pnpm --filter @yeon/web add @cyntler/react-doc-viewer`
 - 지원 형식: XLSX, DOCX, PDF, PNG/JPG/GIF, CSV, MP4, HTML
 - 미지원 형식(HWP 등): "미리보기를 지원하지 않는 형식입니다" 폴백
 - 텍스트/코드 파일(.txt, .js, .ts 등): `<pre>` 태그 별도 처리
 
 ### 논의 필요
+
 없음
 
 ### 선택지
+
 없음
 
 ### 추천
+
 @cyntler/react-doc-viewer
 
 ### 사용자 방향
+
 추천대로
 
 ---
@@ -54,6 +64,7 @@ provider별 분리 — 기존 라우트 구조와 일관성 유지
 ## 3차: 인라인 파일 브라우저 UI (모달 제거)
 
 ### 작업내용
+
 - 기존 `FileBrowserModal` + `ImportPreviewModal` 제거
 - `features/cloud-import/` 전면 재설계:
   - `CloudImportBrowser` — 메인 영역에서 렌더되는 인라인 파일 브라우저
@@ -68,15 +79,19 @@ provider별 분리 — 기존 라우트 구조와 일관성 유지
 - 사이드바 OneDrive/Google Drive 버튼 → 메인 영역 파일 브라우저 진입으로 연결
 
 ### 논의 필요
+
 없음 (사용자와 이미 확정)
 
 ### 선택지
+
 없음
 
 ### 추천
+
 확정 구조대로 구현
 
 ### 사용자 방향
+
 확정대로
 
 ---
@@ -84,7 +99,9 @@ provider별 분리 — 기존 라우트 구조와 일관성 유지
 ## 4차: 분석 + 임포트 분할 패널
 
 ### 작업내용
+
 오른쪽 패널 상태 머신:
+
 1. `idle` — "분석 시작" 버튼
 2. `analyzing` — 로딩 스피너 (왼쪽 파일 미리보기는 유지)
 3. `preview` — 스페이스명 입력 + 수강생 목록 (이름, 연락처 수정 가능)
@@ -94,15 +111,19 @@ provider별 분리 — 기존 라우트 구조와 일관성 유지
 기존 `useCloudImport` 훅 상태 관리 재활용 + 패널 상태 추가
 
 ### 논의 필요
+
 없음
 
 ### 선택지
+
 없음
 
 ### 추천
+
 상태 머신 패턴으로 오른쪽 패널 구현
 
 ### 사용자 방향
+
 확정대로
 
 ---

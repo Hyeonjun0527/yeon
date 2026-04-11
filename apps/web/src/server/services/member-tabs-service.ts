@@ -71,10 +71,7 @@ export async function createDefaultSystemTabs(
     updatedAt: now,
   }));
 
-  await db
-    .insert(memberTabDefinitions)
-    .values(rows)
-    .onConflictDoNothing();
+  await db.insert(memberTabDefinitions).values(rows).onConflictDoNothing();
 }
 
 /**
@@ -304,4 +301,3 @@ export async function reorderTabs(
     ),
   );
 }
-

@@ -115,13 +115,14 @@ export function RecordSidebar({
               <button
                 type="button"
                 className={`flex items-center gap-[5px] flex-1 justify-center py-[5px] px-2 border-none rounded-lg text-xs font-semibold cursor-pointer transition-[background,color] duration-150 ${
-                  sidebarViewMode === "all"
-                    ? "shadow-sm"
-                    : ""
+                  sidebarViewMode === "all" ? "shadow-sm" : ""
                 }`}
                 style={
                   sidebarViewMode === "all"
-                    ? { background: "var(--surface-primary)", color: "var(--text-primary)" }
+                    ? {
+                        background: "var(--surface-primary)",
+                        color: "var(--text-primary)",
+                      }
                     : { background: "transparent", color: "var(--text-muted)" }
                 }
                 onClick={() => setSidebarViewMode("all")}
@@ -132,13 +133,14 @@ export function RecordSidebar({
               <button
                 type="button"
                 className={`flex items-center gap-[5px] flex-1 justify-center py-[5px] px-2 border-none rounded-lg text-xs font-semibold cursor-pointer transition-[background,color] duration-150 ${
-                  sidebarViewMode === "student"
-                    ? "shadow-sm"
-                    : ""
+                  sidebarViewMode === "student" ? "shadow-sm" : ""
                 }`}
                 style={
                   sidebarViewMode === "student"
-                    ? { background: "var(--surface-primary)", color: "var(--text-primary)" }
+                    ? {
+                        background: "var(--surface-primary)",
+                        color: "var(--text-primary)",
+                      }
                     : { background: "transparent", color: "var(--text-muted)" }
                 }
                 onClick={() => setSidebarViewMode("student")}
@@ -152,9 +154,7 @@ export function RecordSidebar({
           {/* 5건 초과일 때만 검색/필터 노출 */}
           {records.length > 5 ? (
             <div className="grid gap-[10px]">
-              <label
-                className="relative flex items-center"
-              >
+              <label className="relative flex items-center">
                 <Search
                   size={16}
                   strokeWidth={2.1}
@@ -190,7 +190,8 @@ export function RecordSidebar({
                   <Filter size={14} strokeWidth={2.2} />
                   {recordFilter !== "all" ? (
                     <span style={{ color: "var(--accent)", fontWeight: 700 }}>
-                      {FILTER_META.find((f) => f.id === recordFilter)?.label ?? "전체"}
+                      {FILTER_META.find((f) => f.id === recordFilter)?.label ??
+                        "전체"}
                     </span>
                   ) : (
                     <span>필터</span>
@@ -199,7 +200,9 @@ export function RecordSidebar({
                     size={14}
                     strokeWidth={2.2}
                     className="transition-transform duration-[180ms]"
-                    style={{ transform: isFilterOpen ? "rotate(180deg)" : undefined }}
+                    style={{
+                      transform: isFilterOpen ? "rotate(180deg)" : undefined,
+                    }}
                   />
                 </button>
               </div>
@@ -224,12 +227,18 @@ export function RecordSidebar({
                           background: isActive
                             ? "rgba(99,102,241,0.1)"
                             : "var(--surface-soft)",
-                          color: isActive ? "var(--accent)" : "var(--text-secondary)",
+                          color: isActive
+                            ? "var(--accent)"
+                            : "var(--text-secondary)",
                         }}
                         onClick={() => setRecordFilter(filter.id)}
                       >
-                        <span className="text-[11px] tracking-[-0.02em]">{filter.label}</span>
-                        <span className="text-[13px] font-extrabold">{count}</span>
+                        <span className="text-[11px] tracking-[-0.02em]">
+                          {filter.label}
+                        </span>
+                        <span className="text-[13px] font-extrabold">
+                          {count}
+                        </span>
                       </button>
                     );
                   })}
@@ -250,9 +259,18 @@ export function RecordSidebar({
                       background: "var(--surface-soft)",
                     }}
                   >
-                    <div className={styles.skeletonLine} style={{ width: "60%" }} />
-                    <div className={styles.skeletonLine} style={{ width: "80%" }} />
-                    <div className={styles.skeletonLine} style={{ width: "40%" }} />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "60%" }}
+                    />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "80%" }}
+                    />
+                    <div
+                      className={styles.skeletonLine}
+                      style={{ width: "40%" }}
+                    />
                   </div>
                 ))}
               </div>
@@ -261,7 +279,10 @@ export function RecordSidebar({
                 <p className="m-0 text-sm font-bold leading-[1.4]">
                   목록을 불러오지 못했습니다.
                 </p>
-                <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                <p
+                  className="m-0 text-[13px] leading-relaxed"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {loadError}
                 </p>
               </div>
@@ -277,8 +298,14 @@ export function RecordSidebar({
                         className="flex items-center gap-2 py-2 px-[10px] border-none rounded-[10px] text-[13px] font-bold cursor-pointer text-left transition-[background] duration-[120ms]"
                         style={
                           selectedStudentName === group.studentName
-                            ? { background: "var(--accent-soft)", color: "var(--accent)" }
-                            : { background: "transparent", color: "var(--text-primary)" }
+                            ? {
+                                background: "var(--accent-soft)",
+                                color: "var(--accent)",
+                              }
+                            : {
+                                background: "transparent",
+                                color: "var(--text-primary)",
+                              }
                         }
                         onClick={() => {
                           setExpandedStudents((prev) => {
@@ -297,12 +324,19 @@ export function RecordSidebar({
                           size={14}
                           strokeWidth={2.2}
                           className={styles.studentGroupChevron}
-                          style={isExpanded ? undefined : { transform: "rotate(-90deg)" }}
+                          style={
+                            isExpanded
+                              ? undefined
+                              : { transform: "rotate(-90deg)" }
+                          }
                         />
                         <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                           {group.studentName}
                         </span>
-                        <span className="flex-shrink-0 text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+                        <span
+                          className="flex-shrink-0 text-[11px] font-semibold"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           {group.recordCount}건
                         </span>
                       </button>
@@ -329,19 +363,45 @@ export function RecordSidebar({
                                 <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] items-center gap-2 py-[10px] px-3">
                                   <div className="contents">
                                     <div className="min-w-0 flex items-baseline gap-2">
-                                      <span className="m-0 text-[12px] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                                      <span
+                                        className="m-0 text-[12px] overflow-hidden text-ellipsis whitespace-nowrap"
+                                        style={{ color: "var(--text-muted)" }}
+                                      >
                                         {record.sessionTitle}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-[11px] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                                      <span>{formatDateTimeLabel(record.createdAt)}</span>
+                                    <div
+                                      className="flex items-center gap-2 text-[11px] whitespace-nowrap"
+                                      style={{ color: "var(--text-muted)" }}
+                                    >
+                                      <span>
+                                        {formatDateTimeLabel(record.createdAt)}
+                                      </span>
                                       <span
                                         className={`inline-flex items-center gap-1 py-[3px] px-2 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap ${status.className}`}
                                       >
-                                        <StatusIcon size={10} strokeWidth={2.2} />
+                                        <StatusIcon
+                                          size={10}
+                                          strokeWidth={2.2}
+                                        />
                                         {status.label}
                                       </span>
                                     </div>
+                                    {record.status === "processing" ||
+                                    ["queued", "processing"].includes(
+                                      record.analysisStatus,
+                                    ) ? (
+                                      <div
+                                        className="col-span-2 text-[11px] leading-[1.5] text-left"
+                                        style={{ color: "var(--text-muted)" }}
+                                      >
+                                        {record.processingMessage ||
+                                          (record.analysisStatus ===
+                                          "processing"
+                                            ? `AI 분석 ${record.analysisProgress}%`
+                                            : `진행률 ${record.processingProgress}%`)}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </div>
                               </button>
@@ -385,12 +445,18 @@ export function RecordSidebar({
                           <span className="m-0 text-[13px] font-semibold leading-[1.3] whitespace-nowrap">
                             {record.studentName}
                           </span>
-                          <span className="m-0 text-xs leading-[1.3] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                          <span
+                            className="m-0 text-xs leading-[1.3] overflow-hidden text-ellipsis whitespace-nowrap"
+                            style={{ color: "var(--text-muted)" }}
+                          >
                             {record.sessionTitle}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 text-[11px] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                        <div
+                          className="flex items-center gap-2 text-[11px] whitespace-nowrap"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           <span>{formatDateTimeLabel(record.createdAt)}</span>
                           <span
                             className={`inline-flex items-center gap-1 py-[3px] px-2 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap ${status.className}`}
@@ -399,6 +465,20 @@ export function RecordSidebar({
                             {status.label}
                           </span>
                         </div>
+                        {record.status === "processing" ||
+                        ["queued", "processing"].includes(
+                          record.analysisStatus,
+                        ) ? (
+                          <div
+                            className="col-span-2 text-[11px] leading-[1.5] text-left"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            {record.processingMessage ||
+                              (record.analysisStatus === "processing"
+                                ? `AI 분석 ${record.analysisProgress}%`
+                                : `진행률 ${record.processingProgress}%`)}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </button>

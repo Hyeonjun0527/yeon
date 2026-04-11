@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const authProviderSchema = z.enum(["google", "kakao"]);
+export const authProviderSchema = z.enum(["google", "kakao", "dev"]);
 
 export const authUserDtoSchema = z.object({
   id: z.string().uuid(),

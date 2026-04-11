@@ -4,7 +4,10 @@ import { eq, and } from "drizzle-orm";
 
 import { getDb } from "@/server/db";
 import { users, userIdentities } from "@/server/db/schema";
-import { createAuthSession, applyAuthSessionCookie } from "@/server/auth/session";
+import {
+  createAuthSession,
+  applyAuthSessionCookie,
+} from "@/server/auth/session";
 
 export const runtime = "nodejs";
 
@@ -74,7 +77,10 @@ export async function GET() {
   const session = await createAuthSession(userRow!.id);
 
   const response = NextResponse.redirect(
-    new URL("/home", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+    new URL(
+      "/home",
+      process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    ),
   );
 
   applyAuthSessionCookie(response, session);

@@ -1,10 +1,4 @@
-import {
-  jsonb,
-  pgTable,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { jsonb, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 import { members } from "./members";
 import { spaces } from "./spaces";

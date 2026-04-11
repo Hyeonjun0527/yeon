@@ -7,7 +7,10 @@ interface InsightBannerProps {
   onHighlightWarning: () => void;
 }
 
-export function InsightBanner({ members, onHighlightWarning }: InsightBannerProps) {
+export function InsightBanner({
+  members,
+  onHighlightWarning,
+}: InsightBannerProps) {
   const warningCount = members.filter((m) => m.indicator === "warning").length;
   const noneCount = members.filter((m) => m.indicator === "none").length;
   const total = warningCount + noneCount;
@@ -25,8 +28,8 @@ export function InsightBanner({ members, onHighlightWarning }: InsightBannerProp
     >
       <span className="text-amber text-base flex-shrink-0">⚠</span>
       <span className="text-xs text-text-secondary leading-relaxed">
-        <span className="font-semibold text-amber">{parts.join(", ")}</span>
-        {" "}수강생이 있습니다. 클릭하면 목록을 확인할 수 있습니다.
+        <span className="font-semibold text-amber">{parts.join(", ")}</span>{" "}
+        수강생이 있습니다. 클릭하면 목록을 확인할 수 있습니다.
       </span>
     </button>
   );

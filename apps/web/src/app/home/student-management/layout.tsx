@@ -2,11 +2,23 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Users, Plus, GraduationCap, X, CheckCircle, AlertCircle, Upload } from "lucide-react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import {
+  Users,
+  Plus,
+  GraduationCap,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Upload,
+} from "lucide-react";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
-import { SpaceSettingsDrawerProvider, SpaceSettingsDrawerHost, useSpaceSettingsDrawer } from "@/features/space-settings";
+import {
+  SpaceSettingsDrawerProvider,
+  SpaceSettingsDrawerHost,
+  useSpaceSettingsDrawer,
+} from "@/features/space-settings";
 import { Settings } from "lucide-react";
 
 const CloudImportInline = dynamic(
@@ -41,11 +53,17 @@ function OAuthResultToastInner() {
     if (gdConnected === "true") {
       setToast({ text: "Google Drive 연동이 완료됐습니다.", type: "success" });
     } else if (gdError) {
-      setToast({ text: "Google Drive 연동에 실패했습니다. 다시 시도해주세요.", type: "error" });
+      setToast({
+        text: "Google Drive 연동에 실패했습니다. 다시 시도해주세요.",
+        type: "error",
+      });
     } else if (odConnected === "true") {
       setToast({ text: "OneDrive 연동이 완료됐습니다.", type: "success" });
     } else if (odError) {
-      setToast({ text: "OneDrive 연동에 실패했습니다. 다시 시도해주세요.", type: "error" });
+      setToast({
+        text: "OneDrive 연동에 실패했습니다. 다시 시도해주세요.",
+        type: "error",
+      });
     }
 
     if (gdError || gdConnected || odError || odConnected) {
@@ -97,7 +115,9 @@ function OAuthResultToastInner() {
   );
 }
 
-const OAuthResultToast = dynamic(() => Promise.resolve(OAuthResultToastInner), { ssr: false });
+const OAuthResultToast = dynamic(() => Promise.resolve(OAuthResultToastInner), {
+  ssr: false,
+});
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
   const {
@@ -108,13 +128,23 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     refetchSpaces,
     members,
     importMode,
-    importInitialProvider,
     enterImportMode,
     exitImportMode,
   } = useStudentManagement();
   const { openSpaceSettings } = useSpaceSettingsDrawer();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const noSpaces = !spacesLoading && spaces.length === 0;
+  const isStudentDetailRoute =
+    /^\/home\/student-management\/[^/]+$/.test(pathname) &&
+    pathname !== "/home/student-management/members/new";
+
+  function resetDetailRouteIfNeeded() {
+    if (isStudentDetailRoute) {
+      router.replace("/home/student-management");
+    }
+  }
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
@@ -153,6 +183,18 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (importMode) {
+    return (
+      <main className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
+        <CloudImportInline
+          expanded
+          onClose={exitImportMode}
+          onImportComplete={refetchSpaces}
+        />
+      </main>
+    );
+  }
+
   return (
     <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
       <nav className="w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto md:w-[240px] max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:gap-1 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
@@ -177,7 +219,11 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               ? " bg-accent-dim text-accent font-semibold"
               : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
           }`}
-          onClick={() => { setSelectedSpaceId(null); if (importMode) exitImportMode(); }}
+          onClick={() => {
+            setSelectedSpaceId(null);
+            if (importMode) exitImportMode();
+            resetDetailRouteIfNeeded();
+          }}
         >
           <Users size={16} />
           <span style={{ flex: 1 }}>전체 수강생</span>
@@ -218,22 +264,38 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
                   ? " bg-accent-dim text-accent font-semibold"
                   : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
               }`}
-              onClick={() => { setSelectedSpaceId(space.id); if (importMode) exitImportMode(); }}
+              onClick={() => {
+                setSelectedSpaceId(space.id);
+                if (importMode) exitImportMode();
+                resetDetailRouteIfNeeded();
+              }}
             >
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: "var(--accent)" }}
               />
-              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{space.name}</span>
+              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                {space.name}
+              </span>
               {selectedSpaceId === space.id && (
                 <>
-                  <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">{members.length}</span>
+                  <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">
+                    {members.length}
+                  </span>
                   <div
                     role="button"
                     tabIndex={0}
                     className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text cursor-pointer p-0 flex-shrink-0"
-                    onClick={(e) => { e.stopPropagation(); openSpaceSettings({ spaceId: space.id }); }}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); openSpaceSettings({ spaceId: space.id }); } }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openSpaceSettings({ spaceId: space.id });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        openSpaceSettings({ spaceId: space.id });
+                      }
+                    }}
                     title="스페이스 설정"
                   >
                     <Settings size={12} />
@@ -263,7 +325,9 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
                 marginBottom: 6,
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+              <span
+                style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}
+              >
                 새 스페이스
               </span>
               <button
@@ -353,32 +417,16 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         >
           <button
             className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
-            onClick={() => enterImportMode("onedrive")}
+            onClick={enterImportMode}
             type="button"
           >
             <Upload size={14} />
-            OneDrive에서 가져오기
-          </button>
-          <button
-            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
-            onClick={() => enterImportMode("googledrive")}
-            type="button"
-          >
-            <Upload size={14} />
-            Google Drive에서 가져오기
+            외부에서 가져오기
           </button>
         </div>
       </nav>
-      <main className={`flex-1 overflow-y-auto${importMode ? " p-0 overflow-hidden" : " p-8 max-md:px-4 max-md:py-5"}`}>
-        {importMode ? (
-          <CloudImportInline
-            initialProvider={importInitialProvider ?? undefined}
-            onClose={exitImportMode}
-            onImportComplete={refetchSpaces}
-          />
-        ) : (
-          children
-        )}
+      <main className="flex-1 overflow-y-auto p-8 max-md:px-4 max-md:py-5">
+        {children}
       </main>
     </div>
   );

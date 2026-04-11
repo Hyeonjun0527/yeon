@@ -28,7 +28,9 @@ export function StudentDetailHeader({ student }: StudentDetailHeaderProps) {
         <Avatar name={student.name} size={56} />
 
         <div className="flex-1">
-          <div className="text-[22px] font-bold text-text mb-1">{student.name}</div>
+          <div className="text-[22px] font-bold text-text mb-1">
+            {student.name}
+          </div>
 
           <div className="text-sm text-text-secondary flex items-center gap-2 flex-wrap mb-2">
             <span>{student.grade}기수</span>

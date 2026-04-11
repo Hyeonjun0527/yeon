@@ -1,0 +1,140 @@
+스페이스	기수	이름	이메일	연락처	세부트랙	역할	상태
+백엔드 부트캠프	1기	권승현	seunghyun.kwon1@gmail.com	010-1861-6000	Spring		수강중
+백엔드 부트캠프	1기	이다은	daeun.lee2@naver.com	010-5874-5767	Spring		수강중
+백엔드 부트캠프	1기	장민지	minji.jang3@kakao.com	010-9027-7538	Spring		수강중
+백엔드 부트캠프	1기	류준호	junho.ryu4@outlook.com	010-3468-8748	Java		수강중
+백엔드 부트캠프	1기	정예린	yerin.jung5@daum.net	010-2957-9550	Java		수강중
+백엔드 부트캠프	1기	홍동현	donghyun.hong6@gmail.com	010-1415-2569	Spring	부리더	수강중
+백엔드 부트캠프	1기	박재원	jaewon.park7@naver.com	010-4800-9997	Spring	멘토링담당	수강중
+백엔드 부트캠프	1기	윤우진	woojin.yoon8@kakao.com	010-1557-4224	Node.js		수강중
+백엔드 부트캠프	1기	문재원	jaewon.moon9@outlook.com	010-5341-4397	Node.js		수강중
+백엔드 부트캠프	1기	신수아	sua.shin10@daum.net	010-3536-4212	Java		수강중
+백엔드 부트캠프	1기	박지우	jiwoo.park11@gmail.com	010-9763-8083	Spring		수강중
+백엔드 부트캠프	1기	김수아	sua.kim12@naver.com	010-2488-4279	Spring	부리더	수강중
+백엔드 부트캠프	2기	권은서	eunseo.kwon13@kakao.com	010-8223-5467	Java		수강중
+백엔드 부트캠프	2기	류유나	yuna.ryu14@outlook.com	010-6164-8970	Node.js	부리더	수강중
+백엔드 부트캠프	2기	김태현	taehyun.kim15@daum.net	010-1006-4856	Java		수강중
+백엔드 부트캠프	2기	윤은서	eunseo.yoon16@gmail.com	010-5234-9876	Node.js		수강중
+백엔드 부트캠프	2기	최가은	gaeun.choi17@naver.com	010-4876-9605	Node.js	리더	수강중
+백엔드 부트캠프	2기	김수아	sua.kim18@kakao.com	010-6587-3987	Spring		수강중
+백엔드 부트캠프	2기	문민서	minseo.moon19@outlook.com	010-2666-3018	Java		휴학
+백엔드 부트캠프	2기	오태현	taehyun.oh20@daum.net	010-2080-2036	Spring	리더	수강중
+백엔드 부트캠프	2기	한유나	yuna.han21@gmail.com	010-1941-5976	Java		수강중
+백엔드 부트캠프	2기	신지호	jiho.shin22@naver.com	010-9701-2643	Node.js		수강중
+백엔드 부트캠프	2기	김하은	haeun.kim23@kakao.com	010-5475-4808	Node.js		수강중
+백엔드 부트캠프	2기	서우진	woojin.seo24@outlook.com	010-7116-7472	Java		수강중
+백엔드 부트캠프	2기	한도윤	doyun.han25@daum.net	010-4577-3783	Java		수강중
+백엔드 부트캠프	2기	배다은	daeun.bae26@gmail.com	010-9182-3988	Java		수강중
+백엔드 부트캠프	2기	강예준	yejun.kang27@naver.com	010-5935-8936	Node.js		수강중
+백엔드 부트캠프	2기	최지호	jiho.choi28@kakao.com	010-7112-8070	Node.js		수강중
+백엔드 부트캠프	3기	윤은서	eunseo.yoon29@outlook.com	010-4843-8702	Java		수강중
+백엔드 부트캠프	3기	이우진	woojin.lee30@daum.net	010-2787-5843	Java		수강중
+백엔드 부트캠프	3기	이소율	soyul.lee31@gmail.com	010-9907-2216	Java	멘토링담당	수강중
+백엔드 부트캠프	3기	신도윤	doyun.shin32@naver.com	010-2604-5348	Spring		휴학
+백엔드 부트캠프	3기	최재원	jaewon.choi33@kakao.com	010-5430-6837	Java		수강중
+백엔드 부트캠프	3기	배지호	jiho.bae34@outlook.com	010-1652-6377	Spring		수강중
+백엔드 부트캠프	3기	김예린	yerin.kim35@daum.net	010-3052-5395	Node.js		수강중
+백엔드 부트캠프	3기	권수빈	subin.kwon36@gmail.com	010-9158-8176	Node.js		수강중
+백엔드 부트캠프	3기	최하은	haeun.choi37@naver.com	010-7496-9150	Java		수강중
+백엔드 부트캠프	3기	류소율	soyul.ryu38@kakao.com	010-4474-5844	Java		수강중
+백엔드 부트캠프	3기	문서연	seoyeon.moon39@outlook.com	010-7252-3480	Spring		수강중
+백엔드 부트캠프	3기	한민서	minseo.han40@daum.net	010-9586-8359	Java		수강중
+백엔드 부트캠프	3기	박은서	eunseo.park41@gmail.com	010-6893-3028	Spring		수강중
+백엔드 부트캠프	3기	김지민	jimin.kim42@naver.com	010-2883-3430	Java		수강중
+백엔드 부트캠프	3기	한연우	yeonwoo.han43@kakao.com	010-9266-2366	Java		수강중
+백엔드 부트캠프	3기	조유나	yuna.cho44@outlook.com	010-5825-5598	Spring		수강중
+프론트엔드 스쿨	1기	강서윤	seoyun.kang45@daum.net	010-7676-9154	Vue	리더	수강중
+프론트엔드 스쿨	1기	홍지우	jiwoo.hong46@gmail.com	010-2192-3760	Next.js		수강중
+프론트엔드 스쿨	1기	한유나	yuna.han47@naver.com	010-1685-6391	Vue		수강중
+프론트엔드 스쿨	1기	홍다은	daeun.hong48@kakao.com	010-7393-6085	Next.js		수강중
+프론트엔드 스쿨	1기	홍서연	seoyeon.hong49@outlook.com	010-6923-3985	Next.js		수강중
+프론트엔드 스쿨	1기	장지민	jimin.jang50@daum.net	010-3290-7425	Vue		수강중
+프론트엔드 스쿨	1기	홍예린	yerin.hong51@gmail.com	010-1784-4456	Vue	부리더	수강중
+프론트엔드 스쿨	1기	송태현	taehyun.song52@naver.com	010-6681-8242	Next.js		수강중
+프론트엔드 스쿨	2기	문지호	jiho.moon53@kakao.com	010-2047-8335	Vue		수강중
+프론트엔드 스쿨	2기	박재원	jaewon.park54@outlook.com	010-5727-7456	Next.js	리더	휴학
+프론트엔드 스쿨	2기	한수빈	subin.han55@daum.net	010-9278-8368	Vue	부리더	수강중
+프론트엔드 스쿨	2기	강시우	siwoo.kang56@gmail.com	010-7100-7895	React	리더	수강중
+프론트엔드 스쿨	2기	한시우	siwoo.han57@naver.com	010-7442-5394	Vue	멘토링담당	수강중
+프론트엔드 스쿨	2기	서동현	donghyun.seo58@kakao.com	010-4046-9428	React		수강중
+프론트엔드 스쿨	2기	오은서	eunseo.oh59@outlook.com	010-9864-1808	React	부리더	수료
+프론트엔드 스쿨	2기	오준호	junho.oh60@daum.net	010-7258-2094	React		수료
+프론트엔드 스쿨	2기	박서연	seoyeon.park61@gmail.com	010-7519-1514	React	리더	수료
+프론트엔드 스쿨	2기	송가은	gaeun.song62@naver.com	010-7741-8699	React		수료
+프론트엔드 스쿨	2기	최예준	yejun.choi63@kakao.com	010-7654-1689	Vue		수료
+프론트엔드 스쿨	2기	박채원	chaewon.park64@outlook.com	010-7803-9898	Next.js		수강중
+데이터분석 과정	1기	윤은서	eunseo.yoon65@daum.net	010-3107-1423	SQL		수강중
+데이터분석 과정	1기	윤지호	jiho.yoon66@gmail.com	010-4551-1929	SQL		수강중
+데이터분석 과정	1기	신채원	chaewon.shin67@naver.com	010-4741-5438	SQL		수강중
+데이터분석 과정	1기	조현우	hyunwoo.cho68@kakao.com	010-9219-1489	Python		수강중
+데이터분석 과정	1기	이지호	jiho.lee69@outlook.com	010-5947-5512	Python		수강중
+데이터분석 과정	1기	문지우	jiwoo.moon70@daum.net	010-6718-1967	SQL		수강중
+데이터분석 과정	1기	신하린	harin.shin71@gmail.com	010-6651-6864	ML		수강중
+데이터분석 과정	1기	류우진	woojin.ryu72@naver.com	010-6108-2204	Python	부리더	수강중
+데이터분석 과정	1기	권승현	seunghyun.kwon73@kakao.com	010-2017-5689	Python		수강중
+데이터분석 과정	1기	장지우	jiwoo.jang74@outlook.com	010-5757-9852	ML		수강중
+데이터분석 과정	1기	권하린	harin.kwon75@daum.net	010-1958-4907	ML	부리더	수료
+데이터분석 과정	2기	이수빈	subin.lee76@gmail.com	010-7076-8557	SQL		수강중
+데이터분석 과정	2기	오지민	jimin.oh77@naver.com	010-6288-2802	ML		수강중
+데이터분석 과정	2기	한민서	minseo.han78@kakao.com	010-4466-1779	ML	부리더	수강중
+데이터분석 과정	2기	정서연	seoyeon.jung79@outlook.com	010-9734-6666	Python	멘토링담당	수료
+데이터분석 과정	2기	오시우	siwoo.oh80@daum.net	010-2883-4862	SQL		수강중
+데이터분석 과정	2기	신도윤	doyun.shin81@gmail.com	010-2267-1805	Python		수강중
+데이터분석 과정	2기	신예린	yerin.shin82@naver.com	010-3006-4781	ML	멘토링담당	수강중
+데이터분석 과정	2기	문가은	gaeun.moon83@kakao.com	010-9934-8253	Python		수강중
+데이터분석 과정	2기	권준호	junho.kwon84@outlook.com	010-2735-4314	ML		수강중
+데이터분석 과정	2기	한재원	jaewon.han85@daum.net	010-5036-4443	Python		수강중
+데이터분석 과정	2기	문연우	yeonwoo.moon86@gmail.com	010-1482-3052	ML		수료
+데이터분석 과정	2기	오현우	hyunwoo.oh87@naver.com	010-9744-5579	Python	부리더	수강중
+데이터분석 과정	2기	오재원	jaewon.oh88@kakao.com	010-3888-4353	SQL		수강중
+데이터분석 과정	3기	송수아	sua.song89@outlook.com	010-2803-3003	ML		수강중
+데이터분석 과정	3기	문예린	yerin.moon90@daum.net	010-3114-1619	Python		수강중
+데이터분석 과정	3기	장예준	yejun.jang91@gmail.com	010-3814-6617	Python	리더	수료
+데이터분석 과정	3기	최지호	jiho.choi92@naver.com	010-2470-9370	Python		수강중
+데이터분석 과정	3기	신채원	chaewon.shin93@kakao.com	010-7393-2264	ML	리더	수강중
+데이터분석 과정	3기	박수아	sua.park94@outlook.com	010-9955-4166	SQL	부리더	수강중
+데이터분석 과정	3기	정연우	yeonwoo.jung95@daum.net	010-3098-9373	Python	멘토링담당	수강중
+데이터분석 과정	3기	조지민	jimin.cho96@gmail.com	010-2525-5345	ML	리더	수강중
+데이터분석 과정	3기	김연우	yeonwoo.kim97@naver.com	010-1820-7984	SQL		수강중
+데이터분석 과정	3기	강재원	jaewon.kang98@kakao.com	010-2467-4529	SQL		수강중
+데이터분석 과정	3기	윤민서	minseo.yoon99@outlook.com	010-7062-6515	Python		수강중
+데이터분석 과정	3기	배준호	junho.bae100@daum.net	010-5675-5114	Python		수강중
+데이터분석 과정	3기	강은서	eunseo.kang101@gmail.com	010-6675-7100	ML		수강중
+데이터분석 과정	3기	조예준	yejun.cho102@naver.com	010-1364-3169	SQL		수강중
+데이터분석 과정	3기	박유나	yuna.park103@kakao.com	010-2457-7987	Python		수강중
+데이터분석 과정	3기	류하린	harin.ryu104@outlook.com	010-2642-1921	ML		휴학
+데이터분석 과정	4기	최하린	harin.choi105@daum.net	010-6224-5032	ML		수강중
+데이터분석 과정	4기	조우진	woojin.cho106@gmail.com	010-6404-1784	Python	멘토링담당	수강중
+데이터분석 과정	4기	이우진	woojin.lee107@naver.com	010-9555-9255	ML		수강중
+데이터분석 과정	4기	이서연	seoyeon.lee108@kakao.com	010-2811-6656	SQL		수강중
+데이터분석 과정	4기	김다은	daeun.kim109@outlook.com	010-1474-2101	ML		수강중
+데이터분석 과정	4기	임채원	chaewon.lim110@daum.net	010-1777-3227	ML		수강중
+데이터분석 과정	4기	서승현	seunghyun.seo111@gmail.com	010-2509-9200	Python		수강중
+데이터분석 과정	4기	서가은	gaeun.seo112@naver.com	010-9111-5947	ML		휴학
+UXUI 디자인랩	1기	오채원	chaewon.oh113@kakao.com	010-5587-2019	Figma		수강중
+UXUI 디자인랩	1기	강지우	jiwoo.kang114@outlook.com	010-1330-2875	Figma		수강중
+UXUI 디자인랩	1기	이재원	jaewon.lee115@daum.net	010-2573-7782	Figma		수강중
+UXUI 디자인랩	1기	오예린	yerin.oh116@gmail.com	010-4306-3476	Prototyping		수강중
+UXUI 디자인랩	1기	류연우	yeonwoo.ryu117@naver.com	010-3632-8116	Prototyping		수강중
+UXUI 디자인랩	1기	류하린	harin.ryu118@kakao.com	010-7184-1502	Prototyping		수강중
+UXUI 디자인랩	1기	김채원	chaewon.kim119@outlook.com	010-5586-4722	Figma	리더	수강중
+UXUI 디자인랩	1기	정민서	minseo.jung120@daum.net	010-5097-6252	Framer	부리더	수강중
+UXUI 디자인랩	1기	정재원	jaewon.jung121@gmail.com	010-6314-9315	Figma		수강중
+UXUI 디자인랩	1기	한수빈	subin.han122@naver.com	010-2246-4933	Prototyping		수강중
+UXUI 디자인랩	1기	장유나	yuna.jang123@kakao.com	010-2299-9367	Framer		수강중
+UXUI 디자인랩	1기	강가은	gaeun.kang124@outlook.com	010-4793-3950	Prototyping		수강중
+UXUI 디자인랩	1기	류지민	jimin.ryu125@daum.net	010-5156-6004	Figma		수강중
+UXUI 디자인랩	1기	장소율	soyul.jang126@gmail.com	010-3824-3575	Figma		수강중
+UXUI 디자인랩	1기	조다은	daeun.cho127@naver.com	010-3767-6685	Prototyping		수강중
+UXUI 디자인랩	1기	정가은	gaeun.jung128@kakao.com	010-3228-4404	Prototyping		수료
+UXUI 디자인랩	1기	신현우	hyunwoo.shin129@outlook.com	010-5618-2131	Framer		수강중
+UXUI 디자인랩	2기	신지우	jiwoo.shin130@daum.net	010-4887-5952	Prototyping		수강중
+UXUI 디자인랩	2기	임준호	junho.lim131@gmail.com	010-5998-9518	Figma		수강중
+UXUI 디자인랩	2기	이수아	sua.lee132@naver.com	010-9237-2211	Prototyping		수강중
+UXUI 디자인랩	2기	오지민	jimin.oh133@kakao.com	010-6632-9444	Prototyping		수강중
+UXUI 디자인랩	2기	서채원	chaewon.seo134@outlook.com	010-1611-5100	Figma	부리더	수강중
+UXUI 디자인랩	2기	문지우	jiwoo.moon135@daum.net	010-9402-2128	Prototyping		수료
+UXUI 디자인랩	2기	류서윤	seoyun.ryu136@gmail.com	010-9622-8218	Framer		수강중
+UXUI 디자인랩	2기	임서윤	seoyun.lim137@naver.com	010-6250-1767	Figma	부리더	수강중
+UXUI 디자인랩	2기	김가은	gaeun.kim138@kakao.com	010-3871-3725	Prototyping	리더	휴학
+UXUI 디자인랩	2기	최채원	chaewon.choi139@outlook.com	010-1085-3172	Framer		수료

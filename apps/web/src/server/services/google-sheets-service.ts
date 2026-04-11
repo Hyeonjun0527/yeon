@@ -36,9 +36,7 @@ function getServiceAccountKey(): object {
 }
 
 export function extractSheetId(sheetUrl: string): string {
-  const match = sheetUrl.match(
-    /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/,
-  );
+  const match = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
 
   if (!match || !match[1]) {
     throw new ServiceError(

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { X, CloudCog, Loader2, FileSpreadsheet, FileText, Folder, ArrowLeft, ChevronRight } from "lucide-react";
+import {
+  X,
+  CloudCog,
+  Loader2,
+  FileSpreadsheet,
+  FileText,
+  Folder,
+  ArrowLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useCloudImport } from "@/features/cloud-import/hooks/use-cloud-import";
 import type { CloudProvider, DriveFile } from "@/features/cloud-import/types";
 
@@ -63,7 +72,9 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
             ? "/api/v1/integrations/onedrive"
             : "/api/v1/integrations/googledrive"
         }/file/${driveFile.id}${
-          driveFile.mimeType ? `?mimeType=${encodeURIComponent(driveFile.mimeType)}` : ""
+          driveFile.mimeType
+            ? `?mimeType=${encodeURIComponent(driveFile.mimeType)}`
+            : ""
         }`;
 
         const res = await fetch(proxyUrl);
@@ -74,7 +85,9 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
         });
         onFilePicked(file);
       } catch (err) {
-        setFetchError(err instanceof Error ? err.message : "파일을 가져오지 못했습니다.");
+        setFetchError(
+          err instanceof Error ? err.message : "파일을 가져오지 못했습니다.",
+        );
       } finally {
         setFetching(false);
       }
@@ -96,7 +109,8 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
       <div className="flex flex-col items-center gap-3 py-10 text-center">
         <CloudCog size={28} className="text-text-dim" />
         <p className="text-[14px] font-semibold text-text">
-          {provider === "onedrive" ? "OneDrive" : "Google Drive"} 연결이 필요합니다
+          {provider === "onedrive" ? "OneDrive" : "Google Drive"} 연결이
+          필요합니다
         </p>
         <p className="text-[12px] text-text-dim max-w-[260px]">
           클라우드 드라이브를 연결하면 파일을 바로 불러올 수 있습니다.
@@ -151,7 +165,9 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
             {i > 0 && <ChevronRight size={10} className="mx-0.5" />}
             <button
               className={`bg-transparent border-none cursor-pointer p-0 hover:text-text transition-colors ${
-                i === hook.folderStack.length - 1 ? "font-semibold text-text" : ""
+                i === hook.folderStack.length - 1
+                  ? "font-semibold text-text"
+                  : ""
               }`}
               onClick={() => hook.navigateToBreadcrumbIndex(i)}
             >
@@ -186,7 +202,8 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
                         : "cursor-pointer hover:bg-surface-3 text-text"
                     }`}
                     onClick={() => {
-                      if (file.isFolder) hook.navigateToFolder(file.id, file.name);
+                      if (file.isFolder)
+                        hook.navigateToFolder(file.id, file.name);
                       else if (selectable) void handleSelect(file);
                     }}
                     disabled={!clickable}
@@ -225,8 +242,12 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
   );
 }
 
-export function CloudProfilePicker({ onFilePicked, onClose }: CloudProfilePickerProps) {
-  const [activeProvider, setActiveProvider] = useState<CloudProvider>("onedrive");
+export function CloudProfilePicker({
+  onFilePicked,
+  onClose,
+}: CloudProfilePickerProps) {
+  const [activeProvider, setActiveProvider] =
+    useState<CloudProvider>("onedrive");
 
   return (
     <div
@@ -243,8 +264,12 @@ export function CloudProfilePicker({ onFilePicked, onClose }: CloudProfilePicker
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div>
-            <h3 className="text-[14px] font-semibold text-text">클라우드에서 파일 선택</h3>
-            <p className="text-[11px] text-text-dim mt-0.5">CSV 또는 TXT 파일을 선택하면 AI가 프로필을 추출합니다</p>
+            <h3 className="text-[14px] font-semibold text-text">
+              클라우드에서 파일 선택
+            </h3>
+            <p className="text-[11px] text-text-dim mt-0.5">
+              CSV 또는 TXT 파일을 선택하면 AI가 프로필을 추출합니다
+            </p>
           </div>
           <button
             className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent border-none text-text-dim hover:text-text hover:bg-surface-3 cursor-pointer transition-colors"

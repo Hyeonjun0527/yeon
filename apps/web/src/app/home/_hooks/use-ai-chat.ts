@@ -8,7 +8,10 @@ interface UseAiChatParams {
   selectedMessages: AiMessage[];
   selectedStatus: "ready" | "processing" | "error" | null;
   selectedAnalysisResult: AnalysisResult | null;
-  onUpdateMessages: (id: string, updater: (prev: AiMessage[]) => AiMessage[]) => void;
+  onUpdateMessages: (
+    id: string,
+    updater: (prev: AiMessage[]) => AiMessage[],
+  ) => void;
   onUpdateAnalysisResult: (id: string, result: AnalysisResult) => void;
 }
 
@@ -91,11 +94,14 @@ export function useAiChat({
     setImages((prev) => [...prev, ...newImages]);
 
     newImages.forEach((img) => {
-      setTimeout(() => {
-        setImages((prev) =>
-          prev.map((i) => (i.id === img.id ? { ...i, loading: false } : i)),
-        );
-      }, 400 + Math.random() * 200);
+      setTimeout(
+        () => {
+          setImages((prev) =>
+            prev.map((i) => (i.id === img.id ? { ...i, loading: false } : i)),
+          );
+        },
+        400 + Math.random() * 200,
+      );
     });
   }, []);
 
@@ -204,10 +210,16 @@ export function useAiChat({
           analyzeAbortRef.current = null;
         }
       });
-  }, [selectedId, selectedStatus, selectedAnalysisResult, onUpdateAnalysisResult]);
+  }, [
+    selectedId,
+    selectedStatus,
+    selectedAnalysisResult,
+    onUpdateAnalysisResult,
+  ]);
 
   const send = useCallback(() => {
-    if ((!input.trim() && images.length === 0) || !selectedId || streaming) return;
+    if ((!input.trim() && images.length === 0) || !selectedId || streaming)
+      return;
 
     const userMsg = input.trim();
     const attachedImages = images.length > 0 ? [...images] : undefined;
@@ -235,23 +247,35 @@ export function useAiChat({
     ];
 
     setStreaming(true);
-    sendToApi(selectedId, allMessages).catch((err) => {
-      if ((err as Error).name === "AbortError") return;
-      onUpdateMessages(selectedId, (prev) => {
-        const updated = [...prev];
-        const lastIdx = updated.length - 1;
-        // 스트리밍 중 빈 assistant 메시지가 이미 추가된 경우 교체
-        if (lastIdx >= 0 && updated[lastIdx].role === "assistant" && !updated[lastIdx].text) {
-          updated[lastIdx] = { ...updated[lastIdx], text: "AI 응답을 가져오지 못했습니다." };
-        } else {
-          updated.push({ role: "assistant", text: "AI 응답을 가져오지 못했습니다." });
-        }
-        return updated;
+    sendToApi(selectedId, allMessages)
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") return;
+        onUpdateMessages(selectedId, (prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          // 스트리밍 중 빈 assistant 메시지가 이미 추가된 경우 교체
+          if (
+            lastIdx >= 0 &&
+            updated[lastIdx].role === "assistant" &&
+            !updated[lastIdx].text
+          ) {
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              text: "AI 응답을 가져오지 못했습니다.",
+            };
+          } else {
+            updated.push({
+              role: "assistant",
+              text: "AI 응답을 가져오지 못했습니다.",
+            });
+          }
+          return updated;
+        });
+      })
+      .finally(() => {
+        setStreaming(false);
+        abortRef.current = null;
       });
-    }).finally(() => {
-      setStreaming(false);
-      abortRef.current = null;
-    });
   }, [input, images, selectedId, streaming, onUpdateMessages, sendToApi]);
 
   const sendQuickChip = useCallback(
@@ -268,22 +292,34 @@ export function useAiChat({
       ];
 
       setStreaming(true);
-      sendToApi(selectedId, allMessages).catch((err) => {
-        if ((err as Error).name === "AbortError") return;
-        onUpdateMessages(selectedId, (prev) => {
-          const updated = [...prev];
-          const lastIdx = updated.length - 1;
-          if (lastIdx >= 0 && updated[lastIdx].role === "assistant" && !updated[lastIdx].text) {
-            updated[lastIdx] = { ...updated[lastIdx], text: "AI 응답을 가져오지 못했습니다." };
-          } else {
-            updated.push({ role: "assistant", text: "AI 응답을 가져오지 못했습니다." });
-          }
-          return updated;
+      sendToApi(selectedId, allMessages)
+        .catch((err) => {
+          if ((err as Error).name === "AbortError") return;
+          onUpdateMessages(selectedId, (prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (
+              lastIdx >= 0 &&
+              updated[lastIdx].role === "assistant" &&
+              !updated[lastIdx].text
+            ) {
+              updated[lastIdx] = {
+                ...updated[lastIdx],
+                text: "AI 응답을 가져오지 못했습니다.",
+              };
+            } else {
+              updated.push({
+                role: "assistant",
+                text: "AI 응답을 가져오지 못했습니다.",
+              });
+            }
+            return updated;
+          });
+        })
+        .finally(() => {
+          setStreaming(false);
+          abortRef.current = null;
         });
-      }).finally(() => {
-        setStreaming(false);
-        abortRef.current = null;
-      });
     },
     [selectedId, streaming, onUpdateMessages, sendToApi],
   );
@@ -301,6 +337,9 @@ export function useAiChat({
     sendQuickChip,
     streaming,
     analyzing,
-    canSend: selectedStatus === "ready" && !streaming && (!!input.trim() || images.length > 0),
+    canSend:
+      selectedStatus === "ready" &&
+      !streaming &&
+      (!!input.trim() || images.length > 0),
   };
 }

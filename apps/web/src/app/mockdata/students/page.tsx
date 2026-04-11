@@ -103,7 +103,9 @@ export default function StudentsPage() {
 
         {/* 년도 탭 */}
         <div className={styles.yearTabs}>
-          <button className={`${styles.yearTab} ${styles.yearTabActive}`}>2026</button>
+          <button className={`${styles.yearTab} ${styles.yearTabActive}`}>
+            2026
+          </button>
           <button className={styles.yearTab}>2025</button>
           <button className={styles.yearTab}>2024</button>
           <button className={styles.yearTab}>전체</button>
@@ -124,11 +126,14 @@ export default function StudentsPage() {
                   <p className={styles.studentName}>{s.name}</p>
                   <p className={styles.studentSub}>
                     {s.tags.map((t) => (
-                      <span key={t.label} className={`${styles.tagSm} ${t.cls}`}>
+                      <span
+                        key={t.label}
+                        className={`${styles.tagSm} ${t.cls}`}
+                      >
                         {t.label}
                       </span>
-                    ))}
-                    {" "}· {s.grade}
+                    ))}{" "}
+                    · {s.grade}
                   </p>
                 </div>
               </div>

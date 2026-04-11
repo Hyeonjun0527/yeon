@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
 
   const parsed = analyzeTrendBodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    return jsonError(parsed.error.issues[0]?.message ?? "잘못된 요청입니다.", 400);
+    return jsonError(
+      parsed.error.issues[0]?.message ?? "잘못된 요청입니다.",
+      400,
+    );
   }
 
   const { recordIds } = parsed.data;

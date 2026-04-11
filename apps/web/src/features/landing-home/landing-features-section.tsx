@@ -35,7 +35,9 @@ export function LandingFeaturesSection() {
                 transition: { duration: 0.25 },
               }}
             >
-              <div className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}>
+              <div
+                className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}
+              >
                 <feat.icon size={24} strokeWidth={2} />
               </div>
               <h3 className="m-0 text-[21px] font-bold">{feat.title}</h3>

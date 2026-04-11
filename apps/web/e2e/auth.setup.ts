@@ -10,10 +10,7 @@
 import { chromium } from "@playwright/test";
 import path from "node:path";
 
-export const STORAGE_STATE_PATH = path.join(
-  __dirname,
-  ".auth/session.json",
-);
+export const STORAGE_STATE_PATH = path.join(__dirname, ".auth/session.json");
 
 export default async function globalSetup() {
   const browser = await chromium.launch();

@@ -6,7 +6,10 @@ import { createSpace, getSpaces } from "@/server/services/spaces-service";
 import { createDefaultSystemTabs } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
 

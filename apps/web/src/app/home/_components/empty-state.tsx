@@ -5,7 +5,10 @@ export interface EmptyStateProps {
   onFileUpload: () => void;
 }
 
-export function EmptyState({ onStartRecording, onFileUpload }: EmptyStateProps) {
+export function EmptyState({
+  onStartRecording,
+  onFileUpload,
+}: EmptyStateProps) {
   return (
     <div className="flex-1 flex items-center justify-center min-h-0">
       <div className="flex flex-col items-center gap-4 text-center max-w-[360px]">

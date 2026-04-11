@@ -44,13 +44,19 @@ export function UploadAudioReadyForm({
           background: "var(--surface-soft)",
         }}
       >
-        <p className="m-0 text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="m-0 text-[11px] font-semibold"
+          style={{ color: "var(--text-muted)" }}
+        >
           선택한 오디오
         </p>
         <p className="m-0 text-[15px] font-bold leading-[1.35]">
           {selectedAudioFile.name}
         </p>
-        <p className="m-0 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <p
+          className="m-0 text-xs leading-relaxed"
+          style={{ color: "var(--text-secondary)" }}
+        >
           {formatFileSize(selectedAudioFile.size)} ·{" "}
           {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
         </p>
@@ -60,12 +66,17 @@ export function UploadAudioReadyForm({
       </div>
 
       <label className="grid gap-[6px]">
-        <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+        <span
+          className="text-xs font-bold tracking-[0.02em]"
+          style={{ color: "var(--text-secondary)" }}
+        >
           수강생 이름
         </span>
         <input
           value={formState.studentName}
-          onChange={(event) => updateFormState("studentName", event.target.value)}
+          onChange={(event) =>
+            updateFormState("studentName", event.target.value)
+          }
           className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
           style={{
             borderColor: "var(--border-primary)",
@@ -85,7 +96,10 @@ export function UploadAudioReadyForm({
           aria-controls="create-record-additional-fields"
           onClick={() => setIsAdditionalInfoOpen((current) => !current)}
         >
-          <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+          <span
+            className="text-[13px] font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
             추가 정보
           </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -96,12 +110,17 @@ export function UploadAudioReadyForm({
         {isAdditionalInfoOpen ? (
           <div id="create-record-additional-fields" className="grid gap-3 pt-3">
             <label className="grid gap-2">
-              <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+              <span
+                className="text-xs font-bold tracking-[0.02em]"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 상담 제목
               </span>
               <input
                 value={formState.sessionTitle}
-                onChange={(event) => updateFormState("sessionTitle", event.target.value)}
+                onChange={(event) =>
+                  updateFormState("sessionTitle", event.target.value)
+                }
                 className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
                 style={{
                   borderColor: "var(--border-primary)",
@@ -113,12 +132,17 @@ export function UploadAudioReadyForm({
             </label>
             <div className={styles.additionalInfoGrid}>
               <label className="grid gap-2">
-                <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+                <span
+                  className="text-xs font-bold tracking-[0.02em]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   상담 유형
                 </span>
                 <select
                   value={formState.counselingType}
-                  onChange={(event) => updateFormState("counselingType", event.target.value)}
+                  onChange={(event) =>
+                    updateFormState("counselingType", event.target.value)
+                  }
                   className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
                   style={{
                     borderColor: "var(--border-primary)",

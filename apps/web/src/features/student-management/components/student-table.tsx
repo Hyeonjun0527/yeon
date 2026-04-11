@@ -21,12 +21,24 @@ export function StudentTable({
       <thead>
         <tr>
           <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border w-10" />
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">이름</th>
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">기수</th>
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">트랙</th>
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">상태</th>
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">상담 수</th>
-          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">등록일</th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            이름
+          </th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            기수
+          </th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            트랙
+          </th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            상태
+          </th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            상담 수
+          </th>
+          <th className="py-3 px-4 text-left text-xs font-semibold text-text-dim bg-surface-2 border-b border-border">
+            등록일
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -52,13 +64,21 @@ export function StudentTable({
                 </div>
               </Link>
             </td>
-            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.grade}</td>
-            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.school ?? "-"}</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
+              {student.grade}
+            </td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
+              {student.school ?? "-"}
+            </td>
             <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <StatusBadge status={student.status} />
             </td>
-            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.counselingHistory.length}건</td>
-            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">{student.registeredAt}</td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
+              {student.counselingHistory.length}건
+            </td>
+            <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
+              {student.registeredAt}
+            </td>
           </tr>
         ))}
       </tbody>

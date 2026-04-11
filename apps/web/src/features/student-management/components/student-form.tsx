@@ -65,21 +65,29 @@ export function StudentForm() {
       <div className="flex-1 overflow-y-auto p-6">
         {/* 기본 정보 */}
         <div className="mb-6">
-          <p className="text-sm font-semibold text-text-secondary mb-3">기본 정보</p>
+          <p className="text-sm font-semibold text-text-secondary mb-3">
+            기본 정보
+          </p>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">이름 *</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              이름 *
+            </label>
             <input
               className={`w-full py-2 px-3 border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border${errors.name ? " border-red" : " border-border"}`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="수강생 이름"
             />
-            {errors.name && <p className="text-xs text-red mt-0.5">{errors.name}</p>}
+            {errors.name && (
+              <p className="text-xs text-red mt-0.5">{errors.name}</p>
+            )}
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">기수 *</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              기수 *
+            </label>
             <select
               className={`w-full py-2 px-3 border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none${errors.grade ? " border-red" : " border-border"}`}
               value={grade}
@@ -92,11 +100,15 @@ export function StudentForm() {
                 </option>
               ))}
             </select>
-            {errors.grade && <p className="text-xs text-red mt-0.5">{errors.grade}</p>}
+            {errors.grade && (
+              <p className="text-xs text-red mt-0.5">{errors.grade}</p>
+            )}
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">트랙</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              트랙
+            </label>
             <select
               className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={school}
@@ -112,7 +124,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">연락처</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              연락처
+            </label>
             <input
               className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={phone}
@@ -122,7 +136,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">이메일</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              이메일
+            </label>
             <input
               className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               type="email"
@@ -135,10 +151,14 @@ export function StudentForm() {
 
         {/* 비상연락처 — 성인 수강생 대상이므로 보호자 개념 없음 */}
         <div className="mb-6">
-          <p className="text-sm font-semibold text-text-secondary mb-3">비상연락처</p>
+          <p className="text-sm font-semibold text-text-secondary mb-3">
+            비상연락처
+          </p>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">이름</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              이름
+            </label>
             <input
               className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={guardianName}
@@ -148,7 +168,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">연락처</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              연락처
+            </label>
             <input
               className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
               value={guardianPhone}
@@ -158,7 +180,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">관계</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              관계
+            </label>
             <select
               className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={guardianRelation}
@@ -178,7 +202,9 @@ export function StudentForm() {
           <p className="text-sm font-semibold text-text-secondary mb-3">분류</p>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">태그</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              태그
+            </label>
             <div
               style={{
                 display: "flex",
@@ -211,7 +237,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">상태</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              상태
+            </label>
             <select
               className="w-full py-2 px-3 border border-border rounded-sm text-sm bg-surface-2 text-text cursor-pointer outline-none"
               value={status}
@@ -228,7 +256,9 @@ export function StudentForm() {
           </div>
 
           <div className="mb-3">
-            <label className="block text-[13px] font-medium text-text-dim mb-1">코호트 배정</label>
+            <label className="block text-[13px] font-medium text-text-dim mb-1">
+              코호트 배정
+            </label>
             <div
               style={{
                 display: "flex",

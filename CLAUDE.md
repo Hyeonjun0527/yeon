@@ -14,6 +14,14 @@
 - 브랜치, 커밋, push, PR 운영은 `AGENTS.md`와 `.claude/skills/git-pr-workflow.md`를 따른다.
 - **`apps/web`에서 서버 데이터 fetch는 반드시 TanStack Query(`useQuery`, `useMutation`)를 사용한다.** 수동 `fetch + useState + useEffect` 조합은 금지한다. 이미 존재하는 수동 fetch 코드를 수정하는 경우 함께 마이그레이션한다.
 
+### Execution Efficiency Rules
+
+- 오래 걸릴 수 있는 탐색, 빌드, 테스트, 에이전트 작업은 가능하면 백그라운드로 보내고 다른 독립 작업을 먼저 진행한다.
+- 진행 중인 작업이 장시간 대기 상태로 들어가면 타임아웃까지 무작정 기다리지 말고, 현재 완료 범위와 남은 대기 이유를 먼저 공유한다.
+- 큰 요청도 가능한 한 짧은 실행 단위로 나눠 처리하고, 각 단계가 끝날 때마다 결과를 보이는 방식으로 진행한다.
+- 같은 탐색이나 확인을 반복해서 시간을 쓰지 않는다. 한 번 위임했거나 확인한 내용은 재사용하고, 막히면 다른 접근으로 전환한다.
+- 장시간 응답 없는 상태를 만들지 않는다. 추가 작업을 진행할 수 없으면 침묵 대신 현재 상태와 다음 액션을 짧게 보고한다.
+
 ### Completion Criteria
 
 - 코드 수정 후에는 변경 범위에 맞는 lint, format, typecheck, test, build를 가능한 범위에서 실행한다.
@@ -115,15 +123,15 @@
 
 이 프로젝트에서는 부트캠프 맥락에 맞는 용어를 사용한다.
 
-| 사용하지 않는 표현 | 올바른 표현 | 비고 |
-|---|---|---|
-| 학생 | 수강생 (member) | 20~30대 성인 |
-| 학년 | 트랙/과정 (track) | 백엔드, 프론트엔드, 데이터 등 |
-| 보호자/학부모 | 해당 없음 | 성인 대상, 보호자 개념 없음 |
-| 반 (수학A반) | 스페이스 (space) | 기수, 프로그램, 코호트 등 사용자 정의 단위 |
-| 년도 탭 | 스페이스 탭 | 사용자가 직접 생성·관리 |
-| 강사 | 멘토/운영자 | |
-| 상담 | 멘토링/1:1 상담 | |
+| 사용하지 않는 표현 | 올바른 표현       | 비고                                       |
+| ------------------ | ----------------- | ------------------------------------------ |
+| 학생               | 수강생 (member)   | 20~30대 성인                               |
+| 학년               | 트랙/과정 (track) | 백엔드, 프론트엔드, 데이터 등              |
+| 보호자/학부모      | 해당 없음         | 성인 대상, 보호자 개념 없음                |
+| 반 (수학A반)       | 스페이스 (space)  | 기수, 프로그램, 코호트 등 사용자 정의 단위 |
+| 년도 탭            | 스페이스 탭       | 사용자가 직접 생성·관리                    |
+| 강사               | 멘토/운영자       |                                            |
+| 상담               | 멘토링/1:1 상담   |                                            |
 
 ### 대상 사용자
 
@@ -299,15 +307,15 @@ features/<feature-name>/
 
 ### 명명 규칙
 
-| 대상 | 규칙 | 예 |
-|---|---|---|
-| 파일명 | kebab-case | `use-records.ts`, `student-list-screen.tsx` |
-| 컴포넌트 | PascalCase | `StudentCard`, `EmptyState` |
-| 훅 | camelCase, `use` 접두사 | `useRecords`, `useMemberList` |
-| 상수 | UPPER_SNAKE_CASE | `POLL_INTERVAL_MS` |
-| 타입/인터페이스 | PascalCase | `HomeViewState`, `Member` |
-| 불리언 변수 | `is`/`has`/`can` 접두사 | `isLoading`, `hasError`, `canSubmit` |
-| 이벤트 핸들러 | `handle` 접두사 | `handleSelectRecord`, `handleStartRecording` |
+| 대상            | 규칙                    | 예                                           |
+| --------------- | ----------------------- | -------------------------------------------- |
+| 파일명          | kebab-case              | `use-records.ts`, `student-list-screen.tsx`  |
+| 컴포넌트        | PascalCase              | `StudentCard`, `EmptyState`                  |
+| 훅              | camelCase, `use` 접두사 | `useRecords`, `useMemberList`                |
+| 상수            | UPPER_SNAKE_CASE        | `POLL_INTERVAL_MS`                           |
+| 타입/인터페이스 | PascalCase              | `HomeViewState`, `Member`                    |
+| 불리언 변수     | `is`/`has`/`can` 접두사 | `isLoading`, `hasError`, `canSubmit`         |
+| 이벤트 핸들러   | `handle` 접두사         | `handleSelectRecord`, `handleStartRecording` |
 
 ### 컴포넌트 내부 작성 순서
 
@@ -368,10 +376,10 @@ MVP 속도 우선. 커밋 단위는 크게 가도 된다.
 
 ```ts
 type ViewState<T> =
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'empty' }
-  | { kind: 'ready'; data: T }
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "empty" }
+  | { kind: "ready"; data: T };
 ```
 
 렌더에서 boolean 여러 개를 직접 조합하지 않는다. 반드시 변환 함수 하나를 거친다.
@@ -379,25 +387,30 @@ type ViewState<T> =
 ```ts
 // 변환 함수 — 한 군데에서만 상태를 조립
 function toViewState<T>(query: UseQueryResult<T[]>): ViewState<T[]> {
-  if (query.isPending) return { kind: 'loading' }
-  if (query.isError)   return { kind: 'error', message: '불러오기에 실패했습니다.' }
-  if (!query.data || query.data.length === 0) return { kind: 'empty' }
-  return { kind: 'ready', data: query.data }
+  if (query.isPending) return { kind: "loading" };
+  if (query.isError)
+    return { kind: "error", message: "불러오기에 실패했습니다." };
+  if (!query.data || query.data.length === 0) return { kind: "empty" };
+  return { kind: "ready", data: query.data };
 }
 ```
 
 ```tsx
 // 렌더 — kind 하나만 본다
-const state = toViewState(membersQuery)
+const state = toViewState(membersQuery);
 
 switch (state.kind) {
-  case 'loading': return <LoadingScreen />
-  case 'error':   return <ErrorScreen message={state.message} />
-  case 'empty':   return <EmptyScreen />
-  case 'ready':   return <StudentList items={state.data} />
+  case "loading":
+    return <LoadingScreen />;
+  case "error":
+    return <ErrorScreen message={state.message} />;
+  case "empty":
+    return <EmptyScreen />;
+  case "ready":
+    return <StudentList items={state.data} />;
   default: {
-    const _: never = state   // exhaustive check
-    return _
+    const _: never = state; // exhaustive check
+    return _;
   }
 }
 ```
@@ -424,32 +437,35 @@ function toMembersViewState(
   membersQuery: UseQueryResult<{ members: Member[] }>,
 ): ViewState<Member[]> {
   // 둘 중 하나라도 pending이면 loading
-  if (spacesQuery.isPending || membersQuery.isPending) return { kind: 'loading' }
-  if (spacesQuery.isError)  return { kind: 'error', message: '공간 정보를 불러오지 못했습니다.' }
-  if (membersQuery.isError) return { kind: 'error', message: '수강생 정보를 불러오지 못했습니다.' }
-  const members = membersQuery.data?.members ?? []
-  if (members.length === 0) return { kind: 'empty' }
-  return { kind: 'ready', data: members }
+  if (spacesQuery.isPending || membersQuery.isPending)
+    return { kind: "loading" };
+  if (spacesQuery.isError)
+    return { kind: "error", message: "공간 정보를 불러오지 못했습니다." };
+  if (membersQuery.isError)
+    return { kind: "error", message: "수강생 정보를 불러오지 못했습니다." };
+  const members = membersQuery.data?.members ?? [];
+  if (members.length === 0) return { kind: "empty" };
+  return { kind: "ready", data: members };
 }
 ```
 
 TanStack Query의 `enabled` 의존 체인으로 waterfall을 위임하면 변환 함수가 더 단순해진다.
 
 ```ts
-const selectedSpaceId = userSelectedId ?? spacesData?.spaces[0]?.id ?? null
+const selectedSpaceId = userSelectedId ?? spacesData?.spaces[0]?.id ?? null;
 const membersQuery = useQuery({
-  queryKey: ['members', selectedSpaceId],
-  queryFn:  () => fetchMembers(selectedSpaceId!),
-  enabled:  !!selectedSpaceId,  // spaces 확정 전까지 자동 pending 유지
-})
+  queryKey: ["members", selectedSpaceId],
+  queryFn: () => fetchMembers(selectedSpaceId!),
+  enabled: !!selectedSpaceId, // spaces 확정 전까지 자동 pending 유지
+});
 ```
 
 ### 요약
 
-| 패턴 | 안전도 |
-|---|---|
-| boolean 여러 개 직접 조합 렌더 | 위험 — 언제든 새로운 조합 실수 가능 |
-| `data ?? []` 후 empty 판정 | 위험 — 미확정/빈 결과 구분 불가 |
+| 패턴                                      | 안전도                                          |
+| ----------------------------------------- | ----------------------------------------------- |
+| boolean 여러 개 직접 조합 렌더            | 위험 — 언제든 새로운 조합 실수 가능             |
+| `data ?? []` 후 empty 판정                | 위험 — 미확정/빈 결과 구분 불가                 |
 | ViewState discriminated union + 변환 함수 | 안전 — 잘못된 상태 조합을 코드로 표현할 수 없음 |
 
 ## Review Lens

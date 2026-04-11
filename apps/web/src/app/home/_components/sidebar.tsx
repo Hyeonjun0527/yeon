@@ -58,7 +58,10 @@ export function Sidebar({
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
 
-  const menuRef = useClickOutside<HTMLDivElement>(() => setShowMenu(false), showMenu);
+  const menuRef = useClickOutside<HTMLDivElement>(
+    () => setShowMenu(false),
+    showMenu,
+  );
   const spaceRef = useClickOutside<HTMLDivElement>(
     () => setShowSpaceDropdown(false),
     showSpaceDropdown,
@@ -81,7 +84,9 @@ export function Sidebar({
             className="w-full flex items-center justify-between gap-2 px-3 py-[7px] rounded-md bg-surface-3 border border-border-light text-sm font-medium text-text hover:bg-surface-4 transition-colors cursor-pointer"
             onClick={() => setShowSpaceDropdown((p) => !p)}
           >
-            <span className="truncate">{currentSpace?.name ?? "스페이스 선택"}</span>
+            <span className="truncate">
+              {currentSpace?.name ?? "스페이스 선택"}
+            </span>
             <svg
               width="12"
               height="12"
@@ -89,20 +94,30 @@ export function Sidebar({
               fill="none"
               className={`flex-shrink-0 text-text-dim transition-transform duration-150 ${showSpaceDropdown ? "rotate-180" : ""}`}
             >
-              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M2 4l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
 
           {showSpaceDropdown && (
             <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-surface-3 border border-border-light rounded-md py-1 z-50 shadow-[0_8px_24px_rgba(0,0,0,0.35)] max-h-48 overflow-y-auto">
               {spaces.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-text-dim">스페이스 없음</div>
+                <div className="px-3 py-2 text-xs text-text-dim">
+                  스페이스 없음
+                </div>
               ) : (
                 spaces.map((space) => (
                   <button
                     key={space.id}
                     className={`w-full px-3 py-[7px] text-left text-sm hover:bg-surface-4 transition-colors cursor-pointer font-[inherit] border-none bg-transparent ${
-                      space.id === currentSpace?.id ? "text-accent" : "text-text"
+                      space.id === currentSpace?.id
+                        ? "text-accent"
+                        : "text-text"
                     }`}
                     onClick={() => {
                       onSpaceChange(space.id);
@@ -133,20 +148,29 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto">
         {/* 수강생 섹션 */}
         <div className="px-2 py-2">
-          <div className="flex items-center justify-between px-2 py-1 mb-0.5" data-tutorial="members-section">
+          <div
+            className="flex items-center justify-between px-2 py-1 mb-0.5"
+            data-tutorial="members-section"
+          >
             <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
               수강생
             </span>
             {!membersLoading && (
-              <span className="text-[10px] text-text-dim">{members.length}명</span>
+              <span className="text-[10px] text-text-dim">
+                {members.length}명
+              </span>
             )}
           </div>
 
           {membersLoading ? (
-            <div className="px-3 py-3 text-xs text-text-dim text-center">불러오는 중…</div>
+            <div className="px-3 py-3 text-xs text-text-dim text-center">
+              불러오는 중…
+            </div>
           ) : members.length === 0 ? (
             <div className="px-3 py-3 text-xs text-text-dim">
-              {currentSpace ? "등록된 수강생이 없습니다" : "스페이스를 선택하세요"}
+              {currentSpace
+                ? "등록된 수강생이 없습니다"
+                : "스페이스를 선택하세요"}
             </div>
           ) : (
             members.map((member) => {
@@ -177,7 +201,9 @@ export function Sidebar({
                       <span className="w-1.5 h-1.5 rounded-full bg-surface-4 border border-border flex-shrink-0" />
                     )}
 
-                    <span className="flex-1 text-sm truncate text-text">{member.name}</span>
+                    <span className="flex-1 text-sm truncate text-text">
+                      {member.name}
+                    </span>
 
                     <span
                       className={`text-[10px] flex-shrink-0 tabular-nums ${
@@ -199,7 +225,13 @@ export function Sidebar({
                         fill="none"
                         className={`flex-shrink-0 text-text-dim transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
                       >
-                        <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M3 2l4 3-4 3"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     )}
                   </button>
@@ -234,7 +266,9 @@ export function Sidebar({
               <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
                 미분류
               </span>
-              <span className="text-[10px] text-text-dim">{unlinkedRecords.length}</span>
+              <span className="text-[10px] text-text-dim">
+                {unlinkedRecords.length}
+              </span>
             </div>
 
             {unlinkedRecords.map((rec) => (

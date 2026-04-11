@@ -16,7 +16,12 @@ export function useTrendAnalysis(
   );
   const trendAbortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => () => { trendAbortControllerRef.current?.abort(); }, []);
+  useEffect(
+    () => () => {
+      trendAbortControllerRef.current?.abort();
+    },
+    [],
+  );
 
   async function handleStartTrendAnalysis(
     studentName: string,
@@ -40,7 +45,8 @@ export function useTrendAnalysis(
 
       if (!response.ok || !response.body) {
         throw new Error(
-          (await readErrorMessage(response)) ?? "추이 분석 요청에 실패했습니다.",
+          (await readErrorMessage(response)) ??
+            "추이 분석 요청에 실패했습니다.",
         );
       }
 

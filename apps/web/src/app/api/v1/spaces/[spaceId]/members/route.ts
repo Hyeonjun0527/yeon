@@ -5,7 +5,10 @@ import { z } from "zod";
 import { createMember, getMembers } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
 

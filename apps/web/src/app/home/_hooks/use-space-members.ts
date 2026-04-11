@@ -24,7 +24,9 @@ export interface MemberWithStatus {
   indicator: "recent" | "warning" | "none";
 }
 
-function computeIndicator(daysSinceLast: number | null): MemberWithStatus["indicator"] {
+function computeIndicator(
+  daysSinceLast: number | null,
+): MemberWithStatus["indicator"] {
   if (daysSinceLast === null) return "none";
   if (daysSinceLast <= 14) return "recent";
   if (daysSinceLast <= 30) return "warning";
@@ -52,38 +54,40 @@ export function useSpaceMembers(
   // spaceId가 없으면 쿼리가 disabled → isPending=true 고정이므로 !!spaceId로 가드
   const loading = !!spaceId && isPending;
 
-  const members = useMemo((): MemberWithStatus[] =>
-    rawMembers.map((member) => {
-      const memberRecords = records.filter(
-        (r) => r.memberId === member.id && r.status === "ready",
-      );
+  const members = useMemo(
+    (): MemberWithStatus[] =>
+      rawMembers.map((member) => {
+        const memberRecords = records.filter(
+          (r) => r.memberId === member.id && r.status === "ready",
+        );
 
-      if (memberRecords.length === 0) {
+        if (memberRecords.length === 0) {
+          return {
+            ...member,
+            counselingCount: 0,
+            lastCounselingAt: null,
+            daysSinceLast: null,
+            indicator: "none" as const,
+          };
+        }
+
+        const sorted = [...memberRecords].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        const lastDate = sorted[0].createdAt;
+        const daysSinceLast = Math.floor(
+          (Date.now() - new Date(lastDate).getTime()) / 86400000,
+        );
+
         return {
           ...member,
-          counselingCount: 0,
-          lastCounselingAt: null,
-          daysSinceLast: null,
-          indicator: "none" as const,
+          counselingCount: memberRecords.length,
+          lastCounselingAt: lastDate,
+          daysSinceLast,
+          indicator: computeIndicator(daysSinceLast),
         };
-      }
-
-      const sorted = [...memberRecords].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-      const lastDate = sorted[0].createdAt;
-      const daysSinceLast = Math.floor(
-        (Date.now() - new Date(lastDate).getTime()) / 86400000,
-      );
-
-      return {
-        ...member,
-        counselingCount: memberRecords.length,
-        lastCounselingAt: lastDate,
-        daysSinceLast,
-        indicator: computeIndicator(daysSinceLast),
-      };
-    }),
+      }),
     [rawMembers, records],
   );
 

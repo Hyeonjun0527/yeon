@@ -19,8 +19,14 @@ import {
   deleteCounselingAudioObject,
   openCounselingAudioObjectStream,
 } from "./counseling-record-audio-storage";
-import { transcribeStoredAudio } from "./counseling-transcription-engine";
-import { analyzeCounselingRecord, resolveSpeakerNames } from "./counseling-ai-service";
+import {
+  type PersistedTranscriptionChunkSnapshot,
+  transcribeStoredAudio,
+} from "./counseling-transcription-engine";
+import {
+  analyzeCounselingRecord,
+  resolveSpeakerNames,
+} from "./counseling-ai-service";
 import {
   type CounselingRecordRow,
   DEFAULT_COUNSELING_TYPE,
@@ -48,8 +54,19 @@ import { getMemberByIdForUser } from "./members-service";
 const scheduledTranscriptionJobs = new Map<string, Promise<void>>();
 
 // ── 분석 중복 방지 ──
-// 동시에 같은 레코드에 대해 analyze를 호출해도 하나의 Promise만 실행됨
-const runningAnalysisJobs = new Map<string, Promise<CounselingRecordDetail["analysisResult"]>>();
+const scheduledAnalysisJobs = new Map<string, Promise<void>>();
+
+const PROCESSING_STAGE_PROGRESS: Record<string, number> = {
+  queued: 5,
+  downloading: 10,
+  chunking: 15,
+  transcribing: 20,
+  resolving_speakers: 85,
+  transcript_ready: 100,
+  analyzing: 100,
+  completed: 100,
+  error: 0,
+};
 
 type CreateCounselingRecordInput = {
   currentUser: AuthUserDto;
@@ -60,6 +77,72 @@ type CreateCounselingRecordInput = {
   file: File;
   clientRequestId?: string | null;
 };
+
+function isChunkSnapshot(
+  value: unknown,
+): value is PersistedTranscriptionChunkSnapshot {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  return (
+    "index" in value &&
+    typeof value.index === "number" &&
+    "transcriptText" in value &&
+    typeof value.transcriptText === "string" &&
+    "segments" in value &&
+    Array.isArray(value.segments)
+  );
+}
+
+function readTranscriptionChunks(record: CounselingRecordRow) {
+  return Array.isArray(record.transcriptionChunks)
+    ? record.transcriptionChunks
+        .filter(isChunkSnapshot)
+        .sort((a, b) => a.index - b.index)
+    : [];
+}
+
+function buildTranscriptionProgress(
+  stage: string,
+  chunkCount: number,
+  chunkCompletedCount: number,
+) {
+  if (stage === "transcribing" && chunkCount > 0) {
+    return Math.max(
+      PROCESSING_STAGE_PROGRESS.transcribing,
+      Math.min(
+        84,
+        Math.round(
+          PROCESSING_STAGE_PROGRESS.transcribing +
+            (chunkCompletedCount / chunkCount) * 64,
+        ),
+      ),
+    );
+  }
+
+  return PROCESSING_STAGE_PROGRESS[stage] ?? 0;
+}
+
+async function updateTranscriptionState(
+  recordId: string,
+  patch: Partial<typeof counselingRecords.$inferInsert>,
+) {
+  await getDb()
+    .update(counselingRecords)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(counselingRecords.id, recordId));
+}
+
+async function updateAnalysisState(
+  recordId: string,
+  patch: Partial<typeof counselingRecords.$inferInsert>,
+) {
+  await getDb()
+    .update(counselingRecords)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(counselingRecords.id, recordId));
+}
 
 function scheduleCounselingRecordTranscription(params: {
   userId: string;
@@ -97,6 +180,38 @@ function scheduleCounselingRecordTranscription(params: {
   return true;
 }
 
+function scheduleCounselingRecordAnalysis(params: {
+  userId: string;
+  recordId: string;
+}) {
+  if (scheduledAnalysisJobs.has(params.recordId)) {
+    return false;
+  }
+
+  const job = (async () => {
+    const record = await findOwnedRecord(params.userId, params.recordId);
+
+    if (record.status !== "ready") {
+      return;
+    }
+
+    await runQueuedAnalysisForRecord(record);
+  })()
+    .catch((error) => {
+      console.error("counseling-record-analysis-failed", {
+        recordId: params.recordId,
+        error,
+      });
+    })
+    .finally(() => {
+      scheduledAnalysisJobs.delete(params.recordId);
+    });
+
+  scheduledAnalysisJobs.set(params.recordId, job);
+
+  return true;
+}
+
 function ensureCounselingRecordTranscriptionScheduled(
   record: CounselingRecordRow,
   options?: {
@@ -114,11 +229,29 @@ function ensureCounselingRecordTranscriptionScheduled(
   });
 }
 
+function ensureCounselingRecordAnalysisScheduled(record: CounselingRecordRow) {
+  if (
+    record.status !== "ready" ||
+    !["queued", "processing"].includes(record.analysisStatus)
+  ) {
+    return false;
+  }
+
+  return scheduleCounselingRecordAnalysis({
+    userId: record.createdByUserId,
+    recordId: record.id,
+  });
+}
+
 // ── 내부 헬퍼 ──
 
 /** placeholder 기록을 제외한 실제 음성 기록만 반환 */
-function filterRealRecords<T extends { audioStoragePath: string }>(records: T[]): T[] {
-  return records.filter((r) => !isPlaceholderAudioStoragePath(r.audioStoragePath));
+function filterRealRecords<T extends { audioStoragePath: string }>(
+  records: T[],
+): T[] {
+  return records.filter(
+    (r) => !isPlaceholderAudioStoragePath(r.audioStoragePath),
+  );
 }
 
 /** 전사 실행 + AI 화자 식별 → 화자 라벨이 반영된 세그먼트 + 수강생 이름 반환 */
@@ -129,6 +262,8 @@ async function transcribeAndResolveSpeakers(
   const speakerHints = ["멘토"];
   if (record.studentName) speakerHints.push(record.studentName);
 
+  const existingChunks = readTranscriptionChunks(record);
+
   const transcription = await transcribeStoredAudio({
     recordId: record.id,
     storagePath: record.audioStoragePath,
@@ -138,6 +273,62 @@ async function transcribeAndResolveSpeakers(
     durationMs: record.audioDurationMs,
     clientRequestId,
     speakerHints,
+    existingChunks,
+    onSourcesPrepared: async ({ chunkCount }) => {
+      await updateTranscriptionState(record.id, {
+        processingStage: chunkCount > 1 ? "chunking" : "transcribing",
+        processingChunkCount: chunkCount,
+        processingChunkCompletedCount: existingChunks.length,
+        processingProgress: buildTranscriptionProgress(
+          chunkCount > 1 ? "chunking" : "transcribing",
+          chunkCount,
+          existingChunks.length,
+        ),
+        processingMessage:
+          chunkCount > 1
+            ? `긴 녹음을 ${chunkCount}개 구간으로 나눠 전사합니다.`
+            : "음성을 전사하고 있습니다.",
+      });
+    },
+    onChunkStarted: async ({ chunkIndex, chunkCount }) => {
+      await updateTranscriptionState(record.id, {
+        processingStage: "transcribing",
+        processingProgress: buildTranscriptionProgress(
+          "transcribing",
+          chunkCount,
+          chunkIndex,
+        ),
+        processingMessage: `전사 ${chunkIndex + 1}/${chunkCount} 구간을 처리하고 있습니다.`,
+      });
+    },
+    onChunkCompleted: async ({ chunkIndex, chunkCount, snapshot }) => {
+      const previousChunks = readTranscriptionChunks(
+        await findOwnedRecord(record.createdByUserId, record.id),
+      );
+      const nextChunks = [
+        ...previousChunks.filter((item) => item.index !== snapshot.index),
+        snapshot,
+      ].sort((left, right) => left.index - right.index);
+
+      await updateTranscriptionState(record.id, {
+        transcriptionChunks: nextChunks,
+        processingStage: "transcribing",
+        processingChunkCount: chunkCount,
+        processingChunkCompletedCount: nextChunks.length,
+        processingProgress: buildTranscriptionProgress(
+          "transcribing",
+          chunkCount,
+          nextChunks.length,
+        ),
+        processingMessage: `전사 ${chunkIndex + 1}/${chunkCount} 구간을 완료했습니다.`,
+      });
+    },
+  });
+
+  await updateTranscriptionState(record.id, {
+    processingStage: "resolving_speakers",
+    processingProgress: PROCESSING_STAGE_PROGRESS.resolving_speakers,
+    processingMessage: "화자와 수강생 이름을 정리하고 있습니다.",
   });
 
   const speakerResolution = await resolveSpeakerNames(
@@ -149,7 +340,10 @@ async function transcribeAndResolveSpeakers(
   ).catch((err) => {
     console.warn("화자 식별 실패, 원본 라벨 유지:", err);
     return {
-      mapping: {} as Record<string, { name: string; tone: CounselingRecordSpeakerTone }>,
+      mapping: {} as Record<
+        string,
+        { name: string; tone: CounselingRecordSpeakerTone }
+      >,
       studentName: null,
     };
   });
@@ -164,7 +358,8 @@ async function transcribeAndResolveSpeakers(
     };
   });
 
-  const resolvedStudentName = speakerResolution.studentName || record.studentName || null;
+  const resolvedStudentName =
+    speakerResolution.studentName || record.studentName || null;
 
   return { transcription, resolvedSegments, resolvedStudentName };
 }
@@ -175,7 +370,15 @@ async function persistTranscriptResult(params: {
   initialStudentName: string;
   originalAudioDurationMs: number | null;
   transcription: Awaited<ReturnType<typeof transcribeStoredAudio>>;
-  resolvedSegments: { id: string; segmentIndex: number; startMs: number | null; endMs: number | null; speakerLabel: string; speakerTone: string; text: string }[];
+  resolvedSegments: {
+    id: string;
+    segmentIndex: number;
+    startMs: number | null;
+    endMs: number | null;
+    speakerLabel: string;
+    speakerTone: string;
+    text: string;
+  }[];
   resolvedStudentName: string | null;
 }): Promise<void> {
   const db = getDb();
@@ -190,11 +393,20 @@ async function persistTranscriptResult(params: {
         transcriptSegmentCount: params.resolvedSegments.length,
         language: params.transcription.language,
         sttModel: params.transcription.model,
-        audioDurationMs: params.transcription.durationMs ?? params.originalAudioDurationMs,
+        audioDurationMs:
+          params.transcription.durationMs ?? params.originalAudioDurationMs,
         ...(params.resolvedStudentName && !params.initialStudentName
           ? { studentName: params.resolvedStudentName }
           : {}),
         errorMessage: null,
+        processingStage: "transcript_ready",
+        processingProgress: 100,
+        processingMessage:
+          "원문 준비가 완료되었습니다. AI 분석을 백그라운드에서 생성합니다.",
+        transcriptionChunks: null,
+        analysisStatus: "queued",
+        analysisProgress: 0,
+        analysisErrorMessage: null,
         transcriptionCompletedAt: now,
         updatedAt: now,
       })
@@ -225,7 +437,10 @@ async function runTranscriptionForRecord(params: {
   record: CounselingRecordRow;
   clientRequestId?: string | null;
 }) {
-  const freshRecord = await findOwnedRecord(params.record.createdByUserId, params.record.id);
+  const freshRecord = await findOwnedRecord(
+    params.record.createdByUserId,
+    params.record.id,
+  );
   if (freshRecord.status !== "processing") {
     console.info("전사 스킵: 레코드 상태가 processing이 아님", {
       recordId: params.record.id,
@@ -235,6 +450,16 @@ async function runTranscriptionForRecord(params: {
   }
 
   try {
+    await updateTranscriptionState(params.record.id, {
+      status: "processing",
+      processingStage: "downloading",
+      processingProgress: PROCESSING_STAGE_PROGRESS.downloading,
+      processingMessage: "오디오 파일을 작업용 임시 파일로 준비하고 있습니다.",
+      transcriptionAttemptCount:
+        (freshRecord.transcriptionAttemptCount ?? 0) + 1,
+      errorMessage: null,
+    });
+
     const { transcription, resolvedSegments, resolvedStudentName } =
       await transcribeAndResolveSpeakers(freshRecord, params.clientRequestId);
 
@@ -246,16 +471,104 @@ async function runTranscriptionForRecord(params: {
       resolvedSegments,
       resolvedStudentName,
     });
+
+    const completedRecord = await findOwnedRecord(
+      params.record.createdByUserId,
+      params.record.id,
+    );
+    ensureCounselingRecordAnalysisScheduled(completedRecord);
   } catch (error) {
     const message =
       error instanceof ServiceError
         ? error.message
         : "음성 전사 처리 중 알 수 없는 오류가 발생했습니다.";
 
-    await getDb()
-      .update(counselingRecords)
-      .set({ status: "error", errorMessage: message, updatedAt: new Date() })
-      .where(eq(counselingRecords.id, params.record.id));
+    await updateTranscriptionState(params.record.id, {
+      status: "error",
+      processingStage: "error",
+      processingProgress: 0,
+      processingMessage: message,
+      errorMessage: message,
+      analysisStatus: "idle",
+      analysisProgress: 0,
+    });
+
+    throw error;
+  }
+}
+
+async function runQueuedAnalysisForRecord(record: CounselingRecordRow) {
+  const detail = await getCounselingRecordDetail(
+    record.createdByUserId,
+    record.id,
+  );
+
+  if (detail.status !== "ready" || detail.transcriptSegments.length === 0) {
+    return;
+  }
+
+  if (detail.analysisResult && detail.analysisStatus === "ready") {
+    return;
+  }
+
+  await updateAnalysisState(record.id, {
+    analysisStatus: "processing",
+    analysisProgress: 10,
+    analysisErrorMessage: null,
+    analysisAttemptCount: (record.analysisAttemptCount ?? 0) + 1,
+    processingStage: "analyzing",
+    processingMessage: "AI가 긴 상담 원문을 순차적으로 분석하고 있습니다.",
+  });
+
+  try {
+    const result = await analyzeCounselingRecord(
+      {
+        studentName: detail.studentName,
+        sessionTitle: detail.sessionTitle,
+        counselingType: detail.counselingType,
+        createdAt: detail.createdAt,
+      },
+      detail.transcriptSegments.map((segment) => ({
+        speakerLabel: segment.speakerLabel,
+        text: segment.text,
+        startMs: segment.startMs ?? 0,
+      })),
+      async (progress) => {
+        await updateAnalysisState(record.id, {
+          analysisStatus: "processing",
+          analysisProgress: progress,
+          processingStage: "analyzing",
+          processingMessage:
+            progress >= 100
+              ? "AI 분석을 마무리하고 있습니다."
+              : `AI 분석 진행 중 (${progress}%)`,
+        });
+      },
+    );
+
+    await updateAnalysisState(record.id, {
+      analysisResult: result,
+      analysisStatus: "ready",
+      analysisProgress: 100,
+      analysisErrorMessage: null,
+      processingStage: "completed",
+      processingMessage: "전사와 AI 분석이 모두 완료되었습니다.",
+      analysisCompletedAt: new Date(),
+    });
+  } catch (error) {
+    const message =
+      error instanceof ServiceError
+        ? error.message
+        : "AI 분석 처리 중 알 수 없는 오류가 발생했습니다.";
+
+    await updateAnalysisState(record.id, {
+      analysisStatus: "error",
+      analysisProgress: 0,
+      analysisErrorMessage: message,
+      processingStage: "transcript_ready",
+      processingMessage:
+        "원문은 준비되었지만 AI 분석에 실패했습니다. 나중에 다시 시도할 수 있습니다.",
+    });
 
     throw error;
   }
@@ -275,6 +588,7 @@ export async function listCounselingRecords(userId: string) {
 
   for (const record of records) {
     ensureCounselingRecordTranscriptionScheduled(record);
+    ensureCounselingRecordAnalysisScheduled(record);
   }
 
   return records.map(mapRecordListItem);
@@ -336,6 +650,7 @@ export async function getCounselingRecordDetail(
   }
 
   ensureCounselingRecordTranscriptionScheduled(record);
+  ensureCounselingRecordAnalysisScheduled(record);
   const segments = await findTranscriptSegments(record.id);
 
   return mapRecordDetail(record, segments);
@@ -376,7 +691,10 @@ export async function getMultipleRecordsWithSegments(
   const names = new Set(results.map((r) => r.studentName));
 
   if (names.size > 1) {
-    throw new ServiceError(400, "같은 수강생의 기록만 추이 분석할 수 있습니다.");
+    throw new ServiceError(
+      400,
+      "같은 수강생의 기록만 추이 분석할 수 있습니다.",
+    );
   }
 
   return results;
@@ -417,6 +735,16 @@ export async function createCounselingRecordAndQueueTranscription(
       audioStoragePath: persistedAudio.storagePath,
       audioSha256: persistedAudio.sha256,
       language: "ko",
+      processingStage: "queued",
+      processingProgress: PROCESSING_STAGE_PROGRESS.queued,
+      processingMessage:
+        "업로드가 완료되어 백그라운드 전사를 준비하고 있습니다.",
+      processingChunkCount: 0,
+      processingChunkCompletedCount: 0,
+      transcriptionAttemptCount: 0,
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      analysisAttemptCount: 0,
       updatedAt: now,
     });
   } catch (error) {
@@ -449,9 +777,14 @@ export async function createTextMemoRecord(input: {
 }): Promise<CounselingRecordDetail> {
   const db = getDb();
   const recordId = randomUUID();
-  const sessionTitle = sanitizeRequiredValue(input.sessionTitle, 160, "메모 제목");
+  const sessionTitle = sanitizeRequiredValue(
+    input.sessionTitle,
+    160,
+    "메모 제목",
+  );
   const content = input.content.trim().slice(0, 10000);
-  const counselingType = sanitizeOptionalValue(input.counselingType, 40) ?? "텍스트 메모";
+  const counselingType =
+    sanitizeOptionalValue(input.counselingType, 40) ?? "텍스트 메모";
   const now = new Date();
 
   await db.insert(counselingRecords).values({
@@ -473,6 +806,11 @@ export async function createTextMemoRecord(input: {
     transcriptText: content,
     transcriptSegmentCount: 0,
     language: "ko",
+    processingStage: "completed",
+    processingProgress: 100,
+    processingMessage: "텍스트 메모는 즉시 준비됩니다.",
+    analysisStatus: "idle",
+    analysisProgress: 0,
     updatedAt: now,
   });
 
@@ -508,6 +846,15 @@ export async function retryCounselingRecordTranscription(
     .set({
       status: "processing",
       errorMessage: null,
+      processingStage: "queued",
+      processingProgress: PROCESSING_STAGE_PROGRESS.queued,
+      processingMessage: "백그라운드 전사를 다시 준비하고 있습니다.",
+      processingChunkCount: 0,
+      processingChunkCompletedCount: 0,
+      transcriptionChunks: null,
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      analysisErrorMessage: null,
       updatedAt: now,
     })
     .where(eq(counselingRecords.id, existingRecord.id));
@@ -569,46 +916,39 @@ export async function runAnalysisForRecord(userId: string, recordId: string) {
     throw new ServiceError(400, "전사가 완료된 레코드만 분석할 수 있습니다.");
   }
 
-  // 이미 분석 결과가 있으면 캐시 반환
-  if (detail.analysisResult) {
+  if (detail.analysisResult && detail.analysisStatus === "ready") {
     return detail.analysisResult;
   }
 
-  // 동일 레코드에 대해 진행 중인 분석이 있으면 재사용 — 중복 AI 호출 및 결과 덮어쓰기 방지
-  const existingJob = runningAnalysisJobs.get(recordId);
-  if (existingJob) {
-    return existingJob;
+  if (detail.analysisStatus === "processing") {
+    const existingJob = scheduledAnalysisJobs.get(recordId);
+    if (existingJob) {
+      await existingJob;
+      const refreshedWhileRunning = await getCounselingRecordDetail(
+        userId,
+        recordId,
+      );
+      if (refreshedWhileRunning.analysisResult) {
+        return refreshedWhileRunning.analysisResult;
+      }
+    }
+
+    throw new ServiceError(
+      409,
+      "AI 분석이 이미 진행 중입니다. 잠시 후 새로고침해 주세요.",
+    );
   }
 
-  const job = (async () => {
-    const result = await analyzeCounselingRecord(
-      {
-        studentName: detail.studentName,
-        sessionTitle: detail.sessionTitle,
-        counselingType: detail.counselingType,
-        createdAt: detail.createdAt,
-      },
-      detail.transcriptSegments.map((s) => ({
-        speakerLabel: s.speakerLabel,
-        text: s.text,
-        startMs: s.startMs ?? 0,
-      })),
-    );
+  const record = await findOwnedRecord(userId, recordId);
+  await runQueuedAnalysisForRecord(record);
 
-    // DB에 분석 결과 저장
-    const db = getDb();
-    await db
-      .update(counselingRecords)
-      .set({ analysisResult: result, updatedAt: new Date() })
-      .where(eq(counselingRecords.id, recordId));
+  const refreshed = await getCounselingRecordDetail(userId, recordId);
 
-    return result;
-  })().finally(() => {
-    runningAnalysisJobs.delete(recordId);
-  });
+  if (!refreshed.analysisResult) {
+    throw new ServiceError(502, "AI 분석 결과를 저장하지 못했습니다.");
+  }
 
-  runningAnalysisJobs.set(recordId, job);
-  return job;
+  return refreshed.analysisResult;
 }
 
 export async function linkCounselingRecordMember(
@@ -633,12 +973,22 @@ export async function listCounselingRecordsBySpace(
   userId: string,
   spaceId: string,
 ) {
-  const records = filterRealRecords(await findRecordsBySpaceId(userId, spaceId));
+  const records = filterRealRecords(
+    await findRecordsBySpaceId(userId, spaceId),
+  );
+  for (const record of records) {
+    ensureCounselingRecordTranscriptionScheduled(record);
+    ensureCounselingRecordAnalysisScheduled(record);
+  }
   return records.map(mapRecordListItem);
 }
 
 export async function listUnlinkedCounselingRecords(userId: string) {
   const records = filterRealRecords(await findUnlinkedRecords(userId));
+  for (const record of records) {
+    ensureCounselingRecordTranscriptionScheduled(record);
+    ensureCounselingRecordAnalysisScheduled(record);
+  }
   return records.map(mapRecordListItem);
 }
 
@@ -646,13 +996,20 @@ export async function listCounselingRecordsByMember(
   userId: string,
   memberId: string,
 ) {
-  const records = filterRealRecords(await findRecordsByMemberId(userId, memberId));
+  const records = filterRealRecords(
+    await findRecordsByMemberId(userId, memberId),
+  );
+  for (const record of records) {
+    ensureCounselingRecordTranscriptionScheduled(record);
+    ensureCounselingRecordAnalysisScheduled(record);
+  }
   return records.map(mapRecordListItem);
 }
 
 export async function deleteCounselingRecord(userId: string, recordId: string) {
   // 진행 중인 전사 job을 취소해 고아 세그먼트 방지
   scheduledTranscriptionJobs.delete(recordId);
+  scheduledAnalysisJobs.delete(recordId);
 
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
@@ -732,8 +1089,20 @@ export async function updateTranscriptSegment(
   // runAnalysisForRecord의 캐시 체크(detail.analysisResult)가 재분석을 허용하게 됨
   await db
     .update(counselingRecords)
-    .set({ analysisResult: null, updatedAt: new Date() })
+    .set({
+      analysisResult: null,
+      analysisStatus: "queued",
+      analysisProgress: 0,
+      analysisErrorMessage: null,
+      analysisCompletedAt: null,
+      processingStage: "transcript_ready",
+      processingMessage: "원문이 수정되어 AI 분석을 다시 준비합니다.",
+      updatedAt: new Date(),
+    })
     .where(eq(counselingRecords.id, record.id));
+
+  const refreshedRecord = await findOwnedRecord(userId, recordId);
+  ensureCounselingRecordAnalysisScheduled(refreshedRecord);
 
   return mapSegmentRow(updated);
 }
@@ -773,8 +1142,20 @@ export async function bulkUpdateSpeakerLabel(
     // 화자 레이블 변경은 분석 결과(발화자 기반 요약)를 stale하게 만들므로 초기화
     await db
       .update(counselingRecords)
-      .set({ analysisResult: null, updatedAt: new Date() })
+      .set({
+        analysisResult: null,
+        analysisStatus: "queued",
+        analysisProgress: 0,
+        analysisErrorMessage: null,
+        analysisCompletedAt: null,
+        processingStage: "transcript_ready",
+        processingMessage: "화자 정보가 수정되어 AI 분석을 다시 준비합니다.",
+        updatedAt: new Date(),
+      })
       .where(eq(counselingRecords.id, record.id));
+
+    const refreshedRecord = await findOwnedRecord(userId, recordId);
+    ensureCounselingRecordAnalysisScheduled(refreshedRecord);
   }
 
   return result.length;

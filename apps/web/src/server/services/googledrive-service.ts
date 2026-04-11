@@ -12,13 +12,15 @@ const SCOPE =
 
 function getClientId(): string {
   const id = process.env.GOOGLE_CLIENT_ID;
-  if (!id) throw new ServiceError(500, "GOOGLE_CLIENT_ID가 설정되지 않았습니다.");
+  if (!id)
+    throw new ServiceError(500, "GOOGLE_CLIENT_ID가 설정되지 않았습니다.");
   return id;
 }
 
 function getClientSecret(): string {
   const secret = process.env.GOOGLE_CLIENT_SECRET;
-  if (!secret) throw new ServiceError(500, "GOOGLE_CLIENT_SECRET가 설정되지 않았습니다.");
+  if (!secret)
+    throw new ServiceError(500, "GOOGLE_CLIENT_SECRET가 설정되지 않았습니다.");
   return secret;
 }
 
@@ -148,7 +150,9 @@ export async function saveTokens(
     });
 }
 
-export async function getValidAccessToken(userId: string): Promise<string | null> {
+export async function getValidAccessToken(
+  userId: string,
+): Promise<string | null> {
   const db = getDb();
 
   const [row] = await db

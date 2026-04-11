@@ -73,7 +73,10 @@ export function CloudImport({ onImportComplete }: CloudImportProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <ProviderImport provider="onedrive" onImportComplete={onImportComplete} />
-      <ProviderImport provider="googledrive" onImportComplete={onImportComplete} />
+      <ProviderImport
+        provider="googledrive"
+        onImportComplete={onImportComplete}
+      />
     </div>
   );
 }

@@ -93,7 +93,9 @@ export function useRecording({
           status: "processing",
           errorMessage: null,
           meta: "",
-          duration: fmtDurationMs(item.audioDurationMs) || fmtDuration(elapsedRef.current),
+          duration:
+            fmtDurationMs(item.audioDurationMs) ||
+            fmtDuration(elapsedRef.current),
           durationMs: item.audioDurationMs ?? elapsedRef.current * 1000,
           studentName: item.studentName || "",
           type: item.counselingType || "",
@@ -106,7 +108,8 @@ export function useRecording({
 
         onUploadComplete(tempId, realRecord);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "업로드에 실패했습니다.";
+        const msg =
+          err instanceof Error ? err.message : "업로드에 실패했습니다.";
         setError(msg);
         onUploadError(tempId, msg);
       } finally {
@@ -155,7 +158,10 @@ export function useRecording({
     onRecordingStop(tempRecord);
 
     // MediaRecorder 중단 → onstop에서 업로드 후 교체
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
       mediaRecorderRef.current.stop();
     }
     mediaRecorderRef.current = null;

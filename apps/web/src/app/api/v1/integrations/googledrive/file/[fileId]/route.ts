@@ -32,7 +32,8 @@ export async function GET(
     const buffer = await downloadFile(accessToken, fileId, mimeType);
 
     // Google Sheets는 XLSX로 export되므로 Content-Type 고정
-    const isGoogleSheet = mimeType === "application/vnd.google-apps.spreadsheet";
+    const isGoogleSheet =
+      mimeType === "application/vnd.google-apps.spreadsheet";
     const contentType = isGoogleSheet
       ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       : mimeType || "application/octet-stream";
@@ -45,7 +46,8 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error("Google Drive 파일 프록시 오류:", error);
     return jsonError("파일을 가져오지 못했습니다.", 500);
   }

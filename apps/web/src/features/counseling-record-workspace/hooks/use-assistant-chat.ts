@@ -37,7 +37,7 @@ export function useAssistantChat(
   }, [selectedRecord?.id]);
 
   const assistantMessages = selectedRecord
-    ? (assistantMessagesByRecord[selectedRecord.id] || [])
+    ? assistantMessagesByRecord[selectedRecord.id] || []
     : [];
 
   // 메시지 자동 스크롤
@@ -120,7 +120,8 @@ export function useAssistantChat(
       return;
     }
 
-    const existingMessages = assistantMessagesByRecordRef.current[selectedRecord.id];
+    const existingMessages =
+      assistantMessagesByRecordRef.current[selectedRecord.id];
 
     if (existingMessages?.some((m) => m.role === "user")) {
       return;
@@ -147,12 +148,7 @@ export function useAssistantChat(
     }));
 
     streamAssistantResponse(capturedRecordId, allMessages);
-  }, [
-    selectedRecord,
-    selectedRecordDetail,
-    isAiStreaming,
-    statusMeta,
-  ]);
+  }, [selectedRecord, selectedRecordDetail, isAiStreaming, statusMeta]);
 
   // 내부에서 ref와 state setter만 사용하므로 deps 불필요 — useCallback 불요
   async function streamAssistantResponse(

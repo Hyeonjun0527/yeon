@@ -21,6 +21,7 @@ export interface ImportStudent {
   email?: string | null;
   phone?: string | null;
   status?: string | null;
+  customFields?: Record<string, string | null | undefined> | null;
 }
 
 export interface ImportCohort {
@@ -47,6 +48,8 @@ export interface ChatMessage {
 export interface ImportHook {
   selectedFile: DriveFile | null;
   fileProxyUrl: string | null;
+  recoveryNotice?: string | null;
+  draftPolicyText?: string | null;
   analyzing: boolean;
   streamingText: string | null;
   editablePreview: ImportPreview | null;
@@ -59,5 +62,6 @@ export interface ImportHook {
   confirmImport: () => Promise<void>;
   selectFileForPreview: (file: DriveFile) => void;
   deselectFile: () => void;
+  discardDraft?: () => Promise<void>;
   refineWithInstruction: (instruction: string) => Promise<void>;
 }

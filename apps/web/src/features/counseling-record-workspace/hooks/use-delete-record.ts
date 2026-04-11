@@ -10,8 +10,12 @@ export function useDeleteRecord(
   setRecords: Dispatch<SetStateAction<CounselingRecordListItem[]>>,
   setSelectedRecordId: (id: string | null) => void,
   setSaveToast: (message: string) => void,
-  setRecordDetails: Dispatch<SetStateAction<Record<string, CounselingRecordDetail>>>,
-  setAssistantMessagesByRecord: Dispatch<SetStateAction<Record<string, Message[]>>>,
+  setRecordDetails: Dispatch<
+    SetStateAction<Record<string, CounselingRecordDetail>>
+  >,
+  setAssistantMessagesByRecord: Dispatch<
+    SetStateAction<Record<string, Message[]>>
+  >,
 ) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

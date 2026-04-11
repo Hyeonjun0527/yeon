@@ -11,11 +11,17 @@ type GnavProps = {
 
 export function Gnav({ activeMenu }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useClickOutside<HTMLDivElement>(() => setShowMenu(false), showMenu);
+  const menuRef = useClickOutside<HTMLDivElement>(
+    () => setShowMenu(false),
+    showMenu,
+  );
 
   return (
     <div className="w-14 border-r border-border flex flex-col items-center py-4 gap-1 bg-bg">
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer text-text-dim mb-1" title="홈">
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer text-text-dim mb-1"
+        title="홈"
+      >
         <span className="font-[Outfit,sans-serif] font-bold text-[13px] tracking-[-0.5px] bg-gradient-to-br from-accent to-cyan bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
           Y
         </span>

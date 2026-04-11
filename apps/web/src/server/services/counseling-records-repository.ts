@@ -1,6 +1,8 @@
 import type {
+  CounselingRecordAnalysisStatus,
   CounselingRecordDetail,
   CounselingRecordListItem,
+  CounselingRecordProcessingStage,
   CounselingTranscriptSegment,
 } from "@yeon/api-contract/counseling-records";
 import { analysisResultSchema } from "@yeon/api-contract/counseling-records";
@@ -19,13 +21,36 @@ import { uploadCounselingAudioObject } from "./counseling-record-audio-storage";
 
 export const MAX_AUDIO_UPLOAD_BYTES = 128 * 1024 * 1024;
 const DEFAULT_COUNSELING_TYPE = "대면 상담";
-export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES = ["local://demo/", "text_memo://"] as const;
+export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES = [
+  "local://demo/",
+  "text_memo://",
+] as const;
 
 export type CounselingRecordRow = typeof counselingRecords.$inferSelect;
 type CounselingTranscriptSegmentRow =
   typeof counselingTranscriptSegments.$inferSelect;
 
 const VALID_STATUSES = new Set<CounselingRecordListItem["status"]>([
+  "processing",
+  "ready",
+  "error",
+]);
+
+const VALID_PROCESSING_STAGES = new Set<CounselingRecordProcessingStage>([
+  "queued",
+  "downloading",
+  "chunking",
+  "transcribing",
+  "resolving_speakers",
+  "transcript_ready",
+  "analyzing",
+  "completed",
+  "error",
+]);
+
+const VALID_ANALYSIS_STATUSES = new Set<CounselingRecordAnalysisStatus>([
+  "idle",
+  "queued",
   "processing",
   "ready",
   "error",
@@ -41,6 +66,30 @@ function toRecordStatus(raw: string): CounselingRecordListItem["status"] {
   }
 
   return "error";
+}
+
+function toProcessingStage(raw: string): CounselingRecordProcessingStage {
+  if (VALID_PROCESSING_STAGES.has(raw as CounselingRecordProcessingStage)) {
+    return raw as CounselingRecordProcessingStage;
+  }
+
+  return "error";
+}
+
+function toAnalysisStatus(raw: string): CounselingRecordAnalysisStatus {
+  if (VALID_ANALYSIS_STATUSES.has(raw as CounselingRecordAnalysisStatus)) {
+    return raw as CounselingRecordAnalysisStatus;
+  }
+
+  return "idle";
+}
+
+function clampProgress(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function toSpeakerTone(
@@ -231,6 +280,22 @@ export function mapRecordListItem(
     audioDurationMs: record.audioDurationMs,
     transcriptSegmentCount: record.transcriptSegmentCount,
     transcriptTextLength: record.transcriptText.length,
+    processingStage: toProcessingStage(record.processingStage),
+    processingProgress: clampProgress(record.processingProgress),
+    processingMessage: record.processingMessage,
+    processingChunkCount: Math.max(record.processingChunkCount ?? 0, 0),
+    processingChunkCompletedCount: Math.max(
+      record.processingChunkCompletedCount ?? 0,
+      0,
+    ),
+    transcriptionAttemptCount: Math.max(
+      record.transcriptionAttemptCount ?? 0,
+      0,
+    ),
+    analysisStatus: toAnalysisStatus(record.analysisStatus),
+    analysisProgress: clampProgress(record.analysisProgress),
+    analysisErrorMessage: record.analysisErrorMessage,
+    analysisAttemptCount: Math.max(record.analysisAttemptCount ?? 0, 0),
     language: record.language,
     sttModel: record.sttModel,
     errorMessage: record.errorMessage,
@@ -238,6 +303,9 @@ export function mapRecordListItem(
     updatedAt: record.updatedAt.toISOString(),
     transcriptionCompletedAt: record.transcriptionCompletedAt
       ? record.transcriptionCompletedAt.toISOString()
+      : null,
+    analysisCompletedAt: record.analysisCompletedAt
+      ? record.analysisCompletedAt.toISOString()
       : null,
   };
 }

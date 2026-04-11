@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useStudentManagement } from "../student-management-provider";
 import type { ActivityLog, Member } from "../types";
@@ -10,10 +10,14 @@ interface UseMemberDetailParams {
 }
 
 export function useMemberDetail({ memberId }: UseMemberDetailParams) {
-  const { members, selectedSpaceId, setSelectedSpaceId } = useStudentManagement();
+  const { members, selectedSpaceId, setSelectedSpaceId } =
+    useStudentManagement();
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const hasAlignedFetchedMemberSpaceRef = useRef(false);
 
-  const contextMember: Member | undefined = members.find((m) => m.id === memberId);
+  const contextMember: Member | undefined = members.find(
+    (m) => m.id === memberId,
+  );
 
   // context에 없으면 API에서 직접 fetch (직접 URL 접근 시)
   const { data: memberData } = useQuery({
@@ -28,18 +32,29 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
 
   // 사이드바에서 해당 스페이스가 선택되도록 자동 설정
   useEffect(() => {
-    if (memberData?.member) {
+    if (memberData?.member && !hasAlignedFetchedMemberSpaceRef.current) {
+      hasAlignedFetchedMemberSpaceRef.current = true;
       setSelectedSpaceId(memberData.member.spaceId);
     }
   }, [memberData, setSelectedSpaceId]);
 
-  const member: Member | undefined = contextMember ?? memberData?.member ?? undefined;
+  const member: Member | undefined =
+    contextMember ??
+    (memberData?.member && selectedSpaceId === memberData.member.spaceId
+      ? memberData.member
+      : undefined);
   const spaceId = member?.spaceId ?? selectedSpaceId;
 
-  const { data: logsData, isPending: logsPending, error: logsQueryError } = useQuery({
+  const {
+    data: logsData,
+    isPending: logsPending,
+    error: logsQueryError,
+  } = useQuery({
     queryKey: ["activity-logs", spaceId, memberId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/activity-logs`);
+      const res = await fetch(
+        `/api/v1/spaces/${spaceId}/members/${memberId}/activity-logs`,
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "활동 로그를 불러오지 못했습니다.");

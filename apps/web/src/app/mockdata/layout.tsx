@@ -18,11 +18,7 @@ export default function MockdataLayout({ children }: { children: ReactNode }) {
         <span className={styles.logo}>YEON</span>
         <div className={styles.navTabs}>
           {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={styles.navTab}
-            >
+            <Link key={item.href} href={item.href} className={styles.navTab}>
               {item.label}
             </Link>
           ))}

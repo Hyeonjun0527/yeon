@@ -56,9 +56,9 @@ beforeEach(() => {
 
 describe("createMember", () => {
   it("빈 이름이면 400 ServiceError를 던진다", async () => {
-    await expect(
-      createMember("space-1", { name: "" }),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(createMember("space-1", { name: "" })).rejects.toMatchObject({
+      status: 400,
+    });
   });
 
   it("공백만 있는 이름이면 400 ServiceError를 던진다", async () => {
@@ -89,7 +89,10 @@ describe("createMember", () => {
     const truncated = makeMember({ email: longEmail.slice(0, 255) });
     responses.push([truncated]);
 
-    const result = await createMember("space-1", { name: "홍길동", email: longEmail });
+    const result = await createMember("space-1", {
+      name: "홍길동",
+      email: longEmail,
+    });
     expect(result.email!.length).toBeLessThanOrEqual(255);
   });
 
@@ -98,7 +101,10 @@ describe("createMember", () => {
     const truncated = makeMember({ phone: longPhone.slice(0, 20) });
     responses.push([truncated]);
 
-    const result = await createMember("space-1", { name: "홍길동", phone: longPhone });
+    const result = await createMember("space-1", {
+      name: "홍길동",
+      phone: longPhone,
+    });
     expect(result.phone!.length).toBeLessThanOrEqual(20);
   });
 
@@ -117,9 +123,9 @@ describe("getMemberById", () => {
   it("존재하지 않는 ID이면 404 ServiceError를 던진다", async () => {
     responses.push([]);
 
-    await expect(
-      getMemberById("nonexistent"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(getMemberById("nonexistent")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("존재하는 멤버를 정상 반환한다", async () => {
@@ -165,9 +171,9 @@ describe("getMemberByIdForUser", () => {
 
 describe("updateMember", () => {
   it("빈 이름으로 업데이트 시 400 ServiceError를 던진다", async () => {
-    await expect(
-      updateMember("member-1", { name: "" }),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(updateMember("member-1", { name: "" })).rejects.toMatchObject({
+      status: 400,
+    });
   });
 
   it("존재하지 않는 멤버 업데이트 시 404 ServiceError를 던진다", async () => {

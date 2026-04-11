@@ -38,7 +38,9 @@ test.describe("스페이스 만들기 - 3가지 선택지 UI", () => {
   });
 
   test("드롭다운에 '새 스페이스 만들기' 버튼이 있다", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /새 스페이스 만들기/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /새 스페이스 만들기/ }),
+    ).toBeVisible();
   });
 
   test("클릭 시 3가지 선택지 모달이 열린다", async ({ page }) => {
@@ -53,7 +55,9 @@ test.describe("스페이스 만들기 - 3가지 선택지 UI", () => {
     await page.getByRole("button", { name: /새 스페이스 만들기/ }).click();
     await page.getByRole("button", { name: /직접 만들기/ }).click();
 
-    await expect(page.getByPlaceholder(/스페이스 이름/)).toBeVisible({ timeout: 2000 });
+    await expect(page.getByPlaceholder(/스페이스 이름/)).toBeVisible({
+      timeout: 2000,
+    });
   });
 
   test("직접 만들기로 스페이스를 생성할 수 있다", async ({ page }) => {
@@ -64,7 +68,9 @@ test.describe("스페이스 만들기 - 3가지 선택지 UI", () => {
     await page.getByRole("button", { name: "만들기" }).click();
 
     // 모달이 닫혀야 함
-    await expect(page.getByPlaceholder(/스페이스 이름/)).not.toBeVisible({ timeout: 3000 });
+    await expect(page.getByPlaceholder(/스페이스 이름/)).not.toBeVisible({
+      timeout: 3000,
+    });
   });
 
   test("이름 없이 만들기 버튼이 비활성화된다", async ({ page }) => {
@@ -78,17 +84,25 @@ test.describe("스페이스 만들기 - 3가지 선택지 UI", () => {
     await page.getByRole("button", { name: /새 스페이스 만들기/ }).click();
     await page.getByRole("button", { name: /OneDrive에서 가져오기/ }).click();
 
-    await expect(page.getByText("OneDrive 파일 형식 안내")).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText("OneDrive 파일 형식 안내")).toBeVisible({
+      timeout: 2000,
+    });
     await expect(page.getByText("이름")).toBeVisible();
     await expect(page.getByText("이메일")).toBeVisible();
     await expect(page.getByText("트랙")).toBeVisible();
   });
 
-  test("Google Drive 선택 시 파일 형식 가이드라인이 표시된다", async ({ page }) => {
+  test("Google Drive 선택 시 파일 형식 가이드라인이 표시된다", async ({
+    page,
+  }) => {
     await page.getByRole("button", { name: /새 스페이스 만들기/ }).click();
-    await page.getByRole("button", { name: /Google Drive에서 가져오기/ }).click();
+    await page
+      .getByRole("button", { name: /Google Drive에서 가져오기/ })
+      .click();
 
-    await expect(page.getByText("Google Drive 파일 형식 안내")).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText("Google Drive 파일 형식 안내")).toBeVisible({
+      timeout: 2000,
+    });
   });
 
   test("가이드라인에서 뒤로 가면 선택 화면으로 돌아간다", async ({ page }) => {

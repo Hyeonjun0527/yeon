@@ -55,7 +55,10 @@ describe("createUser", () => {
 
     await expect(
       createUser({ email: "existing@example.com", displayName: "중복" }),
-    ).rejects.toMatchObject({ status: 409, message: "이미 등록된 이메일입니다." });
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "이미 등록된 이메일입니다.",
+    });
   });
 
   it("insert 시 pg unique 충돌(23505) race condition → 409 ServiceError로 변환한다", async () => {
@@ -69,6 +72,9 @@ describe("createUser", () => {
 
     await expect(
       createUser({ email: "race@example.com", displayName: "경합" }),
-    ).rejects.toMatchObject({ status: 409, message: "이미 등록된 이메일입니다." });
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "이미 등록된 이메일입니다.",
+    });
   });
 });

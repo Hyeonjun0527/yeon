@@ -16,7 +16,10 @@ export function useDynamicMemberTabs(spaceId: string | null) {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!spaceId) { setTabs([]); return; }
+    if (!spaceId) {
+      setTabs([]);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/spaces/${spaceId}/member-tabs`);
@@ -30,7 +33,9 @@ export function useDynamicMemberTabs(spaceId: string | null) {
     }
   }, [spaceId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return { tabs, loading, refetch: load };
 }

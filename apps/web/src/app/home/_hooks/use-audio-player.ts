@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-export function useAudioPlayer(audioUrl: string | null, fallbackTotalSeconds: number) {
+export function useAudioPlayer(
+  audioUrl: string | null,
+  fallbackTotalSeconds: number,
+) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -73,13 +76,17 @@ export function useAudioPlayer(audioUrl: string | null, fallbackTotalSeconds: nu
     }
   }, [isPlaying]);
 
-  const seek = useCallback((pct: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const target = pct * (isFinite(audio.duration) ? audio.duration : duration);
-    audio.currentTime = target;
-    setPosition(Math.round(target));
-  }, [duration]);
+  const seek = useCallback(
+    (pct: number) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      const target =
+        pct * (isFinite(audio.duration) ? audio.duration : duration);
+      audio.currentTime = target;
+      setPosition(Math.round(target));
+    },
+    [duration],
+  );
 
   const reset = useCallback(() => {
     const audio = audioRef.current;

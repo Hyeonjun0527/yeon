@@ -75,16 +75,14 @@ export async function getMemberByIdForUser(userId: string, memberId: string) {
     .select({ member: members })
     .from(members)
     .innerJoin(spaces, eq(members.spaceId, spaces.id))
-    .where(
-      and(
-        eq(members.id, memberId),
-        eq(spaces.createdByUserId, userId),
-      ),
-    )
+    .where(and(eq(members.id, memberId), eq(spaces.createdByUserId, userId)))
     .limit(1);
 
   if (!row) {
-    throw new ServiceError(404, "해당 수강생을 찾을 수 없거나 접근 권한이 없습니다.");
+    throw new ServiceError(
+      404,
+      "해당 수강생을 찾을 수 없거나 접근 권한이 없습니다.",
+    );
   }
 
   return row.member;

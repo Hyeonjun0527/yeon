@@ -27,8 +27,7 @@ const STEPS = [
   {
     target: '[data-tutorial="member-card"]',
     title: "수강생 상세 보기",
-    content:
-      "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
+    content: "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
     placement: "bottom" as const,
   },
 ];

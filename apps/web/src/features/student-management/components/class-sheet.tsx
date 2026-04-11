@@ -12,7 +12,10 @@ interface ClassSheetProps {
     capacity: string;
     year: string;
   };
-  onUpdateField: (field: "name" | "subject" | "instructor" | "schedule" | "capacity" | "year", value: string) => void;
+  onUpdateField: (
+    field: "name" | "subject" | "instructor" | "schedule" | "capacity" | "year",
+    value: string,
+  ) => void;
   onSubmit: () => void;
   onClose: () => void;
 }
@@ -48,10 +51,14 @@ export function ClassSheet({
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-text-secondary mb-3">기본 정보</h3>
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">
+              기본 정보
+            </h3>
 
             <div className="mb-3">
-              <label className="block text-[13px] font-medium text-text-dim mb-1">코호트 이름 *</label>
+              <label className="block text-[13px] font-medium text-text-dim mb-1">
+                코호트 이름 *
+              </label>
               <input
                 className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.name}
@@ -61,7 +68,9 @@ export function ClassSheet({
             </div>
 
             <div className="mb-3">
-              <label className="block text-[13px] font-medium text-text-dim mb-1">트랙 (과목)</label>
+              <label className="block text-[13px] font-medium text-text-dim mb-1">
+                트랙 (과목)
+              </label>
               <input
                 className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.subject}
@@ -71,7 +80,9 @@ export function ClassSheet({
             </div>
 
             <div className="mb-3">
-              <label className="block text-[13px] font-medium text-text-dim mb-1">담당 멘토</label>
+              <label className="block text-[13px] font-medium text-text-dim mb-1">
+                담당 멘토
+              </label>
               <input
                 className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.instructor}
@@ -82,10 +93,14 @@ export function ClassSheet({
           </div>
 
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-text-secondary mb-3">일정 및 정원</h3>
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">
+              일정 및 정원
+            </h3>
 
             <div className="mb-3">
-              <label className="block text-[13px] font-medium text-text-dim mb-1">스케줄</label>
+              <label className="block text-[13px] font-medium text-text-dim mb-1">
+                스케줄
+              </label>
               <input
                 className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                 value={form.schedule}
@@ -96,7 +111,9 @@ export function ClassSheet({
 
             <div style={{ display: "flex", gap: 12 }}>
               <div className="mb-3 flex-1">
-                <label className="block text-[13px] font-medium text-text-dim mb-1">정원</label>
+                <label className="block text-[13px] font-medium text-text-dim mb-1">
+                  정원
+                </label>
                 <input
                   className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                   type="number"
@@ -107,7 +124,9 @@ export function ClassSheet({
               </div>
 
               <div className="mb-3 flex-1">
-                <label className="block text-[13px] font-medium text-text-dim mb-1">년도</label>
+                <label className="block text-[13px] font-medium text-text-dim mb-1">
+                  년도
+                </label>
                 <input
                   className="w-full py-2 px-3 border border-border rounded-sm text-sm outline-none transition-[border-color] duration-150 bg-surface-2 text-text placeholder:text-text-dim focus:border-accent-border"
                   type="number"

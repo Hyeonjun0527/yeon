@@ -207,14 +207,61 @@ jobs:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
           IMAGE: ${{ steps.image.outputs.ref }}
         run: |
-          refs=""
-          for digest in *; do
-            refs="$refs ${IMAGE}@sha256:${digest}"
+          set -euo pipefail
+          shopt -s nullglob
+
+          mapfile -t digest_files < <(printf '%s\n' * | sort)
+
+          if [ "${#digest_files[@]}" -ne 2 ]; then
+            echo "digest 파일 개수가 예상과 다릅니다: ${#digest_files[@]}개"
+            if [ "${#digest_files[@]}" -gt 0 ]; then
+              printf ' - %s\n' "${digest_files[@]}"
+            fi
+            exit 1
+          fi
+
+          refs=()
+          for digest in "${digest_files[@]}"; do
+            if [[ ! "$digest" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "digest 파일 이름 형식이 잘못되었습니다: $digest"
+              exit 1
+            fi
+
+            ref="${IMAGE}@sha256:${digest}"
+            refs+=("$ref")
+
+            for i in 1 2 3; do
+              docker buildx imagetools inspect "$ref" >/dev/null 2>&1 && break
+              if [ "$i" -eq 3 ]; then
+                echo "source digest 확인 실패: $ref"
+                exit 1
+              fi
+              echo "source digest 확인 실패 (${i}/3), 10초 후 재시도..."
+              sleep 10
+            done
           done
 
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $refs
+          mapfile -t tags < <(jq -r '.tags[]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          if [ "${#tags[@]}" -eq 0 ]; then
+            echo "manifest 태그가 비어 있습니다."
+            exit 1
+          fi
+
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(-t "$tag")
+          done
+
+          for i in 1 2 3; do
+            docker buildx imagetools create "${tag_args[@]}" "${refs[@]}" && break
+            if [ "$i" -eq 3 ]; then
+              echo "manifest 생성 실패: 3회 시도 후 중단합니다."
+              exit 1
+            fi
+            wait_seconds=$((i * 20))
+            echo "manifest 생성 실패 (${i}/3), ${wait_seconds}초 후 재시도..."
+            sleep "$wait_seconds"
+          done
 
       - name: Inspect published image
         env:

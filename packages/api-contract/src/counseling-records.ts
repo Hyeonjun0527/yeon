@@ -6,6 +6,26 @@ export const counselingRecordStatusSchema = z.enum([
   "error",
 ]);
 
+export const counselingRecordProcessingStageSchema = z.enum([
+  "queued",
+  "downloading",
+  "chunking",
+  "transcribing",
+  "resolving_speakers",
+  "transcript_ready",
+  "analyzing",
+  "completed",
+  "error",
+]);
+
+export const counselingRecordAnalysisStatusSchema = z.enum([
+  "idle",
+  "queued",
+  "processing",
+  "ready",
+  "error",
+]);
+
 export const counselingRecordSpeakerToneSchema = z.enum([
   "teacher",
   "student",
@@ -39,12 +59,23 @@ export const counselingRecordListItemSchema = z.object({
   audioDurationMs: z.number().int().nonnegative().nullable(),
   transcriptSegmentCount: z.number().int().nonnegative(),
   transcriptTextLength: z.number().int().nonnegative(),
+  processingStage: counselingRecordProcessingStageSchema,
+  processingProgress: z.number().int().min(0).max(100),
+  processingMessage: z.string().nullable(),
+  processingChunkCount: z.number().int().nonnegative(),
+  processingChunkCompletedCount: z.number().int().nonnegative(),
+  transcriptionAttemptCount: z.number().int().nonnegative(),
+  analysisStatus: counselingRecordAnalysisStatusSchema,
+  analysisProgress: z.number().int().min(0).max(100),
+  analysisErrorMessage: z.string().nullable(),
+  analysisAttemptCount: z.number().int().nonnegative(),
   language: z.string().nullable(),
   sttModel: z.string().nullable(),
   errorMessage: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   transcriptionCompletedAt: z.string().datetime().nullable(),
+  analysisCompletedAt: z.string().datetime().nullable(),
 });
 
 // ── AI 분석 결과 구조화 스키마 ──
@@ -93,6 +124,12 @@ export const counselingRecordDetailResponseSchema = z.object({
 
 export type CounselingRecordStatus = z.infer<
   typeof counselingRecordStatusSchema
+>;
+export type CounselingRecordProcessingStage = z.infer<
+  typeof counselingRecordProcessingStageSchema
+>;
+export type CounselingRecordAnalysisStatus = z.infer<
+  typeof counselingRecordAnalysisStatusSchema
 >;
 export type CounselingRecordSpeakerTone = z.infer<
   typeof counselingRecordSpeakerToneSchema

@@ -60,9 +60,16 @@ beforeEach(() => {
 describe("VALID_FIELD_TYPES", () => {
   it("지원하는 10가지 필드 타입을 포함한다", () => {
     const expected = [
-      "text", "long_text", "number", "date",
-      "select", "multi_select", "checkbox",
-      "url", "email", "phone",
+      "text",
+      "long_text",
+      "number",
+      "date",
+      "select",
+      "multi_select",
+      "checkbox",
+      "url",
+      "email",
+      "phone",
     ];
     for (const type of expected) {
       expect(VALID_FIELD_TYPES.has(type as never)).toBe(true);
@@ -99,9 +106,13 @@ describe("createField", () => {
 
   it("text 타입으로 필드를 생성한다", async () => {
     const existingFields = [makeField({ displayOrder: 1 })];
-    const newField = makeField({ name: "새 필드", displayOrder: 2, id: "field-new" });
+    const newField = makeField({
+      name: "새 필드",
+      displayOrder: 2,
+      id: "field-new",
+    });
     responses.push(existingFields); // getFieldsForTab
-    responses.push([newField]);     // insert.returning()
+    responses.push([newField]); // insert.returning()
 
     const result = await createField("space-1", "tab-1", "user-1", {
       name: "새 필드",
@@ -131,7 +142,7 @@ describe("createField", () => {
 
   it("select가 아닌 타입에 options를 넘겨도 null로 처리한다", async () => {
     const newField = makeField({ fieldType: "text", options: null });
-    responses.push([]);         // getFieldsForTab
+    responses.push([]); // getFieldsForTab
     responses.push([newField]); // insert.returning()
 
     const result = await createField("space-1", "tab-1", "user-1", {
@@ -180,13 +191,20 @@ describe("updateField", () => {
     responses.push([existing]);
     responses.push([updated]);
 
-    const result = await updateField("field-1", "space-1", { name: "수정된 필드" });
+    const result = await updateField("field-1", "space-1", {
+      name: "수정된 필드",
+    });
     expect(result.name).toBe("수정된 필드");
   });
 
   it("isRequired, displayOrder, tabId를 독립적으로 업데이트할 수 있다", async () => {
     const existing = makeField();
-    const updated = { ...existing, isRequired: true, displayOrder: 5, tabId: "tab-2" };
+    const updated = {
+      ...existing,
+      isRequired: true,
+      displayOrder: 5,
+      tabId: "tab-2",
+    };
     responses.push([existing]);
     responses.push([updated]);
 
@@ -206,9 +224,9 @@ describe("updateField", () => {
 describe("deleteField", () => {
   it("존재하지 않는 필드는 404 ServiceError를 던진다", async () => {
     responses.push([]);
-    await expect(
-      deleteField("nonexistent", "space-1"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(deleteField("nonexistent", "space-1")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("존재하는 필드는 정상 삭제된다", async () => {
@@ -345,7 +363,15 @@ describe("경계값: createField", () => {
   });
 
   it("date, number, url, email, phone, checkbox, long_text 타입 생성이 모두 가능하다", async () => {
-    const types = ["date", "number", "url", "email", "phone", "checkbox", "long_text"] as const;
+    const types = [
+      "date",
+      "number",
+      "url",
+      "email",
+      "phone",
+      "checkbox",
+      "long_text",
+    ] as const;
     for (const fieldType of types) {
       const newField = makeField({ fieldType });
       responses.push([]);
@@ -405,7 +431,9 @@ describe("오류 케이스 심화: updateField", () => {
     responses.push([existing]);
     responses.push([updated]);
 
-    const result = await updateField("field-1", "space-1", { isRequired: true });
+    const result = await updateField("field-1", "space-1", {
+      isRequired: true,
+    });
     expect(result.isRequired).toBe(true);
   });
 
@@ -431,9 +459,9 @@ describe("오류 케이스 심화: deleteField", () => {
   it("다른 spaceId로 삭제를 시도하면 404가 발생한다", async () => {
     responses.push([]); // spaceId 불일치 → empty
 
-    await expect(
-      deleteField("field-1", "wrong-space"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(deleteField("field-1", "wrong-space")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 });
 
@@ -525,8 +553,14 @@ describe("정상 흐름 심화: createField + getFieldsForTab 조합", () => {
     responses.push([field1]); // getFieldsForTab (f2 생성, f1 포함)
     responses.push([field2]); // insert.returning()
 
-    await createField("space-1", "tab-1", "user-1", { name: "필드1", fieldType: "text" });
-    await createField("space-1", "tab-1", "user-1", { name: "필드2", fieldType: "text" });
+    await createField("space-1", "tab-1", "user-1", {
+      name: "필드1",
+      fieldType: "text",
+    });
+    await createField("space-1", "tab-1", "user-1", {
+      name: "필드2",
+      fieldType: "text",
+    });
 
     // 역순으로 reorder
     responses.push(undefined);
@@ -572,7 +606,7 @@ describe("정상 흐름 심화: createField + getFieldsForTab 조합", () => {
     const tenthField = makeField({ id: "f9", displayOrder: 9 });
 
     responses.push(existingFields); // getFieldsForTab → 9개 기존
-    responses.push([tenthField]);   // insert.returning()
+    responses.push([tenthField]); // insert.returning()
 
     const result = await createField("space-1", "tab-1", "user-1", {
       name: "열 번째 필드",
@@ -610,7 +644,9 @@ describe("정상 흐름 심화: createField + getFieldsForTab 조합", () => {
     responses.push([existing]);
     responses.push([updated]);
 
-    const result = await updateField("field-1", "space-1", { options: newOpts });
+    const result = await updateField("field-1", "space-1", {
+      options: newOpts,
+    });
     expect(result.options).toEqual(newOpts);
   });
 
@@ -650,8 +686,14 @@ describe("DB mock 활용 패턴", () => {
     responses.push([field2]); // createField #2 insert.returning()
 
     const [r1, r2] = await Promise.all([
-      createField("space-1", "tab-1", "user-1", { name: "동시1", fieldType: "text" }),
-      createField("space-1", "tab-1", "user-1", { name: "동시2", fieldType: "text" }),
+      createField("space-1", "tab-1", "user-1", {
+        name: "동시1",
+        fieldType: "text",
+      }),
+      createField("space-1", "tab-1", "user-1", {
+        name: "동시2",
+        fieldType: "text",
+      }),
     ]);
 
     expect(r1.id).toBe("c1");
@@ -689,9 +731,7 @@ describe("DB mock 활용 패턴", () => {
     const ids = ["fa", "fb", "fc", "fd"];
     ids.forEach(() => responses.push(undefined));
 
-    await expect(
-      reorderFields("space-1", ids),
-    ).resolves.toBeUndefined();
+    await expect(reorderFields("space-1", ids)).resolves.toBeUndefined();
     // responses 큐가 모두 소비됨
     expect(responses.length).toBe(0);
   });

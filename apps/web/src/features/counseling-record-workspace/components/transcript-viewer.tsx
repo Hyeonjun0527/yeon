@@ -68,11 +68,16 @@ export function TranscriptViewer({
     <section className={styles.viewerPanel}>
       <div className={styles.viewerToolbar}>
         <div className={styles.viewerTools}>
-          <span className="text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+          <span
+            className="text-xs whitespace-nowrap"
+            style={{ color: "var(--text-muted)" }}
+          >
             {`구간 ${selectedRecordDetail ? selectedRecordDetail.transcriptSegments.length : selectedRecord.transcriptSegmentCount}개${normalizedTranscriptQuery ? ` · 일치 ${transcriptMatchCount}개` : ""}`}
           </span>
 
-          <label className={`relative flex items-center ${styles.transcriptSearchField}`}>
+          <label
+            className={`relative flex items-center ${styles.transcriptSearchField}`}
+          >
             <Search
               size={15}
               strokeWidth={2.1}
@@ -133,9 +138,18 @@ export function TranscriptViewer({
           <div className="grid gap-4 p-5">
             {Array.from({ length: 5 }, (_, i) => (
               <div key={i} className="flex gap-3 items-center">
-                <div className={styles.skeletonLine} style={{ width: "50px" }} />
-                <div className={styles.skeletonLine} style={{ width: "60px" }} />
-                <div className={styles.skeletonLine} style={{ width: `${60 + (i % 3) * 15}%` }} />
+                <div
+                  className={styles.skeletonLine}
+                  style={{ width: "50px" }}
+                />
+                <div
+                  className={styles.skeletonLine}
+                  style={{ width: "60px" }}
+                />
+                <div
+                  className={styles.skeletonLine}
+                  style={{ width: `${60 + (i % 3) * 15}%` }}
+                />
               </div>
             ))}
           </div>
@@ -303,10 +317,44 @@ export function TranscriptViewer({
         ) : selectedRecord.status === "processing" ? (
           <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
             <p className="m-0 text-[15px] font-bold leading-[1.4]">
-              한국어 전사를 처리하고 있습니다.
+              한국어 전사를 백그라운드에서 처리하고 있습니다.
             </p>
-            <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              길이가 긴 상담은 서버에서 분할 전사한 뒤 자동으로 갱신합니다.
+            <p
+              className="m-0 text-[13px] leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {selectedRecord.processingMessage ||
+                "길이가 긴 상담은 서버에서 분할 전사한 뒤 자동으로 갱신합니다."}
+            </p>
+            {selectedRecord.processingChunkCount > 0 ? (
+              <p
+                className="m-0 text-xs leading-relaxed"
+                style={{ color: "var(--text-muted)" }}
+              >
+                전사 구간 {selectedRecord.processingChunkCompletedCount}/
+                {selectedRecord.processingChunkCount} ·{" "}
+                {selectedRecord.processingProgress}%
+              </p>
+            ) : null}
+          </div>
+        ) : selectedRecord.analysisStatus === "processing" ||
+          selectedRecord.analysisStatus === "queued" ? (
+          <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
+            <p className="m-0 text-[15px] font-bold leading-[1.4]">
+              원문은 준비되었고 AI 분석을 생성하고 있습니다.
+            </p>
+            <p
+              className="m-0 text-[13px] leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {selectedRecord.processingMessage ||
+                "화면을 떠나도 괜찮습니다. 나중에 다시 열면 진행 상태를 이어서 확인할 수 있습니다."}
+            </p>
+            <p
+              className="m-0 text-xs leading-relaxed"
+              style={{ color: "var(--text-muted)" }}
+            >
+              AI 분석 진행률 {selectedRecord.analysisProgress}%
             </p>
           </div>
         ) : selectedRecord.status === "error" ? (
@@ -314,7 +362,10 @@ export function TranscriptViewer({
             <p className="m-0 text-[15px] font-bold leading-[1.4]">
               원문 저장에 실패했습니다.
             </p>
-            <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p
+              className="m-0 text-[13px] leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {selectedRecord.errorMessage ??
                 "원본 음성은 남아 있으므로 전사를 다시 시도할 수 있습니다."}
             </p>

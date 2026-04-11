@@ -2,9 +2,16 @@ import {
   listCounselingRecordsResponseSchema,
   type CounselingRecordListItem,
 } from "@yeon/api-contract/counseling-records";
-import { useEffect, useDeferredValue, useMemo, useState, startTransition } from "react";
+import {
+  useEffect,
+  useDeferredValue,
+  useMemo,
+  useState,
+  startTransition,
+} from "react";
 import type { RecordFilter, SidebarViewMode } from "../types";
 import { fetchApi, upsertRecordList } from "../utils";
+import { PROCESSING_REFRESH_INTERVAL_MS } from "../constants";
 
 export function useRecordList() {
   const [records, setRecords] = useState<CounselingRecordListItem[]>([]);
@@ -76,6 +83,42 @@ export function useRecordList() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !records.some(
+        (record) =>
+          record.status === "processing" ||
+          ["queued", "processing"].includes(record.analysisStatus),
+      )
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const data = await fetchApi(
+            "/api/v1/counseling-records",
+            {
+              method: "GET",
+            },
+            listCounselingRecordsResponseSchema.parse,
+          );
+
+          startTransition(() => {
+            setRecords(data.records);
+          });
+        } catch {
+          // ignore polling errors
+        }
+      })();
+    }, PROCESSING_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [records]);
 
   const filteredRecords = useMemo(
     () =>

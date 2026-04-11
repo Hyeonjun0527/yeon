@@ -57,7 +57,10 @@ function subHeading(text: string): Paragraph {
   });
 }
 
-function bodyParagraph(text: string, options?: { bold?: boolean; color?: string }): Paragraph {
+function bodyParagraph(
+  text: string,
+  options?: { bold?: boolean; color?: string },
+): Paragraph {
   return new Paragraph({
     children: [
       new TextRun({
@@ -91,10 +94,14 @@ function buildAnalysisSection(analysis: AnalysisResult): Paragraph[] {
   // 수강생 정보
   if (analysis.member.name) {
     paragraphs.push(subHeading("수강생 정보"));
-    paragraphs.push(bodyParagraph(`이름: ${analysis.member.name}`, { bold: true }));
+    paragraphs.push(
+      bodyParagraph(`이름: ${analysis.member.name}`, { bold: true }),
+    );
     paragraphs.push(bodyParagraph(`감정/태도: ${analysis.member.emotion}`));
     if (analysis.member.traits.length > 0) {
-      paragraphs.push(bodyParagraph(`특성: ${analysis.member.traits.join(", ")}`));
+      paragraphs.push(
+        bodyParagraph(`특성: ${analysis.member.traits.join(", ")}`),
+      );
     }
   }
 
@@ -102,10 +109,14 @@ function buildAnalysisSection(analysis: AnalysisResult): Paragraph[] {
   if (analysis.issues.length > 0) {
     paragraphs.push(subHeading("주요 이슈"));
     analysis.issues.forEach((issue, i) => {
-      paragraphs.push(bodyParagraph(`${i + 1}. ${issue.title}`, { bold: true }));
+      paragraphs.push(
+        bodyParagraph(`${i + 1}. ${issue.title}`, { bold: true }),
+      );
       paragraphs.push(bodyParagraph(issue.detail));
       if (issue.timestamp) {
-        paragraphs.push(bodyParagraph(`시각: ${issue.timestamp}`, { color: "888888" }));
+        paragraphs.push(
+          bodyParagraph(`시각: ${issue.timestamp}`, { color: "888888" }),
+        );
       }
     });
   }
@@ -122,13 +133,17 @@ function buildAnalysisSection(analysis: AnalysisResult): Paragraph[] {
   }
   if (analysis.actions.nextSession.length > 0) {
     paragraphs.push(bodyParagraph("다음 상담 방향", { bold: true }));
-    analysis.actions.nextSession.forEach((a) => paragraphs.push(bulletParagraph(a)));
+    analysis.actions.nextSession.forEach((a) =>
+      paragraphs.push(bulletParagraph(a)),
+    );
   }
 
   // 키워드
   if (analysis.keywords.length > 0) {
     paragraphs.push(subHeading("키워드"));
-    paragraphs.push(bodyParagraph(analysis.keywords.map((k) => `#${k}`).join("  ")));
+    paragraphs.push(
+      bodyParagraph(analysis.keywords.map((k) => `#${k}`).join("  ")),
+    );
   }
 
   return paragraphs;
@@ -142,11 +157,17 @@ function buildTranscriptSection(segments: TranscriptSegment[]): Paragraph[] {
 
   segments.forEach((seg) => {
     const timeStr = fmtMs(seg.startMs);
-    const speaker = seg.speakerLabel || (seg.speakerTone === "teacher" ? "멘토" : "수강생");
+    const speaker =
+      seg.speakerLabel || (seg.speakerTone === "teacher" ? "멘토" : "수강생");
     paragraphs.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `${timeStr} ${speaker}  `, bold: true, size: 20, color: "5B5BD6" }),
+          new TextRun({
+            text: `${timeStr} ${speaker}  `,
+            bold: true,
+            size: 20,
+            color: "5B5BD6",
+          }),
           new TextRun({ text: seg.text, size: 20 }),
         ],
         spacing: { after: 60 },
@@ -172,7 +193,14 @@ export async function exportRecordDocx(record: RecordItem): Promise<void> {
   // 문서 제목
   paragraphs.push(
     new Paragraph({
-      children: [new TextRun({ text: record.title, bold: true, size: 36, color: "1A1A2E" })],
+      children: [
+        new TextRun({
+          text: record.title,
+          bold: true,
+          size: 36,
+          color: "1A1A2E",
+        }),
+      ],
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 200 },
     }),
@@ -194,12 +222,22 @@ export async function exportRecordDocx(record: RecordItem): Promise<void> {
           new TableRow({
             children: [
               new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20 })] })],
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: label, bold: true, size: 20 }),
+                    ],
+                  }),
+                ],
                 width: { size: 20, type: WidthType.PERCENTAGE },
                 shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
               }),
               new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: value, size: 20 })] })],
+                children: [
+                  new Paragraph({
+                    children: [new TextRun({ text: value, size: 20 })],
+                  }),
+                ],
                 width: { size: 80, type: WidthType.PERCENTAGE },
               }),
             ],
@@ -215,7 +253,9 @@ export async function exportRecordDocx(record: RecordItem): Promise<void> {
     paragraphs.push(...buildAnalysisSection(record.analysisResult));
   } else {
     paragraphs.push(sectionHeading("AI 분석 결과"));
-    paragraphs.push(bodyParagraph("분석 결과가 없습니다.", { color: "888888" }));
+    paragraphs.push(
+      bodyParagraph("분석 결과가 없습니다.", { color: "888888" }),
+    );
   }
 
   // 전사
@@ -238,14 +278,24 @@ export async function exportMemberReportDocx(
 ): Promise<void> {
   const memberRecords = records
     .filter((r) => r.memberId === member.id && r.status === "ready")
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 
   const paragraphs: (Paragraph | Table)[] = [];
 
   // 제목
   paragraphs.push(
     new Paragraph({
-      children: [new TextRun({ text: `${member.name} 수강생 리포트`, bold: true, size: 36, color: "1A1A2E" })],
+      children: [
+        new TextRun({
+          text: `${member.name} 수강생 리포트`,
+          bold: true,
+          size: 36,
+          color: "1A1A2E",
+        }),
+      ],
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 200 },
     }),
@@ -253,9 +303,17 @@ export async function exportMemberReportDocx(
 
   // 상태 요약
   const statusLabel =
-    member.indicator === "recent" ? "관리 중" : member.indicator === "warning" ? "주의 필요" : "상담 필요";
+    member.indicator === "recent"
+      ? "관리 중"
+      : member.indicator === "warning"
+        ? "주의 필요"
+        : "상담 필요";
   const statusColor =
-    member.indicator === "recent" ? "22C55E" : member.indicator === "warning" ? "F59E0B" : "888888";
+    member.indicator === "recent"
+      ? "22C55E"
+      : member.indicator === "warning"
+        ? "F59E0B"
+        : "888888";
 
   paragraphs.push(
     new Table({
@@ -264,30 +322,14 @@ export async function exportMemberReportDocx(
         new TableRow({
           children: [
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "상태", bold: true, size: 20 })] })],
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "상태", bold: true, size: 20 }),
+                  ],
+                }),
+              ],
               width: { size: 20, type: WidthType.PERCENTAGE },
-              shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
-            }),
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: statusLabel, size: 20, color: statusColor, bold: true })] })],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "총 상담", bold: true, size: 20 })] })],
-              shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
-            }),
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: `${member.counselingCount}건`, size: 20 })] })],
-            }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: "마지막 상담", bold: true, size: 20 })] })],
               shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
             }),
             new TableCell({
@@ -295,7 +337,63 @@ export async function exportMemberReportDocx(
                 new Paragraph({
                   children: [
                     new TextRun({
-                      text: member.lastCounselingAt ? fmtDate(member.lastCounselingAt) : "없음",
+                      text: statusLabel,
+                      size: 20,
+                      color: statusColor,
+                      bold: true,
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "총 상담", bold: true, size: 20 }),
+                  ],
+                }),
+              ],
+              shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: `${member.counselingCount}건`,
+                      size: 20,
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "마지막 상담", bold: true, size: 20 }),
+                  ],
+                }),
+              ],
+              shading: { type: ShadingType.CLEAR, fill: "F4F4FF" },
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: member.lastCounselingAt
+                        ? fmtDate(member.lastCounselingAt)
+                        : "없음",
                       size: 20,
                     }),
                   ],
@@ -314,13 +412,20 @@ export async function exportMemberReportDocx(
   paragraphs.push(sectionHeading(`상담 기록 (${memberRecords.length}건)`));
 
   if (memberRecords.length === 0) {
-    paragraphs.push(bodyParagraph("상담 기록이 없습니다.", { color: "888888" }));
+    paragraphs.push(
+      bodyParagraph("상담 기록이 없습니다.", { color: "888888" }),
+    );
   } else {
     memberRecords.forEach((rec, i) => {
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({ text: `${i + 1}. ${rec.title}`, bold: true, size: 24, color: "1A1A2E" }),
+            new TextRun({
+              text: `${i + 1}. ${rec.title}`,
+              bold: true,
+              size: 24,
+              color: "1A1A2E",
+            }),
           ],
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 200, after: 80 },
@@ -329,11 +434,29 @@ export async function exportMemberReportDocx(
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({ text: `날짜: ${fmtDate(rec.createdAt)}`, size: 20, color: "888888" }),
+            new TextRun({
+              text: `날짜: ${fmtDate(rec.createdAt)}`,
+              size: 20,
+              color: "888888",
+            }),
             ...(rec.durationMs > 0
-              ? [new TextRun({ text: `   |   길이: ${fmtDuration(rec.durationMs)}`, size: 20, color: "888888" })]
+              ? [
+                  new TextRun({
+                    text: `   |   길이: ${fmtDuration(rec.durationMs)}`,
+                    size: 20,
+                    color: "888888",
+                  }),
+                ]
               : []),
-            ...(rec.type ? [new TextRun({ text: `   |   유형: ${rec.type}`, size: 20, color: "888888" })] : []),
+            ...(rec.type
+              ? [
+                  new TextRun({
+                    text: `   |   유형: ${rec.type}`,
+                    size: 20,
+                    color: "888888",
+                  }),
+                ]
+              : []),
           ],
           spacing: { after: 80 },
         }),
@@ -344,7 +467,9 @@ export async function exportMemberReportDocx(
 
         if (rec.analysisResult.actions.nextSession.length > 0) {
           paragraphs.push(bodyParagraph("다음 상담 방향", { bold: true }));
-          rec.analysisResult.actions.nextSession.forEach((a) => paragraphs.push(bulletParagraph(a)));
+          rec.analysisResult.actions.nextSession.forEach((a) =>
+            paragraphs.push(bulletParagraph(a)),
+          );
         }
       } else if (rec.aiSummary) {
         paragraphs.push(bodyParagraph(rec.aiSummary));
@@ -360,5 +485,8 @@ export async function exportMemberReportDocx(
 
   const blob = await Packer.toBlob(doc);
   const safeTitle = member.name.replace(/[/\\:*?"<>|]/g, "_");
-  downloadBlob(blob, `${safeTitle}_리포트_${fmtDate(new Date().toISOString())}.docx`);
+  downloadBlob(
+    blob,
+    `${safeTitle}_리포트_${fmtDate(new Date().toISOString())}.docx`,
+  );
 }

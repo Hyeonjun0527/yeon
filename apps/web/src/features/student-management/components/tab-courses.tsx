@@ -34,7 +34,9 @@ export function TabCourses({ history }: TabCoursesProps) {
             className="flex items-center justify-between py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
           >
             <div>
-              <div className="font-medium text-text-secondary">{course.className}</div>
+              <div className="font-medium text-text-secondary">
+                {course.className}
+              </div>
               <div className="text-[13px] text-text-dim">
                 {course.period}
                 {course.instructor && ` · 멘토: ${course.instructor}`}

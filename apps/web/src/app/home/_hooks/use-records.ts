@@ -7,13 +7,21 @@ import type {
   CounselingRecordDetail,
 } from "@yeon/api-contract/counseling-records";
 import { analysisResultSchema } from "@yeon/api-contract/counseling-records";
-import type { RecordItem, InternalPhase, HomeViewState, AiMessage, AnalysisResult, TranscriptSegment } from "../_lib/types";
+import type {
+  RecordItem,
+  InternalPhase,
+  HomeViewState,
+  AiMessage,
+  AnalysisResult,
+  TranscriptSegment,
+} from "../_lib/types";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
 const PROCESSING_STEP_COUNT = 6;
 const PROCESSING_STEP_INTERVAL_MS = 2000;
-const MIN_PROCESSING_DISPLAY_MS = PROCESSING_STEP_COUNT * PROCESSING_STEP_INTERVAL_MS + 1000;
+const MIN_PROCESSING_DISPLAY_MS =
+  PROCESSING_STEP_COUNT * PROCESSING_STEP_INTERVAL_MS + 1000;
 
 function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   return {
@@ -23,7 +31,8 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
     createdAt: item.createdAt,
     title: item.sessionTitle || "제목 없음",
     status: item.status,
-    errorMessage: item.status === "error" ? (item.errorMessage ?? "알 수 없는 오류") : null,
+    errorMessage:
+      item.status === "error" ? (item.errorMessage ?? "알 수 없는 오류") : null,
     meta: `${item.studentName || "수강생 미지정"} · ${fmtRelativeDate(item.createdAt)}`,
     duration: fmtDurationMs(item.audioDurationMs),
     durationMs: item.audioDurationMs ?? 0,
@@ -37,7 +46,9 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   };
 }
 
-function detailToTranscript(detail: CounselingRecordDetail): TranscriptSegment[] {
+function detailToTranscript(
+  detail: CounselingRecordDetail,
+): TranscriptSegment[] {
   return detail.transcriptSegments.map((seg) => ({
     id: seg.id,
     segmentIndex: seg.segmentIndex,
@@ -52,7 +63,9 @@ function detailToTranscript(detail: CounselingRecordDetail): TranscriptSegment[]
 export function useRecords() {
   const queryClient = useQueryClient();
 
-  const [localOverrides, setLocalOverrides] = useState<Map<string, Partial<RecordItem>>>(new Map());
+  const [localOverrides, setLocalOverrides] = useState<
+    Map<string, Partial<RecordItem>>
+  >(new Map());
   const [tempRecords, setTempRecords] = useState<RecordItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [phase, setPhase] = useState<InternalPhase>("idle");
@@ -62,7 +75,9 @@ export function useRecords() {
   const processingStartRef = useRef<number | null>(null);
   const phaseRef = useRef<InternalPhase>("idle");
   const selectedIdRef = useRef<string | null>(null);
-  const readyTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   phaseRef.current = phase;
   selectedIdRef.current = selectedId;
 
@@ -76,7 +91,9 @@ export function useRecords() {
     },
     refetchInterval: (query) => {
       const items = query.state.data?.records || [];
-      return items.some((r) => r.status === "processing") ? POLL_INTERVAL_MS : false;
+      return items.some((r) => r.status === "processing")
+        ? POLL_INTERVAL_MS
+        : false;
     },
   });
 
@@ -91,7 +108,9 @@ export function useRecords() {
 
     const serverIds = new Set(serverItems.map((item) => item.id));
     const preserved = tempRecords.filter(
-      (t) => !serverIds.has(t.id) && (t.id.startsWith("temp-") || t.status === "processing"),
+      (t) =>
+        !serverIds.has(t.id) &&
+        (t.id.startsWith("temp-") || t.status === "processing"),
     );
 
     return [...preserved, ...serverMerged];
@@ -100,7 +119,9 @@ export function useRecords() {
   const selected = records.find((r) => r.id === selectedId) ?? null;
 
   // 서버에서 processing → ready 전환 감지 (이전 데이터와 비교)
-  const prevServerDataRef = useRef<{ records: CounselingRecordListItem[] } | null>(null);
+  const prevServerDataRef = useRef<{
+    records: CounselingRecordListItem[];
+  } | null>(null);
   useEffect(() => {
     if (!serverData) return;
 
@@ -126,16 +147,24 @@ export function useRecords() {
         },
       });
 
-      if (selectedIdRef.current === item.id && phaseRef.current === "processing") {
-        const elapsed = processingStartRef.current != null
-          ? Date.now() - processingStartRef.current
-          : MIN_PROCESSING_DISPLAY_MS;
+      if (
+        selectedIdRef.current === item.id &&
+        phaseRef.current === "processing"
+      ) {
+        const elapsed =
+          processingStartRef.current != null
+            ? Date.now() - processingStartRef.current
+            : MIN_PROCESSING_DISPLAY_MS;
         const delay = Math.max(0, MIN_PROCESSING_DISPLAY_MS - elapsed);
 
-        if (readyTransitionTimerRef.current) clearTimeout(readyTransitionTimerRef.current);
+        if (readyTransitionTimerRef.current)
+          clearTimeout(readyTransitionTimerRef.current);
         readyTransitionTimerRef.current = setTimeout(() => {
           readyTransitionTimerRef.current = null;
-          if (selectedIdRef.current === item.id && phaseRef.current === "processing") {
+          if (
+            selectedIdRef.current === item.id &&
+            phaseRef.current === "processing"
+          ) {
             setPhase("idle");
           }
         }, delay);
@@ -171,41 +200,50 @@ export function useRecords() {
   // 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
-      if (readyTransitionTimerRef.current) clearTimeout(readyTransitionTimerRef.current);
+      if (readyTransitionTimerRef.current)
+        clearTimeout(readyTransitionTimerRef.current);
     };
   }, []);
 
-  const fetchDetail = useCallback(async (id: string) => {
-    setTranscriptLoading(true);
-    try {
-      const data = await queryClient.fetchQuery({
-        queryKey: ["counseling-record", id],
-        queryFn: async () => {
-          const res = await fetch(`/api/v1/counseling-records/${id}`);
-          if (!res.ok) throw new Error("상세 조회 실패");
-          return res.json() as Promise<{ record: CounselingRecordDetail }>;
-        },
-        staleTime: 30_000,
-      });
+  const fetchDetail = useCallback(
+    async (id: string) => {
+      setTranscriptLoading(true);
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: ["counseling-record", id],
+          queryFn: async () => {
+            const res = await fetch(`/api/v1/counseling-records/${id}`);
+            if (!res.ok) throw new Error("상세 조회 실패");
+            return res.json() as Promise<{ record: CounselingRecordDetail }>;
+          },
+          staleTime: 30_000,
+        });
 
-      const transcript = detailToTranscript(data.record);
-      const audioUrl = data.record.audioUrl || null;
-      const rawAnalysis = data.record.analysisResult;
-      const parsedAnalysis = rawAnalysis != null ? analysisResultSchema.safeParse(rawAnalysis) : null;
-      const analysisResult = parsedAnalysis?.success ? parsedAnalysis.data : null;
+        const transcript = detailToTranscript(data.record);
+        const audioUrl = data.record.audioUrl || null;
+        const rawAnalysis = data.record.analysisResult;
+        const parsedAnalysis =
+          rawAnalysis != null
+            ? analysisResultSchema.safeParse(rawAnalysis)
+            : null;
+        const analysisResult = parsedAnalysis?.success
+          ? parsedAnalysis.data
+          : null;
 
-      setLocalOverrides((prev) => {
-        const next = new Map(prev);
-        const existing = next.get(id) ?? {};
-        next.set(id, { ...existing, transcript, audioUrl, analysisResult });
-        return next;
-      });
-    } catch {
-      // detail 로드 실패는 무시
-    } finally {
-      setTranscriptLoading(false);
-    }
-  }, [queryClient]);
+        setLocalOverrides((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(id) ?? {};
+          next.set(id, { ...existing, transcript, audioUrl, analysisResult });
+          return next;
+        });
+      } catch {
+        // detail 로드 실패는 무시
+      } finally {
+        setTranscriptLoading(false);
+      }
+    },
+    [queryClient],
+  );
 
   const addProcessingRecord = useCallback((record: RecordItem) => {
     setTempRecords((prev) => {
@@ -217,16 +255,19 @@ export function useRecords() {
     processingStartRef.current = Date.now();
   }, []);
 
-  const addReadyRecord = useCallback((record: RecordItem) => {
-    setTempRecords((prev) => {
-      if (prev.some((r) => r.id === record.id)) return prev;
-      return [record, ...prev];
-    });
-    setSelectedId(record.id);
-    setPhase("idle");
-    // 서버 목록 갱신
-    queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-  }, [queryClient]);
+  const addReadyRecord = useCallback(
+    (record: RecordItem) => {
+      setTempRecords((prev) => {
+        if (prev.some((r) => r.id === record.id)) return prev;
+        return [record, ...prev];
+      });
+      setSelectedId(record.id);
+      setPhase("idle");
+      // 서버 목록 갱신
+      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+    },
+    [queryClient],
+  );
 
   const selectRecord = useCallback(
     (id: string) => {
@@ -235,43 +276,64 @@ export function useRecords() {
       setSelectedId(id);
       setPhase(rec.status === "processing" ? "processing" : "idle");
 
-      if (rec.status === "ready" && (rec.transcript.length === 0 || rec.analysisResult === null)) {
+      if (
+        rec.status === "ready" &&
+        (rec.transcript.length === 0 || rec.analysisResult === null)
+      ) {
         fetchDetail(id);
       }
     },
     [records, fetchDetail],
   );
 
-  const replaceRecord = useCallback((tempId: string, realRecord: RecordItem) => {
-    setTempRecords((prev) => prev.map((r) => (r.id === tempId ? realRecord : r)));
-    setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
-    queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-  }, [queryClient]);
+  const replaceRecord = useCallback(
+    (tempId: string, realRecord: RecordItem) => {
+      setTempRecords((prev) =>
+        prev.map((r) => (r.id === tempId ? realRecord : r)),
+      );
+      setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
+      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+    },
+    [queryClient],
+  );
 
-  const removeRecord = useCallback((id: string) => {
-    setTempRecords((prev) => prev.filter((r) => r.id !== id));
-    setLocalOverrides((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-    setSelectedId((prev) => (prev === id ? null : prev));
-    setPhase((prev) => (prev === "processing" ? "idle" : prev));
-  }, [queryClient]);
+  const removeRecord = useCallback(
+    (id: string) => {
+      setTempRecords((prev) => prev.filter((r) => r.id !== id));
+      setLocalOverrides((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+      setSelectedId((prev) => (prev === id ? null : prev));
+      setPhase((prev) => (prev === "processing" ? "idle" : prev));
+    },
+    [queryClient],
+  );
 
   const markUploadError = useCallback((id: string, message: string) => {
     setTempRecords((prev) =>
       prev.map((r) =>
         r.id === id
-          ? { ...r, aiSummary: `업로드 실패: ${message}`, status: "error" as const, errorMessage: message }
+          ? {
+              ...r,
+              aiSummary: `업로드 실패: ${message}`,
+              status: "error" as const,
+              errorMessage: message,
+            }
           : r,
       ),
     );
     setLocalOverrides((prev) => {
       const next = new Map(prev);
       const existing = next.get(id) ?? {};
-      next.set(id, { ...existing, aiSummary: `업로드 실패: ${message}`, status: "error" as const, errorMessage: message });
+      next.set(id, {
+        ...existing,
+        aiSummary: `업로드 실패: ${message}`,
+        status: "error" as const,
+        errorMessage: message,
+      });
       return next;
     });
     setPhase((prev) => (prev === "processing" ? "idle" : prev));
@@ -299,14 +361,17 @@ export function useRecords() {
     });
   }, []);
 
-  const updateAnalysisResult = useCallback((id: string, result: AnalysisResult) => {
-    setLocalOverrides((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(id) ?? {};
-      next.set(id, { ...existing, analysisResult: result });
-      return next;
-    });
-  }, []);
+  const updateAnalysisResult = useCallback(
+    (id: string, result: AnalysisResult) => {
+      setLocalOverrides((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(id) ?? {};
+        next.set(id, { ...existing, analysisResult: result });
+        return next;
+      });
+    },
+    [],
+  );
 
   const updateMemberId = useCallback((id: string, memberId: string | null) => {
     setLocalOverrides((prev) => {
@@ -322,7 +387,8 @@ export function useRecords() {
   // isLoading(=isPending&&isFetching)만 쓰면 마운트 첫 렌더에서 isFetching=false 구간이 생겨 "empty" 깜빡임 발생
   const viewState = useMemo((): HomeViewState => {
     if (phase === "recording") return { kind: "recording" };
-    if (phase === "processing") return { kind: "processing", step: processingStep };
+    if (phase === "processing")
+      return { kind: "processing", step: processingStep };
     if (isPending) return { kind: "loading" };
     if (records.length === 0) return { kind: "empty" };
     return { kind: "ready", records };

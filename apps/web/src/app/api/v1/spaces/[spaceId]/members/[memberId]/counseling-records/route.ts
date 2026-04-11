@@ -2,7 +2,10 @@ import { listCounselingRecordsResponseSchema } from "@yeon/api-contract/counseli
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 import { listCounselingRecordsByMember } from "@/server/services/counseling-records-service";
 import { getMemberByIdForUser } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";

@@ -78,7 +78,10 @@ export function AiPanel({
 }: AiPanelProps) {
   const isProcessing = phase === "processing";
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const modelMenuRef = useClickOutside<HTMLDivElement>(() => setShowModelMenu(false), showModelMenu);
+  const modelMenuRef = useClickOutside<HTMLDivElement>(
+    () => setShowModelMenu(false),
+    showModelMenu,
+  );
 
   return (
     <>
@@ -165,12 +168,15 @@ export function AiPanel({
         {tab === "chat" && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* AI 요약 */}
-            {selected?.status === "ready" && selected.aiSummary && !selected.aiSummary.startsWith("업로드 실패:") && (
-              <AiSummaryCard selected={selected} />
-            )}
-            {selected?.status === "ready" && selected.aiSummary?.startsWith("업로드 실패:") && (
-              <UploadErrorCard message={selected.aiSummary} />
-            )}
+            {selected?.status === "ready" &&
+              selected.aiSummary &&
+              !selected.aiSummary.startsWith("업로드 실패:") && (
+                <AiSummaryCard selected={selected} />
+              )}
+            {selected?.status === "ready" &&
+              selected.aiSummary?.startsWith("업로드 실패:") && (
+                <UploadErrorCard message={selected.aiSummary} />
+              )}
 
             {isProcessing && (
               <div className="flex-1 px-4 py-3 overflow-y-auto">
@@ -191,20 +197,31 @@ export function AiPanel({
                         ? "bg-accent-dim border border-accent-border ml-auto"
                         : "bg-surface-2 border border-border"
                     }`}
-                    style={msg.role === "user" ? { whiteSpace: "pre-wrap" } : undefined}
+                    style={
+                      msg.role === "user"
+                        ? { whiteSpace: "pre-wrap" }
+                        : undefined
+                    }
                   >
                     {msg.images && msg.images.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-[6px]">
                         {msg.images.map((img) => (
-                          <div key={img.id} className="flex items-center gap-[6px] max-w-full px-[10px] py-1 border border-border rounded-full bg-surface-3 text-xs text-text">
+                          <div
+                            key={img.id}
+                            className="flex items-center gap-[6px] max-w-full px-[10px] py-1 border border-border rounded-full bg-surface-3 text-xs text-text"
+                          >
                             <PaperclipIcon size={12} />
-                            <span className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{img.name}</span>
+                            <span className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {img.name}
+                            </span>
                           </div>
                         ))}
                       </div>
                     )}
                     {msg.role === "assistant" ? (
-                      <Markdown remarkPlugins={[remarkGfm]}>{msg.text}</Markdown>
+                      <Markdown remarkPlugins={[remarkGfm]}>
+                        {msg.text}
+                      </Markdown>
                     ) : (
                       msg.text
                     )}
@@ -215,9 +232,8 @@ export function AiPanel({
             )}
 
             {/* 빈 공간 채우기 */}
-            {selected?.status === "ready" && selected.aiMessages.length === 0 && (
-              <div className="flex-1" />
-            )}
+            {selected?.status === "ready" &&
+              selected.aiMessages.length === 0 && <div className="flex-1" />}
 
             {/* 퀵칩 */}
             {selected?.status === "ready" && (
@@ -247,7 +263,9 @@ export function AiPanel({
                       }`}
                     >
                       <PaperclipIcon size={14} />
-                      <span className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{img.name}</span>
+                      <span className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        {img.name}
+                      </span>
                       {!img.loading && (
                         <button
                           className="bg-none border-none text-text-dim cursor-pointer px-[2px] text-sm leading-none hover:text-text"
@@ -275,12 +293,20 @@ export function AiPanel({
                 <textarea
                   ref={textareaRef}
                   className="w-full min-h-[44px] max-h-[120px] px-[14px] pt-3 pb-1 text-text text-[13px] leading-[1.5] outline-none font-[inherit] bg-transparent border-none resize-none overflow-y-auto placeholder:text-text-dim"
-                  placeholder={isProcessing ? "전사 완료 후 질문 가능" : "무엇이든 질문하세요..."}
+                  placeholder={
+                    isProcessing
+                      ? "전사 완료 후 질문 가능"
+                      : "무엇이든 질문하세요..."
+                  }
                   disabled={isProcessing}
                   value={aiInput}
                   onChange={(e) => onAiInputChange(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
                       e.preventDefault();
                       onSend();
                     }
@@ -320,19 +346,29 @@ export function AiPanel({
                     {showModelMenu && (
                       <div
                         className="absolute bg-surface-3 border border-border-light rounded-sm py-1 min-w-[140px] z-50 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-                        style={{ bottom: "calc(100% + 4px)", top: "auto", right: 0, left: "auto" }}
+                        style={{
+                          bottom: "calc(100% + 4px)",
+                          top: "auto",
+                          right: 0,
+                          left: "auto",
+                        }}
                       >
                         {AI_MODELS.map((m) => (
                           <button
                             key={m}
                             className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4"
-                            style={m === model ? { color: "var(--accent)" } : undefined}
+                            style={
+                              m === model
+                                ? { color: "var(--accent)" }
+                                : undefined
+                            }
                             onClick={() => {
                               onToggleModel();
                               setShowModelMenu(false);
                             }}
                           >
-                            {m === model ? "✓ " : "  "}{m}
+                            {m === model ? "✓ " : "  "}
+                            {m}
                           </button>
                         ))}
                       </div>
@@ -377,8 +413,16 @@ function AiSummaryCard({ selected }: { selected: RecordItem }) {
       <div className="text-[13px] leading-relaxed">
         {(selected.studentName || selected.type) && (
           <div className="flex gap-4 mb-[6px]">
-            {selected.studentName && <div><strong>수강생:</strong> {selected.studentName}</div>}
-            {selected.type && <div><strong>유형:</strong> {selected.type}</div>}
+            {selected.studentName && (
+              <div>
+                <strong>수강생:</strong> {selected.studentName}
+              </div>
+            )}
+            {selected.type && (
+              <div>
+                <strong>유형:</strong> {selected.type}
+              </div>
+            )}
           </div>
         )}
         <div className="whitespace-pre-wrap text-text-secondary">
@@ -394,14 +438,19 @@ function UploadErrorCard({ message }: { message: string }) {
   return (
     <div
       className="m-3 px-4 py-[14px] rounded text-xs"
-      style={{ borderColor: "var(--error, #e53e3e)", border: "1px solid", background: "color-mix(in srgb, var(--error, #e53e3e) 8%, transparent)" }}
+      style={{
+        borderColor: "var(--error, #e53e3e)",
+        border: "1px solid",
+        background: "color-mix(in srgb, var(--error, #e53e3e) 8%, transparent)",
+      }}
     >
-      <div className="text-[11px] font-semibold mb-[6px]" style={{ color: "var(--error, #e53e3e)" }}>
+      <div
+        className="text-[11px] font-semibold mb-[6px]"
+        style={{ color: "var(--error, #e53e3e)" }}
+      >
         업로드 실패
       </div>
-      <div className="text-xs text-text-secondary leading-[1.5]">
-        {detail}
-      </div>
+      <div className="text-xs text-text-secondary leading-[1.5]">{detail}</div>
       <div className="text-[11px] text-text-dim mt-[6px]">
         녹음 파일을 다시 업로드하거나 새 녹음을 시도해 주세요.
       </div>

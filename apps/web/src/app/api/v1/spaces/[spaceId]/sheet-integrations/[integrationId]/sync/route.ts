@@ -7,7 +7,10 @@ import { sheetIntegrations } from "@/server/db/schema";
 import { syncSheetToActivityLogs } from "@/server/services/google-sheets-service";
 import { ServiceError } from "@/server/services/service-error";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
 

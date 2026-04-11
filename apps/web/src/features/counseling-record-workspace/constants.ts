@@ -41,10 +41,10 @@ export function buildStatusMeta(styles: Record<string, string>): Record<
       icon: CheckCheck,
     },
     processing: {
-      label: "전사 처리 중",
+      label: "백그라운드 처리 중",
       className: styles.statusProcessing,
       detail:
-        "원본 음성은 저장되었고 한국어 STT를 처리하고 있습니다. 긴 파일은 서버에서 분할 전사한 뒤 자동으로 상태를 갱신합니다.",
+        "원본 음성은 저장되었고 서버가 전사와 AI 분석을 백그라운드에서 이어서 처리합니다. 화면을 떠났다가 다시 돌아와도 됩니다.",
       icon: LoaderCircle,
     },
     error: {

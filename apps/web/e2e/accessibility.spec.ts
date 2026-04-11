@@ -54,7 +54,13 @@ test.describe("접근성 검사", () => {
     await page.route("/api/v1/spaces", (route) =>
       route.fulfill({
         json: {
-          spaces: [{ id: "space-1", name: "백엔드 3기", createdAt: new Date().toISOString() }],
+          spaces: [
+            {
+              id: "space-1",
+              name: "백엔드 3기",
+              createdAt: new Date().toISOString(),
+            },
+          ],
         },
       }),
     );

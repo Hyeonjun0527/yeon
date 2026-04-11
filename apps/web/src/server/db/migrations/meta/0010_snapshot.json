@@ -72,12 +72,8 @@
           "name": "activity_logs_member_id_members_id_fk",
           "tableFrom": "activity_logs",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -85,12 +81,8 @@
           "name": "activity_logs_space_id_spaces_id_fk",
           "tableFrom": "activity_logs",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -166,12 +158,8 @@
           "name": "auth_sessions_user_id_users_id_fk",
           "tableFrom": "auth_sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -341,12 +329,8 @@
           "name": "counseling_records_created_by_user_id_users_id_fk",
           "tableFrom": "counseling_records",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -354,12 +338,8 @@
           "name": "counseling_records_space_id_spaces_id_fk",
           "tableFrom": "counseling_records",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -367,12 +347,8 @@
           "name": "counseling_records_member_id_members_id_fk",
           "tableFrom": "counseling_records",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -464,12 +440,8 @@
           "name": "counseling_transcript_segments_record_id_counseling_records_id_fk",
           "tableFrom": "counseling_transcript_segments",
           "tableTo": "counseling_records",
-          "columnsFrom": [
-            "record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["record_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -536,12 +508,8 @@
           "name": "googledrive_tokens_user_id_users_id_fk",
           "tableFrom": "googledrive_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -551,9 +519,7 @@
         "googledrive_tokens_user_id_unique": {
           "name": "googledrive_tokens_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -642,12 +608,8 @@
           "name": "member_field_definitions_space_id_spaces_id_fk",
           "tableFrom": "member_field_definitions",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -655,12 +617,8 @@
           "name": "member_field_definitions_created_by_user_id_users_id_fk",
           "tableFrom": "member_field_definitions",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -668,12 +626,8 @@
           "name": "member_field_definitions_tab_id_member_tab_definitions_id_fk",
           "tableFrom": "member_field_definitions",
           "tableTo": "member_tab_definitions",
-          "columnsFrom": [
-            "tab_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tab_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -752,12 +706,8 @@
           "name": "member_field_values_member_id_members_id_fk",
           "tableFrom": "member_field_values",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -765,12 +715,8 @@
           "name": "member_field_values_field_definition_id_member_field_definitions_id_fk",
           "tableFrom": "member_field_values",
           "tableTo": "member_field_definitions",
-          "columnsFrom": [
-            "field_definition_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["field_definition_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -780,10 +726,7 @@
         "member_field_values_member_field_unique": {
           "name": "member_field_values_member_field_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "member_id",
-            "field_definition_id"
-          ]
+          "columns": ["member_id", "field_definition_id"]
         }
       },
       "policies": {},
@@ -866,12 +809,8 @@
           "name": "member_tab_definitions_space_id_spaces_id_fk",
           "tableFrom": "member_tab_definitions",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -879,12 +818,8 @@
           "name": "member_tab_definitions_created_by_user_id_users_id_fk",
           "tableFrom": "member_tab_definitions",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -894,10 +829,7 @@
         "member_tab_definitions_space_system_key_unique": {
           "name": "member_tab_definitions_space_system_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "space_id",
-            "system_key"
-          ]
+          "columns": ["space_id", "system_key"]
         }
       },
       "policies": {},
@@ -973,12 +905,8 @@
           "name": "members_space_id_spaces_id_fk",
           "tableFrom": "members",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1045,12 +973,8 @@
           "name": "onedrive_tokens_user_id_users_id_fk",
           "tableFrom": "onedrive_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1060,9 +984,7 @@
         "onedrive_tokens_user_id_unique": {
           "name": "onedrive_tokens_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -1137,12 +1059,8 @@
           "name": "sheet_integrations_space_id_spaces_id_fk",
           "tableFrom": "sheet_integrations",
           "tableTo": "spaces",
-          "columnsFrom": [
-            "space_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["space_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1216,12 +1134,8 @@
           "name": "space_templates_created_by_user_id_users_id_fk",
           "tableFrom": "space_templates",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1294,12 +1208,8 @@
           "name": "spaces_created_by_user_id_users_id_fk",
           "tableFrom": "spaces",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1420,12 +1330,8 @@
           "name": "user_identities_user_id_users_id_fk",
           "tableFrom": "user_identities",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

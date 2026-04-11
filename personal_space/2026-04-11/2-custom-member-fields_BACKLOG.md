@@ -38,14 +38,15 @@ v3 업데이트: 템플릿 시스템 + AI 임포트 시너지 추가
 
 **시스템 템플릿** (플랫폼 기본 제공, 삭제 불가):
 
-| 템플릿 이름 | 기본 제공 커스텀 필드 |
-|---|---|
+| 템플릿 이름   | 기본 제공 커스텀 필드                                                                  |
+| ------------- | -------------------------------------------------------------------------------------- |
 | 코딩 부트캠프 | GitHub(url), 기술스택(multi_select), 직전직장(text), 포트폴리오(url), NDA 서명일(date) |
-| 디자인 스쿨 | Behance(url), Figma(url), 사용 툴(multi_select), 포트폴리오(url) |
-| 데이터 분석 | Kaggle(url), Python 수준(select), 직전직장(text), 통계 배경(checkbox) |
-| 일반 교육 | 커스텀 필드 없음 (기본 필드만) |
+| 디자인 스쿨   | Behance(url), Figma(url), 사용 툴(multi_select), 포트폴리오(url)                       |
+| 데이터 분석   | Kaggle(url), Python 수준(select), 직전직장(text), 통계 배경(checkbox)                  |
+| 일반 교육     | 커스텀 필드 없음 (기본 필드만)                                                         |
 
 **사용자 정의 템플릿** (운영자가 기존 스페이스를 템플릿으로 저장):
+
 - "이 스페이스 구조를 템플릿으로 저장" → 탭·필드 구조 snapshot
 - 다음 스페이스 생성 시 내 템플릿 목록에서 선택 가능
 
@@ -89,6 +90,7 @@ CREATE TABLE space_templates (
 ```
 
 tabs_config 예시 (코딩 부트캠프 템플릿):
+
 ```json
 [
   {
@@ -96,9 +98,23 @@ tabs_config 예시 (코딩 부트캠프 템플릿):
     "tab_type": "custom",
     "display_order": 6,
     "fields": [
-      { "name": "GitHub", "field_type": "url", "is_required": false, "display_order": 0 },
-      { "name": "포트폴리오 URL", "field_type": "url", "is_required": false, "display_order": 1 },
-      { "name": "기술 스택", "field_type": "multi_select", "is_required": false, "display_order": 2,
+      {
+        "name": "GitHub",
+        "field_type": "url",
+        "is_required": false,
+        "display_order": 0
+      },
+      {
+        "name": "포트폴리오 URL",
+        "field_type": "url",
+        "is_required": false,
+        "display_order": 1
+      },
+      {
+        "name": "기술 스택",
+        "field_type": "multi_select",
+        "is_required": false,
+        "display_order": 2,
         "options": [
           { "value": "JavaScript", "color": "#fbbf24" },
           { "value": "Python", "color": "#34d399" },
@@ -112,8 +128,18 @@ tabs_config 예시 (코딩 부트캠프 템플릿):
     "tab_type": "custom",
     "display_order": 7,
     "fields": [
-      { "name": "직전 직장", "field_type": "text", "is_required": false, "display_order": 0 },
-      { "name": "NDA 서명일", "field_type": "date", "is_required": false, "display_order": 1 }
+      {
+        "name": "직전 직장",
+        "field_type": "text",
+        "is_required": false,
+        "display_order": 0
+      },
+      {
+        "name": "NDA 서명일",
+        "field_type": "date",
+        "is_required": false,
+        "display_order": 1
+      }
     ]
   }
 ]
@@ -231,38 +257,41 @@ ImportPreview (확장)
 
 ### 시너지 효과 정리
 
-| | 템플릿 없이 임포트 | 템플릿 정의 후 임포트 |
-|---|---|---|
-| AI가 추출하는 필드 | name, email, phone, status | + GitHub, 기술스택, 직전직장, NDA서명일 |
-| 임포트 후 추가 작업 | 수강생별 커스텀 필드 수동 입력 | 자동 입력됨 |
-| AI 정확도 | 일반적 컬럼 추측 | 필드 타입 알고 있어 정확한 매핑 |
-| 데이터 완성도 | 기본 정보만 | 첫 임포트부터 풍부한 프로필 |
+|                     | 템플릿 없이 임포트             | 템플릿 정의 후 임포트                   |
+| ------------------- | ------------------------------ | --------------------------------------- |
+| AI가 추출하는 필드  | name, email, phone, status     | + GitHub, 기술스택, 직전직장, NDA서명일 |
+| 임포트 후 추가 작업 | 수강생별 커스텀 필드 수동 입력 | 자동 입력됨                             |
+| AI 정확도           | 일반적 컬럼 추측               | 필드 타입 알고 있어 정확한 매핑         |
+| 데이터 완성도       | 기본 정보만                    | 첫 임포트부터 풍부한 프로필             |
 
 ---
 
 ## 탭 분류 체계
 
 ### 시스템 탭 (system tab)
+
 플랫폼이 기본 제공하는 탭. 삭제 불가, **숨김·순서 변경만** 가능.
 
-| system_key | 기본 이름 | 삭제 가능 | 내부 동작 |
-|---|---|---|---|
-| `overview` | 개요 | ❌ | 기본 필드 + 커스텀 필드 표시 |
-| `counseling` | 상담기록 | ❌ | 상담 기록 목록 시스템 |
-| `courses` | 수강이력 | ❌ | 수강 이력 시스템 (미구현) |
-| `guardian` | 비상연락처 | ❌ | guardian 테이블 시스템 (미구현) |
-| `memos` | 메모 | ❌ | 메모 시스템 |
-| `report` | 리포트 | ❌ | AI 리포트 시스템 |
+| system_key   | 기본 이름  | 삭제 가능 | 내부 동작                       |
+| ------------ | ---------- | --------- | ------------------------------- |
+| `overview`   | 개요       | ❌        | 기본 필드 + 커스텀 필드 표시    |
+| `counseling` | 상담기록   | ❌        | 상담 기록 목록 시스템           |
+| `courses`    | 수강이력   | ❌        | 수강 이력 시스템 (미구현)       |
+| `guardian`   | 비상연락처 | ❌        | guardian 테이블 시스템 (미구현) |
+| `memos`      | 메모       | ❌        | 메모 시스템                     |
+| `report`     | 리포트     | ❌        | AI 리포트 시스템                |
 
 - 시스템 탭 이름은 운영자가 변경 가능 ("상담기록" → "멘토링 기록")
 - 개요 탭은 숨김도 불가 (항상 첫 번째 탭)
 - 나머지 시스템 탭은 숨김 가능
 
 ### 커스텀 탭 (custom tab)
+
 운영자가 직접 생성하는 탭. **이름 변경·삭제·순서 변경** 모두 가능.
 탭 안에 커스텀 필드를 자유롭게 배치한다.
 
 예시:
+
 - "결제 정보" → 결제수단(select), 할부회차(number), 입금일(date), 환불여부(checkbox)
 - "포트폴리오" → GitHub(url), 노션(url), 대표 프로젝트명(text), 기술스택(multi_select)
 - "입학 정보" → 지원 동기(long_text), 직전 직장(text), 거주 지역(select), NDA 서명일(date)
@@ -375,22 +404,23 @@ CREATE TABLE member_field_values (
 
 ### 필드 타입 목록
 
-| 타입 | 코드 | 저장 컬럼 | 예시 |
-|---|---|---|---|
-| 단문 텍스트 | `text` | value_text | 직전 직장, 거주 지역 |
-| 장문 텍스트 | `long_text` | value_text | 자기소개, 학습 목표 |
-| 숫자 | `number` | value_number | 성적 점수, 나이 |
-| 날짜 | `date` | value_text (ISO) | 생년월일, NDA 서명일 |
-| 단일 선택 | `select` | value_json | 트랙, 지역, 결제 수단 |
-| 다중 선택 | `multi_select` | value_json | 기술 스택, 관심 분야 |
-| 체크박스 | `checkbox` | value_boolean | 장학생 여부, NDA 동의 |
-| URL | `url` | value_text | GitHub, 포트폴리오 |
-| 이메일 | `email` | value_text | 보조 이메일 |
-| 전화번호 | `phone` | value_text | 비상연락처 2 |
+| 타입        | 코드           | 저장 컬럼        | 예시                  |
+| ----------- | -------------- | ---------------- | --------------------- |
+| 단문 텍스트 | `text`         | value_text       | 직전 직장, 거주 지역  |
+| 장문 텍스트 | `long_text`    | value_text       | 자기소개, 학습 목표   |
+| 숫자        | `number`       | value_number     | 성적 점수, 나이       |
+| 날짜        | `date`         | value_text (ISO) | 생년월일, NDA 서명일  |
+| 단일 선택   | `select`       | value_json       | 트랙, 지역, 결제 수단 |
+| 다중 선택   | `multi_select` | value_json       | 기술 스택, 관심 분야  |
+| 체크박스    | `checkbox`     | value_boolean    | 장학생 여부, NDA 동의 |
+| URL         | `url`          | value_text       | GitHub, 포트폴리오    |
+| 이메일      | `email`        | value_text       | 보조 이메일           |
+| 전화번호    | `phone`        | value_text       | 비상연락처 2          |
 
 추후 검토: `rating`(별점), `file`(파일 첨부)
 
 options JSONB 형식 (select / multi_select):
+
 ```json
 [
   { "value": "서울", "color": "#818cf8" },
@@ -471,6 +501,7 @@ PATCH  /api/v1/spaces/{spaceId}/members/{memberId}/field-values
 ```
 
 멤버 상세 조회에 탭·필드 구조 포함:
+
 ```
 GET /api/v1/spaces/{spaceId}/members/{memberId}
 → {
@@ -494,6 +525,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 1차: DB 마이그레이션 + 탭/필드 백엔드 API
 
 **작업 내용:**
+
 - `member_tab_definitions` 테이블 마이그레이션
 - `member_field_definitions` 테이블 마이그레이션 (`tab_id` 포함)
 - `member_field_values` 테이블 마이그레이션
@@ -506,6 +538,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 - 멤버 상세 조회에 탭·필드 구조 포함
 
 **논의 필요:**
+
 - 필드를 다른 탭으로 이동(tab_id 변경) 시 기존 값은 유지? → 유지 (값은 field_definition_id 기준이라 tab과 무관)
 - 커스텀 탭 삭제 시 그 안의 필드·값 처리 → CASCADE DELETE 추천
 
@@ -516,6 +549,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 2차: 스페이스 설정 UI — 탭 + 필드 관리
 
 **작업 내용:**
+
 - 스페이스 설정 페이지 신설 (진입점: 스페이스 헤더 설정 아이콘)
 - 탭 관리 섹션
   - 탭 목록 (드래그로 순서 변경)
@@ -529,6 +563,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 - select / multi_select 타입: 선택지 추가 + 색상 팔레트 (8색 고정)
 
 **UX 레퍼런스:**
+
 - 왼쪽: 탭 목록 패널 (Linear 설정 사이드바 스타일)
 - 오른쪽: 선택한 탭의 필드 목록 (Notion 데이터베이스 속성 설정 스타일)
 
@@ -539,6 +574,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 3차: 수강생 상세 화면 — 탭 구조 동적 렌더링
 
 **작업 내용:**
+
 - 탭 바를 DB 정의 기준으로 동적 렌더링
   - is_visible=false 탭 숨김
   - display_order 기준 정렬
@@ -564,6 +600,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 4차: 개요 탭 커스텀 필드 통합
 
 **작업 내용:**
+
 - 개요 탭에 배치된 커스텀 필드를 "추가 정보" 섹션으로 렌더링
   - 기존 "연락처" / "운영 상태" / "상담 기록" 섹션 아래에 위치
   - 커스텀 필드가 하나도 없으면 섹션 자체 숨김
@@ -578,6 +615,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 5차: 템플릿 시스템 + 스페이스 생성 플로우
 
 **작업 내용:**
+
 - `space_templates` 테이블 마이그레이션
 - 시스템 템플릿 4종 DB seed (코딩 부트캠프, 디자인 스쿨, 데이터 분석, 일반 교육)
 - 템플릿 API
@@ -593,10 +631,12 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 - 스페이스 생성 서비스: 선택한 템플릿의 `tabs_config` 기반으로 탭·필드 자동 생성
 
 **논의 필요:**
+
 - 템플릿 미리보기 수준: 탭 이름만 vs 필드 목록까지
 - 내 템플릿 최대 개수 제한 여부
 
 **추천:**
+
 - 미리보기: 탭 이름 + 각 탭의 필드 이름·타입 아이콘 목록
 - 개수 제한: 일단 없음
 
@@ -607,6 +647,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 6차: AI 임포트 + 커스텀 필드 연동
 
 **작업 내용:**
+
 - `file-analysis-service.ts`의 `identifyColumnsWithAI()` 프롬프트 확장
   - 현재 스페이스의 커스텀 필드 스키마를 Phase 1 AI에 전달
   - 반환 JSON에 `customFieldColumns: { [fieldId]: columnIndex | null }` 추가
@@ -624,10 +665,12 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 - 임포트 확정 시 `member_field_values`에 일괄 INSERT
 
 **논의 필요:**
+
 - 커스텀 필드를 찾지 못했을 때 UX: 조용히 null 처리 vs "GitHub 컬럼을 찾지 못했습니다" 알림
 - 수동 컬럼 매핑 UI (AI 매핑 틀렸을 때 운영자가 직접 수정) 이번 차수에 포함할지
 
 **추천:**
+
 - 못 찾은 필드: 알림 표시 (조용히 무시하면 운영자가 놓침)
 - 수동 매핑: 다음 차수. 이번엔 AI 자동만
 
@@ -638,6 +681,7 @@ GET /api/v1/spaces/{spaceId}/members/{memberId}
 ### 7차 (선택): 목록 필터/정렬
 
 **작업 내용:**
+
 - 수강생 목록에서 커스텀 필드 값으로 필터
   - select / multi_select: 값 기준 필터
   - checkbox: true/false 필터

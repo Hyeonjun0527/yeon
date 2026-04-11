@@ -64,7 +64,9 @@ export function SplineHero() {
   return (
     <div className={`${styles.splineContainer} absolute inset-0 w-full h-full`}>
       <SplineErrorBoundary>
-        <Suspense fallback={<div className="w-full h-full bg-[var(--dark-bg)]" />}>
+        <Suspense
+          fallback={<div className="w-full h-full bg-[var(--dark-bg)]" />}
+        >
           <SplineCanvas />
         </Suspense>
       </SplineErrorBoundary>
