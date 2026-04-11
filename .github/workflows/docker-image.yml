@@ -36,6 +36,8 @@ jobs:
   build_amd64:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    env:
+      DIGEST_DIR: ${{ runner.temp }}/digests-amd64-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -82,21 +84,24 @@ jobs:
 
       - name: Export amd64 digest
         run: |
-          mkdir -p /tmp/digests
+          rm -rf "${DIGEST_DIR}"
+          mkdir -p "${DIGEST_DIR}"
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "${DIGEST_DIR}/${digest#sha256:}"
 
       - name: Upload amd64 digest
         uses: actions/upload-artifact@v4
         with:
           name: digest-amd64
-          path: /tmp/digests/*
+          path: ${{ env.DIGEST_DIR }}/*
           if-no-files-found: error
           retention-days: 1
 
   build_arm64:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: [self-hosted, Linux, ARM64]
+    env:
+      DIGEST_DIR: ${{ runner.temp }}/digests-arm64-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -148,15 +153,16 @@ jobs:
 
       - name: Export arm64 digest
         run: |
-          mkdir -p /tmp/digests
+          rm -rf "${DIGEST_DIR}"
+          mkdir -p "${DIGEST_DIR}"
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "${DIGEST_DIR}/${digest#sha256:}"
 
       - name: Upload arm64 digest
         uses: actions/upload-artifact@v4
         with:
           name: digest-arm64
-          path: /tmp/digests/*
+          path: ${{ env.DIGEST_DIR }}/*
           if-no-files-found: error
           retention-days: 1
 
@@ -166,6 +172,8 @@ jobs:
       - build_amd64
       - build_arm64
     runs-on: ubuntu-latest
+    env:
+      DIGEST_DIR: ${{ runner.temp }}/digests-manifest-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Resolve lowercase image name
@@ -197,12 +205,12 @@ jobs:
       - name: Download image digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: ${{ env.DIGEST_DIR }}
           pattern: digest-*
           merge-multiple: true
 
       - name: Create and push multi-arch manifest
-        working-directory: /tmp/digests
+        working-directory: ${{ env.DIGEST_DIR }}
         env:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
           IMAGE: ${{ steps.image.outputs.ref }}
@@ -210,7 +218,24 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          mapfile -t digest_files < <(printf '%s\n' * | sort)
+          all_entries=(*)
+          digest_files=()
+          ignored_files=()
+
+          for entry in "${all_entries[@]}"; do
+            [ -f "$entry" ] || continue
+
+            if [[ "$entry" =~ ^[0-9a-f]{64}$ ]]; then
+              digest_files+=("$entry")
+            else
+              ignored_files+=("$entry")
+            fi
+          done
+
+          if [ "${#ignored_files[@]}" -gt 0 ]; then
+            echo "manifest publish에서 무시한 비-digest 파일이 있습니다."
+            printf ' - %s\n' "${ignored_files[@]}"
+          fi
 
           if [ "${#digest_files[@]}" -ne 2 ]; then
             echo "digest 파일 개수가 예상과 다릅니다: ${#digest_files[@]}개"
