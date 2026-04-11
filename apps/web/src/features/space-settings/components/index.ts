@@ -1,1 +1,1 @@
-export { SpaceSettingsModal } from "./space-settings-modal";
+export { SpaceSettingsContent } from "./space-settings-content";

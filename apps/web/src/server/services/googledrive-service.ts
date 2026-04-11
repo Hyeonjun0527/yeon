@@ -7,7 +7,8 @@ import { ServiceError } from "./service-error";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_URL = "https://www.googleapis.com/drive/v3";
-const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+const SCOPE =
+  "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets";
 
 function getClientId(): string {
   const id = process.env.GOOGLE_CLIENT_ID;

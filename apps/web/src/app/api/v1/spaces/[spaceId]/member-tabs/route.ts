@@ -5,6 +5,7 @@ import { z } from "zod";
 import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
 import {
   createCustomTab,
+  createDefaultSystemTabs,
   getTabsForSpace,
 } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
@@ -25,7 +26,13 @@ export async function GET(
   const { spaceId } = await params;
 
   try {
-    const tabs = await getTabsForSpace(spaceId);
+    let tabs = await getTabsForSpace(spaceId);
+    // 시스템 탭이 없으면 lazy init (기존 스페이스 backfill)
+    const hasSystemTabs = tabs.some((t) => t.tabType === "system");
+    if (!hasSystemTabs) {
+      await createDefaultSystemTabs(spaceId, currentUser.id);
+      tabs = await getTabsForSpace(spaceId);
+    }
     return NextResponse.json({ tabs });
   } catch (error) {
     if (error instanceof ServiceError) return jsonError(error.message, error.status);
