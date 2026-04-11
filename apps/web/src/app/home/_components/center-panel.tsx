@@ -225,6 +225,7 @@ export function CenterPanel({
           </div>
           <button
             onClick={onLinkMember}
+            data-tutorial="link-member-btn"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border flex-shrink-0 transition-all duration-150 ${
               selected.memberId
                 ? "bg-accent-dim border-accent-border text-accent hover:bg-accent hover:text-bg"

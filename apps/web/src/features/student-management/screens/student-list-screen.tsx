@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { AlertTriangle, Plus, Search, Settings, Upload, User } from "lucide-react";
-import { useState } from "react";
 import { useMemberList } from "../hooks/use-member-list";
 import { useStudentManagement } from "../student-management-provider";
 import { MEMBER_STATUS_META, RISK_LEVEL_META } from "../constants";
 import type { RiskLevel } from "../types";
-import { SpaceSettingsModal } from "../../space-settings";
+import { SheetExportPanel } from "../components/sheet-export-panel";
+import { useSpaceSettingsDrawer } from "../../space-settings";
+import { StudentTutorial } from "@/components/tutorial";
 
 export function StudentListScreen() {
   const { spaces, selectedSpaceId, enterImportMode } = useStudentManagement();
@@ -26,7 +27,7 @@ export function StudentListScreen() {
     error,
   } = useMemberList();
 
-  const [showSettings, setShowSettings] = useState(false);
+  const { openSpaceSettings } = useSpaceSettingsDrawer();
 
   const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
   const spaceName = currentSpace?.name ?? null;
@@ -36,7 +37,7 @@ export function StudentListScreen() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4 md:flex-row flex-col md:items-center items-start">
         <div>
-          <h2 className="text-2xl font-bold text-text tracking-[-0.02em]">
+          <h2 className="text-2xl font-bold text-text tracking-[-0.02em]" data-tutorial="space-title">
             {spaceName ?? "전체 수강생"}
           </h2>
           {!loading && (
@@ -46,6 +47,7 @@ export function StudentListScreen() {
         <div className="flex items-center gap-[10px] md:w-auto w-full flex-wrap">
           <Link
             href="/home/student-management/members/new"
+            data-tutorial="add-member-btn"
             className="flex items-center gap-1.5 py-2 px-4 bg-accent text-white border-none rounded-sm text-sm font-semibold cursor-pointer transition-[opacity,box-shadow] duration-150 hover:opacity-90 hover:shadow-[0_8px_32px_rgba(129,140,248,0.25)]"
           >
             <Plus size={16} />
@@ -74,58 +76,58 @@ export function StudentListScreen() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
-          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="all">전체 상태</option>
-          <option value="active">수강중</option>
-          <option value="withdrawn">중도포기</option>
-          <option value="graduated">수료</option>
-        </select>
-        <select
-          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
-          value={riskLevelFilter}
-          onChange={(e) =>
-            setRiskLevelFilter(e.target.value as RiskLevel | "all")
-          }
-        >
-          <option value="all">전체 위험도</option>
-          <option value="low">낮음</option>
-          <option value="medium">보통</option>
-          <option value="high">높음</option>
-        </select>
-
-        <select
-          className="py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as "name" | "createdAt" | "status")}
-        >
-          <option value="createdAt">최근 등록순</option>
-          <option value="name">이름순</option>
-          <option value="status">상태순</option>
-        </select>
+        <div className="relative">
+          <select
+            className="appearance-none py-1.5 pl-3 pr-7 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">전체 상태</option>
+            <option value="active">수강중</option>
+            <option value="withdrawn">중도포기</option>
+            <option value="graduated">수료</option>
+          </select>
+          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <div className="relative">
+          <select
+            className="appearance-none py-1.5 pl-3 pr-7 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
+            value={riskLevelFilter}
+            onChange={(e) =>
+              setRiskLevelFilter(e.target.value as RiskLevel | "all")
+            }
+          >
+            <option value="all">전체 위험도</option>
+            <option value="low">낮음</option>
+            <option value="medium">보통</option>
+            <option value="high">높음</option>
+          </select>
+          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <div className="relative">
+          <select
+            className="appearance-none py-1.5 pl-3 pr-7 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as "name" | "createdAt" | "status")}
+          >
+            <option value="createdAt">최근 등록순</option>
+            <option value="name">이름순</option>
+            <option value="status">상태순</option>
+          </select>
+          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
 
         {selectedSpaceId && (
           <button
-            className="ml-auto flex items-center gap-1.5 py-1.5 px-3 border border-border rounded-sm text-[13px] text-text-secondary bg-surface-2 cursor-pointer hover:border-border-light transition-colors"
-            onClick={() => setShowSettings(true)}
-            title="스페이스 설정"
+            className="ml-auto flex items-center gap-1.5 py-1.5 px-3 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer hover:border-border-light transition-colors"
+            onClick={() => selectedSpaceId && openSpaceSettings({ spaceId: selectedSpaceId })}
+            title="수강생 탭·항목 설정"
           >
             <Settings size={14} />
-            설정
+            스페이스 설정
           </button>
         )}
       </div>
-
-      {showSettings && selectedSpaceId && currentSpace && (
-        <SpaceSettingsModal
-          spaceId={selectedSpaceId}
-          spaceName={currentSpace.name}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
 
       {/* 로딩 */}
       {loading && (
@@ -293,6 +295,10 @@ export function StudentListScreen() {
           })}
         </div>
       )}
+
+      {selectedSpaceId && <SheetExportPanel spaceId={selectedSpaceId} />}
+
+      <StudentTutorial />
     </div>
   );
 }

@@ -24,6 +24,7 @@ import {
   QuickMemoModal,
   InsightBanner,
 } from "./_components";
+import { HomeTutorial } from "@/components/tutorial";
 
 export default function MockV2Workspace() {
   const records = useRecords();
@@ -254,6 +255,8 @@ export default function MockV2Workspace() {
           }}
         />
       )}
+
+      <HomeTutorial />
     </div>
   );
 }

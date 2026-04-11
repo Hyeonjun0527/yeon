@@ -133,7 +133,7 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto">
         {/* 수강생 섹션 */}
         <div className="px-2 py-2">
-          <div className="flex items-center justify-between px-2 py-1 mb-0.5">
+          <div className="flex items-center justify-between px-2 py-1 mb-0.5" data-tutorial="members-section">
             <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
               수강생
             </span>
@@ -276,6 +276,7 @@ export function Sidebar({
           <button
             className="w-full bg-accent text-white py-[8px] rounded-md text-[12px] font-medium cursor-pointer hover:opacity-90 transition-opacity font-[inherit] border-none"
             onClick={() => setShowMenu((p) => !p)}
+            data-tutorial="new-record-btn"
           >
             + 새 상담 기록
           </button>

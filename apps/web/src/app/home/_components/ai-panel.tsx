@@ -93,6 +93,7 @@ export function AiPanel({
       )}
       <div
         ref={panelRef}
+        data-tutorial="ai-panel"
         className={`border-l border-border flex flex-col bg-surface relative transition-[width] duration-150 ${
           collapsed ? "!w-0 min-w-0 overflow-hidden border-l-0" : ""
         }`}
