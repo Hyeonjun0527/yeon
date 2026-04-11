@@ -22,6 +22,7 @@
   3. typecheck
   4. `pnpm --filter @yeon/web build` (Next.js 빌드) — **반드시 실행**
   5. 필요 시 test
+- **커밋 전 untracked 파일 확인 필수**: `git status --short | grep "^??"` 로 미커밋 파일을 확인한다. 커밋할 파일이 `??` 파일을 import하면 로컬 타입체크는 통과하지만 Docker 빌드가 실패한다. import 관계가 있는 파일은 반드시 함께 커밋한다.
 - **CSS Modules 제약**: `.module.css` 파일 안에서 `*`, `html`, `body` 같은 전역 셀렉터를 단독 사용할 수 없다. 반드시 로컬 클래스(`.page *` 등)로 스코프해야 한다. Turbopack은 "Selector is not pure" 에러로 빌드를 거부한다.
 - 현재 workspace에 스크립트가 아직 정의되지 않았다면 없는 척 채우지 말고, 검증이 불가능한 이유를 명시한다.
 - 문서 전용 변경이라면 최소한 `git diff --check` 수준의 형식 검증은 수행한다.
