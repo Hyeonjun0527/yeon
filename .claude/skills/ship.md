@@ -36,6 +36,7 @@ git commit
 - `git add .`은 사용하지 않는다. 자기 작업 파일만 pathspec으로 선별한다.
 - 커밋 메시지는 한국어로, 변경 대상 + 핵심 동작 변화 + 수정 의도가 드러나게 작성한다.
 - 모호한 메시지(`fix: 수정`, `refactor: 정리`) 금지.
+- **커밋 전 untracked 파일 확인 필수**: `git status`에서 `??`로 표시된 파일이 있는데, 커밋할 파일이 해당 파일을 import하면 Docker 빌드가 실패한다. 스테이징 전에 반드시 `git status --short | grep "^??"` 로 미커밋 파일을 확인하고, import 관계가 있는 파일은 함께 커밋한다.
 
 ### 3. Push
 
