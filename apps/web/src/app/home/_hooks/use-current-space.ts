@@ -16,7 +16,9 @@ export interface Space {
 
 export function useCurrentSpace() {
   const queryClient = useQueryClient();
-  const [currentSpaceId, setCurrentSpaceIdState] = useState<string | null>(null);
+  const [currentSpaceId, setCurrentSpaceIdState] = useState<string | null>(
+    null,
+  );
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ["spaces"],
@@ -33,7 +35,8 @@ export function useCurrentSpace() {
   // 초기 로드 시 localStorage에서 복원
   useEffect(() => {
     if (spaces.length === 0 || currentSpaceId !== null) return;
-    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const saved =
+      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     const match = saved ? spaces.find((s) => s.id === saved) : null;
     const initial = match ?? spaces[0] ?? null;
     if (initial) {
@@ -46,13 +49,17 @@ export function useCurrentSpace() {
     if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
   }, []);
 
-  const addSpace = useCallback((space: Space) => {
-    queryClient.setQueryData<{ spaces: Space[] }>(["spaces"], (old) => ({
-      spaces: [...(old ? old.spaces : []), space],
-    }));
-    setCurrentSpaceIdState(space.id);
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, space.id);
-  }, [queryClient]);
+  const addSpace = useCallback(
+    (space: Space) => {
+      queryClient.setQueryData<{ spaces: Space[] }>(["spaces"], (old) => ({
+        spaces: [...(old ? old.spaces : []), space],
+      }));
+      setCurrentSpaceIdState(space.id);
+      if (typeof window !== "undefined")
+        localStorage.setItem(STORAGE_KEY, space.id);
+    },
+    [queryClient],
+  );
 
   const currentSpace = spaces.find((s) => s.id === currentSpaceId) ?? null;
 

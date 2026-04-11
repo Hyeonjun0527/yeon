@@ -19,7 +19,12 @@ const SPREADSHEET_MIMES = [
 const CSV_EXTS = [".csv"];
 const CSV_MIMES = ["text/csv", "application/csv"];
 const TXT_EXTS = [".txt", ".tsv", ".md", ".markdown"];
-const TXT_MIMES = ["text/plain", "text/tab-separated-values", "text/markdown", "text/x-markdown"];
+const TXT_MIMES = [
+  "text/plain",
+  "text/tab-separated-values",
+  "text/markdown",
+  "text/x-markdown",
+];
 const PDF_EXTS = [".pdf"];
 const PDF_MIMES = ["application/pdf"];
 const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".heic", ".heif", ".webp", ".gif"];
@@ -29,13 +34,24 @@ export function detectFileKind(name: string, mimeType = ""): FileKind {
   const lower = name.toLowerCase();
   const mime = mimeType.toLowerCase();
 
-  if (SPREADSHEET_EXTS.some((e) => lower.endsWith(e)) || SPREADSHEET_MIMES.includes(mime))
+  if (
+    SPREADSHEET_EXTS.some((e) => lower.endsWith(e)) ||
+    SPREADSHEET_MIMES.includes(mime)
+  )
     return "spreadsheet";
-  if (CSV_EXTS.some((e) => lower.endsWith(e)) || CSV_MIMES.includes(mime)) return "csv";
-  if (TXT_EXTS.some((e) => lower.endsWith(e)) || TXT_MIMES.some((m) => mime.startsWith(m)))
+  if (CSV_EXTS.some((e) => lower.endsWith(e)) || CSV_MIMES.includes(mime))
+    return "csv";
+  if (
+    TXT_EXTS.some((e) => lower.endsWith(e)) ||
+    TXT_MIMES.some((m) => mime.startsWith(m))
+  )
     return "txt";
-  if (PDF_EXTS.some((e) => lower.endsWith(e)) || PDF_MIMES.includes(mime)) return "pdf";
-  if (IMAGE_EXTS.some((e) => lower.endsWith(e)) || mime.startsWith(IMAGE_MIME_PREFIX))
+  if (PDF_EXTS.some((e) => lower.endsWith(e)) || PDF_MIMES.includes(mime))
+    return "pdf";
+  if (
+    IMAGE_EXTS.some((e) => lower.endsWith(e)) ||
+    mime.startsWith(IMAGE_MIME_PREFIX)
+  )
     return "image";
 
   return "unsupported";

@@ -63,7 +63,9 @@ export default function MemberNewPage() {
       refetchMembers();
       router.push("/home/student-management");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "수강생을 추가하지 못했습니다.");
+      setError(
+        err instanceof Error ? err.message : "수강생을 추가하지 못했습니다.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -78,9 +80,13 @@ export default function MemberNewPage() {
         >
           ← 수강생 목록으로
         </a>
-        <h1 className="text-xl font-bold text-text tracking-tight">수강생 추가</h1>
+        <h1 className="text-xl font-bold text-text tracking-tight">
+          수강생 추가
+        </h1>
         {selectedSpaceId === null && (
-          <p className="text-sm text-text-dim mt-1">왼쪽 사이드바에서 스페이스를 선택해주세요.</p>
+          <p className="text-sm text-text-dim mt-1">
+            왼쪽 사이드바에서 스페이스를 선택해주세요.
+          </p>
         )}
       </div>
 
@@ -141,11 +147,25 @@ export default function MemberNewPage() {
               onChange={(e) => setStatus(e.target.value)}
             >
               {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+            >
+              <path
+                d="M2 4l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
         </div>
@@ -163,11 +183,25 @@ export default function MemberNewPage() {
             >
               <option value="">선택 안 함</option>
               {RISK_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+            >
+              <path
+                d="M2 4l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
         </div>

@@ -42,16 +42,15 @@ function sortMembers(members: Member[], key: MemberSortKey): Member[] {
   sorted.sort((a, b) => {
     if (key === "name") return a.name.localeCompare(b.name, "ko");
     if (key === "createdAt")
-      return (
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return a.status.localeCompare(b.status);
   });
   return sorted;
 }
 
 export function useMemberList() {
-  const { members, membersLoading, membersError, spacesLoading } = useStudentManagement();
+  const { members, membersLoading, membersError, spacesLoading } =
+    useStudentManagement();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | "all">("all");

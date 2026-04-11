@@ -101,7 +101,13 @@ function formatAudioTime(seconds: number): string {
 
 const WAVE_BAR_COUNT = 24;
 
-const AI_QUICK_CHIPS = ["요약 정리해줘", "후속 조치 목록", "보호자 안내 문자", "이전 상담과 비교", "추천 학습 루틴"];
+const AI_QUICK_CHIPS = [
+  "요약 정리해줘",
+  "후속 조치 목록",
+  "보호자 안내 문자",
+  "이전 상담과 비교",
+  "추천 학습 루틴",
+];
 
 /* ── Component ── */
 
@@ -116,7 +122,10 @@ export default function InteractiveAppPage() {
   const [activeRecordId, setActiveRecordId] = useState<string>("rec1");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: "user", text: "보호자 안내 문자 초안 만들어줘" },
-    { role: "assistant", text: "[연세학원] 김민수 학생 상담 안내\n\n안녕하세요. 오늘 민수와 수학 과제 제출 관련 상담을 진행했습니다.\n\n학원 일정이 빡빡해 과제 시간 확보가 어려운 상황이라, 제출 기한을 익일 오전으로 조정했습니다. 2주간 적용 후 다시 점검하겠습니다.\n\n문의사항은 편하게 연락주세요." },
+    {
+      role: "assistant",
+      text: "[연세학원] 김민수 학생 상담 안내\n\n안녕하세요. 오늘 민수와 수학 과제 제출 관련 상담을 진행했습니다.\n\n학원 일정이 빡빡해 과제 시간 확보가 어려운 상황이라, 제출 기한을 익일 오전으로 조정했습니다. 2주간 적용 후 다시 점검하겠습니다.\n\n문의사항은 편하게 연락주세요.",
+    },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -124,19 +133,29 @@ export default function InteractiveAppPage() {
   const [showSegments, setShowSegments] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
-  const [editingField, setEditingField] = useState<null | "title" | "studentName" | "type">(null);
-  const [editValues, setEditValues] = useState({ title: "수학 과제 누락 상담", studentName: "김민수", type: "대면 상담" });
+  const [editingField, setEditingField] = useState<
+    null | "title" | "studentName" | "type"
+  >(null);
+  const [editValues, setEditValues] = useState({
+    title: "수학 과제 누락 상담",
+    studentName: "김민수",
+    type: "대면 상담",
+  });
   const [sidebarSearch, setSidebarSearch] = useState("");
 
   // Students
   const [studentPhase, setStudentPhase] = useState<StudentPhase>("list");
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    null,
+  );
   const [studentSearch, setStudentSearch] = useState("");
   const [activeYear, setActiveYear] = useState("2026");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"name" | "recent" | "count">("name");
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
-  const [studentDetailTab, setStudentDetailTab] = useState<"history" | "memos">("history");
+  const [studentDetailTab, setStudentDetailTab] = useState<"history" | "memos">(
+    "history",
+  );
 
   // Modals
   const [modal, setModal] = useState<ModalState>(null);
@@ -154,13 +173,19 @@ export default function InteractiveAppPage() {
   const [settingsNotifAll, setSettingsNotifAll] = useState(true);
   const [settingsNotifTranscript, setSettingsNotifTranscript] = useState(true);
   const [settingsNotifWeekly, setSettingsNotifWeekly] = useState(false);
-  const [settingsRecordQuality, setSettingsRecordQuality] = useState<"high" | "medium" | "low">("high");
-  const [settingsAiModel, setSettingsAiModel] = useState<"gpt-5.4-medium" | "gpt-4o-mini">("gpt-5.4-medium");
+  const [settingsRecordQuality, setSettingsRecordQuality] = useState<
+    "high" | "medium" | "low"
+  >("high");
+  const [settingsAiModel, setSettingsAiModel] = useState<
+    "gpt-5.4-medium" | "gpt-4o-mini"
+  >("gpt-5.4-medium");
   const [settingsAutoSummary, setSettingsAutoSummary] = useState(true);
 
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(() => NOTIFICATIONS_DATA.map((n) => ({ ...n })));
+  const [notifications, setNotifications] = useState<Notification[]>(() =>
+    NOTIFICATIONS_DATA.map((n) => ({ ...n })),
+  );
 
   // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(true);
@@ -172,12 +197,16 @@ export default function InteractiveAppPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   // Student detail chat
-  const [detailChatMessages, setDetailChatMessages] = useState<ChatMessage[]>([]);
+  const [detailChatMessages, setDetailChatMessages] = useState<ChatMessage[]>(
+    [],
+  );
   const [detailChatInput, setDetailChatInput] = useState("");
   const [isDetailTyping, setIsDetailTyping] = useState(false);
 
   // Mutable records
-  const [sidebarRecords, setSidebarRecords] = useState<SidebarRecord[]>(() => SIDEBAR_RECORDS_DATA.map((r) => ({ ...r })));
+  const [sidebarRecords, setSidebarRecords] = useState<SidebarRecord[]>(() =>
+    SIDEBAR_RECORDS_DATA.map((r) => ({ ...r })),
+  );
 
   // Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -187,11 +216,15 @@ export default function InteractiveAppPage() {
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const detailChatRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const detailTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detailTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const segmentIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const segmentIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -202,7 +235,10 @@ export default function InteractiveAppPage() {
   // Outside click for dropdowns
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
         setShowProfileMenu(false);
       }
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
@@ -220,7 +256,8 @@ export default function InteractiveAppPage() {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (detailTypingTimeoutRef.current) clearTimeout(detailTypingTimeoutRef.current);
+      if (detailTypingTimeoutRef.current)
+        clearTimeout(detailTypingTimeoutRef.current);
       if (segmentIntervalRef.current) clearInterval(segmentIntervalRef.current);
       processingTimeoutsRef.current.forEach(clearTimeout);
     };
@@ -228,11 +265,13 @@ export default function InteractiveAppPage() {
 
   // Auto-scroll chat
   useEffect(() => {
-    if (chatMessagesRef.current) chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    if (chatMessagesRef.current)
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
   }, [chatMessages, isTyping]);
 
   useEffect(() => {
-    if (detailChatRef.current) detailChatRef.current.scrollTop = detailChatRef.current.scrollHeight;
+    if (detailChatRef.current)
+      detailChatRef.current.scrollTop = detailChatRef.current.scrollHeight;
   }, [detailChatMessages, isDetailTyping]);
 
   // Segment reveal on result
@@ -242,14 +281,16 @@ export default function InteractiveAppPage() {
       segmentIntervalRef.current = setInterval(() => {
         setShowSegments((prev) => {
           if (prev >= TRANSCRIPT.length) {
-            if (segmentIntervalRef.current) clearInterval(segmentIntervalRef.current);
+            if (segmentIntervalRef.current)
+              clearInterval(segmentIntervalRef.current);
             return prev;
           }
           return prev + 1;
         });
       }, 150);
       return () => {
-        if (segmentIntervalRef.current) clearInterval(segmentIntervalRef.current);
+        if (segmentIntervalRef.current)
+          clearInterval(segmentIntervalRef.current);
       };
     }
     setShowSegments(0);
@@ -260,7 +301,8 @@ export default function InteractiveAppPage() {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "r") {
         e.preventDefault();
-        if (recordPhase === "empty" && activeTab === "records") startRecording();
+        if (recordPhase === "empty" && activeTab === "records")
+          startRecording();
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -281,11 +323,17 @@ export default function InteractiveAppPage() {
     setRecSeconds(0);
     setRecordPhase("recording");
     setViewKey((k) => k + 1);
-    timerRef.current = setInterval(() => setRecSeconds((prev) => prev + 1), 1000);
+    timerRef.current = setInterval(
+      () => setRecSeconds((prev) => prev + 1),
+      1000,
+    );
   }
 
   function stopRecording() {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     setRecordPhase("processing");
     setProcessingStep(0);
     setViewKey((k) => k + 1);
@@ -307,7 +355,9 @@ export default function InteractiveAppPage() {
     processingTimeoutsRef.current.push(finalT);
   }
 
-  function handleFileUpload() { fileInputRef.current?.click(); }
+  function handleFileUpload() {
+    fileInputRef.current?.click();
+  }
 
   function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -323,10 +373,16 @@ export default function InteractiveAppPage() {
   }
 
   function newRecording() {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     processingTimeoutsRef.current.forEach(clearTimeout);
     processingTimeoutsRef.current = [];
-    if (audioIntervalRef.current) { clearInterval(audioIntervalRef.current); audioIntervalRef.current = null; }
+    if (audioIntervalRef.current) {
+      clearInterval(audioIntervalRef.current);
+      audioIntervalRef.current = null;
+    }
     setRecordPhase("empty");
     setRecSeconds(0);
     setProcessingStep(0);
@@ -340,7 +396,10 @@ export default function InteractiveAppPage() {
   function togglePlay() {
     if (isPlaying) {
       setIsPlaying(false);
-      if (audioIntervalRef.current) { clearInterval(audioIntervalRef.current); audioIntervalRef.current = null; }
+      if (audioIntervalRef.current) {
+        clearInterval(audioIntervalRef.current);
+        audioIntervalRef.current = null;
+      }
     } else {
       setIsPlaying(true);
       audioIntervalRef.current = setInterval(() => {
@@ -348,7 +407,10 @@ export default function InteractiveAppPage() {
           const next = prev + 100 / (TOTAL_AUDIO_SECONDS * 10);
           if (next >= 100) {
             setIsPlaying(false);
-            if (audioIntervalRef.current) { clearInterval(audioIntervalRef.current); audioIntervalRef.current = null; }
+            if (audioIntervalRef.current) {
+              clearInterval(audioIntervalRef.current);
+              audioIntervalRef.current = null;
+            }
             return 100;
           }
           return next;
@@ -371,28 +433,43 @@ export default function InteractiveAppPage() {
     setChatInput("");
     setIsTyping(true);
     typingTimeoutRef.current = setTimeout(() => {
-      setChatMessages((prev) => [...prev, { role: "assistant", text: getAiResponse(text) }]);
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: getAiResponse(text) },
+      ]);
       setIsTyping(false);
     }, 1500);
   }
 
   function handleChatKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); sendChatMessage(chatInput); }
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      sendChatMessage(chatInput);
+    }
   }
 
   function sendDetailChat(text: string) {
     if (!text.trim()) return;
-    setDetailChatMessages((prev) => [...prev, { role: "user", text: text.trim() }]);
+    setDetailChatMessages((prev) => [
+      ...prev,
+      { role: "user", text: text.trim() },
+    ]);
     setDetailChatInput("");
     setIsDetailTyping(true);
     detailTypingTimeoutRef.current = setTimeout(() => {
-      setDetailChatMessages((prev) => [...prev, { role: "assistant", text: getAiResponse(text) }]);
+      setDetailChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: getAiResponse(text) },
+      ]);
       setIsDetailTyping(false);
     }, 1500);
   }
 
   function handleDetailChatKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); sendDetailChat(detailChatInput); }
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      sendDetailChat(detailChatInput);
+    }
   }
 
   /* ── Student actions ── */
@@ -416,9 +493,17 @@ export default function InteractiveAppPage() {
     setEditingField(field);
   }
 
-  function handleEditKeyDown(e: React.KeyboardEvent<HTMLInputElement>, _field: "title" | "studentName" | "type") {
-    if (e.key === "Enter") { setEditingField(null); showToast("수정되었습니다"); }
-    if (e.key === "Escape") { setEditingField(null); }
+  function handleEditKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    _field: "title" | "studentName" | "type",
+  ) {
+    if (e.key === "Enter") {
+      setEditingField(null);
+      showToast("수정되었습니다");
+    }
+    if (e.key === "Escape") {
+      setEditingField(null);
+    }
   }
 
   /* ── Modal helpers ── */
@@ -447,7 +532,9 @@ export default function InteractiveAppPage() {
   }
 
   function toggleFormTag(cls: string) {
-    setFormTags((prev) => prev.includes(cls) ? prev.filter((t) => t !== cls) : [...prev, cls]);
+    setFormTags((prev) =>
+      prev.includes(cls) ? prev.filter((t) => t !== cls) : [...prev, cls],
+    );
   }
 
   /* ── Derived data ── */
@@ -457,38 +544,74 @@ export default function InteractiveAppPage() {
   const currentAudioTime = (audioProgress / 100) * TOTAL_AUDIO_SECONDS;
 
   const filteredSidebarRecords = sidebarSearch
-    ? sidebarRecords.filter((r) => r.title.includes(sidebarSearch) || r.studentName.includes(sidebarSearch))
+    ? sidebarRecords.filter(
+        (r) =>
+          r.title.includes(sidebarSearch) ||
+          r.studentName.includes(sidebarSearch),
+      )
     : sidebarRecords;
 
   let filteredStudents = STUDENTS_DATA.filter((s) => {
     if (studentSearch && !s.name.includes(studentSearch)) return false;
-    if (subjectFilter !== "all" && !s.tags.some((t) => t.cls === subjectFilter)) return false;
+    if (subjectFilter !== "all" && !s.tags.some((t) => t.cls === subjectFilter))
+      return false;
     return true;
   });
 
-  if (sortBy === "name") filteredStudents = [...filteredStudents].sort((a, b) => a.name.localeCompare(b.name));
-  else if (sortBy === "recent") filteredStudents = [...filteredStudents].sort((a, b) => b.lastDate.localeCompare(a.lastDate));
-  else if (sortBy === "count") filteredStudents = [...filteredStudents].sort((a, b) => b.counseling - a.counseling);
+  if (sortBy === "name")
+    filteredStudents = [...filteredStudents].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  else if (sortBy === "recent")
+    filteredStudents = [...filteredStudents].sort((a, b) =>
+      b.lastDate.localeCompare(a.lastDate),
+    );
+  else if (sortBy === "count")
+    filteredStudents = [...filteredStudents].sort(
+      (a, b) => b.counseling - a.counseling,
+    );
 
   /* ── Dropdown style ── */
 
   const dropdownStyle: React.CSSProperties = {
-    position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
-    background: "var(--surface2)", border: "1px solid var(--border-light)", borderRadius: "var(--radius)",
-    padding: "6px 0", minWidth: 200, zIndex: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+    position: "absolute",
+    bottom: "calc(100% + 8px)",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "var(--surface2)",
+    border: "1px solid var(--border-light)",
+    borderRadius: "var(--radius)",
+    padding: "6px 0",
+    minWidth: 200,
+    zIndex: 200,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
   };
 
   const dropdownItemStyle: React.CSSProperties = {
-    padding: "8px 16px", fontSize: 12, color: "var(--text-secondary)", cursor: "pointer",
-    display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none",
-    border: "none", textAlign: "left", fontFamily: "inherit",
+    padding: "8px 16px",
+    fontSize: 12,
+    color: "var(--text-secondary)",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    background: "none",
+    border: "none",
+    textAlign: "left",
+    fontFamily: "inherit",
   };
 
   /* ── Copy transcript ── */
 
   function copyTranscript() {
-    const text = TRANSCRIPT.map((s) => `[${s.time}] ${s.label}: ${s.text}`).join("\n");
-    navigator.clipboard.writeText(text).then(() => showToast("전사 원문이 클립보드에 복사되었습니다")).catch(() => showToast("전사 원문이 클립보드에 복사되었습니다"));
+    const text = TRANSCRIPT.map(
+      (s) => `[${s.time}] ${s.label}: ${s.text}`,
+    ).join("\n");
+    navigator.clipboard
+      .writeText(text)
+      .then(() => showToast("전사 원문이 클립보드에 복사되었습니다"))
+      .catch(() => showToast("전사 원문이 클립보드에 복사되었습니다"));
   }
 
   /* ── Render: Typing Indicator ── */
@@ -507,8 +630,13 @@ export default function InteractiveAppPage() {
 
   function renderToggle(on: boolean, onChange: () => void) {
     return (
-      <button className={`${styles.settingsToggle} ${on ? styles.settingsToggleOn : ""} ${styles.btnPress}`} onClick={onChange}>
-        <div className={`${styles.settingsToggleKnob} ${on ? styles.settingsToggleKnobOn : ""}`} />
+      <button
+        className={`${styles.settingsToggle} ${on ? styles.settingsToggleOn : ""} ${styles.btnPress}`}
+        onClick={onChange}
+      >
+        <div
+          className={`${styles.settingsToggleKnob} ${on ? styles.settingsToggleKnobOn : ""}`}
+        />
       </button>
     );
   }
@@ -521,28 +649,40 @@ export default function InteractiveAppPage() {
         <div
           className={`${styles.gnavItem} ${styles.btnPress} ${activeTab === "records" ? styles.gnavItemActive : ""}`}
           title="상담 기록"
-          onClick={() => { setActiveTab("records"); setViewKey((k) => k + 1); }}
+          onClick={() => {
+            setActiveTab("records");
+            setViewKey((k) => k + 1);
+          }}
         >
           <FileText size={16} />
         </div>
         <div
           className={`${styles.gnavItem} ${styles.btnPress} ${activeTab === "students" ? styles.gnavItemActive : ""}`}
           title="학생 관리"
-          onClick={() => { setActiveTab("students"); setViewKey((k) => k + 1); }}
+          onClick={() => {
+            setActiveTab("students");
+            setViewKey((k) => k + 1);
+          }}
         >
           <Users size={16} />
         </div>
         <div
           className={`${styles.gnavItem} ${styles.btnPress} ${activeTab === "dashboard" ? styles.gnavItemActive : ""}`}
           title="대시보드"
-          onClick={() => { setActiveTab("dashboard"); setViewKey((k) => k + 1); }}
+          onClick={() => {
+            setActiveTab("dashboard");
+            setViewKey((k) => k + 1);
+          }}
         >
           <LayoutDashboard size={16} />
         </div>
         <div
           className={`${styles.gnavItem} ${styles.btnPress} ${activeTab === "settings" ? styles.gnavItemActive : ""}`}
           title="설정"
-          onClick={() => { setActiveTab("settings"); setViewKey((k) => k + 1); }}
+          onClick={() => {
+            setActiveTab("settings");
+            setViewKey((k) => k + 1);
+          }}
         >
           <Settings size={16} />
         </div>
@@ -555,7 +695,10 @@ export default function InteractiveAppPage() {
             className={`${styles.gnavItem} ${styles.btnPress}`}
             style={{ position: "relative" }}
             title="알림"
-            onClick={() => { setShowNotifications((v) => !v); setShowProfileMenu(false); }}
+            onClick={() => {
+              setShowNotifications((v) => !v);
+              setShowProfileMenu(false);
+            }}
           >
             <Bell size={16} />
             {unreadCount > 0 && <span className={styles.notifBadge} />}
@@ -566,7 +709,11 @@ export default function InteractiveAppPage() {
                 <span>알림</span>
                 <button
                   className={`${styles.notifMarkRead} ${styles.btnPress}`}
-                  onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))}
+                  onClick={() =>
+                    setNotifications((prev) =>
+                      prev.map((n) => ({ ...n, unread: false })),
+                    )
+                  }
                 >
                   모두 읽음
                 </button>
@@ -577,7 +724,11 @@ export default function InteractiveAppPage() {
                     key={n.id}
                     className={`${styles.notifItem} ${n.unread ? styles.notifItemUnread : ""}`}
                     onClick={() => {
-                      setNotifications((prev) => prev.map((nn) => nn.id === n.id ? { ...nn, unread: false } : nn));
+                      setNotifications((prev) =>
+                        prev.map((nn) =>
+                          nn.id === n.id ? { ...nn, unread: false } : nn,
+                        ),
+                      );
                       setShowNotifications(false);
                       showToast(n.title);
                     }}
@@ -596,32 +747,79 @@ export default function InteractiveAppPage() {
           <div
             className={styles.gnavAvatar}
             style={{ cursor: "pointer" }}
-            onClick={() => { setShowProfileMenu((v) => !v); setShowNotifications(false); }}
+            onClick={() => {
+              setShowProfileMenu((v) => !v);
+              setShowNotifications(false);
+            }}
           >
             최
           </div>
           {showProfileMenu && (
             <div style={dropdownStyle}>
-              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>연세학원</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>최원장 · 원장</div>
-                <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+              <div
+                style={{
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-dim)",
+                    marginBottom: 4,
+                  }}
+                >
+                  연세학원
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--text)",
+                  }}
+                >
+                  최원장 · 원장
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    marginTop: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
                   <Mail size={10} /> wschoi809@naver.com
                 </div>
               </div>
               <button
                 style={dropdownItemStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface3)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-                onClick={() => { showToast("프로필이 수정되었습니다"); setShowProfileMenu(false); }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--surface3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "none";
+                }}
+                onClick={() => {
+                  showToast("프로필이 수정되었습니다");
+                  setShowProfileMenu(false);
+                }}
               >
                 <Edit3 size={14} /> 프로필 수정
               </button>
               <button
                 style={{ ...dropdownItemStyle, color: "var(--red)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface3)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-                onClick={() => { setModal({ type: "logout" }); setShowProfileMenu(false); }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--surface3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "none";
+                }}
+                onClick={() => {
+                  setModal({ type: "logout" });
+                  setShowProfileMenu(false);
+                }}
               >
                 <LogOut size={14} /> 로그아웃
               </button>
@@ -667,27 +865,62 @@ export default function InteractiveAppPage() {
           </div>
           <p className={styles.emptyTitle}>상담을 녹음해 보세요</p>
           <p className={styles.emptyDesc}>
-            녹음하면 AI가 자동으로 전사하고, 학생 이름 · 상담 요약까지 정리합니다.
+            녹음하면 AI가 자동으로 전사하고, 학생 이름 · 상담 요약까지
+            정리합니다.
           </p>
-          <p style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 20 }}>
+          <p
+            style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 20 }}
+          >
             또는 기존 음성 파일을 업로드할 수 있습니다
           </p>
           <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            <button className={`${styles.btnLg} ${styles.btnAccent} ${styles.btnPress}`} onClick={startRecording}>
+            <button
+              className={`${styles.btnLg} ${styles.btnAccent} ${styles.btnPress}`}
+              onClick={startRecording}
+            >
               <Mic size={16} /> 녹음 시작
             </button>
-            <button className={`${styles.btnLg} ${styles.btnOutline} ${styles.btnPress}`} onClick={handleFileUpload}>
+            <button
+              className={`${styles.btnLg} ${styles.btnOutline} ${styles.btnPress}`}
+              onClick={handleFileUpload}
+            >
               <Upload size={16} /> 파일 업로드
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
-            <kbd style={{ padding: "2px 6px", background: "var(--surface3)", borderRadius: 4, border: "1px solid var(--border)", fontSize: 10 }}>⌘</kbd>
+            <kbd
+              style={{
+                padding: "2px 6px",
+                background: "var(--surface3)",
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                fontSize: 10,
+              }}
+            >
+              ⌘
+            </kbd>
             {" + "}
-            <kbd style={{ padding: "2px 6px", background: "var(--surface3)", borderRadius: 4, border: "1px solid var(--border)", fontSize: 10 }}>R</kbd>
+            <kbd
+              style={{
+                padding: "2px 6px",
+                background: "var(--surface3)",
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                fontSize: 10,
+              }}
+            >
+              R
+            </kbd>
             로 빠르게 녹음 시작
           </p>
         </div>
-        <input ref={fileInputRef} type="file" accept="audio/*" className={styles.hiddenInput} onChange={onFileSelected} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className={styles.hiddenInput}
+          onChange={onFileSelected}
+        />
       </div>
     );
   }
@@ -698,7 +931,13 @@ export default function InteractiveAppPage() {
     return (
       <div className={styles.flex1} key={viewKey}>
         <div className={`${styles.emptyState} ${styles.fadeIn}`}>
-          <div className={styles.emptyIconWrap} style={{ background: "var(--red-dim)", borderColor: "rgba(248,113,113,0.2)" }}>
+          <div
+            className={styles.emptyIconWrap}
+            style={{
+              background: "var(--red-dim)",
+              borderColor: "rgba(248,113,113,0.2)",
+            }}
+          >
             <Mic size={30} style={{ color: "var(--red)" }} />
           </div>
           <p className={styles.emptyTitle}>녹음 중입니다</p>
@@ -709,8 +948,13 @@ export default function InteractiveAppPage() {
               <p className={styles.recLabel}>녹음 중</p>
               <p className={styles.recTime}>{formatTime(recSeconds)} 경과</p>
             </div>
-            <button className={`${styles.btnStop} ${styles.btnPress}`} onClick={stopRecording}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <button
+              className={`${styles.btnStop} ${styles.btnPress}`}
+              onClick={stopRecording}
+            >
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
                 <Square size={12} /> 녹음 종료
               </span>
             </button>
@@ -728,12 +972,30 @@ export default function InteractiveAppPage() {
         {PROCESSING_STEPS.map((step, i) => {
           const isDone = processingStep > i;
           const isActive = processingStep === i;
-          const stepClass = [styles.processStep, isDone ? styles.processStepDone : "", isActive ? styles.processStepActive : ""].filter(Boolean).join(" ");
-          const iconClass = [styles.processStepIcon, isDone ? styles.processStepIconDone : "", isActive ? styles.processStepIconActive : ""].filter(Boolean).join(" ");
+          const stepClass = [
+            styles.processStep,
+            isDone ? styles.processStepDone : "",
+            isActive ? styles.processStepActive : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          const iconClass = [
+            styles.processStepIcon,
+            isDone ? styles.processStepIconDone : "",
+            isActive ? styles.processStepIconActive : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
           return (
             <div key={step.label} className={stepClass}>
               <div className={iconClass}>
-                {isDone ? <Check size={12} /> : isActive ? <div className={styles.processStepSpinner} /> : <Circle size={8} />}
+                {isDone ? (
+                  <Check size={12} />
+                ) : isActive ? (
+                  <div className={styles.processStepSpinner} />
+                ) : (
+                  <Circle size={8} />
+                )}
               </div>
               <span>{step.label}</span>
             </div>
@@ -750,16 +1012,31 @@ export default function InteractiveAppPage() {
       <>
         <div className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarTitle}>상담 기록 ({sidebarRecords.length})</span>
-            <button className={`${styles.btnNew} ${styles.btnPress}`} onClick={newRecording}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={12} /> 새 녹음</span>
+            <span className={styles.sidebarTitle}>
+              상담 기록 ({sidebarRecords.length})
+            </span>
+            <button
+              className={`${styles.btnNew} ${styles.btnPress}`}
+              onClick={newRecording}
+            >
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <Plus size={12} /> 새 녹음
+              </span>
             </button>
           </div>
           <div className={styles.sidebarList}>
-            <div className={`${styles.sidebarItem} ${styles.sidebarItemActive} ${styles.sidebarItemProcessing}`}>
-              <div className={styles.sidebarItemTitle}>녹음 2026.04.08 03:46</div>
+            <div
+              className={`${styles.sidebarItem} ${styles.sidebarItemActive} ${styles.sidebarItemProcessing}`}
+            >
+              <div className={styles.sidebarItemTitle}>
+                녹음 2026.04.08 03:46
+              </div>
               <div className={styles.sidebarItemMeta}>
-                <span className={`${styles.statusBadge} ${styles.statusProcessing}`}>
+                <span
+                  className={`${styles.statusBadge} ${styles.statusProcessing}`}
+                >
                   <Circle size={8} fill="currentColor" /> 전사 중
                 </span>
                 {recSeconds > 0 ? formatTime(recSeconds) : "2분 34초"}
@@ -771,26 +1048,50 @@ export default function InteractiveAppPage() {
           <div className={styles.centerHeader}>
             <div>
               <p className={styles.centerTitle}>녹음 2026.04.08 03:46</p>
-              <p className={styles.centerMeta}>{recSeconds > 0 ? formatTime(recSeconds) : "2분 34초"} · 전사 처리 중</p>
+              <p className={styles.centerMeta}>
+                {recSeconds > 0 ? formatTime(recSeconds) : "2분 34초"} · 전사
+                처리 중
+              </p>
             </div>
           </div>
           <div className={styles.processingState}>
             <div className={styles.spinner} />
-            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>음성을 분석하고 있습니다</p>
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>보통 1~2분 이내 완료</p>
+            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
+              음성을 분석하고 있습니다
+            </p>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                marginBottom: 8,
+              }}
+            >
+              보통 1~2분 이내 완료
+            </p>
             {renderProcessingStepsUI()}
           </div>
         </div>
         <div className={styles.aiPanel}>
           <div className={styles.aiHeader}>
-            <span className={`${styles.aiHeaderDot} ${styles.aiHeaderDotAmber}`} />
+            <span
+              className={`${styles.aiHeaderDot} ${styles.aiHeaderDotAmber}`}
+            />
             AI 어시스턴트
           </div>
           <div className={styles.aiMessages}>
-            <div className={`${styles.aiMsg} ${styles.aiMsgSystem}`}>전사가 완료되면 자동으로<br />상담 요약을 생성합니다</div>
+            <div className={`${styles.aiMsg} ${styles.aiMsgSystem}`}>
+              전사가 완료되면 자동으로
+              <br />
+              상담 요약을 생성합니다
+            </div>
           </div>
           <div className={styles.aiInputWrap}>
-            <input className={styles.aiInput} placeholder="전사 완료 후 질문 가능" disabled style={{ opacity: 0.5 }} />
+            <input
+              className={styles.aiInput}
+              placeholder="전사 완료 후 질문 가능"
+              disabled
+              style={{ opacity: 0.5 }}
+            />
           </div>
         </div>
       </>
@@ -805,9 +1106,18 @@ export default function InteractiveAppPage() {
         {/* Sidebar */}
         <div className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarTitle}>상담 기록 ({sidebarRecords.length})</span>
-            <button className={`${styles.btnNew} ${styles.btnPress}`} onClick={newRecording}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={12} /> 새 녹음</span>
+            <span className={styles.sidebarTitle}>
+              상담 기록 ({sidebarRecords.length})
+            </span>
+            <button
+              className={`${styles.btnNew} ${styles.btnPress}`}
+              onClick={newRecording}
+            >
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <Plus size={12} /> 새 녹음
+              </span>
             </button>
           </div>
           <input
@@ -823,19 +1133,37 @@ export default function InteractiveAppPage() {
                 className={[
                   styles.sidebarItem,
                   item.id === activeRecordId ? styles.sidebarItemActive : "",
-                  item.status === "processing" ? styles.sidebarItemProcessing : "",
-                ].filter(Boolean).join(" ")}
+                  item.status === "processing"
+                    ? styles.sidebarItemProcessing
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onClick={() => {
                   setActiveRecordId(item.id);
                   if (item.status === "ready") {
-                    setEditValues({ title: item.title, studentName: item.studentName, type: item.type || "대면 상담" });
+                    setEditValues({
+                      title: item.title,
+                      studentName: item.studentName,
+                      type: item.type || "대면 상담",
+                    });
                   }
                 }}
               >
                 <div className={styles.sidebarItemTitle}>{item.title}</div>
                 <div className={styles.sidebarItemMeta}>
-                  <span className={`${styles.statusBadge} ${item.status === "ready" ? styles.statusReady : styles.statusProcessing}`}>
-                    {item.status === "ready" ? <><Check size={10} /> 완료</> : <><Circle size={8} fill="currentColor" /> 전사 중</>}
+                  <span
+                    className={`${styles.statusBadge} ${item.status === "ready" ? styles.statusReady : styles.statusProcessing}`}
+                  >
+                    {item.status === "ready" ? (
+                      <>
+                        <Check size={10} /> 완료
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={8} fill="currentColor" /> 전사 중
+                      </>
+                    )}
                   </span>
                   {item.meta}
                 </div>
@@ -845,7 +1173,10 @@ export default function InteractiveAppPage() {
         </div>
 
         {/* Center */}
-        <div className={`${styles.center} ${styles.fadeIn}`} key={`${viewKey}-${activeRecordId}`}>
+        <div
+          className={`${styles.center} ${styles.fadeIn}`}
+          key={`${viewKey}-${activeRecordId}`}
+        >
           <div className={styles.centerHeader}>
             <div>
               <p className={styles.centerTitle}>
@@ -853,13 +1184,20 @@ export default function InteractiveAppPage() {
                   <input
                     className={styles.inlineEdit}
                     value={editValues.title}
-                    onChange={(e) => setEditValues((v) => ({ ...v, title: e.target.value }))}
+                    onChange={(e) =>
+                      setEditValues((v) => ({ ...v, title: e.target.value }))
+                    }
                     onKeyDown={(e) => handleEditKeyDown(e, "title")}
                     onBlur={() => setEditingField(null)}
                     autoFocus
                   />
                 ) : (
-                  <span className={styles.editable} onClick={() => startEditing("title")}>{editValues.title}</span>
+                  <span
+                    className={styles.editable}
+                    onClick={() => startEditing("title")}
+                  >
+                    {editValues.title}
+                  </span>
                 )}
               </p>
               <p className={styles.centerMeta}>
@@ -868,13 +1206,23 @@ export default function InteractiveAppPage() {
                     className={styles.inlineEdit}
                     style={{ fontSize: 11 }}
                     value={editValues.studentName}
-                    onChange={(e) => setEditValues((v) => ({ ...v, studentName: e.target.value }))}
+                    onChange={(e) =>
+                      setEditValues((v) => ({
+                        ...v,
+                        studentName: e.target.value,
+                      }))
+                    }
                     onKeyDown={(e) => handleEditKeyDown(e, "studentName")}
                     onBlur={() => setEditingField(null)}
                     autoFocus
                   />
                 ) : (
-                  <span className={styles.editable} onClick={() => startEditing("studentName")}>{editValues.studentName}</span>
+                  <span
+                    className={styles.editable}
+                    onClick={() => startEditing("studentName")}
+                  >
+                    {editValues.studentName}
+                  </span>
                 )}
                 {" · "}
                 {editingField === "type" ? (
@@ -882,25 +1230,46 @@ export default function InteractiveAppPage() {
                     className={styles.inlineEdit}
                     style={{ fontSize: 11 }}
                     value={editValues.type}
-                    onChange={(e) => setEditValues((v) => ({ ...v, type: e.target.value }))}
+                    onChange={(e) =>
+                      setEditValues((v) => ({ ...v, type: e.target.value }))
+                    }
                     onKeyDown={(e) => handleEditKeyDown(e, "type")}
                     onBlur={() => setEditingField(null)}
                     autoFocus
                   />
                 ) : (
-                  <span className={styles.editable} onClick={() => startEditing("type")}>{editValues.type}</span>
+                  <span
+                    className={styles.editable}
+                    onClick={() => startEditing("type")}
+                  >
+                    {editValues.type}
+                  </span>
                 )}
                 {" · "}
                 {activeRecord?.duration ?? "2분 34초"} · 원문 완료
               </p>
             </div>
             <div className={styles.centerActions}>
-              <button className={`${styles.iconBtn} ${styles.btnPress}`} title="음성 재생" onClick={togglePlay}><Volume2 size={14} /></button>
-              <button className={`${styles.iconBtn} ${styles.btnPress}`} title="복사" onClick={copyTranscript}><Copy size={14} /></button>
+              <button
+                className={`${styles.iconBtn} ${styles.btnPress}`}
+                title="음성 재생"
+                onClick={togglePlay}
+              >
+                <Volume2 size={14} />
+              </button>
+              <button
+                className={`${styles.iconBtn} ${styles.btnPress}`}
+                title="복사"
+                onClick={copyTranscript}
+              >
+                <Copy size={14} />
+              </button>
               <button
                 className={`${styles.iconBtn} ${styles.iconRed} ${styles.btnPress}`}
                 title="삭제"
-                onClick={() => setModal({ type: "deleteRecord", recordId: activeRecordId })}
+                onClick={() =>
+                  setModal({ type: "deleteRecord", recordId: activeRecordId })
+                }
               >
                 <Trash2 size={14} />
               </button>
@@ -909,21 +1278,42 @@ export default function InteractiveAppPage() {
           <div className={styles.centerBody}>
             {/* Audio player */}
             <div className={styles.audioPlayer}>
-              <button className={`${styles.playBtn} ${styles.btnPress}`} onClick={togglePlay}>
+              <button
+                className={`${styles.playBtn} ${styles.btnPress}`}
+                onClick={togglePlay}
+              >
                 {isPlaying ? <Pause size={12} /> : <Play size={12} />}
               </button>
-              <span className={styles.audioTime}>{formatAudioTime(currentAudioTime)}</span>
-              <div className={`${styles.audioTrack} ${styles.audioTrackInteractive}`} onClick={handleTrackClick}>
-                <div className={styles.audioTrackFill} style={{ width: `${audioProgress}%` }} />
+              <span className={styles.audioTime}>
+                {formatAudioTime(currentAudioTime)}
+              </span>
+              <div
+                className={`${styles.audioTrack} ${styles.audioTrackInteractive}`}
+                onClick={handleTrackClick}
+              >
+                <div
+                  className={styles.audioTrackFill}
+                  style={{ width: `${audioProgress}%` }}
+                />
               </div>
-              <span className={styles.audioTime}>{formatAudioTime(TOTAL_AUDIO_SECONDS)}</span>
+              <span className={styles.audioTime}>
+                {formatAudioTime(TOTAL_AUDIO_SECONDS)}
+              </span>
             </div>
 
             {/* Transcript */}
             {TRANSCRIPT.slice(0, showSegments).map((seg, i) => (
-              <div key={i} className={`${styles.segment} ${styles.segmentReveal}`} style={{ animationDelay: `${i * 0.05}s` }}>
+              <div
+                key={i}
+                className={`${styles.segment} ${styles.segmentReveal}`}
+                style={{ animationDelay: `${i * 0.05}s` }}
+              >
                 <span className={styles.segTime}>{seg.time}</span>
-                <span className={`${styles.segSpeaker} ${seg.speaker === "teacher" ? styles.segTeacher : styles.segStudent}`}>{seg.label}</span>
+                <span
+                  className={`${styles.segSpeaker} ${seg.speaker === "teacher" ? styles.segTeacher : styles.segStudent}`}
+                >
+                  {seg.label}
+                </span>
                 <span className={styles.segText}>{seg.text}</span>
               </div>
             ))}
@@ -937,25 +1327,39 @@ export default function InteractiveAppPage() {
             AI 어시스턴트
           </div>
           <div className={`${styles.aiSummary} ${styles.aiSummaryShimmer}`}>
-            <div className={styles.aiSummaryBadge}><Sparkles size={12} /> AI 상담 요약</div>
+            <div className={styles.aiSummaryBadge}>
+              <Sparkles size={12} /> AI 상담 요약
+            </div>
             <div className={styles.aiKv}>
               <span className={styles.aiKvLabel}>핵심</span>
-              <span className={styles.aiKvValue}>학원 일정 과밀로 과제 시간 부족</span>
+              <span className={styles.aiKvValue}>
+                학원 일정 과밀로 과제 시간 부족
+              </span>
             </div>
             <div className={styles.aiKv}>
               <span className={styles.aiKvLabel}>합의</span>
-              <span className={styles.aiKvValue}>과제 제출 기한 익일 오전으로 조정</span>
+              <span className={styles.aiKvValue}>
+                과제 제출 기한 익일 오전으로 조정
+              </span>
             </div>
             <div className={styles.aiDivider} />
             <div className={styles.aiSummaryText}>
-              학원 일정(주 5회)으로 인한 과제 시간 부족이 핵심 원인입니다. 과제 제출 기한을 익일 오전으로 조정하기로 합의했으며, 2주간 적용 후 학습 루틴을 재점검할 예정입니다.
+              학원 일정(주 5회)으로 인한 과제 시간 부족이 핵심 원인입니다. 과제
+              제출 기한을 익일 오전으로 조정하기로 합의했으며, 2주간 적용 후
+              학습 루틴을 재점검할 예정입니다.
             </div>
           </div>
           <div className={styles.aiMessages} ref={chatMessagesRef}>
             {chatMessages.map((msg, i) => (
-              <div key={i} className={`${styles.aiMsg} ${msg.role === "user" ? styles.aiMsgUser : styles.aiMsgAssistant}`}>
+              <div
+                key={i}
+                className={`${styles.aiMsg} ${msg.role === "user" ? styles.aiMsgUser : styles.aiMsgAssistant}`}
+              >
                 {msg.text.split("\n").map((line, j) => (
-                  <span key={j}>{line}<br /></span>
+                  <span key={j}>
+                    {line}
+                    <br />
+                  </span>
                 ))}
               </div>
             ))}
@@ -963,7 +1367,11 @@ export default function InteractiveAppPage() {
           </div>
           <div className={styles.aiQuick}>
             {AI_QUICK_CHIPS.map((chip) => (
-              <button key={chip} className={`${styles.aiChip} ${styles.btnPress}`} onClick={() => sendChatMessage(chip)}>
+              <button
+                key={chip}
+                className={`${styles.aiChip} ${styles.btnPress}`}
+                onClick={() => sendChatMessage(chip)}
+              >
                 {chip}
               </button>
             ))}
@@ -1008,11 +1416,22 @@ export default function InteractiveAppPage() {
         <div className={styles.studentPageHeader}>
           <div>
             <div className={styles.studentPageHeaderTitle}>학생 관리</div>
-            <div className={styles.studentPageHeaderSub}>{STUDENTS_DATA.length}명의 학생</div>
+            <div className={styles.studentPageHeaderSub}>
+              {STUDENTS_DATA.length}명의 학생
+            </div>
           </div>
           <div className={styles.studentHeaderActions}>
             <div style={{ position: "relative" }}>
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }} />
+              <Search
+                size={14}
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-dim)",
+                }}
+              />
               <input
                 className={styles.sidebarSearch}
                 style={{ paddingLeft: 30, width: 200 }}
@@ -1021,8 +1440,15 @@ export default function InteractiveAppPage() {
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
             </div>
-            <button className={`${styles.btnNew} ${styles.btnPress}`} onClick={() => openStudentForm()}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><UserPlus size={12} /> 학생 추가</span>
+            <button
+              className={`${styles.btnNew} ${styles.btnPress}`}
+              onClick={() => openStudentForm()}
+            >
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <UserPlus size={12} /> 학생 추가
+              </span>
             </button>
           </div>
         </div>
@@ -1052,11 +1478,18 @@ export default function InteractiveAppPage() {
             </button>
           ))}
           <div className={styles.filterSep} />
-          <button className={`${styles.sortBtn} ${styles.btnPress}`} onClick={() => {
-            const opts: Array<"name" | "recent" | "count"> = ["name", "recent", "count"];
-            const idx = opts.indexOf(sortBy);
-            setSortBy(opts[(idx + 1) % opts.length]);
-          }}>
+          <button
+            className={`${styles.sortBtn} ${styles.btnPress}`}
+            onClick={() => {
+              const opts: Array<"name" | "recent" | "count"> = [
+                "name",
+                "recent",
+                "count",
+              ];
+              const idx = opts.indexOf(sortBy);
+              setSortBy(opts[(idx + 1) % opts.length]);
+            }}
+          >
             <ArrowUpDown size={12} />
             {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
           </button>
@@ -1080,9 +1513,18 @@ export default function InteractiveAppPage() {
         {viewMode === "card" ? (
           <div className={styles.studentGrid}>
             {filteredStudents.map((s) => (
-              <div key={s.id} className={`${styles.studentCard} ${styles.btnPress}`} onClick={() => selectStudent(s.id)}>
+              <div
+                key={s.id}
+                className={`${styles.studentCard} ${styles.btnPress}`}
+                onClick={() => selectStudent(s.id)}
+              >
                 <div className={styles.studentCardHeader}>
-                  <div className={styles.studentAvatar} style={{ background: s.gradient }}>{s.initial}</div>
+                  <div
+                    className={styles.studentAvatar}
+                    style={{ background: s.gradient }}
+                  >
+                    {s.initial}
+                  </div>
                   <div>
                     <div className={styles.studentName}>{s.name}</div>
                     <div className={styles.studentSub}>
@@ -1092,13 +1534,20 @@ export default function InteractiveAppPage() {
                 </div>
                 <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
                   {s.tags.map((tag) => (
-                    <span key={tag.cls} className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}>{tag.label}</span>
+                    <span
+                      key={tag.cls}
+                      className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}
+                    >
+                      {tag.label}
+                    </span>
                   ))}
                 </div>
                 <div className={styles.studentStats}>
                   <div>
                     <div className={styles.studentStatLabel}>총 상담</div>
-                    <div className={styles.studentStatValue}>{s.counseling}</div>
+                    <div className={styles.studentStatValue}>
+                      {s.counseling}
+                    </div>
                   </div>
                   <div>
                     <div className={styles.studentStatLabel}>이번 달</div>
@@ -1115,12 +1564,26 @@ export default function InteractiveAppPage() {
         ) : (
           <div className={styles.studentListView}>
             {filteredStudents.map((s) => (
-              <div key={s.id} className={`${styles.studentListRow} ${styles.btnPress}`} onClick={() => selectStudent(s.id)}>
-                <div className={styles.studentListAvatar} style={{ background: s.gradient }}>{s.initial}</div>
+              <div
+                key={s.id}
+                className={`${styles.studentListRow} ${styles.btnPress}`}
+                onClick={() => selectStudent(s.id)}
+              >
+                <div
+                  className={styles.studentListAvatar}
+                  style={{ background: s.gradient }}
+                >
+                  {s.initial}
+                </div>
                 <div className={styles.studentListName}>{s.name}</div>
                 <div style={{ display: "flex", gap: 4 }}>
                   {s.tags.map((tag) => (
-                    <span key={tag.cls} className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}>{tag.label}</span>
+                    <span
+                      key={tag.cls}
+                      className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}
+                    >
+                      {tag.label}
+                    </span>
                   ))}
                 </div>
                 <div className={styles.studentListMeta}>
@@ -1144,37 +1607,63 @@ export default function InteractiveAppPage() {
     const s = selectedStudent;
     return (
       <div className={styles.flex1} key={viewKey}>
-        <div className={`${styles.flexCol} ${styles.fadeIn}`} style={{ flex: 1 }}>
+        <div
+          className={`${styles.flexCol} ${styles.fadeIn}`}
+          style={{ flex: 1 }}
+        >
           {/* Breadcrumb */}
           <div className={styles.breadcrumb}>
-            <span className={`${styles.breadcrumbLink} ${styles.btnPress}`} onClick={backToStudentList}>
+            <span
+              className={`${styles.breadcrumbLink} ${styles.btnPress}`}
+              onClick={backToStudentList}
+            >
               <ArrowLeft size={14} style={{ marginRight: 4 }} />
               학생 관리
             </span>
-            <span className={styles.breadcrumbSep}><ChevronRight size={10} /></span>
+            <span className={styles.breadcrumbSep}>
+              <ChevronRight size={10} />
+            </span>
             <span className={styles.breadcrumbCurrent}>{s.name}</span>
           </div>
 
           {/* Header */}
           <div className={styles.studentDetailHeader}>
-            <div className={styles.studentDetailAvatar} style={{ background: s.gradient }}>{s.initial}</div>
+            <div
+              className={styles.studentDetailAvatar}
+              style={{ background: s.gradient }}
+            >
+              {s.initial}
+            </div>
             <div style={{ flex: 1 }}>
               <div className={styles.studentDetailName}>{s.name}</div>
               <div className={styles.studentDetailSub}>
                 {s.tags.map((tag) => (
-                  <span key={tag.cls} className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}>{tag.label}</span>
+                  <span
+                    key={tag.cls}
+                    className={`${styles.tagSm} ${TAG_STYLE_MAP[tag.cls] ?? ""}`}
+                  >
+                    {tag.label}
+                  </span>
                 ))}
-                <span style={{ marginLeft: 4 }}>{s.grade} · {s.registered} 등록</span>
+                <span style={{ marginLeft: 4 }}>
+                  {s.grade} · {s.registered} 등록
+                </span>
               </div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className={`${styles.iconBtn} ${styles.btnPress}`} title="수정" onClick={() => openStudentForm(s.id)}>
+              <button
+                className={`${styles.iconBtn} ${styles.btnPress}`}
+                title="수정"
+                onClick={() => openStudentForm(s.id)}
+              >
                 <Edit3 size={14} />
               </button>
               <button
                 className={`${styles.iconBtn} ${styles.iconRed} ${styles.btnPress}`}
                 title="삭제"
-                onClick={() => setModal({ type: "deleteStudent", studentId: s.id })}
+                onClick={() =>
+                  setModal({ type: "deleteStudent", studentId: s.id })
+                }
               >
                 <Trash2 size={14} />
               </button>
@@ -1185,11 +1674,17 @@ export default function InteractiveAppPage() {
           <div className={styles.studentDetailStats}>
             <div>
               <div className={styles.sdsLabel}>총 상담</div>
-              <div className={styles.sdsValue}>{s.counseling}<span className={styles.sdsUnit}>회</span></div>
+              <div className={styles.sdsValue}>
+                {s.counseling}
+                <span className={styles.sdsUnit}>회</span>
+              </div>
             </div>
             <div>
               <div className={styles.sdsLabel}>이번 달</div>
-              <div className={styles.sdsValue}>{s.thisMonth}<span className={styles.sdsUnit}>회</span></div>
+              <div className={styles.sdsValue}>
+                {s.thisMonth}
+                <span className={styles.sdsUnit}>회</span>
+              </div>
             </div>
             <div>
               <div className={styles.sdsLabel}>마지막 상담</div>
@@ -1258,15 +1753,38 @@ export default function InteractiveAppPage() {
                 style={{ marginBottom: 12 }}
                 onClick={() => setModal({ type: "addMemo", studentId: s.id })}
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={12} /> 메모 추가</span>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <Plus size={12} /> 메모 추가
+                </span>
               </button>
               {/* eslint-disable-next-line no-restricted-syntax */}
               {s.memos.length === 0 && (
-                <div style={{ padding: 24, textAlign: "center", fontSize: 12, color: "var(--text-dim)" }}>메모가 없습니다</div>
+                <div
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    fontSize: 12,
+                    color: "var(--text-dim)",
+                  }}
+                >
+                  메모가 없습니다
+                </div>
               )}
               {s.memos.map((m) => (
                 <div key={m.id} className={styles.memoCard}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <div className={styles.memoDate}>{m.date}</div>
                     <button
                       className={`${styles.iconBtn} ${styles.btnPress}`}
@@ -1290,8 +1808,13 @@ export default function InteractiveAppPage() {
             AI 종합 분석
           </div>
           <div className={styles.aiSummary}>
-            <div className={styles.aiSummaryBadge}><Sparkles size={12} /> {s.name} 종합 리포트</div>
-            <div className={styles.aiSummaryText} dangerouslySetInnerHTML={{ __html: s.aiReport }} />
+            <div className={styles.aiSummaryBadge}>
+              <Sparkles size={12} /> {s.name} 종합 리포트
+            </div>
+            <div
+              className={styles.aiSummaryText}
+              dangerouslySetInnerHTML={{ __html: s.aiReport }}
+            />
           </div>
           <div className={styles.aiMessages} ref={detailChatRef}>
             {/* eslint-disable-next-line no-restricted-syntax */}
@@ -1301,17 +1824,32 @@ export default function InteractiveAppPage() {
               </div>
             )}
             {detailChatMessages.map((msg, i) => (
-              <div key={i} className={`${styles.aiMsg} ${msg.role === "user" ? styles.aiMsgUser : styles.aiMsgAssistant}`}>
+              <div
+                key={i}
+                className={`${styles.aiMsg} ${msg.role === "user" ? styles.aiMsgUser : styles.aiMsgAssistant}`}
+              >
                 {msg.text.split("\n").map((line, j) => (
-                  <span key={j}>{line}<br /></span>
+                  <span key={j}>
+                    {line}
+                    <br />
+                  </span>
                 ))}
               </div>
             ))}
             {isDetailTyping && renderTypingIndicator()}
           </div>
           <div className={styles.aiQuick}>
-            {["학습 패턴 분석", "보호자 안내 문자", "후속 조치 목록", "추천 학습 루틴"].map((chip) => (
-              <button key={chip} className={`${styles.aiChip} ${styles.btnPress}`} onClick={() => sendDetailChat(chip)}>
+            {[
+              "학습 패턴 분석",
+              "보호자 안내 문자",
+              "후속 조치 목록",
+              "추천 학습 루틴",
+            ].map((chip) => (
+              <button
+                key={chip}
+                className={`${styles.aiChip} ${styles.btnPress}`}
+                onClick={() => sendDetailChat(chip)}
+              >
                 {chip}
               </button>
             ))}
@@ -1325,7 +1863,11 @@ export default function InteractiveAppPage() {
                 onChange={(e) => setDetailChatInput(e.target.value)}
                 onKeyDown={handleDetailChatKeyDown}
               />
-              <button className={`${styles.btnNew} ${styles.btnPress}`} style={{ padding: "8px 12px", flexShrink: 0 }} onClick={() => sendDetailChat(detailChatInput)}>
+              <button
+                className={`${styles.btnNew} ${styles.btnPress}`}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+                onClick={() => sendDetailChat(detailChatInput)}
+              >
                 <Send size={14} />
               </button>
             </div>
@@ -1347,35 +1889,105 @@ export default function InteractiveAppPage() {
   function renderDashboard() {
     return (
       <div className={`${styles.dashPage} ${styles.fadeIn}`} key={viewKey}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, letterSpacing: -0.3 }}>대시보드</h2>
+        <h2
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            marginBottom: 20,
+            letterSpacing: -0.3,
+          }}
+        >
+          대시보드
+        </h2>
 
         {/* Stats cards */}
         <div className={styles.dashGrid}>
           <div className={styles.dashCard}>
-            <div className={styles.dashCardLabel}><Clock size={12} /> 오늘 상담</div>
-            <div className={styles.dashCardValue}>{DASHBOARD_STATS.todayCounseling}<span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>건</span></div>
-            <div className={styles.dashCardSub}><TrendingUp size={10} /> 어제 대비 +2</div>
+            <div className={styles.dashCardLabel}>
+              <Clock size={12} /> 오늘 상담
+            </div>
+            <div className={styles.dashCardValue}>
+              {DASHBOARD_STATS.todayCounseling}
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: "var(--text-dim)",
+                }}
+              >
+                건
+              </span>
+            </div>
+            <div className={styles.dashCardSub}>
+              <TrendingUp size={10} /> 어제 대비 +2
+            </div>
           </div>
           <div className={styles.dashCard}>
-            <div className={styles.dashCardLabel}><Users size={12} /> 전체 학생</div>
-            <div className={styles.dashCardValue}>{DASHBOARD_STATS.totalStudents}<span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>명</span></div>
+            <div className={styles.dashCardLabel}>
+              <Users size={12} /> 전체 학생
+            </div>
+            <div className={styles.dashCardValue}>
+              {DASHBOARD_STATS.totalStudents}
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: "var(--text-dim)",
+                }}
+              >
+                명
+              </span>
+            </div>
           </div>
           <div className={styles.dashCard}>
-            <div className={styles.dashCardLabel}><Mic size={12} /> 이번 주 녹음</div>
-            <div className={styles.dashCardValue}>{DASHBOARD_STATS.weeklyRecordingHours}<span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>시간</span></div>
+            <div className={styles.dashCardLabel}>
+              <Mic size={12} /> 이번 주 녹음
+            </div>
+            <div className={styles.dashCardValue}>
+              {DASHBOARD_STATS.weeklyRecordingHours}
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: "var(--text-dim)",
+                }}
+              >
+                시간
+              </span>
+            </div>
           </div>
           <div className={styles.dashCard}>
-            <div className={styles.dashCardLabel}><AlertTriangle size={12} /> 후속 조치 대기</div>
-            <div className={styles.dashCardValue}>{DASHBOARD_STATS.pendingFollowUps}<span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-dim)" }}>건</span></div>
+            <div className={styles.dashCardLabel}>
+              <AlertTriangle size={12} /> 후속 조치 대기
+            </div>
+            <div className={styles.dashCardValue}>
+              {DASHBOARD_STATS.pendingFollowUps}
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: "var(--text-dim)",
+                }}
+              >
+                건
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Weekly chart */}
         <div className={styles.dashSection}>
-          <div className={styles.dashSectionTitle}><BarChart3 size={14} style={{ marginRight: 6 }} />주간 상담 현황</div>
+          <div className={styles.dashSectionTitle}>
+            <BarChart3 size={14} style={{ marginRight: 6 }} />
+            주간 상담 현황
+          </div>
           <div className={styles.dashBarChart}>
             {DASHBOARD_WEEKLY_CHART.map((d) => (
-              <div key={d.day} className={styles.dashBar} style={{ height: `${d.value}%` }}>
+              <div
+                key={d.day}
+                className={styles.dashBar}
+                style={{ height: `${d.value}%` }}
+              >
                 <div className={styles.dashBarLabel}>{d.day}</div>
               </div>
             ))}
@@ -1396,11 +2008,18 @@ export default function InteractiveAppPage() {
                   setRecordPhase("result");
                   setActiveRecordId("rec1");
                   setViewKey((k) => k + 1);
-                  showToast(`${item.studentName} · ${item.title} 기록으로 이동`);
+                  showToast(
+                    `${item.studentName} · ${item.title} 기록으로 이동`,
+                  );
                 }}
               >
-                <div className={styles.dashRecentDot} style={{ background: item.color }} />
-                <div className={styles.dashRecentTitle}>{item.studentName} · {item.title}</div>
+                <div
+                  className={styles.dashRecentDot}
+                  style={{ background: item.color }}
+                />
+                <div className={styles.dashRecentTitle}>
+                  {item.studentName} · {item.title}
+                </div>
                 <div className={styles.dashRecentMeta}>{item.date}</div>
               </div>
             ))}
@@ -1409,25 +2028,46 @@ export default function InteractiveAppPage() {
 
         {/* Attention needed */}
         <div className={styles.dashSection}>
-          <div className={styles.dashSectionTitle}><AlertTriangle size={14} style={{ marginRight: 6, color: "var(--amber)" }} />주의 필요 학생</div>
+          <div className={styles.dashSectionTitle}>
+            <AlertTriangle
+              size={14}
+              style={{ marginRight: 6, color: "var(--amber)" }}
+            />
+            주의 필요 학생
+          </div>
           {DASHBOARD_ALERTS.map((a, i) => (
             <div
               key={i}
               className={`${styles.dashAlertCard} ${styles.btnPress}`}
               onClick={() => {
-                const student = STUDENTS_DATA.find((s) => s.name === a.studentName);
+                const student = STUDENTS_DATA.find(
+                  (s) => s.name === a.studentName,
+                );
                 if (student) {
                   setActiveTab("students");
                   selectStudent(student.id);
                 }
               }}
             >
-              <div className={styles.studentAvatar} style={{ background: a.gradient, width: 32, height: 32, fontSize: 12 }}>{a.initial}</div>
+              <div
+                className={styles.studentAvatar}
+                style={{
+                  background: a.gradient,
+                  width: 32,
+                  height: 32,
+                  fontSize: 12,
+                }}
+              >
+                {a.initial}
+              </div>
               <div>
                 <div className={styles.dashAlertName}>{a.studentName}</div>
                 <div className={styles.dashAlertReason}>{a.reason}</div>
               </div>
-              <ChevronRight size={14} style={{ color: "var(--text-dim)", marginLeft: "auto" }} />
+              <ChevronRight
+                size={14}
+                style={{ color: "var(--text-dim)", marginLeft: "auto" }}
+              />
             </div>
           ))}
         </div>
@@ -1440,25 +2080,45 @@ export default function InteractiveAppPage() {
   function renderSettings() {
     return (
       <div className={`${styles.settingsPage} ${styles.fadeIn}`} key={viewKey}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, letterSpacing: -0.3 }}>설정</h2>
+        <h2
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            marginBottom: 24,
+            letterSpacing: -0.3,
+          }}
+        >
+          설정
+        </h2>
 
         {/* Academy info */}
         <div className={styles.settingsSection}>
-          <div className={styles.settingsSectionTitle}><Building size={15} /> 학원 정보</div>
+          <div className={styles.settingsSectionTitle}>
+            <Building size={15} /> 학원 정보
+          </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>학원명</div></div>
+            <div>
+              <div className={styles.settingsRowLabel}>학원명</div>
+            </div>
             <div className={styles.settingsRowValue}>연세학원</div>
           </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>전화번호</div></div>
+            <div>
+              <div className={styles.settingsRowLabel}>전화번호</div>
+            </div>
             <div className={styles.settingsRowValue}>02-1234-5678</div>
           </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>대표 이메일</div></div>
+            <div>
+              <div className={styles.settingsRowLabel}>대표 이메일</div>
+            </div>
             <div className={styles.settingsRowValue}>wschoi809@naver.com</div>
           </div>
           <div style={{ marginTop: 12 }}>
-            <button className={`${styles.settingsBtn} ${styles.btnPress}`} onClick={() => showToast("학원 정보가 수정되었습니다")}>
+            <button
+              className={`${styles.settingsBtn} ${styles.btnPress}`}
+              onClick={() => showToast("학원 정보가 수정되었습니다")}
+            >
               학원 정보 수정
             </button>
           </div>
@@ -1466,39 +2126,59 @@ export default function InteractiveAppPage() {
 
         {/* Notifications */}
         <div className={styles.settingsSection}>
-          <div className={styles.settingsSectionTitle}><Bell size={15} /> 알림</div>
+          <div className={styles.settingsSectionTitle}>
+            <Bell size={15} /> 알림
+          </div>
           <div className={styles.settingsRow}>
             <div>
               <div className={styles.settingsRowLabel}>전체 알림</div>
               <div className={styles.settingsRowDesc}>모든 알림을 받습니다</div>
             </div>
-            {renderToggle(settingsNotifAll, () => setSettingsNotifAll((v) => !v))}
+            {renderToggle(settingsNotifAll, () =>
+              setSettingsNotifAll((v) => !v),
+            )}
           </div>
           <div className={styles.settingsRow}>
             <div>
               <div className={styles.settingsRowLabel}>전사 완료 알림</div>
-              <div className={styles.settingsRowDesc}>녹음 전사가 완료되면 알림</div>
+              <div className={styles.settingsRowDesc}>
+                녹음 전사가 완료되면 알림
+              </div>
             </div>
-            {renderToggle(settingsNotifTranscript, () => setSettingsNotifTranscript((v) => !v))}
+            {renderToggle(settingsNotifTranscript, () =>
+              setSettingsNotifTranscript((v) => !v),
+            )}
           </div>
           <div className={styles.settingsRow}>
             <div>
               <div className={styles.settingsRowLabel}>주간 리포트 알림</div>
-              <div className={styles.settingsRowDesc}>매주 월요일 주간 리포트 알림</div>
+              <div className={styles.settingsRowDesc}>
+                매주 월요일 주간 리포트 알림
+              </div>
             </div>
-            {renderToggle(settingsNotifWeekly, () => setSettingsNotifWeekly((v) => !v))}
+            {renderToggle(settingsNotifWeekly, () =>
+              setSettingsNotifWeekly((v) => !v),
+            )}
           </div>
         </div>
 
         {/* Recording settings */}
         <div className={styles.settingsSection}>
-          <div className={styles.settingsSectionTitle}><Mic size={15} /> 녹음 설정</div>
+          <div className={styles.settingsSectionTitle}>
+            <Mic size={15} /> 녹음 설정
+          </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>녹음 품질</div></div>
+            <div>
+              <div className={styles.settingsRowLabel}>녹음 품질</div>
+            </div>
             <select
               className={styles.settingsSelect}
               value={settingsRecordQuality}
-              onChange={(e) => setSettingsRecordQuality(e.target.value as "high" | "medium" | "low")}
+              onChange={(e) =>
+                setSettingsRecordQuality(
+                  e.target.value as "high" | "medium" | "low",
+                )
+              }
             >
               <option value="high">높음</option>
               <option value="medium">보통</option>
@@ -1508,21 +2188,33 @@ export default function InteractiveAppPage() {
           <div className={styles.settingsRow}>
             <div>
               <div className={styles.settingsRowLabel}>자동 전사</div>
-              <div className={styles.settingsRowDesc}>녹음 완료 후 자동으로 전사를 시작합니다</div>
+              <div className={styles.settingsRowDesc}>
+                녹음 완료 후 자동으로 전사를 시작합니다
+              </div>
             </div>
-            {renderToggle(true, () => showToast("자동 전사 설정이 변경되었습니다"))}
+            {renderToggle(true, () =>
+              showToast("자동 전사 설정이 변경되었습니다"),
+            )}
           </div>
         </div>
 
         {/* AI settings */}
         <div className={styles.settingsSection}>
-          <div className={styles.settingsSectionTitle}><Sparkles size={15} /> AI 설정</div>
+          <div className={styles.settingsSectionTitle}>
+            <Sparkles size={15} /> AI 설정
+          </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>AI 모델</div></div>
+            <div>
+              <div className={styles.settingsRowLabel}>AI 모델</div>
+            </div>
             <select
               className={styles.settingsSelect}
               value={settingsAiModel}
-              onChange={(e) => setSettingsAiModel(e.target.value as "gpt-5.4-medium" | "gpt-4o-mini")}
+              onChange={(e) =>
+                setSettingsAiModel(
+                  e.target.value as "gpt-5.4-medium" | "gpt-4o-mini",
+                )
+              }
             >
               <option value="gpt-5.4-medium">GPT-5.4 Medium</option>
               <option value="gpt-4o-mini">GPT-4o Mini</option>
@@ -1531,24 +2223,40 @@ export default function InteractiveAppPage() {
           <div className={styles.settingsRow}>
             <div>
               <div className={styles.settingsRowLabel}>자동 요약 생성</div>
-              <div className={styles.settingsRowDesc}>전사 완료 후 AI 요약을 자동 생성합니다</div>
+              <div className={styles.settingsRowDesc}>
+                전사 완료 후 AI 요약을 자동 생성합니다
+              </div>
             </div>
-            {renderToggle(settingsAutoSummary, () => setSettingsAutoSummary((v) => !v))}
+            {renderToggle(settingsAutoSummary, () =>
+              setSettingsAutoSummary((v) => !v),
+            )}
           </div>
         </div>
 
         {/* Data */}
         <div className={styles.settingsSection}>
-          <div className={styles.settingsSectionTitle}><Download size={15} /> 데이터</div>
+          <div className={styles.settingsSectionTitle}>
+            <Download size={15} /> 데이터
+          </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>상담 기록 내보내기</div></div>
-            <button className={`${styles.settingsBtn} ${styles.btnPress}`} onClick={() => showToast("내보내기가 시작되었습니다")}>
+            <div>
+              <div className={styles.settingsRowLabel}>상담 기록 내보내기</div>
+            </div>
+            <button
+              className={`${styles.settingsBtn} ${styles.btnPress}`}
+              onClick={() => showToast("내보내기가 시작되었습니다")}
+            >
               CSV 내보내기
             </button>
           </div>
           <div className={styles.settingsRow}>
-            <div><div className={styles.settingsRowLabel}>전체 백업</div></div>
-            <button className={`${styles.settingsBtn} ${styles.btnPress}`} onClick={() => showToast("백업 파일을 준비 중입니다")}>
+            <div>
+              <div className={styles.settingsRowLabel}>전체 백업</div>
+            </div>
+            <button
+              className={`${styles.settingsBtn} ${styles.btnPress}`}
+              onClick={() => showToast("백업 파일을 준비 중입니다")}
+            >
               백업 다운로드
             </button>
           </div>
@@ -1558,11 +2266,15 @@ export default function InteractiveAppPage() {
         <div className={styles.settingsDangerZone}>
           <div className={styles.settingsDangerTitle}>계정 삭제</div>
           <div className={styles.settingsDangerDesc}>
-            계정을 삭제하면 모든 상담 기록, 학생 데이터, AI 분석 결과가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            계정을 삭제하면 모든 상담 기록, 학생 데이터, AI 분석 결과가
+            영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
           </div>
           <button
             className={`${styles.settingsBtn} ${styles.settingsBtnDanger} ${styles.btnPress}`}
-            onClick={() => { setDeleteConfirmText(""); setModal({ type: "deleteAccount" }); }}
+            onClick={() => {
+              setDeleteConfirmText("");
+              setModal({ type: "deleteAccount" });
+            }}
           >
             회원 탈퇴
           </button>
@@ -1581,15 +2293,29 @@ export default function InteractiveAppPage() {
         <div className={styles.modalOverlay} onClick={() => setModal(null)}>
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalTitle}>상담 기록 삭제</div>
-            <div className={styles.modalDesc}>이 상담 기록을 삭제하시겠습니까?</div>
+            <div className={styles.modalDesc}>
+              이 상담 기록을 삭제하시겠습니까?
+            </div>
             <div className={styles.modalActions}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
-              <button className={`${styles.modalBtn} ${styles.modalBtnDanger} ${styles.btnPress}`} onClick={() => {
-                setSidebarRecords((prev) => prev.filter((r) => r.id !== modal.recordId));
-                setModal(null);
-                newRecording();
-                showToast("상담 기록이 삭제되었습니다");
-              }}>삭제</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnDanger} ${styles.btnPress}`}
+                onClick={() => {
+                  setSidebarRecords((prev) =>
+                    prev.filter((r) => r.id !== modal.recordId),
+                  );
+                  setModal(null);
+                  newRecording();
+                  showToast("상담 기록이 삭제되었습니다");
+                }}
+              >
+                삭제
+              </button>
             </div>
           </div>
         </div>
@@ -1603,15 +2329,26 @@ export default function InteractiveAppPage() {
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalTitle}>학생 삭제</div>
             <div className={styles.modalDesc}>
-              {student?.name ?? ""} 학생을 삭제하시겠습니까? 이 학생의 모든 상담 기록도 함께 삭제됩니다.
+              {student?.name ?? ""} 학생을 삭제하시겠습니까? 이 학생의 모든 상담
+              기록도 함께 삭제됩니다.
             </div>
             <div className={styles.modalActions}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
-              <button className={`${styles.modalBtn} ${styles.modalBtnDanger} ${styles.btnPress}`} onClick={() => {
-                setModal(null);
-                backToStudentList();
-                showToast(`${student?.name ?? "학생"}이(가) 삭제되었습니다`);
-              }}>삭제</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnDanger} ${styles.btnPress}`}
+                onClick={() => {
+                  setModal(null);
+                  backToStudentList();
+                  showToast(`${student?.name ?? "학생"}이(가) 삭제되었습니다`);
+                }}
+              >
+                삭제
+              </button>
             </div>
           </div>
         </div>
@@ -1623,20 +2360,37 @@ export default function InteractiveAppPage() {
       return (
         <div className={styles.modalOverlay} onClick={() => setModal(null)}>
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalTitle}>{isEdit ? "학생 정보 수정" : "학생 추가"}</div>
+            <div className={styles.modalTitle}>
+              {isEdit ? "학생 정보 수정" : "학생 추가"}
+            </div>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.modalLabel}>이름</label>
-                <input className={styles.modalInput} placeholder="학생 이름" value={formName} onChange={(e) => setFormName(e.target.value)} />
+                <input
+                  className={styles.modalInput}
+                  placeholder="학생 이름"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.modalLabel}>학년</label>
-                <input className={styles.modalInput} placeholder="예: 중2" value={formGrade} onChange={(e) => setFormGrade(e.target.value)} />
+                <input
+                  className={styles.modalInput}
+                  placeholder="예: 중2"
+                  value={formGrade}
+                  onChange={(e) => setFormGrade(e.target.value)}
+                />
               </div>
             </div>
             <label className={styles.modalLabel}>과목</label>
             <div className={styles.formTagGroup}>
-              {[{ label: "수학", cls: "tagMath" }, { label: "영어", cls: "tagEng" }, { label: "국어", cls: "tagKor" }, { label: "과학", cls: "tagSci" }].map((t) => (
+              {[
+                { label: "수학", cls: "tagMath" },
+                { label: "영어", cls: "tagEng" },
+                { label: "국어", cls: "tagKor" },
+                { label: "과학", cls: "tagSci" },
+              ].map((t) => (
                 <button
                   key={t.cls}
                   className={`${styles.formTag} ${formTags.includes(t.cls) ? styles.formTagSelected : ""} ${styles.btnPress}`}
@@ -1649,21 +2403,50 @@ export default function InteractiveAppPage() {
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.modalLabel}>학교</label>
-                <input className={styles.modalInput} placeholder="학교명" value={formSchool} onChange={(e) => setFormSchool(e.target.value)} />
+                <input
+                  className={styles.modalInput}
+                  placeholder="학교명"
+                  value={formSchool}
+                  onChange={(e) => setFormSchool(e.target.value)}
+                />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.modalLabel}>연락처</label>
-                <input className={styles.modalInput} placeholder="010-0000-0000" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} />
+                <input
+                  className={styles.modalInput}
+                  placeholder="010-0000-0000"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                />
               </div>
             </div>
             <label className={styles.modalLabel}>메모</label>
-            <textarea className={styles.formTextarea} placeholder="메모 (선택)" value={formMemo} onChange={(e) => setFormMemo(e.target.value)} />
+            <textarea
+              className={styles.formTextarea}
+              placeholder="메모 (선택)"
+              value={formMemo}
+              onChange={(e) => setFormMemo(e.target.value)}
+            />
             <div className={styles.modalActions} style={{ marginTop: 16 }}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
-              <button className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`} onClick={() => {
-                setModal(null);
-                showToast(isEdit ? "학생 정보가 수정되었습니다" : "학생이 추가되었습니다");
-              }}>{isEdit ? "저장" : "추가"}</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`}
+                onClick={() => {
+                  setModal(null);
+                  showToast(
+                    isEdit
+                      ? "학생 정보가 수정되었습니다"
+                      : "학생이 추가되었습니다",
+                  );
+                }}
+              >
+                {isEdit ? "저장" : "추가"}
+              </button>
             </div>
           </div>
         </div>
@@ -1677,11 +2460,21 @@ export default function InteractiveAppPage() {
             <div className={styles.modalTitle}>로그아웃</div>
             <div className={styles.modalDesc}>로그아웃하시겠습니까?</div>
             <div className={styles.modalActions}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
-              <button className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`} onClick={() => {
-                setModal(null);
-                showToast("로그아웃되었습니다");
-              }}>로그아웃</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`}
+                onClick={() => {
+                  setModal(null);
+                  showToast("로그아웃되었습니다");
+                }}
+              >
+                로그아웃
+              </button>
             </div>
           </div>
         </div>
@@ -1694,7 +2487,8 @@ export default function InteractiveAppPage() {
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalTitle}>정말 탈퇴하시겠습니까?</div>
             <div className={styles.modalDesc}>
-              모든 데이터가 영구 삭제됩니다. 계속하려면 아래에 &apos;연세학원&apos;을 입력해주세요.
+              모든 데이터가 영구 삭제됩니다. 계속하려면 아래에
+              &apos;연세학원&apos;을 입력해주세요.
             </div>
             <input
               className={styles.modalInput}
@@ -1703,15 +2497,28 @@ export default function InteractiveAppPage() {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
             />
             <div className={styles.modalActions}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
               <button
                 className={`${styles.modalBtn} ${styles.modalBtnDanger} ${styles.btnPress}`}
                 disabled={deleteConfirmText !== "연세학원"}
-                style={{ opacity: deleteConfirmText !== "연세학원" ? 0.4 : 1, cursor: deleteConfirmText !== "연세학원" ? "not-allowed" : "pointer" }}
+                style={{
+                  opacity: deleteConfirmText !== "연세학원" ? 0.4 : 1,
+                  cursor:
+                    deleteConfirmText !== "연세학원"
+                      ? "not-allowed"
+                      : "pointer",
+                }}
                 onClick={() => {
                   if (deleteConfirmText === "연세학원") {
                     setModal(null);
-                    showToast("탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.");
+                    showToast(
+                      "탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.",
+                    );
                   }
                 }}
               >
@@ -1729,14 +2536,29 @@ export default function InteractiveAppPage() {
           <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalTitle}>메모 추가</div>
             <label className={styles.modalLabel}>내용</label>
-            <textarea className={styles.formTextarea} placeholder="메모 내용을 입력하세요" value={formMemo} onChange={(e) => setFormMemo(e.target.value)} />
+            <textarea
+              className={styles.formTextarea}
+              placeholder="메모 내용을 입력하세요"
+              value={formMemo}
+              onChange={(e) => setFormMemo(e.target.value)}
+            />
             <div className={styles.modalActions} style={{ marginTop: 16 }}>
-              <button className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`} onClick={() => setModal(null)}>취소</button>
-              <button className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`} onClick={() => {
-                setModal(null);
-                setFormMemo("");
-                showToast("메모가 추가되었습니다");
-              }}>추가</button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnCancel} ${styles.btnPress}`}
+                onClick={() => setModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.modalBtnPrimary} ${styles.btnPress}`}
+                onClick={() => {
+                  setModal(null);
+                  setFormMemo("");
+                  showToast("메모가 추가되었습니다");
+                }}
+              >
+                추가
+              </button>
             </div>
           </div>
         </div>
@@ -1755,32 +2577,43 @@ export default function InteractiveAppPage() {
         <div className={styles.onboardCard}>
           <div className={styles.onboardTitle}>YEON에 오신 것을 환영합니다</div>
           <div className={styles.onboardDesc}>
-            학원 상담을 녹음하면 AI가 자동으로 전사하고 요약합니다. 학생별로 상담 기록을 관리하고 인사이트를 얻어보세요.
+            학원 상담을 녹음하면 AI가 자동으로 전사하고 요약합니다. 학생별로
+            상담 기록을 관리하고 인사이트를 얻어보세요.
           </div>
           <div className={styles.onboardSteps}>
             <div className={styles.onboardStep}>
               <div className={styles.onboardStepNum}>1</div>
               <div>
                 <div style={{ fontWeight: 500 }}>녹음 시작</div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>상담을 녹음하거나 음성 파일을 업로드하세요</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  상담을 녹음하거나 음성 파일을 업로드하세요
+                </div>
               </div>
             </div>
             <div className={styles.onboardStep}>
               <div className={styles.onboardStepNum}>2</div>
               <div>
                 <div style={{ fontWeight: 500 }}>AI 자동 전사 & 요약</div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>AI가 음성을 텍스트로 변환하고 핵심을 정리합니다</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  AI가 음성을 텍스트로 변환하고 핵심을 정리합니다
+                </div>
               </div>
             </div>
             <div className={styles.onboardStep}>
               <div className={styles.onboardStepNum}>3</div>
               <div>
                 <div style={{ fontWeight: 500 }}>학생별 관리</div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>학생별 상담 이력과 AI 분석을 한눈에 확인하세요</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  학생별 상담 이력과 AI 분석을 한눈에 확인하세요
+                </div>
               </div>
             </div>
           </div>
-          <button className={`${styles.btnLg} ${styles.btnAccent} ${styles.btnPress}`} onClick={() => setShowOnboarding(false)} style={{ width: "100%", justifyContent: "center" }}>
+          <button
+            className={`${styles.btnLg} ${styles.btnAccent} ${styles.btnPress}`}
+            onClick={() => setShowOnboarding(false)}
+            style={{ width: "100%", justifyContent: "center" }}
+          >
             시작하기
           </button>
         </div>
@@ -1792,10 +2625,14 @@ export default function InteractiveAppPage() {
 
   function renderContent() {
     switch (activeTab) {
-      case "records": return renderRecords();
-      case "students": return renderStudents();
-      case "dashboard": return renderDashboard();
-      case "settings": return renderSettings();
+      case "records":
+        return renderRecords();
+      case "students":
+        return renderStudents();
+      case "dashboard":
+        return renderDashboard();
+      case "settings":
+        return renderSettings();
     }
   }
 
@@ -1814,11 +2651,16 @@ export default function InteractiveAppPage() {
       <div className={styles.topNav}>
         <span className={styles.logo}>YEON</span>
         <div className={styles.navTabs}>
-          {(["records", "students", "dashboard", "settings"] as ActiveTab[]).map((tab) => (
+          {(
+            ["records", "students", "dashboard", "settings"] as ActiveTab[]
+          ).map((tab) => (
             <button
               key={tab}
               className={`${styles.navTab} ${activeTab === tab ? styles.navTabActive : ""} ${styles.btnPress}`}
-              onClick={() => { setActiveTab(tab); setViewKey((k) => k + 1); }}
+              onClick={() => {
+                setActiveTab(tab);
+                setViewKey((k) => k + 1);
+              }}
             >
               {tabLabels[tab]}
             </button>
@@ -1844,7 +2686,13 @@ export default function InteractiveAppPage() {
       {renderOnboarding()}
 
       {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept="audio/*" className={styles.hiddenInput} onChange={onFileSelected} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        className={styles.hiddenInput}
+        onChange={onFileSelected}
+      />
     </div>
   );
 }

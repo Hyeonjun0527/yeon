@@ -67,6 +67,7 @@ sheet_integrations {
 ```
 
 **API:**
+
 - `GET/POST /api/v1/cohorts`
 - `GET/POST /api/v1/cohorts/[cohortId]/students`
 - `GET /api/v1/cohorts/[cohortId]/report`
@@ -101,6 +102,7 @@ A — 기존 counseling_records 건드리지 않고 확장성 있게 연결
 - 주기적 동기화 (수동 트리거 우선, 자동 나중)
 
 **환경변수 추가:**
+
 ```
 GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY=
 ```

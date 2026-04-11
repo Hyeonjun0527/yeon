@@ -2,9 +2,20 @@
 
 import { useState } from "react";
 import { FieldRenderer } from "./field-renderer";
-import { useCustomTabFields, resolveValue } from "../hooks/use-custom-tab-fields";
+import {
+  useCustomTabFields,
+  resolveValue,
+} from "../hooks/use-custom-tab-fields";
 
-const TEXT_LIKE_TYPES = new Set(["text", "long_text", "url", "email", "phone", "number", "date"]);
+const TEXT_LIKE_TYPES = new Set([
+  "text",
+  "long_text",
+  "url",
+  "email",
+  "phone",
+  "number",
+  "date",
+]);
 
 interface CustomTabContentProps {
   spaceId: string;
@@ -12,8 +23,16 @@ interface CustomTabContentProps {
   tabId: string;
 }
 
-export function CustomTabContent({ spaceId, memberId, tabId }: CustomTabContentProps) {
-  const { fields, values, loading, saveValue } = useCustomTabFields(spaceId, memberId, tabId);
+export function CustomTabContent({
+  spaceId,
+  memberId,
+  tabId,
+}: CustomTabContentProps) {
+  const { fields, values, loading, saveValue } = useCustomTabFields(
+    spaceId,
+    memberId,
+    tabId,
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,7 +53,11 @@ export function CustomTabContent({ spaceId, memberId, tabId }: CustomTabContentP
   }
 
   if (loading) {
-    return <div className="py-10 text-center text-xs text-text-dim">불러오는 중…</div>;
+    return (
+      <div className="py-10 text-center text-xs text-text-dim">
+        불러오는 중…
+      </div>
+    );
   }
 
   if (fields.length === 0) {
@@ -63,13 +86,16 @@ export function CustomTabContent({ spaceId, memberId, tabId }: CustomTabContentP
             <div
               className="w-[6px] h-[6px] rounded-full flex-shrink-0 mt-[5px]"
               style={{
-                background: resolved != null ? "var(--accent)" : "rgba(255,255,255,0.15)",
+                background:
+                  resolved != null ? "var(--accent)" : "rgba(255,255,255,0.15)",
                 boxShadow: resolved != null ? "0 0 6px var(--accent)" : "none",
               }}
             />
             <span className="text-[12px] text-text-dim w-[96px] flex-shrink-0 font-mono tracking-tight pt-[1px]">
               {field.name}
-              {field.isRequired && <span className="text-accent ml-0.5">*</span>}
+              {field.isRequired && (
+                <span className="text-accent ml-0.5">*</span>
+              )}
             </span>
             <div className="flex-1 min-w-0">
               {isEditing ? (
@@ -100,7 +126,11 @@ export function CustomTabContent({ spaceId, memberId, tabId }: CustomTabContentP
                 </div>
               ) : (
                 <div
-                  className={isTextLike ? "cursor-text hover:opacity-80 transition-opacity" : ""}
+                  className={
+                    isTextLike
+                      ? "cursor-text hover:opacity-80 transition-opacity"
+                      : ""
+                  }
                   onClick={() => isTextLike && startEdit(field.id, resolved)}
                 >
                   <FieldRenderer fieldType={field.fieldType} value={resolved} />

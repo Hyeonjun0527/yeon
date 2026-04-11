@@ -12,7 +12,11 @@ function EmptyValue() {
   return <span className="text-text-dim opacity-40">─ 미입력</span>;
 }
 
-export function FieldRenderer({ fieldType, value, onEdit }: FieldRendererProps) {
+export function FieldRenderer({
+  fieldType,
+  value,
+  onEdit,
+}: FieldRendererProps) {
   if (value === null || value === undefined || value === "") {
     return <EmptyValue />;
   }
@@ -54,7 +58,13 @@ export function FieldRenderer({ fieldType, value, onEdit }: FieldRendererProps) 
           >
             {value && (
               <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M1 4l3 3 5-6"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             )}
           </div>
@@ -63,9 +73,10 @@ export function FieldRenderer({ fieldType, value, onEdit }: FieldRendererProps) 
       );
 
     case "select": {
-      const option = typeof value === "object" && value !== null
-        ? (value as { value: string; color?: string })
-        : { value: String(value), color: undefined };
+      const option =
+        typeof value === "object" && value !== null
+          ? (value as { value: string; color?: string })
+          : { value: String(value), color: undefined };
       return (
         <span
           className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"

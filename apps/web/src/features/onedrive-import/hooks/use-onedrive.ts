@@ -39,8 +39,9 @@ export function useOnedrive(onImportComplete?: () => void) {
   const [selectedFile, setSelectedFile] = useState<OneDriveFile | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [editablePreview, setEditablePreview] =
-    useState<ImportPreview | null>(null);
+  const [editablePreview, setEditablePreview] = useState<ImportPreview | null>(
+    null,
+  );
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +81,7 @@ export function useOnedrive(onImportComplete?: () => void) {
       setFiles(data.files);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "파일 목록을 불러오지 못했습니다.",
+        err instanceof Error ? err.message : "파일 목록을 불러오지 못했습니다.",
       );
     } finally {
       setFilesLoading(false);
@@ -149,9 +148,7 @@ export function useOnedrive(onImportComplete?: () => void) {
       setImportResult(data.created);
       onImportComplete?.();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "가져오기에 실패했습니다.",
-      );
+      setError(err instanceof Error ? err.message : "가져오기에 실패했습니다.");
     } finally {
       setImporting(false);
     }

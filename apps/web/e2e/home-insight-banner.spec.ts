@@ -47,7 +47,9 @@ test.describe("상담 인사이트 배너", () => {
     );
 
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/상담 간격 주의|상담 이력 없음/)).not.toBeVisible();
+    await expect(
+      page.getByText(/상담 간격 주의|상담 이력 없음/),
+    ).not.toBeVisible();
   });
 
   test("warning 수강생이 있으면 배너가 표시된다", async ({ page }) => {
@@ -73,7 +75,9 @@ test.describe("상담 인사이트 배너", () => {
     const recordBtn = page.getByRole("button", { name: /상담 기록/ }).first();
     if (await recordBtn.isVisible()) {
       await recordBtn.click();
-      await expect(page.getByText(/상담 간격 주의/)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/상담 간격 주의/)).toBeVisible({
+        timeout: 3000,
+      });
     }
   });
 
@@ -97,7 +101,9 @@ test.describe("상담 인사이트 배너", () => {
     const recordBtn = page.getByRole("button", { name: /상담 기록/ }).first();
     if (await recordBtn.isVisible()) {
       await recordBtn.click();
-      await expect(page.getByText(/상담 이력 없음/)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/상담 이력 없음/)).toBeVisible({
+        timeout: 3000,
+      });
     }
   });
 

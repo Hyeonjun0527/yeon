@@ -50,14 +50,14 @@ export function TabReport({
   return (
     <div>
       {logsLoading && (
-        <div style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 16 }}>
+        <div
+          style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 16 }}
+        >
           활동 로그 불러오는 중...
         </div>
       )}
       {logsError && !logsLoading && (
-        <div
-          className="text-red text-[13px] mb-4 py-2 px-3 bg-red-dim rounded-sm"
-        >
+        <div className="text-red text-[13px] mb-4 py-2 px-3 bg-red-dim rounded-sm">
           활동 로그를 불러오지 못했습니다. 통계가 표시되지 않을 수 있습니다.
         </div>
       )}
@@ -66,14 +66,20 @@ export function TabReport({
       <div className="grid [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] gap-3 mb-6">
         <div className="p-4 bg-surface-2 border border-border rounded">
           <div className="text-xs text-text-dim mb-1">출석률</div>
-          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">{attendanceRate}%</div>
+          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">
+            {attendanceRate}%
+          </div>
           {attendanceTotal > 0 && (
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
+            >
               {attendancePresent}회 출석 / {attendanceTotal}회 전체
             </div>
           )}
           {attendanceTotal === 0 && (
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
+            >
               데이터 없음
             </div>
           )}
@@ -81,14 +87,20 @@ export function TabReport({
 
         <div className="p-4 bg-surface-2 border border-border rounded">
           <div className="text-xs text-text-dim mb-1">과제 완료율</div>
-          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">{assignmentRate}%</div>
+          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">
+            {assignmentRate}%
+          </div>
           {assignmentTotal > 0 && (
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
+            >
               {assignmentDone}건 완료 / {assignmentTotal}건 전체
             </div>
           )}
           {assignmentTotal === 0 && (
-            <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
+            >
               데이터 없음
             </div>
           )}
@@ -119,13 +131,14 @@ export function TabReport({
             )}
           </div>
         </div>
-
       </div>
 
       {/* 출결 상세 */}
       {attendanceTotal > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div className="text-base font-semibold text-text mb-3">출결 상세</div>
+          <div className="text-base font-semibold text-text mb-3">
+            출결 상세
+          </div>
           <div className="flex flex-col gap-2">
             {attendanceLogs.slice(0, 10).map((log) => (
               <div
@@ -135,7 +148,9 @@ export function TabReport({
                 <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
                   {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
                 </span>
-                <span className="flex-1 font-medium text-text-secondary">출결</span>
+                <span className="flex-1 font-medium text-text-secondary">
+                  출결
+                </span>
                 <span
                   className="text-xs py-0.5 px-2 rounded-[10px]"
                   style={{
@@ -168,7 +183,9 @@ export function TabReport({
       {/* 과제 상세 */}
       {assignmentTotal > 0 && (
         <div>
-          <div className="text-base font-semibold text-text mb-3">과제 상세</div>
+          <div className="text-base font-semibold text-text mb-3">
+            과제 상세
+          </div>
           <div className="flex flex-col gap-2">
             {assignmentLogs.slice(0, 10).map((log) => (
               <div
@@ -178,12 +195,13 @@ export function TabReport({
                 <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
                   {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
                 </span>
-                <span className="flex-1 font-medium text-text-secondary">과제</span>
+                <span className="flex-1 font-medium text-text-secondary">
+                  과제
+                </span>
                 <span
                   className="text-xs py-0.5 px-2 rounded-[10px]"
                   style={{
-                    color:
-                      log.status === "submitted" ? "#34d399" : "#f87171",
+                    color: log.status === "submitted" ? "#34d399" : "#f87171",
                     background:
                       log.status === "submitted"
                         ? "rgba(52,211,153,0.1)"

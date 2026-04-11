@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 import {
   createTemplate,
   listTemplates,
@@ -15,10 +18,20 @@ export const runtime = "nodejs";
 const templateFieldSchema = z.object({
   name: z.string().min(1).max(80),
   fieldType: z.enum([
-    "text", "long_text", "number", "date",
-    "select", "multi_select", "checkbox", "url", "email", "phone",
+    "text",
+    "long_text",
+    "number",
+    "date",
+    "select",
+    "multi_select",
+    "checkbox",
+    "url",
+    "email",
+    "phone",
   ]),
-  options: z.array(z.object({ value: z.string(), color: z.string() })).nullish(),
+  options: z
+    .array(z.object({ value: z.string(), color: z.string() }))
+    .nullish(),
   isRequired: z.boolean(),
   displayOrder: z.number().int(),
 });
@@ -47,7 +60,8 @@ export async function GET(request: NextRequest) {
     const templates = await listTemplates(currentUser.id);
     return NextResponse.json({ templates });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("템플릿 목록을 불러오지 못했습니다.", 500);
   }
@@ -65,17 +79,21 @@ export async function POST(request: NextRequest) {
   }
 
   const parsed = createTemplateBodySchema.safeParse(body);
-  if (!parsed.success) return jsonError("요청 데이터가 올바르지 않습니다.", 400);
+  if (!parsed.success)
+    return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 
   try {
     const template = await createTemplate(currentUser.id, {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
-      tabsConfig: parsed.data.tabsConfig as Parameters<typeof createTemplate>[1]["tabsConfig"],
+      tabsConfig: parsed.data.tabsConfig as Parameters<
+        typeof createTemplate
+      >[1]["tabsConfig"],
     });
     return NextResponse.json({ template }, { status: 201 });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("템플릿을 생성하지 못했습니다.", 500);
   }

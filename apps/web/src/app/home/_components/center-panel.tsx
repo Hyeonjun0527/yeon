@@ -8,24 +8,45 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
     <div className="flex flex-col gap-3 mb-4">
       {/* 핵심 요약 */}
       <div className="bg-surface-2 border border-border rounded-lg p-4">
-        <h3 className="text-[13px] font-semibold text-accent mb-2">핵심 요약</h3>
-        <p className="text-[13px] leading-relaxed text-text-secondary m-0">{analysis.summary}</p>
+        <h3 className="text-[13px] font-semibold text-accent mb-2">
+          핵심 요약
+        </h3>
+        <p className="text-[13px] leading-relaxed text-text-secondary m-0">
+          {analysis.summary}
+        </p>
       </div>
 
       {/* 수강생 정보 */}
       {analysis.member.name && (
         <div className="bg-surface-2 border border-border rounded-lg p-4">
-          <h3 className="text-[13px] font-semibold text-accent mb-2">수강생 정보</h3>
+          <h3 className="text-[13px] font-semibold text-accent mb-2">
+            수강생 정보
+          </h3>
           <div className="flex flex-col gap-1 text-[13px]">
-            <div><span className="text-text-dim">이름:</span> <span className="text-text font-medium">{analysis.member.name}</span></div>
+            <div>
+              <span className="text-text-dim">이름:</span>{" "}
+              <span className="text-text font-medium">
+                {analysis.member.name}
+              </span>
+            </div>
             {analysis.member.traits.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {analysis.member.traits.map((trait) => (
-                  <span key={trait} className="px-2 py-0.5 bg-surface-3 rounded text-[11px] text-text-secondary">{trait}</span>
+                  <span
+                    key={trait}
+                    className="px-2 py-0.5 bg-surface-3 rounded text-[11px] text-text-secondary"
+                  >
+                    {trait}
+                  </span>
                 ))}
               </div>
             )}
-            <div className="mt-1"><span className="text-text-dim">감정/태도:</span> <span className="text-text-secondary">{analysis.member.emotion}</span></div>
+            <div className="mt-1">
+              <span className="text-text-dim">감정/태도:</span>{" "}
+              <span className="text-text-secondary">
+                {analysis.member.emotion}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -33,15 +54,25 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
       {/* 주요 이슈 */}
       {analysis.issues.length > 0 && (
         <div className="bg-surface-2 border border-border rounded-lg p-4">
-          <h3 className="text-[13px] font-semibold text-accent mb-2">주요 이슈</h3>
+          <h3 className="text-[13px] font-semibold text-accent mb-2">
+            주요 이슈
+          </h3>
           <div className="flex flex-col gap-2">
             {analysis.issues.map((issue, i) => (
               <div key={i} className="flex gap-2 text-[13px]">
-                <span className="text-accent font-semibold flex-shrink-0">{i + 1}.</span>
+                <span className="text-accent font-semibold flex-shrink-0">
+                  {i + 1}.
+                </span>
                 <div>
                   <div className="font-medium text-text">{issue.title}</div>
-                  <div className="text-text-secondary leading-relaxed mt-0.5">{issue.detail}</div>
-                  {issue.timestamp && <span className="text-[11px] text-text-dim font-mono">{issue.timestamp}</span>}
+                  <div className="text-text-secondary leading-relaxed mt-0.5">
+                    {issue.detail}
+                  </div>
+                  {issue.timestamp && (
+                    <span className="text-[11px] text-text-dim font-mono">
+                      {issue.timestamp}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -51,13 +82,19 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
 
       {/* 후속 조치 */}
       <div className="bg-surface-2 border border-border rounded-lg p-4">
-        <h3 className="text-[13px] font-semibold text-accent mb-2">후속 조치</h3>
+        <h3 className="text-[13px] font-semibold text-accent mb-2">
+          후속 조치
+        </h3>
         <div className="flex flex-col gap-3 text-[13px]">
           {analysis.actions.mentor.length > 0 && (
             <div>
               <div className="text-text-dim font-medium mb-1">멘토 액션</div>
               <ul className="m-0 pl-4 flex flex-col gap-0.5">
-                {analysis.actions.mentor.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+                {analysis.actions.mentor.map((a, i) => (
+                  <li key={i} className="text-text-secondary">
+                    {a}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -65,15 +102,25 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
             <div>
               <div className="text-text-dim font-medium mb-1">수강생 과제</div>
               <ul className="m-0 pl-4 flex flex-col gap-0.5">
-                {analysis.actions.member.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+                {analysis.actions.member.map((a, i) => (
+                  <li key={i} className="text-text-secondary">
+                    {a}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
           {analysis.actions.nextSession.length > 0 && (
             <div>
-              <div className="text-text-dim font-medium mb-1">다음 상담 방향</div>
+              <div className="text-text-dim font-medium mb-1">
+                다음 상담 방향
+              </div>
               <ul className="m-0 pl-4 flex flex-col gap-0.5">
-                {analysis.actions.nextSession.map((a, i) => <li key={i} className="text-text-secondary">{a}</li>)}
+                {analysis.actions.nextSession.map((a, i) => (
+                  <li key={i} className="text-text-secondary">
+                    {a}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -84,7 +131,12 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
       {analysis.keywords.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {analysis.keywords.map((kw) => (
-            <span key={kw} className="px-2 py-0.5 bg-accent-dim border border-accent-border rounded text-[11px] text-accent font-medium">{kw}</span>
+            <span
+              key={kw}
+              className="px-2 py-0.5 bg-accent-dim border border-accent-border rounded text-[11px] text-accent font-medium"
+            >
+              {kw}
+            </span>
           ))}
         </div>
       )}
@@ -132,7 +184,9 @@ export function CenterPanel({
   /* 기록 목록은 있지만 아직 선택하지 않은 상태 */
   if (!selected) {
     return (
-      <div className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
+      <div
+        className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}
+      >
         <div className="flex-1 flex items-center justify-center min-h-0">
           <div className="flex flex-col items-center gap-4 text-center max-w-[360px]">
             <p className="text-base font-medium">
@@ -150,14 +204,27 @@ export function CenterPanel({
   /* 에러 */
   if (selected.status === "error") {
     return (
-      <div key={selected.id} className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
+      <div
+        key={selected.id}
+        className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}
+      >
         <div className="px-5 py-4 border-b border-border flex items-start justify-between">
-          <h1 className="text-[15px] font-semibold tracking-[-0.3px]">{selected.title}</h1>
-          <div className="text-[11px] text-text-secondary mt-[3px] flex items-center gap-2">{selected.duration} · 전사 실패</div>
+          <h1 className="text-[15px] font-semibold tracking-[-0.3px]">
+            {selected.title}
+          </h1>
+          <div className="text-[11px] text-text-secondary mt-[3px] flex items-center gap-2">
+            {selected.duration} · 전사 실패
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
-            <p style={{ fontWeight: 500, fontSize: 16, color: "var(--error, #e53e3e)" }}>
+            <p
+              style={{
+                fontWeight: 500,
+                fontSize: 16,
+                color: "var(--error, #e53e3e)",
+              }}
+            >
               음성 분석에 실패했습니다
             </p>
             <p className="text-text-dim text-[13px] mt-2">
@@ -172,10 +239,17 @@ export function CenterPanel({
   /* 처리 중 */
   if (phase === "processing" && selected.status === "processing") {
     return (
-      <div key={selected.id} className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
+      <div
+        key={selected.id}
+        className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}
+      >
         <div className="px-5 py-4 border-b border-border flex items-start justify-between">
-          <h1 className="text-[15px] font-semibold tracking-[-0.3px]">{selected.title}</h1>
-          <div className="text-[11px] text-text-secondary mt-[3px]">{selected.duration} · AI 분석 중</div>
+          <h1 className="text-[15px] font-semibold tracking-[-0.3px]">
+            {selected.title}
+          </h1>
+          <div className="text-[11px] text-text-secondary mt-[3px]">
+            {selected.duration} · AI 분석 중
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
@@ -190,10 +264,17 @@ export function CenterPanel({
                   key={step.label}
                   className="flex items-center gap-2 py-[6px] text-[13px]"
                   style={{
-                    color: i < processingStep ? "var(--accent)" : "var(--text-dim)",
+                    color:
+                      i < processingStep ? "var(--accent)" : "var(--text-dim)",
                   }}
                 >
-                  <span>{i < processingStep ? "✓" : i === processingStep ? "⟳" : "○"}</span>
+                  <span>
+                    {i < processingStep
+                      ? "✓"
+                      : i === processingStep
+                        ? "⟳"
+                        : "○"}
+                  </span>
                   <span>{step.label}</span>
                 </div>
               ))}
@@ -207,7 +288,10 @@ export function CenterPanel({
   /* 결과 */
   if (selected.status === "ready") {
     return (
-      <div key={selected.id} className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}>
+      <div
+        key={selected.id}
+        className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}
+      >
         <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
             <h1 className="text-[15px] font-semibold tracking-[-0.3px] truncate">
@@ -232,11 +316,7 @@ export function CenterPanel({
                 : "bg-surface-2 border-border text-text-secondary hover:border-accent hover:text-accent"
             }`}
           >
-            {selected.memberId ? (
-              <Link2 size={12} />
-            ) : (
-              <Link2Off size={12} />
-            )}
+            {selected.memberId ? <Link2 size={12} /> : <Link2Off size={12} />}
             {selected.memberId ? "연결됨" : "수강생 연결"}
           </button>
         </div>
@@ -248,17 +328,29 @@ export function CenterPanel({
             onClick={onTogglePlay}
           >
             {isPlaying ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="currentColor"
+              >
                 <rect x="2" y="1" width="4" height="12" rx="1" />
                 <rect x="8" y="1" width="4" height="12" rx="1" />
               </svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="currentColor"
+              >
                 <path d="M3 1.5L12 7L3 12.5V1.5Z" />
               </svg>
             )}
           </button>
-          <span className="font-mono text-[11px] text-text-secondary">{fmtTime(audioPosition)}</span>
+          <span className="font-mono text-[11px] text-text-secondary">
+            {fmtTime(audioPosition)}
+          </span>
           <div
             className="flex-1 h-[3px] bg-surface-4 rounded-[2px] relative cursor-pointer"
             onClick={(e) => {
@@ -269,10 +361,14 @@ export function CenterPanel({
           >
             <div
               className="absolute left-0 top-0 bottom-0 bg-accent rounded-[2px]"
-              style={{ width: `${totalSeconds > 0 ? (audioPosition / totalSeconds) * 100 : 0}%` }}
+              style={{
+                width: `${totalSeconds > 0 ? (audioPosition / totalSeconds) * 100 : 0}%`,
+              }}
             />
           </div>
-          <span className="font-mono text-[11px] text-text-secondary">{fmtTime(totalSeconds)}</span>
+          <span className="font-mono text-[11px] text-text-secondary">
+            {fmtTime(totalSeconds)}
+          </span>
         </div>
 
         {/* AI 분석 결과 */}
@@ -291,7 +387,9 @@ export function CenterPanel({
           {/* 전사 텍스트 */}
           <details className="mt-4" open={!selected.analysisResult}>
             <summary className="text-[13px] font-semibold text-text-secondary cursor-pointer select-none mb-3 hover:text-text transition-colors">
-              전사 원문 {selected.transcript.length > 0 && `(${selected.transcript.length}개 세그먼트)`}
+              전사 원문{" "}
+              {selected.transcript.length > 0 &&
+                `(${selected.transcript.length}개 세그먼트)`}
             </summary>
             {transcriptLoading ? (
               <div className="text-text-dim text-[13px] py-6">
@@ -303,13 +401,18 @@ export function CenterPanel({
               </div>
             ) : (
               selected.transcript.map((seg, i) => (
-                <div key={seg.id ?? i} className="flex gap-[10px] py-2 border-b border-[rgba(255,255,255,0.03)] text-[13px]">
+                <div
+                  key={seg.id ?? i}
+                  className="flex gap-[10px] py-2 border-b border-[rgba(255,255,255,0.03)] text-[13px]"
+                >
                   <span className="font-mono text-[10px] text-text-dim min-w-[38px] pt-[3px]">
                     {fmtMs(seg.startMs)}
                   </span>
                   <span
                     className={`text-[10px] font-semibold min-w-[32px] pt-[3px] ${
-                      seg.speakerTone === "teacher" ? "text-[#60a5fa]" : "text-green"
+                      seg.speakerTone === "teacher"
+                        ? "text-[#60a5fa]"
+                        : "text-green"
                     }`}
                   >
                     {seg.speakerLabel}

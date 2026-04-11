@@ -33,12 +33,17 @@ export default function MockV2Workspace() {
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null);
   const [quickMemoOpen, setQuickMemoOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const { spaces, currentSpace, currentSpaceId, setCurrentSpaceId, addSpace } = useCurrentSpace();
-  const { members, loading: membersLoading } = useSpaceMembers(currentSpaceId, records.records);
+  const { spaces, currentSpace, currentSpaceId, setCurrentSpaceId, addSpace } =
+    useCurrentSpace();
+  const { members, loading: membersLoading } = useSpaceMembers(
+    currentSpaceId,
+    records.records,
+  );
 
   const recording = useRecording({
     onRecordingStop: (tempRecord) => records.addProcessingRecord(tempRecord),
-    onUploadComplete: (tempId, realRecord) => records.replaceRecord(tempId, realRecord),
+    onUploadComplete: (tempId, realRecord) =>
+      records.replaceRecord(tempId, realRecord),
     onUploadError: (tempId, msg) => records.markUploadError(tempId, msg),
   });
 
@@ -47,7 +52,9 @@ export default function MockV2Workspace() {
   });
 
   const selectedAudioUrl = records.selected?.audioUrl ?? null;
-  const selectedTotalSeconds = Math.round((records.selected?.durationMs ?? 0) / 1000);
+  const selectedTotalSeconds = Math.round(
+    (records.selected?.durationMs ?? 0) / 1000,
+  );
   const audio = useAudioPlayer(selectedAudioUrl, selectedTotalSeconds);
 
   const aiChat = useAiChat({
@@ -92,7 +99,8 @@ export default function MockV2Workspace() {
     records.viewState.kind !== "loading";
   const showCenterPanel =
     !showMemberPanel &&
-    (records.viewState.kind === "processing" || records.viewState.kind === "ready");
+    (records.viewState.kind === "processing" ||
+      records.viewState.kind === "ready");
 
   useEffect(() => {
     if (showMemberPanel && selectedMember) {
@@ -103,7 +111,13 @@ export default function MockV2Workspace() {
     } else {
       register(null);
     }
-  }, [showMemberPanel, selectedMember, records.selected, records.records, register]);
+  }, [
+    showMemberPanel,
+    selectedMember,
+    records.selected,
+    records.records,
+    register,
+  ]);
 
   return (
     <div
@@ -125,7 +139,9 @@ export default function MockV2Workspace() {
         <div className="fixed inset-0 z-[200] bg-[rgba(9,9,11,0.8)] flex items-center justify-center pointer-events-none">
           <div className="border-2 border-dashed border-accent rounded-lg p-12 px-16 text-center bg-[rgba(129,140,248,0.06)]">
             <div className="text-5xl mb-3">📁</div>
-            <div className="text-lg font-semibold text-text mb-1">녹음 파일을 놓으세요</div>
+            <div className="text-lg font-semibold text-text mb-1">
+              녹음 파일을 놓으세요
+            </div>
             <div className="text-sm text-text-secondary">
               오디오 파일을 드롭하면 자동으로 전사를 시작합니다
             </div>
@@ -141,13 +157,12 @@ export default function MockV2Workspace() {
       )}
 
       {records.viewState.kind === "recording" && (
-        <RecordingState
-          elapsed={recording.elapsed}
-          onStop={recording.stop}
-        />
+        <RecordingState elapsed={recording.elapsed} onStop={recording.stop} />
       )}
 
-      {(records.viewState.kind === "processing" || records.viewState.kind === "ready" || showMemberPanel) && (
+      {(records.viewState.kind === "processing" ||
+        records.viewState.kind === "ready" ||
+        showMemberPanel) && (
         <Sidebar
           records={records.records}
           selectedId={records.selectedId}
@@ -162,7 +177,7 @@ export default function MockV2Workspace() {
           membersLoading={membersLoading}
           selectedMemberId={selectedMemberId}
           onSelectMember={handleSelectMember}
-            onOpenQuickMemo={() => setQuickMemoOpen(true)}
+          onOpenQuickMemo={() => setQuickMemoOpen(true)}
         />
       )}
 
@@ -182,7 +197,9 @@ export default function MockV2Workspace() {
           <InsightBanner
             members={members}
             onHighlightWarning={() => {
-              const target = members.find((m) => m.indicator === "warning") ?? members.find((m) => m.indicator === "none");
+              const target =
+                members.find((m) => m.indicator === "warning") ??
+                members.find((m) => m.indicator === "none");
               if (target) handleSelectMember(target.id);
             }}
           />

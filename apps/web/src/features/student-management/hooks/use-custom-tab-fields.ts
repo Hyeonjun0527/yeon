@@ -21,7 +21,10 @@ export interface FieldValue {
   fieldName: string;
 }
 
-export function resolveValue(fieldType: FieldType, fv: FieldValue | undefined): unknown {
+export function resolveValue(
+  fieldType: FieldType,
+  fv: FieldValue | undefined,
+): unknown {
   if (!fv) return null;
   switch (fieldType) {
     case "checkbox":
@@ -36,7 +39,11 @@ export function resolveValue(fieldType: FieldType, fv: FieldValue | undefined): 
   }
 }
 
-export function useCustomTabFields(spaceId: string, memberId: string, tabId: string) {
+export function useCustomTabFields(
+  spaceId: string,
+  memberId: string,
+  tabId: string,
+) {
   const [fields, setFields] = useState<FieldDef[]>([]);
   const [values, setValues] = useState<FieldValue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +68,9 @@ export function useCustomTabFields(spaceId: string, memberId: string, tabId: str
     }
   }, [spaceId, memberId, tabId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function saveValue(fieldId: string, value: string | null) {
     await fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/field-values`, {

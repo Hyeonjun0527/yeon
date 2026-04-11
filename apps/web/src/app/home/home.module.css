@@ -7,8 +7,12 @@
 }
 
 @keyframes centerFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* recording-state: 녹음 중 펄스 */
@@ -22,8 +26,13 @@
 }
 
 @keyframes mockPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* recording-state: 오디오 시각화 바 */
@@ -39,13 +48,27 @@
   animation: mockVizBar 0.6s ease-in-out infinite alternate;
 }
 
-.vizBar1 { animation-delay: 0s; }
-.vizBar2 { animation-delay: 0.12s; }
-.vizBar3 { animation-delay: 0.24s; }
-.vizBar4 { animation-delay: 0.36s; }
-.vizBar5 { animation-delay: 0.48s; }
+.vizBar1 {
+  animation-delay: 0s;
+}
+.vizBar2 {
+  animation-delay: 0.12s;
+}
+.vizBar3 {
+  animation-delay: 0.24s;
+}
+.vizBar4 {
+  animation-delay: 0.36s;
+}
+.vizBar5 {
+  animation-delay: 0.48s;
+}
 
 @keyframes mockVizBar {
-  from { height: 4px; }
-  to { height: 24px; }
+  from {
+    height: 4px;
+  }
+  to {
+    height: 24px;
+  }
 }

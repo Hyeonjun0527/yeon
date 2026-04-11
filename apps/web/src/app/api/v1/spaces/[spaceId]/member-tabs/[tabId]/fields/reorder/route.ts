@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 import { reorderFields } from "@/server/services/member-fields-service";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -29,13 +32,15 @@ export async function PATCH(
   }
 
   const parsed = reorderBodySchema.safeParse(body);
-  if (!parsed.success) return jsonError("요청 데이터가 올바르지 않습니다.", 400);
+  if (!parsed.success)
+    return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 
   try {
     await reorderFields(spaceId, parsed.data.order);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("필드 순서를 변경하지 못했습니다.", 500);
   }

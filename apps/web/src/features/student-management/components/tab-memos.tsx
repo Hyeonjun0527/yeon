@@ -46,9 +46,13 @@ export function TabMemos({
               className="py-3 px-4 bg-surface-2 border border-border rounded-lg"
             >
               <div className="flex justify-between mb-1">
-                <span className="text-[11px] text-text-dim font-mono">{memo.date}</span>
+                <span className="text-[11px] text-text-dim font-mono">
+                  {memo.date}
+                </span>
                 {memo.author && (
-                  <span className="text-xs text-text-secondary">{memo.author}</span>
+                  <span className="text-xs text-text-secondary">
+                    {memo.author}
+                  </span>
                 )}
               </div>
               <div className="text-sm text-text-secondary">{memo.text}</div>

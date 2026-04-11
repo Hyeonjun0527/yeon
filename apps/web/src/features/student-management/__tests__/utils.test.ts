@@ -127,7 +127,18 @@ describe("fmtRelative", () => {
 ───────────────────────────────────────────── */
 describe("getAvatarColor", () => {
   it("반환값은 AVATAR_COLORS 배열 내 값이다", () => {
-    const colors = ["color-0", "color-1", "color-2", "color-3", "color-4", "color-5", "color-6", "color-7", "color-8", "color-9"];
+    const colors = [
+      "color-0",
+      "color-1",
+      "color-2",
+      "color-3",
+      "color-4",
+      "color-5",
+      "color-6",
+      "color-7",
+      "color-8",
+      "color-9",
+    ];
     expect(colors).toContain(getAvatarColor("홍길동"));
   });
 
@@ -137,8 +148,18 @@ describe("getAvatarColor", () => {
 
   it("다른 이름은 다를 수 있다 (해시 분산 확인)", () => {
     const results = new Set(
-      ["김철수", "이영희", "박민준", "최지수", "정하늘", "윤서연", "조현우", "강다은", "임준혁", "오지현"]
-        .map(getAvatarColor)
+      [
+        "김철수",
+        "이영희",
+        "박민준",
+        "최지수",
+        "정하늘",
+        "윤서연",
+        "조현우",
+        "강다은",
+        "임준혁",
+        "오지현",
+      ].map(getAvatarColor),
     );
     // 10개 이름이 모두 같은 색일 확률은 극히 낮다
     expect(results.size).toBeGreaterThan(1);
@@ -146,12 +167,34 @@ describe("getAvatarColor", () => {
 
   it("빈 문자열도 오류 없이 처리한다", () => {
     expect(() => getAvatarColor("")).not.toThrow();
-    const colors = ["color-0", "color-1", "color-2", "color-3", "color-4", "color-5", "color-6", "color-7", "color-8", "color-9"];
+    const colors = [
+      "color-0",
+      "color-1",
+      "color-2",
+      "color-3",
+      "color-4",
+      "color-5",
+      "color-6",
+      "color-7",
+      "color-8",
+      "color-9",
+    ];
     expect(colors).toContain(getAvatarColor(""));
   });
 
   it("영문 이름도 AVATAR_COLORS 내 값을 반환한다", () => {
-    const colors = ["color-0", "color-1", "color-2", "color-3", "color-4", "color-5", "color-6", "color-7", "color-8", "color-9"];
+    const colors = [
+      "color-0",
+      "color-1",
+      "color-2",
+      "color-3",
+      "color-4",
+      "color-5",
+      "color-6",
+      "color-7",
+      "color-8",
+      "color-9",
+    ];
     expect(colors).toContain(getAvatarColor("Alice"));
   });
 });
@@ -195,10 +238,42 @@ describe("getInitial", () => {
 ───────────────────────────────────────────── */
 describe("filterStudents", () => {
   const students: Student[] = [
-    makeStudent({ id: "s1", name: "홍길동", school: "서울대", tags: ["우수"], status: "enrolled", classIds: ["c1"], memos: [{ id: "m1", date: "2024-01-01", text: "성적 우수" }] }),
-    makeStudent({ id: "s2", name: "김철수", school: "연세대", tags: ["주의"], status: "on_leave", classIds: ["c2"], memos: [] }),
-    makeStudent({ id: "s3", name: "이영희", school: "고려대", tags: ["우수", "개근"], status: "graduated", classIds: ["c1", "c3"], memos: [] }),
-    makeStudent({ id: "s4", name: "박민준", school: undefined, tags: [], status: "withdrawn", classIds: ["c3"], memos: [{ id: "m2", date: "2024-02-01", text: "출석 불량" }] }),
+    makeStudent({
+      id: "s1",
+      name: "홍길동",
+      school: "서울대",
+      tags: ["우수"],
+      status: "enrolled",
+      classIds: ["c1"],
+      memos: [{ id: "m1", date: "2024-01-01", text: "성적 우수" }],
+    }),
+    makeStudent({
+      id: "s2",
+      name: "김철수",
+      school: "연세대",
+      tags: ["주의"],
+      status: "on_leave",
+      classIds: ["c2"],
+      memos: [],
+    }),
+    makeStudent({
+      id: "s3",
+      name: "이영희",
+      school: "고려대",
+      tags: ["우수", "개근"],
+      status: "graduated",
+      classIds: ["c1", "c3"],
+      memos: [],
+    }),
+    makeStudent({
+      id: "s4",
+      name: "박민준",
+      school: undefined,
+      tags: [],
+      status: "withdrawn",
+      classIds: ["c3"],
+      memos: [{ id: "m2", date: "2024-02-01", text: "출석 불량" }],
+    }),
   ];
 
   it("검색어가 이름에 매칭되는 경우 필터링한다", () => {
@@ -253,7 +328,10 @@ describe("filterStudents", () => {
   });
 
   it("search + status 복합 필터가 AND 조건으로 동작한다", () => {
-    const result = filterStudents(students, { search: "이영희", status: "graduated" });
+    const result = filterStudents(students, {
+      search: "이영희",
+      status: "graduated",
+    });
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("s3");
   });
@@ -269,9 +347,24 @@ describe("filterStudents", () => {
 ───────────────────────────────────────────── */
 describe("sortStudents", () => {
   const students: Student[] = [
-    makeStudent({ id: "s1", name: "홍길동", registeredAt: "2024-03-01T00:00:00.000Z", status: "on_leave" }),
-    makeStudent({ id: "s2", name: "가나다", registeredAt: "2024-01-01T00:00:00.000Z", status: "enrolled" }),
-    makeStudent({ id: "s3", name: "마바사", registeredAt: "2024-05-01T00:00:00.000Z", status: "withdrawn" }),
+    makeStudent({
+      id: "s1",
+      name: "홍길동",
+      registeredAt: "2024-03-01T00:00:00.000Z",
+      status: "on_leave",
+    }),
+    makeStudent({
+      id: "s2",
+      name: "가나다",
+      registeredAt: "2024-01-01T00:00:00.000Z",
+      status: "enrolled",
+    }),
+    makeStudent({
+      id: "s3",
+      name: "마바사",
+      registeredAt: "2024-05-01T00:00:00.000Z",
+      status: "withdrawn",
+    }),
   ];
 
   it("name 키로 가나다순 정렬한다", () => {

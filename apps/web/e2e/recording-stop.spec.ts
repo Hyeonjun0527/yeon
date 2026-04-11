@@ -26,7 +26,9 @@ test.describe("녹음 중단 버튼", () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => true,
-        clone: function () { return this; },
+        clone: function () {
+          return this;
+        },
         getCapabilities: () => ({}),
         getConstraints: () => ({}),
         getSettings: () => ({}),
@@ -44,7 +46,9 @@ test.describe("녹음 중단 버튼", () => {
         id: "fake-stream",
         addTrack: () => {},
         removeTrack: () => {},
-        clone: function () { return this; },
+        clone: function () {
+          return this;
+        },
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => true,
@@ -66,7 +70,9 @@ test.describe("녹음 중단 버튼", () => {
         mimeType = "audio/webm";
         audioBitsPerSecond = 128000;
         videoBitsPerSecond = 0;
-        static isTypeSupported() { return true; }
+        static isTypeSupported() {
+          return true;
+        }
 
         constructor(stream: MediaStream) {
           super();
@@ -90,8 +96,12 @@ test.describe("녹음 중단 버튼", () => {
           }
         }
 
-        pause() { this.state = "paused"; }
-        resume() { this.state = "recording"; }
+        pause() {
+          this.state = "paused";
+        }
+        resume() {
+          this.state = "recording";
+        }
         requestData() {}
       }
 
@@ -106,7 +116,8 @@ test.describe("녹음 중단 버튼", () => {
         configurable: true,
       });
 
-      (window as unknown as Record<string, unknown>).MediaRecorder = FakeMediaRecorder;
+      (window as unknown as Record<string, unknown>).MediaRecorder =
+        FakeMediaRecorder;
     });
 
     // 2. API fetch를 인터셉트 — 인증 없이도 동작하도록
@@ -163,7 +174,9 @@ test.describe("녹음 중단 버튼", () => {
     );
   });
 
-  test("녹음 종료 버튼 클릭 시 즉시 processing 상태로 전환된다", async ({ page }) => {
+  test("녹음 종료 버튼 클릭 시 즉시 processing 상태로 전환된다", async ({
+    page,
+  }) => {
     await page.goto("/home");
 
     // EmptyState 또는 Sidebar가 로드될 때까지 대기
@@ -175,7 +188,9 @@ test.describe("녹음 중단 버튼", () => {
     await startBtn.click();
 
     // 녹음 중 상태 확인
-    await expect(page.getByText("녹음 중입니다")).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText("녹음 중입니다")).toBeVisible({
+      timeout: 3000,
+    });
 
     // 녹음 종료 버튼이 있는지 확인
     const stopBtn = page.getByRole("button", { name: /녹음 종료/ });
@@ -186,7 +201,9 @@ test.describe("녹음 중단 버튼", () => {
 
     // 즉시 processing 상태("녹음 중입니다" 사라짐)로 전환되어야 함
     // 최대 2초 이내 — 업로드 완료를 기다리지 않고 즉시 전환되는 것이 핵심
-    await expect(page.getByText("녹음 중입니다")).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText("녹음 중입니다")).not.toBeVisible({
+      timeout: 2000,
+    });
   });
 
   test("녹음 종료 후 processing 패널이 표시된다", async ({ page }) => {
@@ -196,7 +213,9 @@ test.describe("녹음 중단 버튼", () => {
     const startBtn = page.getByRole("button", { name: /바로 녹음하기/ });
     await startBtn.click();
 
-    await expect(page.getByText("녹음 중입니다")).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText("녹음 중입니다")).toBeVisible({
+      timeout: 3000,
+    });
 
     const stopBtn = page.getByRole("button", { name: /녹음 종료/ });
     await stopBtn.click();

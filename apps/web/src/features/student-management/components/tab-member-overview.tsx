@@ -62,7 +62,11 @@ function DataRow({
       {/* 값 */}
       <span
         className="text-[13px] flex-1 truncate"
-        style={{ color: filled ? (valueColor ?? "var(--text)") : "rgba(255,255,255,0.2)" }}
+        style={{
+          color: filled
+            ? (valueColor ?? "var(--text)")
+            : "rgba(255,255,255,0.2)",
+        }}
       >
         {filled ? value : "─ 미입력"}
       </span>
@@ -98,11 +102,18 @@ function Section({
   );
 }
 
-export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onManageFields }: TabMemberOverviewProps) {
+export function TabMemberOverview({
+  member,
+  onMemberUpdated,
+  overviewTabId,
+  onManageFields,
+}: TabMemberOverviewProps) {
   const { data: counselingData } = useQuery({
     queryKey: ["member-counseling-stats", member.spaceId, member.id],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`);
+      const res = await fetch(
+        `/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`,
+      );
       if (!res.ok) return { records: [] as { createdAt: string }[] };
       return res.json() as Promise<{ records: { createdAt: string }[] }>;
     },
@@ -111,7 +122,8 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
   const counseling = useMemo((): CounselingStats | null => {
     if (!counselingData) return null;
     const sorted = [...counselingData.records].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     return {
       count: sorted.length,
@@ -150,7 +162,13 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
           <span className="text-[12px] font-semibold text-text-secondary tracking-tight">
             프로필 완성도
           </span>
-          <span className="text-[13px] font-semibold font-mono" style={{ color: pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171" }}>
+          <span
+            className="text-[13px] font-semibold font-mono"
+            style={{
+              color:
+                pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171",
+            }}
+          >
             {filledCount}/{totalCount} · {pct}%
           </span>
         </div>
@@ -159,7 +177,8 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
             className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${pct}%`,
-              background: pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171",
+              background:
+                pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171",
             }}
           />
         </div>
@@ -173,8 +192,16 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
       {/* 연락처 & 기본 정보 */}
       <Section title="연락처">
         <DataRow label="이름" value={member.name} filled={!!member.name} />
-        <DataRow label="이메일" value={member.email ?? ""} filled={!!member.email} />
-        <DataRow label="전화번호" value={member.phone ?? ""} filled={!!member.phone} />
+        <DataRow
+          label="이메일"
+          value={member.email ?? ""}
+          filled={!!member.email}
+        />
+        <DataRow
+          label="전화번호"
+          value={member.phone ?? ""}
+          filled={!!member.phone}
+        />
       </Section>
 
       {/* 운영 상태 */}
@@ -205,9 +232,7 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
           value={`${counseling?.count ?? "─"}건`}
           filled={!!(counseling && counseling.count > 0)}
           note={
-            counseling?.lastDate
-              ? fmtRelative(counseling.lastDate)
-              : undefined
+            counseling?.lastDate ? fmtRelative(counseling.lastDate) : undefined
           }
         />
       </Section>
@@ -223,7 +248,12 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
                 onClick={onManageFields}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  <path
+                    d="M5 1v8M1 5h8"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 필드 추가
               </button>
@@ -239,10 +269,7 @@ export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onMa
       )}
 
       {/* AI 프로필 자동완성 */}
-      <ProfileImportPanel
-        member={member}
-        onSaved={() => onMemberUpdated?.()}
-      />
+      <ProfileImportPanel member={member} onSaved={() => onMemberUpdated?.()} />
     </div>
   );
 }

@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { setupHomeMocks, makeRecord, MOCK_MEMBER_RECENT } from "./helpers/mock-api";
+import {
+  setupHomeMocks,
+  makeRecord,
+  MOCK_MEMBER_RECENT,
+} from "./helpers/mock-api";
 
 /**
  * 시각적 회귀 테스트.
@@ -21,8 +25,18 @@ test.describe("홈 화면 시각적 회귀", () => {
 
   test("레코드 목록 있는 화면 스냅샷", async ({ page }) => {
     const records = [
-      makeRecord({ id: "rec-001", sessionTitle: "3월 멘토링", studentName: "김철수", status: "ready" }),
-      makeRecord({ id: "rec-002", sessionTitle: "4월 1:1 상담", studentName: "이영희", status: "ready" }),
+      makeRecord({
+        id: "rec-001",
+        sessionTitle: "3월 멘토링",
+        studentName: "김철수",
+        status: "ready",
+      }),
+      makeRecord({
+        id: "rec-002",
+        sessionTitle: "4월 1:1 상담",
+        studentName: "이영희",
+        status: "ready",
+      }),
     ];
     await setupHomeMocks(page, { records, members: [MOCK_MEMBER_RECENT] });
     await page.goto("/home");

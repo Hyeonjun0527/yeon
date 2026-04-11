@@ -22,7 +22,8 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
   }, []);
 
   const handleSubmit = async () => {
-    const trimmedTitle = title.trim() || `메모 ${new Date().toLocaleDateString("ko-KR")}`;
+    const trimmedTitle =
+      title.trim() || `메모 ${new Date().toLocaleDateString("ko-KR")}`;
     const trimmedContent = content.trim();
     if (!trimmedContent) {
       setError("메모 내용을 입력해 주세요.");
@@ -106,7 +107,9 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <span className="text-base">✏️</span>
-            <span className="text-[14px] font-semibold text-text">텍스트 메모</span>
+            <span className="text-[14px] font-semibold text-text">
+              텍스트 메모
+            </span>
           </div>
           <button
             className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent border-none text-text-dim hover:text-text hover:bg-surface-3 cursor-pointer transition-colors"
@@ -134,9 +137,7 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
             onChange={(e) => setContent(e.target.value)}
           />
 
-          {error && (
-            <p className="text-xs text-red">{error}</p>
-          )}
+          {error && <p className="text-xs text-red">{error}</p>}
 
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] text-text-dim">⌘ + Enter로 저장</span>

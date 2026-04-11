@@ -4,13 +4,33 @@ import { RecordingTimer } from "./_components/recording-timer";
 
 export default function RecordingPage() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32, padding: "24px 0" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 32,
+        padding: "24px 0",
+      }}
+    >
       {/* ── 상태 1: 녹음 중 ── */}
       <section style={{ padding: "0 40px" }}>
-        <p style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 8, fontWeight: 500 }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--text-dim)",
+            marginBottom: 8,
+            fontWeight: 500,
+          }}
+        >
           녹음 중
         </p>
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
+            overflow: "hidden",
+          }}
+        >
           <div className={styles.appShell} style={{ minHeight: 320 }}>
             <Gnav activeMenu="records" />
             <div className={styles.flex1}>
@@ -41,10 +61,23 @@ export default function RecordingPage() {
 
       {/* ── 상태 2: 녹음 종료 → 즉시 워크스페이스 (전사 처리 중) ── */}
       <section style={{ padding: "0 40px" }}>
-        <p style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 8, fontWeight: 500 }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--text-dim)",
+            marginBottom: 8,
+            fontWeight: 500,
+          }}
+        >
           녹음 종료 → 즉시 워크스페이스 (전사 처리 중)
         </p>
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
+            overflow: "hidden",
+          }}
+        >
           <div className={styles.appShell}>
             <Gnav activeMenu="records" />
 
@@ -55,10 +88,16 @@ export default function RecordingPage() {
                 <button className={styles.btnNew}>+ 새 녹음</button>
               </div>
               <div className={styles.sidebarList}>
-                <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>
-                  <div className={styles.sidebarItemTitle}>녹음 2026.04.08 03:46</div>
+                <div
+                  className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}
+                >
+                  <div className={styles.sidebarItemTitle}>
+                    녹음 2026.04.08 03:46
+                  </div>
                   <div className={styles.sidebarItemMeta}>
-                    <span className={`${styles.statusBadge} ${styles.statusProcessing}`}>
+                    <span
+                      className={`${styles.statusBadge} ${styles.statusProcessing}`}
+                    >
                       ● 전사 중
                     </span>
                     2분 34초
@@ -89,7 +128,9 @@ export default function RecordingPage() {
             {/* AI 패널 */}
             <div className={styles.aiPanel}>
               <div className={styles.aiHeader}>
-                <span className={`${styles.aiHeaderDot} ${styles.aiHeaderDotAmber}`} />
+                <span
+                  className={`${styles.aiHeaderDot} ${styles.aiHeaderDotAmber}`}
+                />
                 AI 어시스턴트
               </div>
               <div className={styles.aiMessages}>

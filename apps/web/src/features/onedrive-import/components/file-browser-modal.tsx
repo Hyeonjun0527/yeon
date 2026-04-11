@@ -51,7 +51,9 @@ export function FileBrowserModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-[15px] font-semibold text-text">OneDrive 파일 선택</h3>
+          <h3 className="text-[15px] font-semibold text-text">
+            OneDrive 파일 선택
+          </h3>
           <button
             className="flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
             onClick={onClose}
@@ -109,7 +111,10 @@ export function FileBrowserModal({
                       type="button"
                     >
                       {isFolder ? (
-                        <Folder size={18} className="flex-shrink-0 text-text-dim" />
+                        <Folder
+                          size={18}
+                          className="flex-shrink-0 text-text-dim"
+                        />
                       ) : (
                         <FileSpreadsheet
                           size={18}

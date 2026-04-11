@@ -17,7 +17,10 @@ export function StudentCard({
   onToggleSelect,
 }: StudentCardProps) {
   return (
-    <div className="bg-surface-2 border border-border rounded p-5 cursor-pointer transition-all duration-150 relative hover:border-border-light hover:bg-surface-3" data-tutorial="member-card">
+    <div
+      className="bg-surface-2 border border-border rounded p-5 cursor-pointer transition-all duration-150 relative hover:border-border-light hover:bg-surface-3"
+      data-tutorial="member-card"
+    >
       <input
         type="checkbox"
         className="absolute top-3 right-3 w-[18px] h-[18px] accent-accent cursor-pointer"
@@ -34,7 +37,9 @@ export function StudentCard({
         <div className="flex items-center gap-3 mb-3">
           <Avatar name={student.name} size={40} />
           <div>
-            <div className="text-[15px] font-semibold text-text">{student.name}</div>
+            <div className="text-[15px] font-semibold text-text">
+              {student.name}
+            </div>
             <div className="text-xs text-text-dim mt-0.5">
               {student.grade} · {student.school ?? ""}
             </div>
@@ -64,7 +69,9 @@ export function StudentCard({
           </div>
           <div>
             <div className="text-[11px] text-text-dim">메모</div>
-            <div className="text-sm font-semibold text-text">{student.memos.length}건</div>
+            <div className="text-sm font-semibold text-text">
+              {student.memos.length}건
+            </div>
           </div>
         </div>
       </Link>

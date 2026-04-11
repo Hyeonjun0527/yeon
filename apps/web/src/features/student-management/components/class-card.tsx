@@ -44,17 +44,27 @@ export function ClassCard({
       }
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-base font-semibold text-text">{classRoom.name}</span>
+        <span className="text-base font-semibold text-text">
+          {classRoom.name}
+        </span>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
             {classRoom.year}년
           </span>
           <button
-            onClick={(e) => { e.stopPropagation(); onEdit(classRoom.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(classRoom.id);
+            }}
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "var(--text-dim)", padding: 4, borderRadius: 4,
-              display: "flex", alignItems: "center",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-dim)",
+              padding: 4,
+              borderRadius: 4,
+              display: "flex",
+              alignItems: "center",
               transition: "color 0.15s",
             }}
             title="수정"
@@ -69,9 +79,14 @@ export function ClassCard({
               }
             }}
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "var(--text-dim)", padding: 4, borderRadius: 4,
-              display: "flex", alignItems: "center",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-dim)",
+              padding: 4,
+              borderRadius: 4,
+              display: "flex",
+              alignItems: "center",
               transition: "color 0.15s",
             }}
             title="삭제"

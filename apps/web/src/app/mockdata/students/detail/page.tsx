@@ -50,8 +50,8 @@ export default function StudentDetailPage() {
             <p className={styles.studentDetailName}>김민수</p>
             <p className={styles.studentDetailSub}>
               <span className={`${styles.tagSm} ${styles.tagMath}`}>수학</span>
-              <span className={`${styles.tagSm} ${styles.tagEng}`}>영어</span>
-              {" "}· 중2 · 2026.03 등록
+              <span className={`${styles.tagSm} ${styles.tagEng}`}>영어</span> ·
+              중2 · 2026.03 등록
             </p>
           </div>
         </div>
@@ -76,7 +76,10 @@ export default function StudentDetailPage() {
           </div>
           <div>
             <p className={styles.sdsLabel}>주요 이슈</p>
-            <p className={styles.sdsValue} style={{ fontFamily: "inherit", fontSize: 13 }}>
+            <p
+              className={styles.sdsValue}
+              style={{ fontFamily: "inherit", fontSize: 13 }}
+            >
               과제 관리
             </p>
           </div>
@@ -101,7 +104,9 @@ export default function StudentDetailPage() {
                   <td className={styles.tdBold}>{row.title}</td>
                   <td>{row.type}</td>
                   <td>
-                    <span className={`${styles.statusBadge} ${styles.statusReady}`}>
+                    <span
+                      className={`${styles.statusBadge} ${styles.statusReady}`}
+                    >
                       ✓ 완료
                     </span>
                   </td>
@@ -123,12 +128,12 @@ export default function StudentDetailPage() {
         <div className={styles.aiSummary}>
           <div className={styles.aiSummaryBadge}>✦ 김민수 종합 리포트</div>
           <div className={styles.aiSummaryText}>
-            <strong>핵심 패턴:</strong> 학원 일정 과밀로 자기주도 학습 시간 부족. 과제
-            미제출이 반복되는 경향.
+            <strong>핵심 패턴:</strong> 학원 일정 과밀로 자기주도 학습 시간
+            부족. 과제 미제출이 반복되는 경향.
             <br />
             <br />
-            <strong>개선 추이:</strong> 3월 대비 과제 완수율 향상 (60% → 80%). 자리 배치
-            변경 후 수업 집중도 개선.
+            <strong>개선 추이:</strong> 3월 대비 과제 완수율 향상 (60% → 80%).
+            자리 배치 변경 후 수업 집중도 개선.
             <br />
             <br />
             <strong>권장 조치:</strong>
@@ -148,7 +153,10 @@ export default function StudentDetailPage() {
           <button className={styles.aiChip}>다음 상담 안건 제안</button>
         </div>
         <div className={styles.aiInputWrap}>
-          <input className={styles.aiInput} placeholder="이 학생에 대해 질문하세요..." />
+          <input
+            className={styles.aiInput}
+            placeholder="이 학생에 대해 질문하세요..."
+          />
         </div>
       </div>
     </div>

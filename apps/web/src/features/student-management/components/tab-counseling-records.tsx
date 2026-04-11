@@ -25,14 +25,21 @@ export function TabCounselingRecords({
   const { data, isPending, error } = useQuery({
     queryKey: ["member-counseling-records", spaceId, memberId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`);
+      const res = await fetch(
+        `/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`,
+      );
       if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
       return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
     },
   });
 
   const records = data ? data.records : ([] as CounselingRecordListItem[]);
-  const errorMessage = error instanceof Error ? error.message : error ? "상담 기록을 불러오지 못했습니다." : null;
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "상담 기록을 불러오지 못했습니다."
+        : null;
 
   if (isPending) {
     return (
@@ -45,7 +52,9 @@ export function TabCounselingRecords({
 
   if (errorMessage) {
     return (
-      <div className="py-10 text-center text-[14px] text-error">{errorMessage}</div>
+      <div className="py-10 text-center text-[14px] text-error">
+        {errorMessage}
+      </div>
     );
   }
 
@@ -71,7 +80,10 @@ export function TabCounselingRecords({
           key={record.id}
           className="flex items-start gap-4 py-4 px-4 bg-surface-2 border border-border rounded-lg hover:border-border-light transition-[border-color] duration-150"
         >
-          <FileAudio size={16} className="text-text-dim mt-[2px] flex-shrink-0" />
+          <FileAudio
+            size={16}
+            className="text-text-dim mt-[2px] flex-shrink-0"
+          />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

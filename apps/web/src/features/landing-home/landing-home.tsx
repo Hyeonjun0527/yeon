@@ -183,10 +183,7 @@ export function LandingHome({
           ref={heroRef}
           className="relative min-h-screen flex items-end justify-start overflow-hidden"
         >
-          <motion.div
-            style={{ y: heroY }}
-            className="absolute inset-0 z-0"
-          >
+          <motion.div style={{ y: heroY }} className="absolute inset-0 z-0">
             <SplineHero />
           </motion.div>
 
@@ -219,7 +216,9 @@ export function LandingHome({
               <br />
               기억에만
               <br />
-              <span className="text-[var(--accent)] relative">남기기 아깝습니다</span>
+              <span className="text-[var(--accent)] relative">
+                남기기 아깝습니다
+              </span>
             </motion.h1>
 
             <motion.p
@@ -274,7 +273,10 @@ export function LandingHome({
 
         {/* ── Stats ── */}
         <RevealSection className="relative z-[1] py-24 px-12 bg-[var(--dark-surface)] border-t border-[var(--dark-border)] border-b md:px-6">
-          <div id="stats" className="max-w-[1100px] mx-auto grid grid-cols-3 gap-12 md:grid-cols-1">
+          <div
+            id="stats"
+            className="max-w-[1100px] mx-auto grid grid-cols-3 gap-12 md:grid-cols-1"
+          >
             {STATS.map((stat) => (
               <motion.div
                 key={stat.label}
@@ -326,7 +328,8 @@ export function LandingHome({
             >
               상담 메모를 다시 정리하느라 시간을 쓰지 않습니다.
               <br />
-              원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로 이어갑니다.
+              원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로
+              이어갑니다.
             </motion.p>
           </div>
         </RevealSection>
@@ -335,7 +338,9 @@ export function LandingHome({
         <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
           <div id="features" className="max-w-[1100px] mx-auto grid gap-[72px]">
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">핵심 기능</p>
+              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
+                핵심 기능
+              </p>
               <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
                 원문, 요약, 액션을
                 <br />한 화면에서
@@ -358,11 +363,15 @@ export function LandingHome({
                     transition: { duration: 0.25 },
                   }}
                 >
-                  <div className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}>
+                  <div
+                    className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}
+                  >
                     <feat.icon size={24} strokeWidth={2} />
                   </div>
                   <h3 className="m-0 text-[21px] font-bold">{feat.title}</h3>
-                  <p className="m-0 text-[15px] leading-[1.75] text-[var(--text-secondary)]">{feat.description}</p>
+                  <p className="m-0 text-[15px] leading-[1.75] text-[var(--text-secondary)]">
+                    {feat.description}
+                  </p>
                 </motion.div>
               ))}
             </motion.div>
@@ -405,8 +414,12 @@ export function LandingHome({
         <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
           <div id="flow" className="max-w-[800px] mx-auto grid gap-[72px]">
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
-              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">사용 흐름</p>
-              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">시작부터 저장까지 단순하게</h2>
+              <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
+                사용 흐름
+              </p>
+              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
+                시작부터 저장까지 단순하게
+              </h2>
             </motion.div>
 
             <div className="grid gap-0">
@@ -428,7 +441,9 @@ export function LandingHome({
                   </span>
                   <div className="grid gap-1.5 pt-2">
                     <h3 className="m-0 text-[21px] font-bold">{step.title}</h3>
-                    <p className="m-0 text-[15px] text-[var(--text-secondary)] leading-[1.65]">{step.description}</p>
+                    <p className="m-0 text-[15px] text-[var(--text-secondary)] leading-[1.65]">
+                      {step.description}
+                    </p>
                   </div>
                 </motion.div>
               ))}
@@ -474,7 +489,9 @@ export function LandingHome({
         {/* ── Footer ── */}
         <footer className="relative z-[1] py-9 px-12 bg-[var(--dark-bg)] border-t border-[var(--dark-border)] md:p-6">
           <div className="max-w-[1100px] mx-auto flex justify-between items-center md:flex-col md:gap-3 md:text-center">
-            <span className="text-[22px] font-black tracking-[-0.03em]">YEON</span>
+            <span className="text-[22px] font-black tracking-[-0.03em]">
+              YEON
+            </span>
             <span className="text-[13px] text-[var(--text-muted)]">
               &copy; 2026 YEON. All rights reserved.
             </span>

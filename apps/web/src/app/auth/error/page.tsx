@@ -35,12 +35,8 @@ export default async function AuthErrorPage({
           "radial-gradient(circle at top, rgba(232,99,10,0.16), transparent 28%), linear-gradient(180deg, #080808 0%, #0f0f11 100%)",
       }}
     >
-      <div
-        className="w-[min(720px,calc(100%-32px))] mx-auto min-h-screen grid place-items-center py-10"
-      >
-        <section
-          className="w-full grid gap-6 p-8 rounded-[28px] border border-white/[0.08] bg-[rgba(16,17,20,0.88)] shadow-[0_28px_80px_rgba(0,0,0,0.32)] md:p-6"
-        >
+      <div className="w-[min(720px,calc(100%-32px))] mx-auto min-h-screen grid place-items-center py-10">
+        <section className="w-full grid gap-6 p-8 rounded-[28px] border border-white/[0.08] bg-[rgba(16,17,20,0.88)] shadow-[0_28px_80px_rgba(0,0,0,0.32)] md:p-6">
           <div>
             <p className="m-0 text-xs font-bold tracking-[0.16em] uppercase text-white/[0.58]">
               Authentication Error

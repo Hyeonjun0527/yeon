@@ -16,7 +16,10 @@ export async function GET() {
   ]);
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
 
-  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Uint8Array;
+  const buffer = XLSX.write(wb, {
+    type: "buffer",
+    bookType: "xlsx",
+  }) as Uint8Array;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

@@ -517,7 +517,9 @@ export function InstructorWorkspace({
                 ))}
               </div>
               <div className={styles.briefingFocusCard}>
-                <p className={styles.actionStudentName}>지금 먼저 챙길 수강생</p>
+                <p className={styles.actionStudentName}>
+                  지금 먼저 챙길 수강생
+                </p>
                 <h3 className={styles.actionTitle}>
                   {heroFocusStudent.name} · {heroFocusStudent.cohortName}
                 </h3>
@@ -550,8 +552,8 @@ export function InstructorWorkspace({
                 </h2>
               </div>
               <p className={styles.panelDescription}>
-                세그먼트와 검색으로 수강생을 좁힌 뒤, 카드 안에서 개입 근거와 다음
-                행동을 바로 읽습니다.
+                세그먼트와 검색으로 수강생을 좁힌 뒤, 카드 안에서 개입 근거와
+                다음 행동을 바로 읽습니다.
               </p>
             </div>
 
@@ -903,7 +905,9 @@ export function InstructorWorkspace({
                   <div className={styles.detailSectionHeader}>
                     <div>
                       <p className={styles.panelEyebrow}>최근 기록</p>
-                      <h3 className={styles.sectionTitle}>수강생별 개입 로그</h3>
+                      <h3 className={styles.sectionTitle}>
+                        수강생별 개입 로그
+                      </h3>
                     </div>
                     <p className={styles.detailMeta}>
                       {selectedStudent.nextCheckLabel} 재확인 예정

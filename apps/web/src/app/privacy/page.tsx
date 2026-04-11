@@ -109,9 +109,7 @@ export default function PrivacyPage() {
           <li>개인정보 처리 정지 요청</li>
           <li>계정 탈퇴 및 데이터 삭제 요청</li>
         </ul>
-        <p>
-          요청은 아래 연락처로 문의해주시면 지체 없이 처리하겠습니다.
-        </p>
+        <p>요청은 아래 연락처로 문의해주시면 지체 없이 처리하겠습니다.</p>
       </Section>
 
       <Section title="6. 쿠키 사용">
@@ -122,9 +120,7 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="7. 개인정보 보호책임자">
-        <p>
-          개인정보 처리에 관한 문의사항은 아래로 연락해주세요.
-        </p>
+        <p>개인정보 처리에 관한 문의사항은 아래로 연락해주세요.</p>
         <ul style={ulStyle}>
           <li>서비스명: Yeon</li>
           <li>이메일: wschoi809@naver.com</li>

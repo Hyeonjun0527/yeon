@@ -28,15 +28,13 @@ const STEPS = [
   {
     target: '[data-tutorial="link-member-btn"]',
     title: "수강생과 연결하기",
-    content:
-      "상담 기록을 수강생에 연결하면 수강생별 이력이 자동으로 쌓여요.",
+    content: "상담 기록을 수강생에 연결하면 수강생별 이력이 자동으로 쌓여요.",
     placement: "bottom" as const,
   },
   {
     target: '[data-tutorial="members-section"]',
     title: "수강생 현황 보기",
-    content:
-      "최근 상담일 기준으로 관리가 필요한 수강생을 한눈에 확인하세요.",
+    content: "최근 상담일 기준으로 관리가 필요한 수강생을 한눈에 확인하세요.",
     placement: "right" as const,
   },
 ];

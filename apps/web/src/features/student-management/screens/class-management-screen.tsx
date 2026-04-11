@@ -28,8 +28,12 @@ export function ClassManagementScreen() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4 md:flex-row flex-col md:items-center items-start">
         <div>
-          <h1 className="text-2xl font-bold text-text tracking-[-0.02em]">코호트 관리</h1>
-          <p className="text-sm text-text-secondary mt-0.5">{classes.length}개 코호트</p>
+          <h1 className="text-2xl font-bold text-text tracking-[-0.02em]">
+            코호트 관리
+          </h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            {classes.length}개 코호트
+          </p>
         </div>
         <div className="flex items-center gap-[10px] md:w-auto w-full flex-wrap">
           <button

@@ -15,7 +15,9 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
       addEventListener: () => {},
       removeEventListener: () => {},
       dispatchEvent: () => true,
-      clone: function () { return this; },
+      clone: function () {
+        return this;
+      },
       getCapabilities: () => ({}),
       getConstraints: () => ({}),
       getSettings: () => ({}),
@@ -33,7 +35,9 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
       id: "fake-stream",
       addTrack: () => {},
       removeTrack: () => {},
-      clone: function () { return this; },
+      clone: function () {
+        return this;
+      },
       addEventListener: () => {},
       removeEventListener: () => {},
       dispatchEvent: () => true,
@@ -54,7 +58,9 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
       mimeType = "audio/webm";
       audioBitsPerSecond = 128000;
       videoBitsPerSecond = 0;
-      static isTypeSupported() { return true; }
+      static isTypeSupported() {
+        return true;
+      }
 
       constructor(stream: MediaStream) {
         super();
@@ -78,8 +84,12 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
         }
       }
 
-      pause() { this.state = "paused"; }
-      resume() { this.state = "recording"; }
+      pause() {
+        this.state = "paused";
+      }
+      resume() {
+        this.state = "recording";
+      }
       requestData() {}
     }
 
@@ -93,7 +103,8 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
       configurable: true,
     });
 
-    (window as unknown as Record<string, unknown>).MediaRecorder = FakeMediaRecorder;
+    (window as unknown as Record<string, unknown>).MediaRecorder =
+      FakeMediaRecorder;
   });
 
   // API route mocks
@@ -150,13 +161,19 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
   // Step 1: /home 접속 직후
   await page.goto("/home");
   await page.waitForLoadState("networkidle");
-  await page.screenshot({ path: "/tmp/debug-01-home-loaded.png", fullPage: true });
+  await page.screenshot({
+    path: "/tmp/debug-01-home-loaded.png",
+    fullPage: true,
+  });
 
   // Step 2: "바로 녹음하기" 버튼 클릭 직후
   const startBtn = page.getByRole("button", { name: /바로 녹음하기/ });
   await startBtn.waitFor({ state: "visible", timeout: 5000 });
   await startBtn.click();
-  await page.screenshot({ path: "/tmp/debug-02-after-start-click.png", fullPage: true });
+  await page.screenshot({
+    path: "/tmp/debug-02-after-start-click.png",
+    fullPage: true,
+  });
 
   // Step 3: 1초 대기 후
   await page.waitForTimeout(1000);
@@ -168,7 +185,10 @@ test("녹음 시작 → 종료 후 UI 상태 스크린샷", async ({ page }) => 
   await stopBtn.click();
   // 500ms 이내 스크린샷
   await page.waitForTimeout(200);
-  await page.screenshot({ path: "/tmp/debug-04-after-stop-200ms.png", fullPage: true });
+  await page.screenshot({
+    path: "/tmp/debug-04-after-stop-200ms.png",
+    fullPage: true,
+  });
 
   // Step 5: 클릭 후 2초 뒤
   await page.waitForTimeout(1800); // 200ms + 1800ms = 2s total

@@ -14,8 +14,12 @@ test.describe("FilePreview - XLSX 렌더링", () => {
     await page.goto("/test/file-preview");
 
     // 로딩 스피너가 사라질 때까지 대기
-    await expect(page.getByText("미리보기 로딩 중...")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("미리보기 로딩 중...")).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("미리보기 로딩 중...")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText("미리보기 로딩 중...")).not.toBeVisible({
+      timeout: 10000,
+    });
 
     // SheetJS가 생성한 HTML 테이블이 렌더링되어야 함
     const table = page.locator("table");
@@ -31,10 +35,14 @@ test.describe("FilePreview - XLSX 렌더링", () => {
     await expect(page.getByText("백엔드")).toBeVisible();
 
     // X 에러 아이콘이 없어야 함
-    await expect(page.locator('img[src*="error"], svg[data-error]')).not.toBeVisible();
+    await expect(
+      page.locator('img[src*="error"], svg[data-error]'),
+    ).not.toBeVisible();
   });
 
-  test("에러 상태: 잘못된 URI는 에러 메시지를 표시해야 한다", async ({ page }) => {
+  test("에러 상태: 잘못된 URI는 에러 메시지를 표시해야 한다", async ({
+    page,
+  }) => {
     // 존재하지 않는 파일 URI로 테스트 — 404 응답
     await page.route("/api/test/sample-xlsx", (route) =>
       route.fulfill({ status: 404, body: "Not Found" }),
@@ -42,7 +50,11 @@ test.describe("FilePreview - XLSX 렌더링", () => {
 
     await page.goto("/test/file-preview");
 
-    await expect(page.getByText("미리보기 로딩 중...")).not.toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("파일을 불러올 수 없습니다.")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("미리보기 로딩 중...")).not.toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText("파일을 불러올 수 없습니다.")).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

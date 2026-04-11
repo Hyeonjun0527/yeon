@@ -3,11 +3,15 @@ import { NextResponse } from "next/server";
 
 import { getMemberById } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
-import { jsonError, requireAuthenticatedUser } from "@/app/api/v1/counseling-records/_shared";
+import {
+  jsonError,
+  requireAuthenticatedUser,
+} from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
 
-const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_CHAT_COMPLETIONS_URL =
+  "https://api.openai.com/v1/chat/completions";
 const AI_MODEL = "gpt-4.1-mini";
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
@@ -120,7 +124,8 @@ export async function POST(
   try {
     member = await getMemberById(memberId);
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     return jsonError("수강생 정보를 불러오지 못했습니다.", 500);
   }
 
@@ -141,7 +146,12 @@ export async function POST(
     return jsonError("파일 크기는 1MB 이하여야 합니다.", 400);
   }
 
-  const supportedTypes = ["text/csv", "text/plain", "application/csv", "text/tab-separated-values"];
+  const supportedTypes = [
+    "text/csv",
+    "text/plain",
+    "application/csv",
+    "text/tab-separated-values",
+  ];
   const isSupported =
     supportedTypes.includes(file.type) ||
     file.name.endsWith(".csv") ||
@@ -174,7 +184,8 @@ export async function POST(
 
     return NextResponse.json({ suggestions });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("AI 분석에 실패했습니다.", 500);
   }

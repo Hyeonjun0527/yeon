@@ -66,7 +66,7 @@ export function useStudentForm({
             relation: guardianRelation,
           },
         ]
-      : (existing?.guardians || []);
+      : existing?.guardians || [];
 
     if (mode === "create") {
       addStudent({

@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, FileText, Sparkles, Check, X, AlertCircle, ChevronDown, ChevronUp, Cloud } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Sparkles,
+  Check,
+  X,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Cloud,
+} from "lucide-react";
 import type { Member } from "../types";
 import { CloudProfilePicker } from "./cloud-profile-picker";
 
@@ -53,7 +63,10 @@ function formatValue(field: string, value: string | null | undefined): string {
   return value;
 }
 
-function currentValue(member: Member, field: string): string | null | undefined {
+function currentValue(
+  member: Member,
+  field: string,
+): string | null | undefined {
   if (field === "name") return member.name;
   if (field === "email") return member.email;
   if (field === "phone") return member.phone;
@@ -62,13 +75,25 @@ function currentValue(member: Member, field: string): string | null | undefined 
   return null;
 }
 
-type Phase = "idle" | "dragging" | "loading" | "review" | "saving" | "done" | "error";
+type Phase =
+  | "idle"
+  | "dragging"
+  | "loading"
+  | "review"
+  | "saving"
+  | "done"
+  | "error";
 
-export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps) {
+export function ProfileImportPanel({
+  member,
+  onSaved,
+}: ProfileImportPanelProps) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<ProfileSuggestions | null>(null);
+  const [suggestions, setSuggestions] = useState<ProfileSuggestions | null>(
+    null,
+  );
   const [checkedFields, setCheckedFields] = useState<Set<string>>(new Set());
   const [showCloudPicker, setShowCloudPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,9 +107,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
   }, []);
 
   const suggestedFields = suggestions
-    ? (["name", "email", "phone", "status", "initialRiskLevel"] as const).filter(
-        (f) => suggestions[f] != null,
-      )
+    ? (
+        ["name", "email", "phone", "status", "initialRiskLevel"] as const
+      ).filter((f) => suggestions[f] != null)
     : [];
 
   const handleFile = useCallback(
@@ -108,7 +133,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
           | { error: string };
 
         if (!res.ok || "error" in data) {
-          throw new Error("error" in data ? data.error : "AI 분석에 실패했습니다.");
+          throw new Error(
+            "error" in data ? data.error : "AI 분석에 실패했습니다.",
+          );
         }
 
         const s = data.suggestions;
@@ -116,15 +143,27 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
 
         /* 신뢰도 high인 필드는 기본 체크 */
         const defaultChecked = new Set<string>();
-        for (const field of ["name", "email", "phone", "status", "initialRiskLevel"] as const) {
-          if (s[field] != null && (s.confidence?.[field] === "high" || s.confidence?.[field] === "medium")) {
+        for (const field of [
+          "name",
+          "email",
+          "phone",
+          "status",
+          "initialRiskLevel",
+        ] as const) {
+          if (
+            s[field] != null &&
+            (s.confidence?.[field] === "high" ||
+              s.confidence?.[field] === "medium")
+          ) {
             defaultChecked.add(field);
           }
         }
         setCheckedFields(defaultChecked);
         setPhase("review");
       } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : "분석에 실패했습니다.");
+        setErrorMessage(
+          err instanceof Error ? err.message : "분석에 실패했습니다.",
+        );
         setPhase("error");
       }
     },
@@ -181,7 +220,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
         setCheckedFields(new Set());
       }, 2000);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "저장에 실패했습니다.");
+      setErrorMessage(
+        err instanceof Error ? err.message : "저장에 실패했습니다.",
+      );
       setPhase("error");
     }
   }, [suggestions, checkedFields, member.spaceId, member.id, onSaved]);
@@ -206,8 +247,12 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
       >
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-accent" />
-          <span className="text-[13px] font-semibold text-text">AI 프로필 자동완성</span>
-          <span className="text-[11px] text-text-dim px-1.5 py-0.5 bg-surface-3 rounded">Beta</span>
+          <span className="text-[13px] font-semibold text-text">
+            AI 프로필 자동완성
+          </span>
+          <span className="text-[11px] text-text-dim px-1.5 py-0.5 bg-surface-3 rounded">
+            Beta
+          </span>
         </div>
         {open ? (
           <ChevronUp size={14} className="text-text-dim" />
@@ -221,8 +266,8 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
           {/* 설명 */}
           <div className="px-4 pt-3 pb-2 bg-surface-2 border-b border-border">
             <p className="text-[12px] text-text-dim leading-relaxed">
-              CSV나 텍스트 파일을 업로드하면 AI가 수강생 프로필 정보를 자동으로 추출합니다.
-              추출된 값을 확인 후 선택적으로 적용할 수 있습니다.
+              CSV나 텍스트 파일을 업로드하면 AI가 수강생 프로필 정보를 자동으로
+              추출합니다. 추출된 값을 확인 후 선택적으로 적용할 수 있습니다.
             </p>
           </div>
 
@@ -235,7 +280,10 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                     ? "border-accent bg-accent-dim"
                     : "border-border hover:border-border-light"
                 }`}
-                onDragOver={(e) => { e.preventDefault(); setPhase("dragging"); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setPhase("dragging");
+                }}
                 onDragLeave={() => setPhase("idle")}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
@@ -253,13 +301,17 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                 />
                 <Upload
                   size={24}
-                  className={phase === "dragging" ? "text-accent" : "text-text-dim"}
+                  className={
+                    phase === "dragging" ? "text-accent" : "text-text-dim"
+                  }
                 />
                 <div className="text-center">
                   <p className="text-[13px] font-medium text-text-secondary">
                     파일을 드래그하거나 클릭해서 선택
                   </p>
-                  <p className="text-[11px] text-text-dim mt-0.5">CSV, TXT 지원 · 최대 1MB</p>
+                  <p className="text-[11px] text-text-dim mt-0.5">
+                    CSV, TXT 지원 · 최대 1MB
+                  </p>
                 </div>
               </div>
 
@@ -287,7 +339,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
           {phase === "loading" && (
             <div className="flex flex-col items-center gap-3 py-10">
               <div className="w-8 h-8 rounded-full border-2 border-border border-t-accent animate-spin" />
-              <p className="text-[13px] text-text-secondary">AI가 파일을 분석하고 있습니다...</p>
+              <p className="text-[13px] text-text-secondary">
+                AI가 파일을 분석하고 있습니다...
+              </p>
             </div>
           )}
 
@@ -295,7 +349,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
           {phase === "error" && (
             <div className="m-4 flex flex-col items-center gap-3 py-6">
               <AlertCircle size={28} className="text-red-400" />
-              <p className="text-[13px] text-text-secondary text-center">{errorMessage}</p>
+              <p className="text-[13px] text-text-secondary text-center">
+                {errorMessage}
+              </p>
               <button
                 className="px-4 py-1.5 bg-surface-3 border border-border rounded text-[12px] text-text-secondary hover:border-border-light transition-colors"
                 onClick={reset}
@@ -311,7 +367,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
               {/* 추출 근거 */}
               {suggestions.rawContext && (
                 <div className="px-3 py-2 bg-surface-3 rounded text-[11px] text-text-dim leading-relaxed border border-border">
-                  <span className="font-semibold text-text-secondary">추출 근거: </span>
+                  <span className="font-semibold text-text-secondary">
+                    추출 근거:{" "}
+                  </span>
                   {suggestions.rawContext}
                 </div>
               )}
@@ -319,7 +377,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
               {suggestedFields.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <FileText size={24} className="text-text-dim" />
-                  <p className="text-[13px] text-text-dim">파일에서 프로필 정보를 찾지 못했습니다.</p>
+                  <p className="text-[13px] text-text-dim">
+                    파일에서 프로필 정보를 찾지 못했습니다.
+                  </p>
                   <button
                     className="mt-1 px-4 py-1.5 bg-surface-3 border border-border rounded text-[12px] text-text-secondary hover:border-border-light transition-colors"
                     onClick={reset}
@@ -346,7 +406,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                         <label
                           key={field}
                           className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
-                            checked ? "bg-accent-dim" : "bg-surface-2 hover:bg-surface-3"
+                            checked
+                              ? "bg-accent-dim"
+                              : "bg-surface-2 hover:bg-surface-3"
                           }`}
                         >
                           {/* 체크박스 */}
@@ -380,7 +442,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                             </span>
                             {!isSame && (
                               <>
-                                <span className="text-text-dim flex-shrink-0">→</span>
+                                <span className="text-text-dim flex-shrink-0">
+                                  →
+                                </span>
                                 <span
                                   className="font-medium truncate"
                                   style={{ color: "var(--accent)" }}
@@ -390,7 +454,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                               </>
                             )}
                             {isSame && (
-                              <span className="text-[11px] text-text-dim">(동일)</span>
+                              <span className="text-[11px] text-text-dim">
+                                (동일)
+                              </span>
                             )}
                           </div>
 
@@ -400,7 +466,11 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
                               className="text-[10px] font-mono flex-shrink-0 font-semibold"
                               style={{ color: CONFIDENCE_COLORS[confidence] }}
                             >
-                              {confidence === "high" ? "확실" : confidence === "medium" ? "보통" : "불확실"}
+                              {confidence === "high"
+                                ? "확실"
+                                : confidence === "medium"
+                                  ? "보통"
+                                  : "불확실"}
                             </span>
                           )}
                         </label>
@@ -446,7 +516,9 @@ export function ProfileImportPanel({ member, onSaved }: ProfileImportPanelProps)
               <div className="w-10 h-10 rounded-full bg-accent-dim border border-accent-border flex items-center justify-center">
                 <Check size={20} className="text-accent" />
               </div>
-              <p className="text-[13px] text-text-secondary font-medium">프로필이 업데이트되었습니다</p>
+              <p className="text-[13px] text-text-secondary font-medium">
+                프로필이 업데이트되었습니다
+              </p>
             </div>
           )}
         </div>

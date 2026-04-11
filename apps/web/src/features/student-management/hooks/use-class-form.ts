@@ -96,14 +96,7 @@ export function useClassForm() {
     }
 
     closeSheet();
-  }, [
-    form,
-    sheetMode,
-    editingClassId,
-    addClass,
-    updateClass,
-    closeSheet,
-  ]);
+  }, [form, sheetMode, editingClassId, addClass, updateClass, closeSheet]);
 
   const handleDelete = useCallback(
     (classId: string) => {

@@ -65,7 +65,9 @@ export function ImportPreviewModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-[15px] font-semibold text-text">가져오기 미리보기</h3>
+          <h3 className="text-[15px] font-semibold text-text">
+            가져오기 미리보기
+          </h3>
           <button
             className="flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
             onClick={onClose}
@@ -108,10 +110,19 @@ export function ImportPreviewModal({
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
                       <tr>
-                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이름</th>
-                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">이메일</th>
-                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">전화번호</th>
-                        <th className="text-left px-2 py-1.5 border-b border-border" style={{ width: 40 }} />
+                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">
+                          이름
+                        </th>
+                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">
+                          이메일
+                        </th>
+                        <th className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] uppercase tracking-[0.04em] border-b border-border">
+                          전화번호
+                        </th>
+                        <th
+                          className="text-left px-2 py-1.5 border-b border-border"
+                          style={{ width: 40 }}
+                        />
                       </tr>
                     </thead>
                     <tbody>

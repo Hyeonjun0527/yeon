@@ -34,16 +34,16 @@ export default function TermsPage() {
       <Section title="제2조 (정의)">
         <ul style={ulStyle}>
           <li>
-            <strong>"서비스"</strong>란 Yeon이 제공하는 수강생 관리, 멘토링 기록,
-            AI 분석 등 일체의 서비스를 말합니다.
+            <strong>"서비스"</strong>란 Yeon이 제공하는 수강생 관리, 멘토링
+            기록, AI 분석 등 일체의 서비스를 말합니다.
           </li>
           <li>
             <strong>"이용자"</strong>란 본 약관에 동의하고 서비스를 이용하는
             운영자 및 멘토를 말합니다.
           </li>
           <li>
-            <strong>"수강생"</strong>이란 이용자가 서비스 내에서 관리하는
-            교육 프로그램 참여자를 말합니다.
+            <strong>"수강생"</strong>이란 이용자가 서비스 내에서 관리하는 교육
+            프로그램 참여자를 말합니다.
           </li>
         </ul>
       </Section>

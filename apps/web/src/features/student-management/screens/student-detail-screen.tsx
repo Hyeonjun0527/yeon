@@ -41,9 +41,10 @@ export function StudentDetailScreen({
   } = useMemberDetail({ memberId: studentId });
 
   /* ── 동적 탭 목록 ── */
-  const { tabs: dynamicTabs, refetch: refetchTabs } = useDynamicMemberTabs(selectedSpaceId);
+  const { tabs: dynamicTabs, refetch: refetchTabs } =
+    useDynamicMemberTabs(selectedSpaceId);
 
-function handleRequestAddTab() {
+  function handleRequestAddTab() {
     if (!selectedSpaceId) return;
     openSpaceSettings({ spaceId: selectedSpaceId, onAfterClose: refetchTabs });
   }
@@ -57,9 +58,10 @@ function handleRequestAddTab() {
       onAfterClose: refetchTabs,
     });
   }
-  const tabItems = dynamicTabs.length > 0
-    ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
-    : undefined;
+  const tabItems =
+    dynamicTabs.length > 0
+      ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
+      : undefined;
   // 현재 탭이 시스템 키가 아닌 UUID이면 커스텀 탭
   const activeCustomTab = dynamicTabs.find(
     (t) => t.tabType === "custom" && t.id === activeTab,
@@ -195,10 +197,7 @@ function handleRequestAddTab() {
         )}
 
         {activeTab === "counseling" && (
-          <TabCounselingRecords
-            spaceId={member.spaceId}
-            memberId={member.id}
-          />
+          <TabCounselingRecords spaceId={member.spaceId} memberId={member.id} />
         )}
 
         {/* courses / guardian 탭은 미구현 안내 */}
@@ -224,10 +223,7 @@ function handleRequestAddTab() {
           />
         )}
 
-        {sheetMode !== null && (
-          <div suppressHydrationWarning />
-        )}
-
+        {sheetMode !== null && <div suppressHydrationWarning />}
       </div>
     );
   }
@@ -275,9 +271,7 @@ function handleRequestAddTab() {
         />
       )}
 
-      {sheetMode !== null && (
-        <div suppressHydrationWarning />
-      )}
+      {sheetMode !== null && <div suppressHydrationWarning />}
     </div>
   );
 }

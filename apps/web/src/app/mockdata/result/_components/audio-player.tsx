@@ -45,7 +45,10 @@ export function AudioPlayer() {
 
   return (
     <div className={styles.audioPlayer}>
-      <button className={styles.playBtn} onClick={() => setIsPlaying((p) => !p)}>
+      <button
+        className={styles.playBtn}
+        onClick={() => setIsPlaying((p) => !p)}
+      >
         {isPlaying ? "⏸" : "▶"}
       </button>
       <span className={styles.audioTime}>{fmtTime(currentTime)}</span>

@@ -96,7 +96,8 @@ export function LinkMemberModal({
     setSubmitting(true);
     try {
       await patchMember(selectedMemberId);
-      if (selectedSpaceId) localStorage.setItem(LAST_SPACE_KEY, selectedSpaceId);
+      if (selectedSpaceId)
+        localStorage.setItem(LAST_SPACE_KEY, selectedSpaceId);
       onLinked(selectedMemberId);
       onClose();
     } catch (e) {
@@ -210,7 +211,9 @@ export function LinkMemberModal({
         </div>
 
         <div className="px-5 mt-4 flex-shrink-0">
-          <label className="block text-[12px] text-text-dim mb-1">스페이스</label>
+          <label className="block text-[12px] text-text-dim mb-1">
+            스페이스
+          </label>
           {spacesLoading ? (
             <div className="flex items-center gap-2 text-[13px] text-text-dim py-2">
               <Loader2 size={13} className="animate-spin" />
@@ -262,7 +265,9 @@ export function LinkMemberModal({
                 </div>
               ) : filteredMembers.length === 0 ? (
                 <p className="text-[13px] text-text-dim py-4 text-center">
-                  {query ? "검색 결과가 없습니다" : "이 스페이스에 수강생이 없습니다"}
+                  {query
+                    ? "검색 결과가 없습니다"
+                    : "이 스페이스에 수강생이 없습니다"}
                 </p>
               ) : (
                 filteredMembers.map((m) => (
@@ -308,7 +313,9 @@ export function LinkMemberModal({
         )}
 
         {error && (
-          <p className="mx-5 mt-3 text-[12px] text-error flex-shrink-0">{error}</p>
+          <p className="mx-5 mt-3 text-[12px] text-error flex-shrink-0">
+            {error}
+          </p>
         )}
 
         <div className="px-5 py-4 border-t border-border mt-4 flex gap-2 flex-shrink-0">
