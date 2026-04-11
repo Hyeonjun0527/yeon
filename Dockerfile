@@ -7,28 +7,46 @@ ENV PATH="$PNPM_HOME:$PATH"
 
 RUN corepack enable
 
-FROM base AS deps
-
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY apps/web/package.json apps/web/package.json
-COPY packages/api-contract/package.json packages/api-contract/package.json
-COPY packages/config/package.json packages/config/package.json
-
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
-
-FROM deps AS builder
+# ── Stage 1: turbo prune ──────────────────────────────────────────────────────
+# @yeon/web에 필요한 workspace 패키지만 추출한다.
+# 새 packages/* 가 생겨도 이 단계가 자동으로 포함하므로 Dockerfile을 수정하지 않아도 된다.
+FROM base AS pruner
 
 WORKDIR /app
 
 COPY . .
 
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm dlx turbo@^2 prune @yeon/web --docker
+
+# ── Stage 2: install dependencies ────────────────────────────────────────────
+FROM base AS deps
+
+WORKDIR /app
+
+# turbo prune 결과의 json/ 에는 필요한 package.json 파일만 포함된다.
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ── Stage 3: build ───────────────────────────────────────────────────────────
+FROM deps AS builder
+
+WORKDIR /app
+
+COPY --from=pruner /app/out/full/ .
+
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @yeon/web build
+# 플랫폼에 따라 워크플로우에서 --build-arg NODE_MEMORY=<value> 로 조정한다.
+ARG NODE_MEMORY=4096
 
+RUN NODE_OPTIONS="--max-old-space-size=${NODE_MEMORY}" \
+    pnpm --filter @yeon/web build
+
+# ── Stage 4: production runner ───────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runner
 
 ENV NODE_ENV=production
@@ -50,4 +68,3 @@ USER nextjs
 EXPOSE 3000
 
 CMD ["node", "apps/web/server.js"]
-

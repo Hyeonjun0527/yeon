@@ -74,6 +74,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
+          build-args: NODE_MEMORY=4096
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=yeon-web-amd64
@@ -127,6 +128,11 @@ jobs:
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
+      - name: 디스크·이미지 정리 (빌드 전)
+        run: |
+          docker image prune -f --filter "until=48h"
+          docker builder prune -f --filter "until=48h"
+
       - name: Build arm64 image by digest
         uses: docker/build-push-action@v6
         id: build
@@ -134,10 +140,11 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
+          build-args: NODE_MEMORY=3072
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=yeon-web-arm64
-          cache-to: type=gha,mode=max,scope=yeon-web-arm64
+          cache-to: type=gha,mode=min,scope=yeon-web-arm64
 
       - name: Export arm64 digest
         run: |
