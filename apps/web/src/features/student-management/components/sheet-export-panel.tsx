@@ -34,7 +34,9 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   } | null>(null);
 
   const [disconnecting, setDisconnecting] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<
+    "csv" | "xlsx" | null
+  >(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -129,35 +131,47 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       setSyncResult(data);
       await load();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "동기화에 실패했습니다.",
-      );
+      setError(err instanceof Error ? err.message : "동기화에 실패했습니다.");
     } finally {
       setSyncing(false);
     }
   }, [spaceId, load]);
 
-  const handleDownloadCsv = useCallback(async () => {
-    setDownloading(true);
-    try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/export/csv`);
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || "CSV 다운로드에 실패했습니다.");
+  const handleDownload = useCallback(
+    async (format: "csv" | "xlsx") => {
+      setDownloadingFormat(format);
+      try {
+        const res = await fetch(`/api/v1/spaces/${spaceId}/export/${format}`);
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(
+            text ||
+              (format === "csv"
+                ? "CSV 다운로드에 실패했습니다."
+                : "엑셀 다운로드에 실패했습니다."),
+          );
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `수강생_${spaceId}.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : format === "csv"
+              ? "CSV 다운로드에 실패했습니다."
+              : "엑셀 다운로드에 실패했습니다.",
+        );
+      } finally {
+        setDownloadingFormat(null);
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `수강생_${spaceId}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "CSV 다운로드에 실패했습니다.");
-    } finally {
-      setDownloading(false);
-    }
-  }, [spaceId]);
+    },
+    [spaceId],
+  );
 
   const handleDisconnect = useCallback(async () => {
     setDisconnecting(true);
@@ -192,20 +206,33 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
             수강생 데이터 내보내기
           </h3>
           <p className="mt-1 text-[13px] text-text-dim">
-            수강생 데이터를 CSV 파일로 다운로드하거나 구글 시트로 동기화합니다.
+            수강생 데이터를 CSV 또는 엑셀 파일로 다운로드하고, 필요하면 Google
+            Sheets로 동기화합니다.
           </p>
         </div>
         {state.kind !== "loading" && (
-          <button
-            type="button"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-border bg-surface-3 px-3 py-1.5 text-[13px] text-text-secondary transition-colors duration-150 hover:border-border-light disabled:opacity-50"
-            onClick={handleDownloadCsv}
-            disabled={downloading}
-            title="CSV 파일로 다운로드"
-          >
-            <Download size={13} />
-            {downloading ? "다운로드 중..." : "CSV"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-3 px-3 py-1.5 text-[13px] text-text-secondary transition-colors duration-150 hover:border-border-light disabled:opacity-50"
+              onClick={() => void handleDownload("csv")}
+              disabled={downloadingFormat !== null}
+              title="CSV 파일로 다운로드"
+            >
+              <Download size={13} />
+              {downloadingFormat === "csv" ? "다운로드 중..." : "CSV"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-3 px-3 py-1.5 text-[13px] text-text-secondary transition-colors duration-150 hover:border-border-light disabled:opacity-50"
+              onClick={() => void handleDownload("xlsx")}
+              disabled={downloadingFormat !== null}
+              title="엑셀 파일로 다운로드"
+            >
+              <Download size={13} />
+              {downloadingFormat === "xlsx" ? "다운로드 중..." : "엑셀"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -250,9 +277,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
               onChange={(e) => setSheetUrl(e.target.value)}
             />
           </label>
-          {formError && (
-            <div className="text-[13px] text-red">{formError}</div>
-          )}
+          {formError && <div className="text-[13px] text-red">{formError}</div>}
           <div className="flex justify-end">
             <button
               type="button"
