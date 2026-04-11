@@ -12,6 +12,7 @@
 - 같은 파일을 여러 번 왕복 수정하지 말고, 발견한 문제는 가능한 한 한 번에 정리하는 것을 기본 원칙으로 삼는다.
 - 루트 `package.json`에 없는 스크립트는 있다고 가정하지 않는다. 항상 실제 `package.json`과 해당 workspace의 `package.json`을 먼저 확인한다.
 - 브랜치, 커밋, push, PR 운영은 `AGENTS.md`와 `.claude/skills/git-pr-workflow.md`를 따른다.
+- **`apps/web`에서 서버 데이터 fetch는 반드시 TanStack Query(`useQuery`, `useMutation`)를 사용한다.** 수동 `fetch + useState + useEffect` 조합은 금지한다. 이미 존재하는 수동 fetch 코드를 수정하는 경우 함께 마이그레이션한다.
 
 ### Completion Criteria
 
@@ -289,6 +290,167 @@ features/<feature-name>/
   - **리포지토리** (`*-repository.ts`): DB CRUD, Row→DTO 매핑, 유효성 검사
   - **서비스** (`*-service.ts`): 비즈니스 오케스트레이션, 스케줄링, export 함수
 - export 시그니처를 유지하면 route handler 변경 없이 분할할 수 있다.
+
+## 코드 일관성 원칙
+
+**목표: 누가 작성했는지 알 수 없는 코드. 판단 기준이 파일마다 달라지지 않는 코드.**
+
+접근 방식이 여럿인 상황에서는 이 문서가 정한 방식을 따른다. 개인 선호로 혼용하지 않는다.
+
+### 명명 규칙
+
+| 대상 | 규칙 | 예 |
+|---|---|---|
+| 파일명 | kebab-case | `use-records.ts`, `student-list-screen.tsx` |
+| 컴포넌트 | PascalCase | `StudentCard`, `EmptyState` |
+| 훅 | camelCase, `use` 접두사 | `useRecords`, `useMemberList` |
+| 상수 | UPPER_SNAKE_CASE | `POLL_INTERVAL_MS` |
+| 타입/인터페이스 | PascalCase | `HomeViewState`, `Member` |
+| 불리언 변수 | `is`/`has`/`can` 접두사 | `isLoading`, `hasError`, `canSubmit` |
+| 이벤트 핸들러 | `handle` 접두사 | `handleSelectRecord`, `handleStartRecording` |
+
+### 컴포넌트 내부 작성 순서
+
+```ts
+// 1. context / 외부 훅
+// 2. 로컬 useState
+// 3. ref
+// 4. 파생값 (useMemo, 인라인 계산)
+// 5. useEffect
+// 6. 이벤트 핸들러 (useCallback)
+// 7. return JSX
+```
+
+이 순서를 어기면 읽는 사람이 흐름을 역추적해야 한다.
+
+### 데이터 fetch 일관성
+
+- 서버 데이터: 무조건 `useQuery` / `useMutation` (수동 fetch + useEffect 조합 금지)
+- `useEffect` 안에서 `fetch()` 직접 호출 금지 — ESLint로 강제
+- `useEffect` async 콜백 금지 — ESLint로 강제
+
+### 렌더 상태 일관성
+
+- 페이지/피처 단위로 `ViewState` discriminated union 하나를 정의한다
+- 렌더는 오직 `viewState.kind` 하나만 보고 분기한다
+- boolean 여러 개 직접 조합 금지 — ESLint로 부분 강제
+
+### 에러 처리 일관성
+
+- API 에러 메시지는 한국어로 작성한다
+- 컴포넌트에서 `try/catch`로 직접 에러를 삼키지 않는다. `useQuery`의 `error` 상태나 `ViewState.kind === 'error'`로 올린다
+- 에러 바운더리는 route 레벨에 두고, 피처 내부에서 중복 선언하지 않는다
+
+### 타입 단언 (`as`) 규칙
+
+- `as` 단언은 타입 시스템이 구조적으로 보장하지 못하는 경우에만 사용한다
+- `as any`는 금지. 어쩔 수 없는 경우 `as unknown as T`로 명시적으로 표현하고 주석으로 이유를 단다
+- 렌더 조건이 이미 타입을 좁히는 상황에서 하는 cast(`viewState.kind as 'processing' | 'ready'`)는 허용한다
+
+### 커밋 원칙
+
+MVP 속도 우선. 커밋 단위는 크게 가도 된다.
+
+- 커밋 메시지는 한국어로 작성한다. 접두사(`feat:`, `fix:` 등)는 쓰면 좋지만 강제하지 않는다
+- feat/fix/refactor/docs를 한 커밋에 섞어도 된다. 개발 흐름을 끊지 않는다
+- 검증(lint → typecheck → build) 없이 커밋하지 않는다 — 이것만 지킨다
+
+## Empty State 렌더 원칙
+
+"주의해서 짠다"로는 empty flash를 막을 수 없다.
+**잘못된 상태 조합 자체를 표현할 수 없게 구조를 바꿔야 한다.**
+
+`loading=false && data=[]`처럼 "미확정인지 진짜 빈 결과인지 알 수 없는" 조합이 코드상에 존재하는 한 깜빡임 가능성은 살아있다.
+
+### 해결 원칙: 단일 ViewState discriminated union
+
+페이지/피처마다 `ViewState` 타입 하나를 정의하고, 렌더는 오직 그것만 본다.
+
+```ts
+type ViewState<T> =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'empty' }
+  | { kind: 'ready'; data: T }
+```
+
+렌더에서 boolean 여러 개를 직접 조합하지 않는다. 반드시 변환 함수 하나를 거친다.
+
+```ts
+// 변환 함수 — 한 군데에서만 상태를 조립
+function toViewState<T>(query: UseQueryResult<T[]>): ViewState<T[]> {
+  if (query.isPending) return { kind: 'loading' }
+  if (query.isError)   return { kind: 'error', message: '불러오기에 실패했습니다.' }
+  if (!query.data || query.data.length === 0) return { kind: 'empty' }
+  return { kind: 'ready', data: query.data }
+}
+```
+
+```tsx
+// 렌더 — kind 하나만 본다
+const state = toViewState(membersQuery)
+
+switch (state.kind) {
+  case 'loading': return <LoadingScreen />
+  case 'error':   return <ErrorScreen message={state.message} />
+  case 'empty':   return <EmptyScreen />
+  case 'ready':   return <StudentList items={state.data} />
+  default: {
+    const _: never = state   // exhaustive check
+    return _
+  }
+}
+```
+
+### 금지 패턴
+
+```ts
+// ❌ boolean 조합 직접 렌더 — 어느 조합에서 empty가 새는지 추적 불가
+if (!loading && data.length === 0) return <EmptyState />
+
+// ❌ data ?? [] 후 바로 empty 판정 — 미확정과 빈 결과를 구분 못 함
+const members = query.data ?? []
+if (!loading && members.length === 0) return <EmptyState />
+
+// ❌ phase/status 초기값을 "empty"로 설정 — 첫 렌더에서 조건 통과 위험
+const [phase, setPhase] = useState<Phase>("empty")
+```
+
+### 여러 query가 있을 때
+
+```ts
+function toMembersViewState(
+  spacesQuery: UseQueryResult<{ spaces: Space[] }>,
+  membersQuery: UseQueryResult<{ members: Member[] }>,
+): ViewState<Member[]> {
+  // 둘 중 하나라도 pending이면 loading
+  if (spacesQuery.isPending || membersQuery.isPending) return { kind: 'loading' }
+  if (spacesQuery.isError)  return { kind: 'error', message: '공간 정보를 불러오지 못했습니다.' }
+  if (membersQuery.isError) return { kind: 'error', message: '수강생 정보를 불러오지 못했습니다.' }
+  const members = membersQuery.data?.members ?? []
+  if (members.length === 0) return { kind: 'empty' }
+  return { kind: 'ready', data: members }
+}
+```
+
+TanStack Query의 `enabled` 의존 체인으로 waterfall을 위임하면 변환 함수가 더 단순해진다.
+
+```ts
+const selectedSpaceId = userSelectedId ?? spacesData?.spaces[0]?.id ?? null
+const membersQuery = useQuery({
+  queryKey: ['members', selectedSpaceId],
+  queryFn:  () => fetchMembers(selectedSpaceId!),
+  enabled:  !!selectedSpaceId,  // spaces 확정 전까지 자동 pending 유지
+})
+```
+
+### 요약
+
+| 패턴 | 안전도 |
+|---|---|
+| boolean 여러 개 직접 조합 렌더 | 위험 — 언제든 새로운 조합 실수 가능 |
+| `data ?? []` 후 empty 판정 | 위험 — 미확정/빈 결과 구분 불가 |
+| ViewState discriminated union + 변환 함수 | 안전 — 잘못된 상태 조합을 코드로 표현할 수 없음 |
 
 ## Review Lens
 

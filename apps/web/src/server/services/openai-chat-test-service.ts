@@ -44,12 +44,12 @@ function extractOutputText(data: OpenAiResponsesPayload) {
     return directOutputText;
   }
 
-  for (const item of data.output ?? []) {
+  for (const item of data.output || []) {
     if (item.type !== "message") {
       continue;
     }
 
-    for (const content of item.content ?? []) {
+    for (const content of item.content || []) {
       if (content.type !== "output_text") {
         continue;
       }

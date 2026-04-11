@@ -33,7 +33,11 @@ importers:
         specifier: ^4.1.4
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.5.2)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2(canvas@3.2.3))(vite@8.0.8(@types/node@25.5.2)(esbuild@0.27.7)(jiti@1.21.7)(terser@5.46.1)(tsx@4.21.0))
 
-  apps/mobile: {}
+  apps/mobile:
+    devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../../packages/config
 
   apps/web:
     dependencies:
@@ -158,6 +162,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.4
         version: 4.1.4(@vitest/browser@4.1.4)(vitest@4.1.4)
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       autoprefixer:
         specifier: ^10.4.27
         version: 10.4.27(postcss@8.5.9)
@@ -189,6 +196,9 @@ importers:
         specifier: workspace:*
         version: link:../api-contract
     devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -199,17 +209,32 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
 
   packages/config: {}
 
-  packages/design-tokens: {}
+  packages/design-tokens:
+    devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../config
 
-  packages/domain: {}
+  packages/domain:
+    devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../config
 
-  packages/utils: {}
+  packages/utils:
+    devDependencies:
+      '@yeon/config':
+        specifier: workspace:*
+        version: link:../config
 
 packages:
 

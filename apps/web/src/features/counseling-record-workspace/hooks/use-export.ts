@@ -60,7 +60,7 @@ export function useExport(
       return "";
     }
 
-    const messages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const messages = assistantMessagesByRecord[selectedRecord.id] || [];
     const aiMessages = messages
       .filter((m) => m.role === "assistant" && !m.isStreaming)
       .map((m) => m.content);
@@ -91,7 +91,7 @@ export function useExport(
       return "";
     }
 
-    const messages = assistantMessagesByRecord[selectedRecord.id] ?? [];
+    const messages = assistantMessagesByRecord[selectedRecord.id] || [];
     const aiContent = messages
       .filter((m) => m.role === "assistant" && !m.isStreaming)
       .map((m) => m.content)

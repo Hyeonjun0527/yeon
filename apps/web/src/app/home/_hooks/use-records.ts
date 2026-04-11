@@ -7,7 +7,7 @@ import type {
   CounselingRecordDetail,
 } from "@yeon/api-contract/counseling-records";
 import { analysisResultSchema } from "@yeon/api-contract/counseling-records";
-import type { RecordItem, RecordPhase, AiMessage, AnalysisResult, TranscriptSegment } from "../_lib/types";
+import type { RecordItem, InternalPhase, HomeViewState, AiMessage, AnalysisResult, TranscriptSegment } from "../_lib/types";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
@@ -55,19 +55,19 @@ export function useRecords() {
   const [localOverrides, setLocalOverrides] = useState<Map<string, Partial<RecordItem>>>(new Map());
   const [tempRecords, setTempRecords] = useState<RecordItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<RecordPhase>("empty");
+  const [phase, setPhase] = useState<InternalPhase>("idle");
   const [processingStep, setProcessingStep] = useState(0);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
 
   const processingStartRef = useRef<number | null>(null);
-  const phaseRef = useRef<RecordPhase>("empty");
+  const phaseRef = useRef<InternalPhase>("idle");
   const selectedIdRef = useRef<string | null>(null);
   const readyTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   phaseRef.current = phase;
   selectedIdRef.current = selectedId;
 
   // 서버 목록 쿼리
-  const { data: serverData, isLoading: loading } = useQuery({
+  const { data: serverData, isPending } = useQuery({
     queryKey: ["counseling-records"],
     queryFn: async () => {
       const res = await fetch("/api/v1/counseling-records");
@@ -75,14 +75,14 @@ export function useRecords() {
       return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
     },
     refetchInterval: (query) => {
-      const items = query.state.data?.records ?? [];
+      const items = query.state.data?.records || [];
       return items.some((r) => r.status === "processing") ? POLL_INTERVAL_MS : false;
     },
   });
 
   // 병합된 records (서버 + 로컬 오버라이드 + 임시 레코드)
   const records = useMemo(() => {
-    const serverItems = serverData?.records ?? [];
+    const serverItems = serverData ? serverData.records : [];
     const serverMerged = serverItems.map(listItemToRecordItem).map((r) => {
       const overrides = localOverrides.get(r.id);
       if (!overrides) return r;
@@ -119,6 +119,7 @@ export function useRecords() {
       queryClient.prefetchQuery({
         queryKey: ["counseling-record", item.id],
         queryFn: async () => {
+          // eslint-disable-next-line no-restricted-syntax
           const res = await fetch(`/api/v1/counseling-records/${item.id}`);
           if (!res.ok) throw new Error("상세 조회 실패");
           return res.json() as Promise<{ record: CounselingRecordDetail }>;
@@ -135,25 +136,12 @@ export function useRecords() {
         readyTransitionTimerRef.current = setTimeout(() => {
           readyTransitionTimerRef.current = null;
           if (selectedIdRef.current === item.id && phaseRef.current === "processing") {
-            setPhase("ready");
+            setPhase("idle");
           }
         }, delay);
       }
     }
   }, [serverData, queryClient]);
-
-  // 초기 로드 후 phase 결정
-  const initialLoadDoneRef = useRef(false);
-  useEffect(() => {
-    if (loading || initialLoadDoneRef.current) return;
-    initialLoadDoneRef.current = true;
-
-    setPhase((prev) => {
-      if (prev === "recording" || prev === "processing") return prev;
-      const items = serverData?.records ?? [];
-      return items.length === 0 ? "empty" : "ready";
-    });
-  }, [loading, serverData]);
 
   // 처리 단계 시각 애니메이션
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -235,7 +223,7 @@ export function useRecords() {
       return [record, ...prev];
     });
     setSelectedId(record.id);
-    setPhase("ready");
+    setPhase("idle");
     // 서버 목록 갱신
     queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
   }, [queryClient]);
@@ -245,7 +233,7 @@ export function useRecords() {
       const rec = records.find((r) => r.id === id);
       if (!rec) return;
       setSelectedId(id);
-      setPhase(rec.status === "processing" ? "processing" : "ready");
+      setPhase(rec.status === "processing" ? "processing" : "idle");
 
       if (rec.status === "ready" && (rec.transcript.length === 0 || rec.analysisResult === null)) {
         fetchDetail(id);
@@ -269,12 +257,8 @@ export function useRecords() {
     });
     queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
     setSelectedId((prev) => (prev === id ? null : prev));
-    setPhase((prev) => {
-      const remaining = records.filter((r) => r.id !== id);
-      if (remaining.length === 0) return "empty";
-      return prev === "processing" ? "ready" : prev;
-    });
-  }, [queryClient, records]);
+    setPhase((prev) => (prev === "processing" ? "idle" : prev));
+  }, [queryClient]);
 
   const markUploadError = useCallback((id: string, message: string) => {
     setTempRecords((prev) =>
@@ -290,7 +274,7 @@ export function useRecords() {
       next.set(id, { ...existing, aiSummary: `업로드 실패: ${message}`, status: "error" as const, errorMessage: message });
       return next;
     });
-    setPhase((prev) => (prev === "processing" ? "ready" : prev));
+    setPhase((prev) => (prev === "processing" ? "idle" : prev));
   }, []);
 
   const updateMessages = useCallback(
@@ -298,7 +282,7 @@ export function useRecords() {
       setLocalOverrides((prev) => {
         const next = new Map(prev);
         const existing = next.get(id) ?? {};
-        const currentMessages = (existing.aiMessages as AiMessage[]) ?? [];
+        const currentMessages = (existing.aiMessages as AiMessage[]) || [];
         next.set(id, { ...existing, aiMessages: updater(currentMessages) });
         return next;
       });
@@ -333,13 +317,28 @@ export function useRecords() {
     });
   }, []);
 
+  // viewState — 단일 진실의 원천
+  // isPending: 서버 데이터가 한 번도 도착하지 않은 상태 (첫 렌더 포함)
+  // isLoading(=isPending&&isFetching)만 쓰면 마운트 첫 렌더에서 isFetching=false 구간이 생겨 "empty" 깜빡임 발생
+  const viewState = useMemo((): HomeViewState => {
+    if (phase === "recording") return { kind: "recording" };
+    if (phase === "processing") return { kind: "processing", step: processingStep };
+    if (isPending) return { kind: "loading" };
+    if (records.length === 0) return { kind: "empty" };
+    return { kind: "ready", records };
+  }, [phase, processingStep, isPending, records]);
+
+  // 외부용 recording 시작 메서드
+  const startRecording = useCallback(() => {
+    setPhase("recording");
+  }, []);
+
   return {
     records,
     selectedId,
     selected,
-    phase,
+    viewState,
     processingStep,
-    loading,
     transcriptLoading,
     addProcessingRecord,
     addReadyRecord,
@@ -351,6 +350,6 @@ export function useRecords() {
     clearMessages,
     updateAnalysisResult,
     updateMemberId,
-    setPhase,
+    startRecording,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Link2Off, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, Link2Off, RefreshCw } from "lucide-react";
 
 interface SheetExportPanelProps {
   spaceId: string;
@@ -34,6 +34,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   } | null>(null);
 
   const [disconnecting, setDisconnecting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -136,6 +137,28 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     }
   }, [spaceId, load]);
 
+  const handleDownloadCsv = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/v1/spaces/${spaceId}/export/csv`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "CSV 다운로드에 실패했습니다.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `수강생_${spaceId}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "CSV 다운로드에 실패했습니다.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [spaceId]);
+
   const handleDisconnect = useCallback(async () => {
     setDisconnecting(true);
     setError(null);
@@ -166,13 +189,24 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-text">
-            구글 시트 익스포트
+            수강생 데이터 내보내기
           </h3>
           <p className="mt-1 text-[13px] text-text-dim">
-            이 스페이스의 수강생 데이터를 구글 시트로 내보냅니다. 동기화 시
-            시트 전체를 최신 데이터로 덮어씁니다.
+            수강생 데이터를 CSV 파일로 다운로드하거나 구글 시트로 동기화합니다.
           </p>
         </div>
+        {state.kind !== "loading" && (
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-border bg-surface-3 px-3 py-1.5 text-[13px] text-text-secondary transition-colors duration-150 hover:border-border-light disabled:opacity-50"
+            onClick={handleDownloadCsv}
+            disabled={downloading}
+            title="CSV 파일로 다운로드"
+          >
+            <Download size={13} />
+            {downloading ? "다운로드 중..." : "CSV"}
+          </button>
+        )}
       </div>
 
       {error && (

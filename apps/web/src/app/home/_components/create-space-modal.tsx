@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { X, FolderPlus, FileUp, LayoutTemplate } from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
@@ -28,22 +29,18 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [templates, setTemplates] = useState<TemplateOption[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (step.kind !== "template") return;
-    setTemplatesLoading(true);
-    fetch("/api/v1/space-templates")
-      .then(async (r) => {
-        if (!r.ok) return;
-        const d = (await r.json()) as { templates: TemplateOption[] };
-        setTemplates(d.templates);
-      })
-      .catch(() => {})
-      .finally(() => setTemplatesLoading(false));
-  }, [step.kind]);
+  const { data: templatesData, isPending: templatesLoading } = useQuery({
+    queryKey: ["space-templates"],
+    queryFn: async () => {
+      const r = await fetch("/api/v1/space-templates");
+      if (!r.ok) return { templates: [] as TemplateOption[] };
+      return r.json() as Promise<{ templates: TemplateOption[] }>;
+    },
+    enabled: step.kind === "template",
+  });
+  const templates = templatesData ? templatesData.templates : ([] as TemplateOption[]);
 
   const handleCreate = async () => {
     const trimmed = name.trim();

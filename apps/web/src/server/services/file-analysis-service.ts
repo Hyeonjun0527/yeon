@@ -255,7 +255,7 @@ async function analyzeLargeFile(
   }
 
   // Phase 2: 프로그래밍 추출
-  const dirtySet = new Set(mapping.dirtyColumns ?? []);
+  const dirtySet = new Set(mapping.dirtyColumns || []);
   const preview: ImportPreview = { cohorts: [] };
   const cohortMap = new Map<string, ImportPreview["cohorts"][number]>();
 

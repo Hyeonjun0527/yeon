@@ -32,6 +32,9 @@ export function StudentListScreen() {
   const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
   const spaceName = currentSpace?.name ?? null;
 
+  const isEmpty = !loading && !error && filteredMembers.length === 0;
+  const hasMembers = !loading && !error && filteredMembers.length > 0;
+
   return (
     <div>
       {/* 헤더 */}
@@ -146,7 +149,7 @@ export function StudentListScreen() {
       )}
 
       {/* 빈 상태 */}
-      {!loading && !error && filteredMembers.length === 0 && (
+      {isEmpty && (
         <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
           <User
             size={40}
@@ -210,7 +213,7 @@ export function StudentListScreen() {
       )}
 
       {/* 수강생 목록 */}
-      {!loading && !error && filteredMembers.length > 0 && (
+      {hasMembers && (
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] max-md:grid-cols-1">
           {filteredMembers.map((member) => {
             const statusMeta =

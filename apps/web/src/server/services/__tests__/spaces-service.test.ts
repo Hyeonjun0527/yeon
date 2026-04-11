@@ -8,7 +8,7 @@ const { responses, chain } = vi.hoisted(() => {
     get(_target, prop) {
       if (prop === "then") {
         return (resolve: (v: unknown) => void) =>
-          Promise.resolve(responses.shift() ?? []).then(resolve);
+          Promise.resolve(responses.shift() || []).then(resolve);
       }
       if (prop === "catch" || prop === "finally") return undefined;
       return () => proxy;

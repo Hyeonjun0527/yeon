@@ -1,6 +1,16 @@
 import type { AnalysisResult } from "@yeon/api-contract/counseling-records";
 export type { AnalysisResult };
-export type RecordPhase = "empty" | "recording" | "processing" | "ready";
+
+// 내부 상태 (use-records.ts 전용, 외부 노출 금지)
+export type InternalPhase = "idle" | "recording" | "processing";
+
+// 외부에 노출하는 단일 ViewState
+export type HomeViewState =
+  | { kind: "loading" }
+  | { kind: "empty" }
+  | { kind: "recording" }
+  | { kind: "processing"; step: number }
+  | { kind: "ready"; records: RecordItem[] };
 
 export interface AttachedImage {
   id: string;
