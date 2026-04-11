@@ -12,6 +12,10 @@ import {
   listCounselingRecordsBySpace,
   listUnlinkedCounselingRecords,
 } from "@/server/services/counseling-records-service";
+import {
+  AUDIO_UPLOAD_ERROR_MESSAGE,
+  isAcceptedAudioFile,
+} from "@/lib/audio-file";
 import { ServiceError } from "@/server/services/service-error";
 
 import { jsonError, requireAuthenticatedUser } from "./_shared";
@@ -32,6 +36,33 @@ function parseOptionalDurationMs(value: FormDataEntryValue | null) {
   return Math.round(parsed);
 }
 
+function parseOptionalMemberId(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  return value.trim();
+}
+
+function parseListOptions(searchParams: URLSearchParams) {
+  const rawLimit = searchParams.get("limit");
+  const rawBefore = searchParams.get("before");
+
+  const limit = rawLimit ? Number(rawLimit) : undefined;
+  if (limit !== undefined) {
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 500) {
+      throw new ServiceError(400, "limit은 1 이상 500 이하의 정수여야 합니다.");
+    }
+  }
+
+  const beforeCreatedAt = rawBefore ? new Date(rawBefore) : undefined;
+  if (beforeCreatedAt && Number.isNaN(beforeCreatedAt.getTime())) {
+    throw new ServiceError(400, "before 커서 형식이 올바르지 않습니다.");
+  }
+
+  return { limit, beforeCreatedAt };
+}
+
 export async function GET(request: NextRequest) {
   const { currentUser, response } = await requireAuthenticatedUser(request);
 
@@ -44,14 +75,22 @@ export async function GET(request: NextRequest) {
   const unlinked = searchParams.get("unlinked") === "true";
 
   try {
+    const listOptions = parseListOptions(searchParams);
     let records;
 
     if (spaceId) {
-      records = await listCounselingRecordsBySpace(currentUser.id, spaceId);
+      records = await listCounselingRecordsBySpace(
+        currentUser.id,
+        spaceId,
+        listOptions,
+      );
     } else if (unlinked) {
-      records = await listUnlinkedCounselingRecords(currentUser.id);
+      records = await listUnlinkedCounselingRecords(
+        currentUser.id,
+        listOptions,
+      );
     } else {
-      records = await listCounselingRecords(currentUser.id);
+      records = await listCounselingRecords(currentUser.id, listOptions);
     }
 
     return NextResponse.json(
@@ -95,6 +134,8 @@ export async function POST(request: NextRequest) {
         currentUser,
         sessionTitle,
         content,
+        studentName: String(formData.get("studentName") ?? ""),
+        memberId: parseOptionalMemberId(formData.get("memberId")),
         counselingType: String(formData.get("counselingType") ?? ""),
       });
       return NextResponse.json(
@@ -115,11 +156,16 @@ export async function POST(request: NextRequest) {
     return jsonError("업로드할 음성 파일이 필요합니다.", 400);
   }
 
+  if (!isAcceptedAudioFile(fileEntry)) {
+    return jsonError(AUDIO_UPLOAD_ERROR_MESSAGE, 400);
+  }
+
   try {
     const record = await createCounselingRecordAndQueueTranscription({
       currentUser,
       file: fileEntry,
       studentName: String(formData.get("studentName") ?? ""),
+      memberId: parseOptionalMemberId(formData.get("memberId")),
       sessionTitle: String(formData.get("sessionTitle") ?? ""),
       counselingType: String(formData.get("counselingType") ?? ""),
       audioDurationMs: parseOptionalDurationMs(formData.get("audioDurationMs")),

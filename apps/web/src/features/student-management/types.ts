@@ -66,13 +66,7 @@ export interface ClassRoom {
 export type ViewMode = "card" | "table";
 
 /** 탭 ID */
-export type DetailTab =
-  | "overview"
-  | "counseling"
-  | "courses"
-  | "guardian"
-  | "memos"
-  | "report";
+export type DetailTab = "overview" | "counseling" | "memos" | "report";
 
 /** Sheet 모드 */
 export type SheetMode = "create" | "edit" | null;
@@ -106,6 +100,12 @@ export interface Member {
   phone?: string | null;
   status: string;
   initialRiskLevel?: string | null;
+  aiRiskLevel?: RiskLevel | null;
+  aiRiskSummary?: string | null;
+  aiRiskSignals?: string[];
+  riskSource?: "counseling_ai" | "manual" | null;
+  counselingRecordCount?: number;
+  lastCounselingAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

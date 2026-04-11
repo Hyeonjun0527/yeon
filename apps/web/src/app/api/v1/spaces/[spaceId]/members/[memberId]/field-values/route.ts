@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { bulkUpsertMemberFieldValuesBodySchema } from "@yeon/api-contract/spaces";
 
 import {
   jsonError,
@@ -9,19 +9,11 @@ import {
 import {
   bulkUpsertFieldValues,
   getFieldValues,
+  getFieldValuesForDefinitions,
 } from "@/server/services/member-field-values-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
-
-const upsertBodySchema = z.object({
-  values: z.array(
-    z.object({
-      fieldDefinitionId: z.string().uuid(),
-      value: z.unknown(),
-    }),
-  ),
-});
 
 export async function GET(
   request: NextRequest,
@@ -31,9 +23,19 @@ export async function GET(
   if (!currentUser) return response;
 
   const { spaceId, memberId } = await params;
+  const fieldDefinitionIds = request.nextUrl.searchParams
+    .getAll("fieldDefinitionId")
+    .filter(Boolean);
 
   try {
-    const values = await getFieldValues(memberId, spaceId);
+    const values =
+      fieldDefinitionIds.length > 0
+        ? await getFieldValuesForDefinitions(
+            memberId,
+            spaceId,
+            fieldDefinitionIds,
+          )
+        : await getFieldValues(memberId, spaceId);
     return NextResponse.json({ values });
   } catch (error) {
     if (error instanceof ServiceError)
@@ -59,13 +61,18 @@ export async function PATCH(
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = upsertBodySchema.safeParse(body);
+  const parsed = bulkUpsertMemberFieldValuesBodySchema.safeParse(body);
   if (!parsed.success)
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 
   try {
     await bulkUpsertFieldValues(memberId, spaceId, parsed.data.values);
-    return NextResponse.json({ ok: true });
+    const values = await getFieldValuesForDefinitions(
+      memberId,
+      spaceId,
+      parsed.data.values.map((value) => value.fieldDefinitionId),
+    );
+    return NextResponse.json({ ok: true, values });
   } catch (error) {
     if (error instanceof ServiceError)
       return jsonError(error.message, error.status);

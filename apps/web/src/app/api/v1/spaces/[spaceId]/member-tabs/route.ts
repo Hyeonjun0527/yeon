@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { createMemberTabBodySchema } from "@yeon/api-contract/spaces";
 
 import {
   jsonError,
@@ -14,10 +14,6 @@ import {
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
-
-const createTabBodySchema = z.object({
-  name: z.string().min(1).max(80),
-});
 
 export async function GET(
   request: NextRequest,
@@ -61,7 +57,7 @@ export async function POST(
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = createTabBodySchema.safeParse(body);
+  const parsed = createMemberTabBodySchema.safeParse(body);
   if (!parsed.success)
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 

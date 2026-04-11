@@ -1,33 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Users,
   Plus,
   GraduationCap,
-  X,
   CheckCircle,
   AlertCircle,
-  Upload,
+  Pencil,
+  FileClock,
 } from "lucide-react";
+import { useSpaceSidebarActions } from "./_hooks/use-space-sidebar-actions";
+import { useSpaceSidebarSelection } from "./_hooks/use-space-sidebar-selection";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
+import { StudentSpaceCreateModal } from "@/features/student-management/components/space-create-modal";
+import { useClickOutside } from "@/app/home/_hooks";
 import {
   SpaceSettingsDrawerProvider,
   SpaceSettingsDrawerHost,
-  useSpaceSettingsDrawer,
 } from "@/features/space-settings";
-import { Settings } from "lucide-react";
-
-const CloudImportInline = dynamic(
-  () =>
-    import("@/features/cloud-import/components/cloud-import-inline").then(
-      (mod) => mod.CloudImportInline,
-    ),
-  { ssr: false },
-);
+import type { LocalImportDraftSummary } from "./_lib/space-sidebar-types";
 
 /* ── OAuth 결과 토스트 ──
  * URL query param으로 OAuth 결과를 전달받아 표시하는 컴포넌트.
@@ -40,11 +36,11 @@ const CloudImportInline = dynamic(
 type ToastState = { text: string; type: "success" | "error" } | null;
 
 function OAuthResultToastInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [toast, setToast] = useState<ToastState>(null);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
     const gdError = searchParams.get("googledrive_error");
     const gdConnected = searchParams.get("googledrive_connected");
     const odError = searchParams.get("onedrive_error");
@@ -75,7 +71,7 @@ function OAuthResultToastInner() {
       const qs = params.toString();
       router.replace(window.location.pathname + (qs ? `?${qs}` : ""));
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   useEffect(() => {
     if (!toast) return;
@@ -127,11 +123,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     setSelectedSpaceId,
     refetchSpaces,
     members,
-    importMode,
-    enterImportMode,
-    exitImportMode,
   } = useStudentManagement();
-  const { openSpaceSettings } = useSpaceSettingsDrawer();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -146,58 +138,79 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newSpaceName, setNewSpaceName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  async function handleCreateSpace() {
-    const name = newSpaceName.trim();
-    if (!name) {
-      setCreateError("이름을 입력해주세요.");
-      return;
-    }
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const res = await fetch("/api/v1/spaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+  const {
+    spaceSelection,
+    setSpaceSelection,
+    contextMenu,
+    setContextMenu,
+    handleSelectAllStudents,
+    handleSpaceClick,
+    handleSpaceContextMenu,
+  } = useSpaceSidebarSelection({
+    spaces,
+    selectedSpaceId,
+    setSelectedSpaceId,
+    resetDetailRouteIfNeeded,
+  });
+  const {
+    createModalState,
+    closeCreateModal,
+    openCreateModal,
+    spaceActionError,
+    setSpaceActionError,
+    deletingSpaceId,
+    renamingSpaceId,
+    renameTarget,
+    setRenameTarget,
+    renameValue,
+    setRenameValue,
+    deleteTarget,
+    setDeleteTarget,
+    openRenameDialog,
+    openDeleteDialog,
+    handleRenameSpace,
+    handleDeleteSpace,
+  } = useSpaceSidebarActions({
+    selectedSpaceId,
+    setSelectedSpaceId,
+    refetchSpaces,
+    resetDetailRouteIfNeeded,
+    setSpaceSelection,
+    closeContextMenu: () => setContextMenu(null),
+  });
+  const contextMenuRef = useClickOutside<HTMLDivElement>(
+    () => setContextMenu(null),
+    !!contextMenu,
+  );
+  const {
+    data: localDraftsData,
+    isPending: localDraftsLoading,
+    error: localDraftsQueryError,
+    refetch: refetchLocalDrafts,
+  } = useQuery({
+    queryKey: ["student-management", "local-import-drafts"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/integrations/local/drafts?limit=100");
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(text || "스페이스를 만들지 못했습니다.");
+        throw new Error(text || "임시 가져오기 초안을 불러오지 못했습니다.");
       }
-      const data = (await res.json()) as { space: { id: string } };
-      refetchSpaces();
-      setSelectedSpaceId(data.space.id);
-      setNewSpaceName("");
-      setShowCreateForm(false);
-    } catch (err: unknown) {
-      setCreateError(
-        err instanceof Error ? err.message : "스페이스를 만들지 못했습니다.",
-      );
-    } finally {
-      setCreating(false);
-    }
-  }
 
-  if (importMode) {
-    return (
-      <main className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
-        <CloudImportInline
-          expanded
-          onClose={exitImportMode}
-          onImportComplete={refetchSpaces}
-        />
-      </main>
-    );
-  }
+      return res.json() as Promise<{ drafts: LocalImportDraftSummary[] }>;
+    },
+  });
+  const localDrafts = localDraftsData?.drafts ?? [];
+  const localDraftCount = localDrafts.length;
+  const localDraftsError =
+    localDraftsQueryError instanceof Error
+      ? localDraftsQueryError.message
+      : localDraftsQueryError
+        ? "임시 가져오기 초안을 불러오지 못했습니다."
+        : null;
 
   return (
     <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
-      <nav className="w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto md:w-[240px] max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:gap-1 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
+      <nav className="scrollbar-subtle w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto md:w-[240px] max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:gap-1 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
         <div className="flex items-center gap-2.5 px-2.5 pb-4 text-text max-md:hidden">
           <GraduationCap size={20} style={{ color: "var(--accent)" }} />
           <span
@@ -220,9 +233,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
           }`}
           onClick={() => {
-            setSelectedSpaceId(null);
-            if (importMode) exitImportMode();
-            resetDetailRouteIfNeeded();
+            handleSelectAllStudents();
           }}
         >
           <Users size={16} />
@@ -234,6 +245,11 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           스페이스
         </div>
         <div className="flex flex-col gap-0.5 max-md:flex-row max-md:gap-1">
+          {spaceSelection.ids.length > 1 ? (
+            <div className="mb-1 rounded-[8px] border border-accent-border bg-accent-dim px-2.5 py-2 text-[12px] font-medium text-accent max-md:min-w-[220px]">
+              스페이스 {spaceSelection.ids.length}개 선택됨
+            </div>
+          ) : null}
           {spacesLoading && (
             <div
               style={{
@@ -256,155 +272,47 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               스페이스가 없습니다.
             </div>
           )}
-          {spaces.map((space) => (
-            <button
-              key={space.id}
-              className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
-                selectedSpaceId === space.id
-                  ? " bg-accent-dim text-accent font-semibold"
-                  : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
-              }`}
-              onClick={() => {
-                setSelectedSpaceId(space.id);
-                if (importMode) exitImportMode();
-                resetDetailRouteIfNeeded();
-              }}
-            >
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: "var(--accent)" }}
-              />
-              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                {space.name}
-              </span>
-              {selectedSpaceId === space.id && (
-                <>
+          {spaces.map((space, index) => {
+            const isSpaceSelected = spaceSelection.ids.includes(space.id);
+            const isActiveSpace = selectedSpaceId === space.id;
+
+            return (
+              <button
+                key={space.id}
+                className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
+                  isSpaceSelected
+                    ? isActiveSpace
+                      ? " bg-accent-dim text-accent font-semibold"
+                      : " bg-accent-dim text-text font-medium"
+                    : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
+                }`}
+                onClick={(event) => handleSpaceClick(event, space.id, index)}
+                onContextMenu={(event) =>
+                  handleSpaceContextMenu(event, space.id, space.name)
+                }
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: "var(--accent)" }}
+                />
+                <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {space.name}
+                </span>
+                {isActiveSpace ? (
                   <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">
                     {members.length}
                   </span>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text cursor-pointer p-0 flex-shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openSpaceSettings({ spaceId: space.id });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation();
-                        openSpaceSettings({ spaceId: space.id });
-                      }
-                    }}
-                    title="스페이스 설정"
-                  >
-                    <Settings size={12} />
-                  </div>
-                </>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* 스페이스 생성 인라인 폼 */}
-        {showCreateForm ? (
-          <div
-            style={{
-              marginTop: 8,
-              padding: "10px 10px",
-              background: "var(--surface2)",
-              border: "1px solid var(--border)",
-              borderRadius: 6,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 6,
-              }}
-            >
-              <span
-                style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}
-              >
-                새 스페이스
-              </span>
-              <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--text-dim)",
-                  padding: 0,
-                  display: "flex",
-                }}
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setNewSpaceName("");
-                  setCreateError(null);
-                }}
-              >
-                <X size={14} />
+                ) : null}
               </button>
-            </div>
-            <input
-              type="text"
-              placeholder="스페이스 이름 (예: 풀스택 3기)"
-              value={newSpaceName}
-              onChange={(e) => setNewSpaceName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreateSpace();
-              }}
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                fontSize: 13,
-                border: "1px solid var(--border)",
-                borderRadius: 4,
-                background: "var(--surface)",
-                color: "var(--text)",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-              autoFocus
-            />
-            {createError && (
-              <div style={{ fontSize: 11, color: "var(--red)", marginTop: 4 }}>
-                {createError}
-              </div>
-            )}
-            <button
-              style={{
-                marginTop: 8,
-                width: "100%",
-                padding: "6px 0",
-                fontSize: 13,
-                fontWeight: 600,
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                opacity: creating ? 0.7 : 1,
-              }}
-              onClick={handleCreateSpace}
-              disabled={creating}
-            >
-              {creating ? "만드는 중..." : "만들기"}
-            </button>
+            );
+          })}
+        </div>
+        {spaceActionError ? (
+          <div className="mt-2 rounded-[6px] border border-red/20 bg-red/10 px-2.5 py-2 text-[12px] text-red">
+            {spaceActionError}
           </div>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim max-md:whitespace-nowrap max-md:w-auto max-md:mt-0"
-            onClick={() => setShowCreateForm(true)}
-          >
-            <Plus size={14} />
-            스페이스 만들기
-          </button>
-        )}
+        ) : null}
 
-        {/* 클라우드 가져오기 버튼 */}
         <div
           style={{
             marginTop: "auto",
@@ -415,19 +323,260 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             gap: 6,
           }}
         >
+          {localDraftCount > 0 ? (
+            <button
+              type="button"
+              className="w-full rounded-xl border border-accent-border bg-accent-dim/50 px-3 py-3 text-left transition-colors hover:border-accent hover:bg-accent-dim"
+              onClick={() => openCreateModal("import")}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 rounded-lg bg-surface px-2 py-2 text-accent shrink-0">
+                  <FileClock size={14} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <span className="min-w-0 flex-1 text-[13px] font-semibold text-text truncate">
+                      가져오기 작업 보기
+                    </span>
+                    <span className="shrink-0 rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-accent">
+                      {localDraftCount}개
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-text-dim line-clamp-2">
+                    분석 중이거나 저장된 가져오기 작업을 한곳에서 확인하고,
+                    원하는 초안을 골라 이어서 작업할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </button>
+          ) : null}
+          {localDraftCount === 0 && localDraftsLoading ? (
+            <div className="rounded-[8px] border border-border bg-surface-2 px-3 py-2 text-[12px] text-text-dim">
+              가져오기 작업 확인 중...
+            </div>
+          ) : null}
+          {localDraftsError ? (
+            <div className="rounded-[8px] border border-red/20 bg-red/10 px-3 py-2 text-[12px] text-red">
+              {localDraftsError}
+            </div>
+          ) : null}
           <button
             className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
-            onClick={enterImportMode}
+            onClick={() => openCreateModal("choose")}
             type="button"
           >
-            <Upload size={14} />
-            외부에서 가져오기
+            <Plus size={14} />
+            스페이스 만들기
           </button>
+          <p className="px-1 text-[11px] leading-relaxed text-text-dim">
+            빈 스페이스를 만들거나, 엑셀/CSV를 가져와 바로 시작할 수 있습니다.
+          </p>
         </div>
       </nav>
-      <main className="flex-1 overflow-y-auto p-8 max-md:px-4 max-md:py-5">
+      <main className="scrollbar-subtle flex-1 overflow-y-auto p-8 max-md:px-4 max-md:py-5">
         {children}
       </main>
+      {createModalState.open ? (
+        <StudentSpaceCreateModal
+          initialStep={createModalState.initialStep}
+          onDraftDiscarded={() => {
+            void refetchLocalDrafts();
+          }}
+          onClose={closeCreateModal}
+          onCreated={(space) => {
+            setSpaceActionError(null);
+            setSelectedSpaceId(space.id);
+            refetchSpaces();
+            resetDetailRouteIfNeeded();
+            closeCreateModal();
+          }}
+          onImported={() => {
+            setSpaceActionError(null);
+            refetchSpaces();
+            void refetchLocalDrafts();
+          }}
+        />
+      ) : null}
+
+      {contextMenu ? (
+        <div
+          ref={contextMenuRef}
+          className="fixed min-w-[168px] rounded-md border border-border-light bg-surface-3 py-1 shadow-[0_12px_32px_rgba(0,0,0,0.42)] z-[320]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 bg-transparent border-none text-left text-[12px] font-medium text-text cursor-pointer hover:bg-surface-4 disabled:opacity-50"
+            onClick={() => {
+              openRenameDialog({
+                spaceId: contextMenu.spaceId,
+                spaceName: contextMenu.spaceName,
+              });
+            }}
+            disabled={renamingSpaceId === contextMenu.spaceId}
+          >
+            <Pencil size={12} />
+            {renamingSpaceId === contextMenu.spaceId
+              ? "이름 변경 중..."
+              : "이름 변경"}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 bg-transparent border-none text-left text-[12px] font-medium text-red cursor-pointer hover:bg-surface-4 disabled:opacity-50"
+            onClick={() => {
+              openDeleteDialog({
+                spaceId: contextMenu.spaceId,
+                spaceName: contextMenu.spaceName,
+              });
+            }}
+            disabled={deletingSpaceId === contextMenu.spaceId}
+          >
+            <span>🗑</span>
+            {deletingSpaceId === contextMenu.spaceId
+              ? "삭제 중..."
+              : "스페이스 삭제"}
+          </button>
+        </div>
+      ) : null}
+
+      {renameTarget ? (
+        <div
+          className="fixed inset-0 z-[330] flex items-center justify-center bg-[rgba(0,0,0,0.62)] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !renamingSpaceId) {
+              setRenameTarget(null);
+            }
+          }}
+        >
+          <div className="flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+            <div className="border-b border-border px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                스페이스 이름 변경
+              </p>
+              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
+                이름을 다시 정리합니다
+              </h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+                수강생 목록과 상단 헤더에 바로 반영됩니다. 너무 긴 이름보다는
+                빠르게 찾을 수 있는 기수/트랙 중심 이름이 좋습니다.
+              </p>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <div className="rounded-xl border border-border bg-surface-2/70 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                  현재 이름
+                </p>
+                <p className="mt-1 text-sm font-semibold text-text">
+                  {renameTarget.spaceName}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[12px] font-medium text-text-secondary">
+                  새 스페이스 이름
+                </label>
+                <input
+                  className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent-border"
+                  placeholder="예: 풀스택 부트캠프 7기"
+                  value={renameValue}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  autoFocus
+                  maxLength={100}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text disabled:opacity-50"
+                onClick={() => setRenameTarget(null)}
+                disabled={renamingSpaceId === renameTarget.spaceId}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() =>
+                  void handleRenameSpace(
+                    renameTarget.spaceId,
+                    renameTarget.spaceName,
+                  )
+                }
+                disabled={
+                  renamingSpaceId === renameTarget.spaceId ||
+                  !renameValue.trim()
+                }
+              >
+                <Pencil size={14} />
+                {renamingSpaceId === renameTarget.spaceId
+                  ? "변경 중..."
+                  : "이름 변경"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-[330] flex items-center justify-center bg-[rgba(0,0,0,0.62)] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !deletingSpaceId) {
+              setDeleteTarget(null);
+            }
+          }}
+        >
+          <div className="flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-red/20 bg-surface shadow-2xl">
+            <div className="border-b border-border px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-red/80">
+                스페이스 삭제
+              </p>
+              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
+                이 스페이스를 삭제할까요?
+              </h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+                <span className="font-semibold text-text">
+                  {deleteTarget.spaceName}
+                </span>
+                과 연결된 수강생 데이터도 함께 삭제됩니다. 이 작업은 되돌릴 수
+                없습니다.
+              </p>
+            </div>
+
+            <div className="space-y-3 px-5 py-5">
+              <div className="rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] leading-relaxed text-red">
+                운영 중인 스페이스라면 삭제 전에 CSV/엑셀 내보내기로 먼저
+                백업하는 것을 권장합니다.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text disabled:opacity-50"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingSpaceId === deleteTarget.spaceId}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void handleDeleteSpace(deleteTarget.spaceId)}
+                disabled={deletingSpaceId === deleteTarget.spaceId}
+              >
+                <span>🗑</span>
+                {deletingSpaceId === deleteTarget.spaceId
+                  ? "삭제 중..."
+                  : "삭제하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -443,7 +592,9 @@ export default function StudentManagementLayout({
         <SidebarContent>{children}</SidebarContent>
         <SpaceSettingsDrawerHost />
       </SpaceSettingsDrawerProvider>
-      <OAuthResultToast />
+      <Suspense fallback={null}>
+        <OAuthResultToast />
+      </Suspense>
     </StudentManagementProvider>
   );
 }

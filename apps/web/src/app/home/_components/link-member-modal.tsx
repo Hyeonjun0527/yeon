@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Loader2, Search, UserPlus, Users } from "lucide-react";
 
+import { detectRecordMemberMismatch } from "../_lib/record-member-mismatch";
+import type { RecordItem } from "../_lib/types";
+
 const LAST_SPACE_KEY = "yeon_last_space_id";
 
 interface Space {
@@ -20,6 +23,7 @@ interface Member {
 
 interface LinkMemberModalProps {
   recordId: string;
+  record: RecordItem;
   studentName: string;
   currentMemberId: string | null;
   onClose: () => void;
@@ -28,6 +32,7 @@ interface LinkMemberModalProps {
 
 export function LinkMemberModal({
   recordId,
+  record,
   studentName,
   currentMemberId,
   onClose,
@@ -80,6 +85,12 @@ export function LinkMemberModal({
         m.name.toLowerCase().includes(query.trim().toLowerCase()),
       )
     : members;
+
+  const mismatchWarning = detectRecordMemberMismatch(
+    record,
+    members,
+    mode === "existing" ? selectedMemberId : currentMemberId,
+  );
 
   const patchMember = async (memberId: string | null) => {
     const res = await fetch(`/api/v1/counseling-records/${recordId}`, {
@@ -257,7 +268,7 @@ export function LinkMemberModal({
               />
             </div>
 
-            <div className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-1">
+            <div className="scrollbar-subtle overflow-y-auto flex-1 min-h-0 flex flex-col gap-1">
               {membersLoading ? (
                 <div className="flex items-center gap-2 text-[13px] text-text-dim py-4 justify-center">
                   <Loader2 size={13} className="animate-spin" />
@@ -318,6 +329,22 @@ export function LinkMemberModal({
           </p>
         )}
 
+        {mismatchWarning && (
+          <div className="mx-5 mt-3 rounded-lg border border-amber/30 bg-amber/10 px-4 py-3 flex-shrink-0">
+            <p className="m-0 text-[12px] font-semibold text-amber">
+              {mismatchWarning.title}
+            </p>
+            <p className="mt-1 mb-0 text-[12px] leading-relaxed text-text-secondary">
+              {mismatchWarning.description}
+            </p>
+            <ul className="mt-2 mb-0 pl-4 text-[11px] leading-relaxed text-text-dim">
+              {mismatchWarning.evidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="px-5 py-4 border-t border-border mt-4 flex gap-2 flex-shrink-0">
           <button
             onClick={onClose}
@@ -332,7 +359,7 @@ export function LinkMemberModal({
               className="flex-1 py-2 rounded-lg bg-accent text-bg text-[13px] font-medium disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 size={13} className="animate-spin" />}
-              연결하기
+              {mismatchWarning ? "확인 후 연결하기" : "연결하기"}
             </button>
           ) : (
             <button

@@ -133,7 +133,7 @@ export function TranscriptViewer({
         </div>
       </div>
 
-      <div className={styles.transcriptViewport}>
+      <div className={`scrollbar-subtle ${styles.transcriptViewport}`}>
         {isLoadingDetail && !selectedRecordDetail ? (
           <div className="grid gap-4 p-5">
             {Array.from({ length: 5 }, (_, i) => (

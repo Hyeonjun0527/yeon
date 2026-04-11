@@ -38,6 +38,39 @@ export interface SpaceField {
   displayOrder: number;
 }
 
+export interface SpaceTemplateSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  tabCount: number;
+  fieldCount: number;
+  tabPreviewNames: string[];
+  fieldPreviewNames: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpaceTemplateFieldConfig {
+  name: string;
+  fieldType: FieldType;
+  options?: SelectOption[] | null;
+  isRequired: boolean;
+  displayOrder: number;
+}
+
+export interface SpaceTemplateTabConfig {
+  name: string;
+  tabType: TabType;
+  systemKey?: string | null;
+  displayOrder: number;
+  fields: SpaceTemplateFieldConfig[];
+}
+
+export interface SpaceTemplateDetail extends SpaceTemplateSummary {
+  tabsConfig: SpaceTemplateTabConfig[];
+}
+
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: "텍스트",
   long_text: "긴 텍스트",

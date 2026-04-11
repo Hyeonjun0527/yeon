@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, FolderPlus, FileUp, LayoutTemplate } from "lucide-react";
+import { X, FolderPlus, FileUp, LayoutTemplate, Eye } from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
+import { SpaceTemplatePreviewModal } from "@/features/space-settings/components/space-template-preview-modal";
 
 type Step =
   | { kind: "choose" }
@@ -17,6 +18,11 @@ interface TemplateOption {
   name: string;
   description: string | null;
   isSystem: boolean;
+  tabCount: number;
+  fieldCount: number;
+  tabPreviewNames: string[];
+  fieldPreviewNames: string[];
+  updatedAt: string;
 }
 
 interface CreateSpaceModalProps {
@@ -35,16 +41,24 @@ export function CreateSpaceModal({
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templateLoadError, setTemplateLoadError] = useState<string | null>(
+    null,
+  );
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
   );
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data: templatesData, isPending: templatesLoading } = useQuery({
     queryKey: ["space-templates"],
     queryFn: async () => {
       const r = await fetch("/api/v1/space-templates");
-      if (!r.ok) return { templates: [] as TemplateOption[] };
+      if (!r.ok) {
+        setTemplateLoadError("템플릿 목록을 불러오지 못했습니다.");
+        return { templates: [] as TemplateOption[] };
+      }
+      setTemplateLoadError(null);
       return r.json() as Promise<{ templates: TemplateOption[] }>;
     },
     enabled: step.kind === "template",
@@ -52,6 +66,11 @@ export function CreateSpaceModal({
   const templates = templatesData
     ? templatesData.templates
     : ([] as TemplateOption[]);
+  const selectedTemplate =
+    selectedTemplateId === null
+      ? null
+      : (templates.find((template) => template.id === selectedTemplateId) ??
+        null);
 
   const handleCreate = async () => {
     const trimmed = name.trim();
@@ -175,10 +194,10 @@ export function CreateSpaceModal({
               />
               <div>
                 <div className="text-sm font-semibold text-text">
-                  직접 만들기
+                  템플릿 선택 후 만들기
                 </div>
                 <div className="text-xs text-text-dim mt-0.5">
-                  이름과 기간을 직접 입력해 스페이스를 생성합니다
+                  기본/사용자 템플릿을 고른 뒤 이름과 기간을 입력합니다
                 </div>
               </div>
             </button>
@@ -206,12 +225,18 @@ export function CreateSpaceModal({
               템플릿을 선택하면 탭과 커스텀 필드가 자동으로 설정됩니다.
             </p>
 
+            {templateLoadError && (
+              <div className="mb-3 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {templateLoadError}
+              </div>
+            )}
+
             {templatesLoading ? (
               <div className="py-6 text-center text-xs text-text-dim">
                 불러오는 중…
               </div>
             ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto mb-3">
+              <div className="scrollbar-subtle space-y-2 max-h-64 overflow-y-auto mb-3">
                 {/* 템플릿 없음 옵션 */}
                 <button
                   className={`w-full flex items-start gap-3 px-3 py-3 rounded-lg border text-left transition-colors cursor-pointer font-[inherit] ${
@@ -231,6 +256,11 @@ export function CreateSpaceModal({
                     </div>
                     <div className="text-xs text-text-dim mt-0.5">
                       기본 탭만 생성합니다
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-text-dim">
+                      <span className="rounded border border-border px-1.5 py-0.5">
+                        기본 탭만
+                      </span>
                     </div>
                   </div>
                   {selectedTemplateId === null && (
@@ -274,10 +304,18 @@ export function CreateSpaceModal({
                         )}
                       </div>
                       {tpl.description && (
-                        <div className="text-xs text-text-dim mt-0.5 truncate">
+                        <div className="text-xs text-text-dim mt-0.5 leading-relaxed">
                           {tpl.description}
                         </div>
                       )}
+                      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-text-dim">
+                        <span className="rounded border border-border px-1.5 py-0.5">
+                          {tpl.tabCount}개 탭
+                        </span>
+                        <span className="rounded border border-border px-1.5 py-0.5">
+                          {tpl.fieldCount}개 필드
+                        </span>
+                      </div>
                     </div>
                     {selectedTemplateId === tpl.id && (
                       <div className="ml-auto w-4 h-4 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -296,6 +334,79 @@ export function CreateSpaceModal({
                 ))}
               </div>
             )}
+
+            <div className="rounded-lg border border-border bg-surface-3 px-3 py-3 mb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                    선택된 구성 미리보기
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-text">
+                    {selectedTemplate ? selectedTemplate.name : "템플릿 없음"}
+                  </p>
+                </div>
+                <div className="text-right text-[11px] text-text-dim">
+                  <div>
+                    {selectedTemplate
+                      ? `${selectedTemplate.tabCount}개 탭`
+                      : "기본 탭"}
+                  </div>
+                  <div>
+                    {selectedTemplate
+                      ? `${selectedTemplate.fieldCount}개 필드`
+                      : "커스텀 필드 없음"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-text-secondary bg-transparent cursor-pointer hover:bg-surface-2 hover:text-text transition-colors disabled:opacity-50"
+                    onClick={() => setPreviewOpen(true)}
+                    disabled={!selectedTemplate}
+                    type="button"
+                  >
+                    <Eye size={12} />
+                    상세 보기
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {(
+                  selectedTemplate?.tabPreviewNames ?? [
+                    "개요",
+                    "상담기록",
+                    "메모",
+                    "리포트",
+                  ]
+                ).map((tabName) => (
+                  <span
+                    key={tabName}
+                    className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-dim"
+                  >
+                    {tabName}
+                  </span>
+                ))}
+              </div>
+
+              {selectedTemplate?.fieldPreviewNames.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {selectedTemplate.fieldPreviewNames.map((fieldName) => (
+                    <span
+                      key={fieldName}
+                      className="rounded border border-border bg-[rgba(255,255,255,0.02)] px-1.5 py-0.5 text-[10px] text-text-dim"
+                    >
+                      {fieldName}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-text-dim leading-relaxed">
+                  {selectedTemplate
+                    ? "이 템플릿은 시스템 탭 중심의 간결한 구조입니다."
+                    : "새 스페이스에는 기본 탭만 생성되고, 이후 스페이스 설정에서 구성을 확장할 수 있습니다."}
+                </p>
+              )}
+            </div>
 
             <div className="flex items-center justify-between pt-1">
               <button
@@ -374,6 +485,12 @@ export function CreateSpaceModal({
           </div>
         )}
       </div>
+
+      <SpaceTemplatePreviewModal
+        templateId={selectedTemplateId}
+        open={previewOpen && selectedTemplateId !== null}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 }

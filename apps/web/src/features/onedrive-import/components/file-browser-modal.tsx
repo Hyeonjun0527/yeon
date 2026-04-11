@@ -63,7 +63,7 @@ export function FileBrowserModal({
           </button>
         </div>
 
-        <div className="px-5 py-4 overflow-y-auto flex-1">
+        <div className="scrollbar-subtle px-5 py-4 overflow-y-auto flex-1">
           {analyzing && (
             <div className="flex items-center justify-center gap-2.5 p-6 mb-3 bg-accent-dim rounded-lg text-accent text-[13px] font-medium">
               <Loader2 size={24} className="animate-spin" />

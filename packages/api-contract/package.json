@@ -12,7 +12,8 @@
     "./users": "./src/users.ts",
     "./error": "./src/error.ts",
     "./instructor-dashboard": "./src/instructor-dashboard.ts",
-    "./instructor-workspace": "./src/instructor-workspace.ts"
+    "./instructor-workspace": "./src/instructor-workspace.ts",
+    "./spaces": "./src/spaces.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",

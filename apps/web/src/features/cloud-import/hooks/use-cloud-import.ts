@@ -10,7 +10,15 @@ import type {
   ImportResult,
 } from "../types";
 import { detectFileKind } from "../file-kind";
-import { nextId, summaryText, diffText, readImportSSE } from "./import-helpers";
+import {
+  diffText,
+  getCompletedAnalysisState,
+  getDraftRecoveryNotice,
+  getQueuedAnalysisState,
+  nextId,
+  readImportSSE,
+  summaryText,
+} from "./import-helpers";
 
 const API_BASE: Record<CloudProvider, string> = {
   onedrive: "/api/v1/integrations/onedrive",
@@ -82,6 +90,9 @@ type CloudImportDraftSnapshot = {
   preview: ImportPreview | null;
   importResult: ImportResult | null;
   error: string | null;
+  processingStage: import("@/lib/import-analysis-progress").ImportAnalysisStage;
+  processingProgress: number;
+  processingMessage: string | null;
   expiresAt: string;
   updatedAt: string;
 };
@@ -128,6 +139,13 @@ export function useCloudImport(
   const [filesLoading, setFilesLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<
+    import("@/lib/import-analysis-progress").ImportAnalysisStage | null
+  >(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingMessage, setProcessingMessage] = useState<string | null>(
+    null,
+  );
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [editablePreview, setEditablePreview] = useState<ImportPreview | null>(
     null,
@@ -191,19 +209,12 @@ export function useCloudImport(
       setImportResult(snapshot.importResult);
       setError(snapshot.error);
       setAnalyzing(snapshot.status === "analyzing");
-      setRecoveryNotice(
-        snapshot.status === "analyzing"
-          ? "분석 중이던 작업을 복구했습니다. 완료되면 결과가 이어집니다."
-          : snapshot.status === "edited"
-            ? "수정 중이던 가져오기 초안을 복구했습니다."
-            : snapshot.status === "analyzed"
-              ? "분석 결과를 복구했습니다. 이어서 검토하고 가져오세요."
-              : null,
-      );
+      setProcessingStage(snapshot.processingStage);
+      setProcessingProgress(snapshot.processingProgress);
+      setProcessingMessage(snapshot.processingMessage);
+      setRecoveryNotice(getDraftRecoveryNotice(snapshot.status));
       setStreamingText(
-        snapshot.status === "analyzing"
-          ? "이전 분석 작업을 복구하고 있습니다..."
-          : null,
+        snapshot.status === "analyzing" ? snapshot.processingMessage : null,
       );
       setRestoredFromDraft(true);
     },
@@ -387,8 +398,12 @@ export function useCloudImport(
     const controller = new AbortController();
     analyzeAbortRef.current = controller;
     try {
+      const queuedState = getQueuedAnalysisState();
       setAnalyzing(true);
       setError(null);
+      setProcessingStage(queuedState.stage);
+      setProcessingProgress(queuedState.progress);
+      setProcessingMessage(queuedState.message);
       setStreamingText(null);
       const res = await fetch(`${base}/analyze`, {
         method: "POST",
@@ -420,11 +435,20 @@ export function useCloudImport(
 
       const result = await readImportSSE(
         res,
-        (text) => setStreamingText(text),
+        (event) => {
+          setStreamingText(event.text);
+          setProcessingStage(event.stage ?? null);
+          setProcessingProgress(event.progress ?? 0);
+          setProcessingMessage(event.text);
+        },
         controller.signal,
       );
       if (result.error) throw new Error(result.error);
       if (result.preview) {
+        const completedState = getCompletedAnalysisState();
+        setProcessingStage(completedState.stage);
+        setProcessingProgress(completedState.progress);
+        setProcessingMessage(completedState.message);
         setEditablePreview(structuredClone(result.preview));
         pushMessage(
           "ai",
@@ -542,8 +566,12 @@ export function useCloudImport(
       pushMessage("user", instruction);
       const prevPreview = editablePreview;
       try {
+        const queuedState = getQueuedAnalysisState();
         setAnalyzing(true);
         setError(null);
+        setProcessingStage(queuedState.stage);
+        setProcessingProgress(queuedState.progress);
+        setProcessingMessage(queuedState.message);
         setStreamingText(null);
         const res = await fetch(`${base}/analyze`, {
           method: "POST",
@@ -577,11 +605,20 @@ export function useCloudImport(
 
         const result = await readImportSSE(
           res,
-          (text) => setStreamingText(text),
+          ({ text, stage, progress }) => {
+            setStreamingText(text);
+            if (stage) setProcessingStage(stage);
+            if (typeof progress === "number") setProcessingProgress(progress);
+            setProcessingMessage(text);
+          },
           controller.signal,
         );
         if (result.error) throw new Error(result.error);
         if (result.preview) {
+          const completedState = getCompletedAnalysisState();
+          setProcessingStage(completedState.stage);
+          setProcessingProgress(completedState.progress);
+          setProcessingMessage(completedState.message);
           setEditablePreview(structuredClone(result.preview));
           pushMessage("ai", diffText(prevPreview, result.preview));
         }
@@ -609,6 +646,9 @@ export function useCloudImport(
     setEditablePreview(null);
     setImportResult(null);
     setError(null);
+    setProcessingStage(null);
+    setProcessingProgress(0);
+    setProcessingMessage(null);
     setFolderStack([ROOT_FOLDER]);
     setChatMessages([]);
     folderCacheRef.current.clear();
@@ -629,6 +669,9 @@ export function useCloudImport(
     recoveryNotice,
     draftPolicyText,
     analyzing,
+    processingStage,
+    processingProgress,
+    processingMessage,
     streamingText,
     editablePreview,
     importing,

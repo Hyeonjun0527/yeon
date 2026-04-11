@@ -2,7 +2,67 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
+import {
+  IMPORT_ANALYSIS_CHECKLIST,
+  getImportAnalysisChecklistStep,
+} from "@/lib/import-analysis-progress";
 import type { ChatMessage, ImportHook, ImportPreview } from "../types";
+
+function formatImportErrorMessage(error: string) {
+  if (error.includes("AI 응답 구조 검증 실패")) {
+    return "AI가 만든 초안 형식이 올바르지 않아 이번 요청을 반영하지 못했습니다. 다시 요청하거나 초안을 지운 뒤 다시 시작해 주세요.";
+  }
+
+  if (error.includes("Invalid input") || error.includes("invalid_type")) {
+    return "가져오기 초안 형식이 예상과 달라 처리하지 못했습니다. 다시 분석하거나 파일 형식을 확인해 주세요.";
+  }
+
+  return error;
+}
+
+function ErrorRecoveryNotice({
+  error,
+  onRetry,
+  retryLabel,
+  onDiscard,
+  disabled,
+}: {
+  error: string;
+  onRetry: () => void;
+  retryLabel: string;
+  onDiscard?: (() => Promise<void>) | (() => void);
+  disabled: boolean;
+}) {
+  return (
+    <div className="mb-3 rounded-[6px] bg-[rgba(239,68,68,0.1)] px-3 py-2.5 text-red">
+      <p className="m-0 text-[13px] leading-relaxed">
+        {formatImportErrorMessage(error)}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          className="rounded-[6px] border border-red/30 bg-transparent px-2.5 py-1 text-[12px] font-medium text-red transition-colors hover:bg-red/10 disabled:opacity-50"
+          onClick={onRetry}
+          type="button"
+          disabled={disabled}
+        >
+          {retryLabel}
+        </button>
+        {onDiscard ? (
+          <button
+            className="rounded-[6px] border border-border bg-transparent px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text disabled:opacity-50"
+            onClick={() => {
+              void onDiscard();
+            }}
+            type="button"
+            disabled={disabled}
+          >
+            초안 지우기
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 interface ImportRightPanelProps {
   hook: ImportHook;
@@ -15,6 +75,9 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
     recoveryNotice,
     draftPolicyText,
     analyzing,
+    processingStage,
+    processingProgress,
+    processingMessage,
     streamingText,
     editablePreview,
     importing,
@@ -91,9 +154,15 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           disabled={analyzing || importing}
         />
         {error && (
-          <div className="px-3 py-2.5 rounded-[6px] bg-[rgba(239,68,68,0.1)] text-red text-[13px] mb-3">
-            {error}
-          </div>
+          <ErrorRecoveryNotice
+            error={error}
+            onRetry={() => {
+              void analyzeSelectedFile();
+            }}
+            retryLabel="다시 분석"
+            onDiscard={discardDraft}
+            disabled={analyzing || importing}
+          />
         )}
         <PreviewEditor
           preview={editablePreview}
@@ -124,10 +193,13 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           onDiscard={discardDraft}
           disabled={analyzing || importing}
         />
-        <div className="flex flex-1 items-center justify-center gap-2.5 p-6 mb-3 bg-accent-dim rounded-lg text-accent text-[13px] font-medium">
-          <Loader2 size={24} className="animate-spin" />
-          <span>{streamingText ?? "파일을 분석하고 있습니다..."}</span>
-        </div>
+        <ImportAnalysisStatusCard
+          message={
+            processingMessage ?? streamingText ?? "파일을 분석하고 있습니다..."
+          }
+          processingStage={processingStage}
+          processingProgress={processingProgress}
+        />
       </div>
     );
   }
@@ -146,9 +218,15 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
         disabled={analyzing || importing}
       />
       {error && (
-        <div className="px-3 py-2.5 rounded-[6px] bg-[rgba(239,68,68,0.1)] text-red text-[13px] mb-3">
-          {error}
-        </div>
+        <ErrorRecoveryNotice
+          error={error}
+          onRetry={() => {
+            void analyzeSelectedFile();
+          }}
+          retryLabel="다시 분석"
+          onDiscard={discardDraft}
+          disabled={analyzing || importing}
+        />
       )}
       <div className="flex flex-1 flex-col items-center justify-center text-center px-5 py-10">
         <p className="text-sm font-semibold text-text mb-1">
@@ -164,6 +242,67 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
         >
           분석 시작
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ImportAnalysisStatusCard({
+  message,
+  processingStage,
+  processingProgress,
+}: {
+  message: string;
+  processingStage: ImportHook["processingStage"];
+  processingProgress: number;
+}) {
+  const activeStep = getImportAnalysisChecklistStep(
+    processingStage ?? undefined,
+  );
+
+  return (
+    <div className="mb-3 rounded-lg border border-accent-border bg-accent-dim p-5">
+      <div className="flex items-center gap-2.5 text-accent text-[13px] font-medium mb-4">
+        <Loader2 size={20} className="animate-spin" />
+        <span>{message}</span>
+      </div>
+      <div className="mb-4 text-[12px] text-text-dim">
+        진행률 {processingProgress}%
+      </div>
+      <div className="grid gap-2">
+        {IMPORT_ANALYSIS_CHECKLIST.map((step, index) => {
+          const state =
+            index < activeStep
+              ? "done"
+              : index == activeStep
+                ? "current"
+                : "todo";
+          return (
+            <div
+              key={step.label}
+              className="flex items-center gap-2 text-[13px]"
+            >
+              <span
+                className={
+                  state === "done"
+                    ? "text-accent"
+                    : state === "current"
+                      ? "text-accent"
+                      : "text-text-dim"
+                }
+              >
+                {state === "done" ? "✓" : state === "current" ? "⟳" : "○"}
+              </span>
+              <span
+                className={
+                  state === "todo" ? "text-text-dim" : "text-text-secondary"
+                }
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -444,7 +583,7 @@ function PreviewEditor({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* 스크롤 가능한 미리보기 테이블 */}
-      <div className="flex-1 overflow-y-auto py-3 min-h-0">
+      <div className="scrollbar-subtle flex-1 overflow-y-auto py-3 min-h-0">
         <div className="text-[13px] text-text-dim mb-4">
           {preview.cohorts.length}개 스페이스, {totalStudents}명 수강생
         </div>
@@ -534,7 +673,7 @@ const PreviewCohortSection = memo(
           onChange={(e) => onUpdateCohortName(ci, e.target.value)}
           placeholder="스페이스명"
         />
-        <div className="overflow-x-auto">
+        <div className="scrollbar-subtle overflow-x-auto">
           <table className="w-full min-w-max border-collapse text-[13px]">
             <thead>
               <tr>
@@ -724,7 +863,7 @@ const ChatMessageList = memo(function ChatMessageList({
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2"
+      className="scrollbar-subtle flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2"
     >
       {isEmpty && (
         <div className="flex flex-col items-center justify-center h-full gap-1.5 text-center">

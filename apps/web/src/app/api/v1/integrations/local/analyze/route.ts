@@ -1,10 +1,8 @@
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import {
   jsonError,
   requireAuthenticatedUser,
 } from "@/app/api/v1/counseling-records/_shared";
-import { analyzeBuffer } from "@/server/services/file-analysis-service";
 import type {
   FieldSchemaHint,
   ImportPreview,
@@ -13,11 +11,9 @@ import type {
 import {
   createLocalImportDraft,
   getImportDraftBuffer,
-  markImportDraftAnalyzing,
   saveImportDraftError,
-  saveImportDraftPreview,
 } from "@/server/services/import-drafts-service";
-import { createImportSSEStream } from "@/server/services/import-stream";
+import { executeAnalyzeRoute } from "@/app/api/v1/integrations/_shared";
 import type { FileKind } from "@/features/cloud-import/file-kind";
 import { detectFileKind } from "@/features/cloud-import/file-kind";
 import { ServiceError } from "@/server/services/service-error";
@@ -119,55 +115,17 @@ export async function POST(request: NextRequest) {
 
     const ensuredDraftId = activeDraftId;
 
-    // SSE 스트리밍 요청인 경우
-    if (request.headers.get("accept")?.includes("text/event-stream")) {
-      await markImportDraftAnalyzing(currentUser.id, ensuredDraftId);
-      return createImportSSEStream(
-        buffer,
-        fileName,
-        mimeType,
-        kind,
-        refine,
-        fieldHints,
-        {
-          extraHeaders: {
-            "x-import-draft-id": ensuredDraftId,
-          },
-          onDone: (preview) =>
-            saveImportDraftPreview({
-              userId: currentUser.id,
-              draftId: ensuredDraftId,
-              preview,
-              status: "analyzed",
-            }),
-          onError: (message) =>
-            saveImportDraftError({
-              userId: currentUser.id,
-              draftId: ensuredDraftId,
-              message,
-            }),
-        },
-      );
-    }
-
-    await markImportDraftAnalyzing(currentUser.id, ensuredDraftId);
-    const preview = await analyzeBuffer(
+    return executeAnalyzeRoute({
+      request,
+      userId: currentUser.id,
+      draftId: ensuredDraftId,
       buffer,
       fileName,
       mimeType,
       kind,
       refine,
       fieldHints,
-    );
-
-    await saveImportDraftPreview({
-      userId: currentUser.id,
-      draftId: ensuredDraftId,
-      preview,
-      status: "analyzed",
     });
-
-    return NextResponse.json({ draftId: ensuredDraftId, preview });
   } catch (error) {
     if (activeDraftId) {
       await saveImportDraftError({

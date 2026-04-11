@@ -29,7 +29,11 @@ vi.mock("drizzle-orm", () => ({
   asc: (col: unknown) => col,
   desc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
+  inArray: (col: unknown, values: unknown[]) => ({ col, values }),
   isNull: (col: unknown) => col,
+  lt: (col: unknown, val: unknown) => ({ col, val }),
+  lte: (col: unknown, val: unknown) => ({ col, val }),
+  sql: (_strings: TemplateStringsArray, ...values: unknown[]) => values,
 }));
 vi.mock("@yeon/api-contract/counseling-records", () => ({
   analysisResultSchema: {
@@ -39,6 +43,16 @@ vi.mock("@yeon/api-contract/counseling-records", () => ({
       }
       return { success: false };
     },
+  },
+  counselingChatMessageSchema: {
+    array: () => ({
+      safeParse: (data: unknown) => {
+        if (Array.isArray(data)) {
+          return { success: true, data };
+        }
+        return { success: false };
+      },
+    }),
   },
 }));
 vi.mock("../counseling-record-audio-storage", () => ({
@@ -58,7 +72,10 @@ import {
   findUnlinkedRecords,
   findRecordsByMemberId,
   findOwnedRecord,
+  findOwnedRecordsByIds,
   findTranscriptSegments,
+  findTranscriptSegmentsByRecordIds,
+  summarizeStudentsByName,
   parseSingleAudioRange,
   rebuildTranscriptText,
   PLACEHOLDER_AUDIO_STORAGE_PREFIXES,
@@ -86,11 +103,23 @@ const makeRecord = (overrides: Record<string, unknown> = {}) => ({
   sttModel: "whisper-1",
   transcriptText: "안녕하세요. 오늘 상담을 시작하겠습니다.",
   transcriptSegmentCount: 2,
+  processingStage: "completed",
+  processingProgress: 100,
+  processingMessage: "전사와 분석이 완료되었습니다.",
+  processingChunkCount: 1,
+  processingChunkCompletedCount: 1,
+  transcriptionAttemptCount: 1,
+  analysisStatus: "ready",
+  analysisProgress: 100,
+  analysisErrorMessage: null,
+  analysisAttemptCount: 1,
   spaceId: "space-1",
   memberId: "member-1",
   analysisResult: null,
+  assistantMessages: [],
   errorMessage: null,
   transcriptionCompletedAt: new Date("2024-01-01T10:00:00Z"),
+  analysisCompletedAt: new Date("2024-01-01T10:05:00Z"),
   createdAt: new Date("2024-01-01T09:00:00Z"),
   updatedAt: new Date("2024-01-01T10:00:00Z"),
   ...overrides,
@@ -329,7 +358,7 @@ describe("mapRecordDetail", () => {
     const record = makeRecord();
     const segments = [makeSegment()];
     const result = mapRecordDetail(
-      record as Parameters<typeof mapRecordDetail>[0],
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
       segments as Parameters<typeof mapRecordDetail>[1],
     );
     expect(result.transcriptSegments).toHaveLength(1);
@@ -339,7 +368,7 @@ describe("mapRecordDetail", () => {
   it("placeholder audio path이면 audioUrl이 null이다", () => {
     const record = makeRecord({ audioStoragePath: "local://demo/test.webm" });
     const result = mapRecordDetail(
-      record as Parameters<typeof mapRecordDetail>[0],
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
       [],
     );
     expect(result.audioUrl).toBeNull();
@@ -350,7 +379,7 @@ describe("mapRecordDetail", () => {
       audioStoragePath: "record-1/1234-recording.webm",
     });
     const result = mapRecordDetail(
-      record as Parameters<typeof mapRecordDetail>[0],
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
       [],
     );
     expect(result.audioUrl).toBe("/api/v1/counseling-records/record-1/audio");
@@ -359,7 +388,7 @@ describe("mapRecordDetail", () => {
   it("analysisResult가 유효하지 않으면 null을 반환한다", () => {
     const record = makeRecord({ analysisResult: "invalid" });
     const result = mapRecordDetail(
-      record as Parameters<typeof mapRecordDetail>[0],
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
       [],
     );
     expect(result.analysisResult).toBeNull();
@@ -369,7 +398,7 @@ describe("mapRecordDetail", () => {
     const analysisData = { summary: "좋은 상담이었습니다." };
     const record = makeRecord({ analysisResult: analysisData });
     const result = mapRecordDetail(
-      record as Parameters<typeof mapRecordDetail>[0],
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
       [],
     );
     expect(result.analysisResult).toEqual(analysisData);
@@ -537,6 +566,68 @@ describe("findTranscriptSegments", () => {
     expect(result[0].segmentIndex).toBe(0);
     expect(result[1].segmentIndex).toBe(1);
     expect(result[2].segmentIndex).toBe(2);
+  });
+});
+
+describe("findOwnedRecordsByIds", () => {
+  it("recordIds 배열에 해당하는 owned record들을 반환한다", async () => {
+    const records = [makeRecord(), makeRecord({ id: "record-2" })];
+    responses.push(records);
+
+    const result = await findOwnedRecordsByIds("user-1", [
+      "record-1",
+      "record-2",
+    ]);
+    expect(result).toHaveLength(2);
+  });
+
+  it("빈 recordIds면 즉시 빈 배열을 반환한다", async () => {
+    const result = await findOwnedRecordsByIds("user-1", []);
+    expect(result).toEqual([]);
+  });
+});
+
+describe("findTranscriptSegmentsByRecordIds", () => {
+  it("여러 recordId의 세그먼트를 한 번에 반환한다", async () => {
+    const segments = [
+      makeSegment(),
+      makeSegment({ id: "seg-2", recordId: "record-2", segmentIndex: 0 }),
+    ];
+    responses.push(segments);
+
+    const result = await findTranscriptSegmentsByRecordIds([
+      "record-1",
+      "record-2",
+    ]);
+    expect(result).toHaveLength(2);
+  });
+
+  it("빈 recordIds면 즉시 빈 배열을 반환한다", async () => {
+    const result = await findTranscriptSegmentsByRecordIds([]);
+    expect(result).toEqual([]);
+  });
+});
+
+describe("summarizeStudentsByName", () => {
+  it("학생별 집계 row를 반환한다", async () => {
+    responses.push([
+      {
+        studentName: "홍길동",
+        recordCount: 3,
+        firstCounselingAt: new Date("2024-01-01T09:00:00Z"),
+        lastCounselingAt: new Date("2024-01-03T09:00:00Z"),
+      },
+    ]);
+
+    const result = await summarizeStudentsByName("user-1");
+    expect(result).toEqual([
+      {
+        studentName: "홍길동",
+        recordCount: 3,
+        firstCounselingAt: new Date("2024-01-01T09:00:00Z"),
+        lastCounselingAt: new Date("2024-01-03T09:00:00Z"),
+      },
+    ]);
   });
 });
 

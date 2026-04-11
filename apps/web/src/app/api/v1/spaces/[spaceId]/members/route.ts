@@ -1,8 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { createMemberBodySchema } from "@yeon/api-contract/spaces";
 
-import { createMember, getMembers } from "@/server/services/members-service";
+import {
+  createMember,
+  getMembersWithRisk,
+} from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
 
 import {
@@ -11,14 +14,6 @@ import {
 } from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
-
-const createMemberBodySchema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email().max(255).nullish(),
-  phone: z.string().max(20).nullish(),
-  status: z.string().max(20).nullish(),
-  initialRiskLevel: z.string().max(10).nullish(),
-});
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +28,7 @@ export async function GET(
   const { spaceId } = await params;
 
   try {
-    const memberList = await getMembers(spaceId);
+    const memberList = await getMembersWithRisk(currentUser.id, spaceId);
 
     return NextResponse.json({ members: memberList });
   } catch (error) {

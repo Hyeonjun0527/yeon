@@ -8,9 +8,16 @@ import type { RecordItem } from "../_lib/types";
 interface QuickMemoModalProps {
   onClose: () => void;
   onCreated: (record: RecordItem) => void;
+  defaultMemberId?: string | null;
+  defaultStudentName?: string;
 }
 
-export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
+export function QuickMemoModal({
+  onClose,
+  onCreated,
+  defaultMemberId = null,
+  defaultStudentName = "",
+}: QuickMemoModalProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,6 +45,10 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
       form.append("recordType", "text_memo");
       form.append("sessionTitle", trimmedTitle);
       form.append("content", trimmedContent);
+      form.append("studentName", defaultStudentName);
+      if (defaultMemberId) {
+        form.append("memberId", defaultMemberId);
+      }
 
       const res = await fetch("/api/v1/counseling-records", {
         method: "POST",
@@ -54,8 +65,8 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
 
       const record: RecordItem = {
         id: item.id,
-        spaceId: null,
-        memberId: null,
+        spaceId: item.spaceId,
+        memberId: item.memberId,
         createdAt: item.createdAt,
         title: item.sessionTitle || trimmedTitle,
         status: "ready",
@@ -63,13 +74,18 @@ export function QuickMemoModal({ onClose, onCreated }: QuickMemoModalProps) {
         meta: "",
         duration: "",
         durationMs: 0,
-        studentName: "",
+        studentName: item.studentName || defaultStudentName,
         type: item.counselingType || "텍스트 메모",
         audioUrl: null,
         transcript: [],
         aiSummary: trimmedContent.slice(0, 200),
         aiMessages: [],
         analysisResult: null,
+        processingStage: item.processingStage,
+        processingProgress: item.processingProgress,
+        processingMessage: item.processingMessage,
+        analysisStatus: item.analysisStatus,
+        analysisProgress: item.analysisProgress,
       };
 
       onCreated(record);

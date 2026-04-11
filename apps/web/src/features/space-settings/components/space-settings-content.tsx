@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Eye } from "lucide-react";
 import { FIELD_TYPE_LABELS } from "../types";
 import type { FieldType, SpaceTab } from "../types";
 import { useSpaceSettings } from "../hooks/use-space-settings";
+import { SpaceTemplatePreviewModal } from "./space-template-preview-modal";
 
 interface SpaceSettingsContentProps {
   spaceId: string;
@@ -38,6 +40,8 @@ export function SpaceSettingsContent({
     setSelectedTabId,
     fields,
     fieldsLoading,
+    templates,
+    templatesLoading,
     error,
     createTab,
     renameTab,
@@ -48,6 +52,11 @@ export function SpaceSettingsContent({
     createField,
     deleteField,
     reorderFields,
+    updateTemplate,
+    deleteTemplate,
+    duplicateTemplate,
+    snapshotTemplate,
+    applyTemplate,
   } = useSpaceSettings(spaceId, initialTabId ?? undefined);
 
   const [newTabName, setNewTabName] = useState("");
@@ -57,8 +66,37 @@ export function SpaceSettingsContent({
   const [addingField, setAddingField] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [templateName, setTemplateName] = useState(
+    spaceName ? `${spaceName} 템플릿` : "",
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [editingTemplateName, setEditingTemplateName] = useState("");
+  const [editingTemplateDescription, setEditingTemplateDescription] =
+    useState("");
+  const [updatingTemplate, setUpdatingTemplate] = useState(false);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
+  const [duplicatingTemplate, setDuplicatingTemplate] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const selectedTab = tabs.find((t) => t.id === selectedTabId) ?? null;
+  const selectedTemplate = useMemo(
+    () =>
+      templates.find((template) => template.id === selectedTemplateId) ?? null,
+    [templates, selectedTemplateId],
+  );
+
+  useEffect(() => {
+    if (!selectedTemplate) {
+      setEditingTemplateName("");
+      setEditingTemplateDescription("");
+      return;
+    }
+
+    setEditingTemplateName(selectedTemplate.name);
+    setEditingTemplateDescription(selectedTemplate.description ?? "");
+  }, [selectedTemplate]);
 
   async function handleCreateTab() {
     const name = newTabName.trim();
@@ -86,6 +124,70 @@ export function SpaceSettingsContent({
     setConfirmReset(false);
     setResetting(false);
   }
+
+  async function handleSnapshotTemplate() {
+    const name = templateName.trim();
+    if (!name) return;
+    setSavingTemplate(true);
+    const template = await snapshotTemplate(name);
+    if (template) {
+      setSelectedTemplateId(template.id);
+    }
+    setSavingTemplate(false);
+  }
+
+  async function handleApplyTemplate() {
+    if (!selectedTemplateId) return;
+    setApplyingTemplate(true);
+    await applyTemplate(selectedTemplateId);
+    setApplyingTemplate(false);
+  }
+
+  async function handleUpdateTemplate() {
+    if (!selectedTemplate || selectedTemplate.isSystem) return;
+    setUpdatingTemplate(true);
+    const updatedTemplate = await updateTemplate(selectedTemplate.id, {
+      name: editingTemplateName,
+      description: editingTemplateDescription,
+    });
+    if (updatedTemplate) {
+      setEditingTemplateName(updatedTemplate.name);
+      setEditingTemplateDescription(updatedTemplate.description ?? "");
+    }
+    setUpdatingTemplate(false);
+  }
+
+  async function handleDeleteTemplate() {
+    if (!selectedTemplate || selectedTemplate.isSystem) return;
+    const confirmed = window.confirm(
+      `"${selectedTemplate.name}" 템플릿을 삭제할까요?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingTemplate(true);
+    const deleted = await deleteTemplate(selectedTemplate.id);
+    if (deleted) {
+      setSelectedTemplateId("");
+    }
+    setDeletingTemplate(false);
+  }
+
+  async function handleDuplicateTemplate() {
+    if (!selectedTemplate) return;
+    setDuplicatingTemplate(true);
+    const duplicated = await duplicateTemplate(selectedTemplate.id);
+    if (duplicated) {
+      setSelectedTemplateId(duplicated.id);
+    }
+    setDuplicatingTemplate(false);
+  }
+
+  const templateEditDirty =
+    selectedTemplate !== null &&
+    !selectedTemplate.isSystem &&
+    (editingTemplateName.trim() !== selectedTemplate.name ||
+      editingTemplateDescription.trim() !==
+        (selectedTemplate.description ?? ""));
 
   return (
     <div className="flex flex-col h-full">
@@ -122,6 +224,226 @@ export function SpaceSettingsContent({
         </div>
       )}
 
+      <div className="mx-6 mt-3 rounded-lg border border-border bg-surface-2/60 flex-shrink-0">
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+              구성 템플릿
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-text-dim">
+              자주 쓰는 수강생 정보 구성을 저장해 두고 현재 스페이스에 그대로
+              적용할 수 있습니다.
+            </p>
+          </div>
+          <span className="text-[10px] text-text-dim whitespace-nowrap">
+            {templatesLoading ? "불러오는 중…" : `${templates.length}개`}
+          </span>
+        </div>
+
+        <div className="grid gap-3 px-4 py-3 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+              저장된 템플릿 적용
+            </label>
+            <div className="flex gap-2">
+              <select
+                className="flex-1 bg-surface-3 border border-border rounded-md px-2 py-[7px] text-xs text-text outline-none focus:border-accent transition-colors cursor-pointer"
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                disabled={
+                  templatesLoading || templates.length === 0 || applyingTemplate
+                }
+              >
+                <option value="">
+                  {templates.length === 0
+                    ? "저장된 템플릿이 없습니다"
+                    : "적용할 템플릿을 선택하세요"}
+                </option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                    {template.isSystem ? " · 기본" : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="px-3 py-[7px] rounded-md bg-accent text-white text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity border-none disabled:opacity-50 whitespace-nowrap"
+                onClick={handleApplyTemplate}
+                disabled={!selectedTemplateId || applyingTemplate}
+              >
+                {applyingTemplate ? "적용 중…" : "적용"}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+              현재 구성을 템플릿으로 저장
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-surface-3 border border-border rounded-md px-2 py-[7px] text-xs text-text placeholder:text-text-dim outline-none focus:border-accent transition-colors"
+                placeholder="예: 개발반 기본 구성"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSnapshotTemplate();
+                }}
+                maxLength={80}
+                disabled={savingTemplate}
+              />
+              <button
+                className="px-3 py-[7px] rounded-md border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer hover:bg-[var(--surface3)] hover:text-text transition-colors disabled:opacity-50 whitespace-nowrap"
+                onClick={handleSnapshotTemplate}
+                disabled={savingTemplate || !templateName.trim()}
+              >
+                {savingTemplate ? "저장 중…" : "현재 구성 저장"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {selectedTemplate && (
+          <div className="border-t border-border px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                  선택된 템플릿 정보
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-sm font-semibold text-text">
+                    {selectedTemplate.name}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-text-dim border border-border">
+                    {selectedTemplate.isSystem
+                      ? "기본 템플릿"
+                      : "사용자 템플릿"}
+                  </span>
+                </div>
+              </div>
+              <div className="text-[11px] text-text-dim text-right">
+                <div>{selectedTemplate.tabCount}개 탭</div>
+                <div>{selectedTemplate.fieldCount}개 필드</div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {selectedTemplate.tabPreviewNames.map((tabName) => (
+                  <span
+                    key={tabName}
+                    className="rounded border border-border bg-surface-3 px-2 py-0.5 text-[10px] text-text-dim"
+                  >
+                    {tabName}
+                  </span>
+                ))}
+              </div>
+              <button
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-text-secondary bg-transparent cursor-pointer hover:bg-surface-3 hover:text-text transition-colors whitespace-nowrap"
+                onClick={() => setPreviewOpen(true)}
+                type="button"
+              >
+                <Eye size={12} />
+                상세 보기
+              </button>
+            </div>
+
+            {selectedTemplate.fieldPreviewNames.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selectedTemplate.fieldPreviewNames.map((fieldName) => (
+                  <span
+                    key={fieldName}
+                    className="rounded border border-border bg-transparent px-2 py-0.5 text-[10px] text-text-dim"
+                  >
+                    {fieldName}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                  템플릿 이름
+                </label>
+                <input
+                  className="w-full bg-surface-3 border border-border rounded-md px-2 py-[7px] text-xs text-text placeholder:text-text-dim outline-none focus:border-accent transition-colors disabled:opacity-60"
+                  value={editingTemplateName}
+                  onChange={(e) => setEditingTemplateName(e.target.value)}
+                  disabled={selectedTemplate.isSystem || updatingTemplate}
+                  maxLength={80}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                  템플릿 설명
+                </label>
+                <textarea
+                  className="w-full resize-none bg-surface-3 border border-border rounded-md px-2 py-[7px] text-xs text-text placeholder:text-text-dim outline-none focus:border-accent transition-colors disabled:opacity-60"
+                  rows={3}
+                  value={editingTemplateDescription}
+                  onChange={(e) =>
+                    setEditingTemplateDescription(e.target.value)
+                  }
+                  disabled={selectedTemplate.isSystem || updatingTemplate}
+                  maxLength={500}
+                  placeholder="이 템플릿이 어떤 스페이스 구조인지 설명해 두세요"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <p className="text-[11px] text-text-dim leading-relaxed">
+                {selectedTemplate.isSystem
+                  ? "기본 템플릿은 이름과 설명을 수정하거나 삭제할 수 없습니다."
+                  : "사용자 템플릿은 이름/설명을 정리하고 더 이상 쓰지 않으면 삭제할 수 있습니다."}
+              </p>
+              {!selectedTemplate.isSystem && (
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-3 py-[7px] rounded-md border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer hover:bg-[var(--surface3)] hover:text-text transition-colors disabled:opacity-50 whitespace-nowrap"
+                    onClick={handleDuplicateTemplate}
+                    disabled={
+                      duplicatingTemplate ||
+                      deletingTemplate ||
+                      updatingTemplate
+                    }
+                  >
+                    {duplicatingTemplate ? "복제 중…" : "복제"}
+                  </button>
+                  <button
+                    className="px-3 py-[7px] rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-medium cursor-pointer hover:bg-red-500/15 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    onClick={handleDeleteTemplate}
+                    disabled={deletingTemplate || updatingTemplate}
+                  >
+                    {deletingTemplate ? "삭제 중…" : "삭제"}
+                  </button>
+                  <button
+                    className="px-3 py-[7px] rounded-md bg-accent text-white text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity border-none disabled:opacity-50 whitespace-nowrap"
+                    onClick={handleUpdateTemplate}
+                    disabled={!templateEditDirty || updatingTemplate}
+                  >
+                    {updatingTemplate ? "저장 중…" : "변경 저장"}
+                  </button>
+                </div>
+              )}
+              {selectedTemplate.isSystem && (
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-3 py-[7px] rounded-md border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer hover:bg-[var(--surface3)] hover:text-text transition-colors disabled:opacity-50 whitespace-nowrap"
+                    onClick={handleDuplicateTemplate}
+                    disabled={duplicatingTemplate}
+                  >
+                    {duplicatingTemplate ? "복제 중…" : "복제해서 수정"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
         {/* 좌측 탭 목록 */}
         <div className="w-[280px] border-r border-border flex flex-col flex-shrink-0 overflow-hidden">
@@ -134,7 +456,7 @@ export function SpaceSettingsContent({
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="scrollbar-subtle flex-1 overflow-y-auto py-1">
             {tabsLoading ? (
               <div className="px-4 py-4 text-xs text-text-dim text-center">
                 불러오는 중…
@@ -202,7 +524,7 @@ export function SpaceSettingsContent({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="scrollbar-subtle flex-1 overflow-y-auto">
                 {fieldsLoading ? (
                   <div className="px-6 py-8 text-xs text-text-dim text-center">
                     불러오는 중…
@@ -371,6 +693,12 @@ export function SpaceSettingsContent({
           </button>
         )}
       </div>
+
+      <SpaceTemplatePreviewModal
+        templateId={selectedTemplateId || null}
+        open={previewOpen && Boolean(selectedTemplateId)}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 }

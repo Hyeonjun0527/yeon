@@ -10,6 +10,7 @@ import {
   createTemplate,
   listTemplates,
   seedSystemTemplates,
+  summarizeSpaceTemplate,
 } from "@/server/services/space-templates-service";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -58,7 +59,9 @@ export async function GET(request: NextRequest) {
     // 시스템 템플릿이 없으면 seed
     await seedSystemTemplates();
     const templates = await listTemplates(currentUser.id);
-    return NextResponse.json({ templates });
+    return NextResponse.json({
+      templates: templates.map(summarizeSpaceTemplate),
+    });
   } catch (error) {
     if (error instanceof ServiceError)
       return jsonError(error.message, error.status);
@@ -90,7 +93,10 @@ export async function POST(request: NextRequest) {
         typeof createTemplate
       >[1]["tabsConfig"],
     });
-    return NextResponse.json({ template }, { status: 201 });
+    return NextResponse.json(
+      { template: summarizeSpaceTemplate(template) },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof ServiceError)
       return jsonError(error.message, error.status);

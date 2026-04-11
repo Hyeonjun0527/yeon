@@ -1,6 +1,11 @@
 import { Loader2, Link2, Link2Off } from "lucide-react";
 import styles from "../home.module.css";
+import {
+  PROCESSING_STEPS,
+  getProcessingChecklistStep,
+} from "../_lib/processing-progress";
 import type { AnalysisResult, RecordItem } from "../_lib/types";
+import type { RecordMemberMismatchWarning } from "../_lib/record-member-mismatch";
 import { fmtTime, fmtMs } from "../_lib/utils";
 
 function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
@@ -144,14 +149,59 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
   );
 }
 
-const PROCESSING_STEPS = [
-  { label: "음성 파일 업로드" },
-  { label: "화자 분리" },
-  { label: "음성 전사" },
-  { label: "화자 식별" },
-  { label: "상담 분석" },
-  { label: "요약 생성" },
-];
+function inferFailurePresentation(selected: RecordItem) {
+  const message = selected.errorMessage ?? "알 수 없는 오류가 발생했습니다.";
+  const normalized = message.toLowerCase();
+  const isAnalysisFailure =
+    selected.analysisStatus === "error" ||
+    normalized.includes("analysis") ||
+    normalized.includes("분석");
+  const isLongAudioFailure =
+    normalized.includes("audio duration") ||
+    normalized.includes("longer than") ||
+    normalized.includes("maximum for this model") ||
+    normalized.includes("1400 seconds") ||
+    normalized.includes("길이") ||
+    normalized.includes("duration");
+
+  if (isAnalysisFailure) {
+    return {
+      badge: "AI 분석 실패",
+      title: "AI 분석에 실패했습니다",
+      description:
+        "전사는 남아 있으므로 AI 분석 단계만 다시 시도할 수 있습니다.",
+      retryLabel: "AI 분석 다시 시도",
+      toneClass: "text-accent",
+      isAnalysisFailure: true,
+    };
+  }
+
+  if (isLongAudioFailure) {
+    return {
+      badge: "전사 실패",
+      title: "음성 전사 길이 제한으로 실패했습니다",
+      description:
+        "현재 모델 한도를 넘는 긴 음성이라 재시도 전 전사 전략이 바뀌어야 할 수 있습니다. 그래도 재전사를 다시 시도할 수 있습니다.",
+      retryLabel: "전사 다시 시도",
+      toneClass: "text-red",
+      isAnalysisFailure: false,
+    };
+  }
+
+  return {
+    badge: "전사 실패",
+    title: "음성 분석에 실패했습니다",
+    description: "원본 음성에서 전사 파이프라인을 다시 시작할 수 있습니다.",
+    retryLabel: "재전사 다시 시도",
+    toneClass: "text-red",
+    isAnalysisFailure: false,
+  };
+}
+
+type RetryFeedback = {
+  message: string | null;
+  tone: "idle" | "success" | "error";
+};
 
 export interface CenterPanelProps {
   phase: "processing" | "ready";
@@ -166,12 +216,17 @@ export interface CenterPanelProps {
   onTogglePlay: () => void;
   onSeek: (pct: number) => void;
   onLinkMember: () => void;
+  mismatchWarning: RecordMemberMismatchWarning | null;
+  onRetryFailedRecord: () => void;
+  onRetryFailedAnalysis: () => void;
+  retryPending: boolean;
+  retryFeedback: RetryFeedback;
 }
 
 export function CenterPanel({
-  phase,
+  phase: _phase,
   selected,
-  processingStep,
+  processingStep: _processingStep,
   transcriptLoading,
   analyzing,
   isPlaying,
@@ -180,6 +235,11 @@ export function CenterPanel({
   onTogglePlay,
   onSeek,
   onLinkMember,
+  mismatchWarning,
+  onRetryFailedRecord,
+  onRetryFailedAnalysis,
+  retryPending,
+  retryFeedback,
 }: CenterPanelProps) {
   /* 기록 목록은 있지만 아직 선택하지 않은 상태 */
   if (!selected) {
@@ -202,7 +262,8 @@ export function CenterPanel({
   }
 
   /* 에러 */
-  if (selected.status === "error") {
+  if (selected.status === "error" || selected.analysisStatus === "error") {
+    const failure = inferFailurePresentation(selected);
     return (
       <div
         key={selected.id}
@@ -213,10 +274,10 @@ export function CenterPanel({
             {selected.title}
           </h1>
           <div className="text-[11px] text-text-secondary mt-[3px] flex items-center gap-2">
-            {selected.duration} · 전사 실패
+            {selected.duration} · {failure.badge}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
             <p
               style={{
@@ -225,11 +286,44 @@ export function CenterPanel({
                 color: "var(--error, #e53e3e)",
               }}
             >
-              음성 분석에 실패했습니다
+              {failure.title}
             </p>
             <p className="text-text-dim text-[13px] mt-2">
               {selected.errorMessage || "알 수 없는 오류가 발생했습니다."}
             </p>
+            <p className="text-text-dim text-[12px] mt-2 max-w-[520px] leading-relaxed">
+              {failure.description}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (failure.isAnalysisFailure) {
+                  onRetryFailedAnalysis();
+                  return;
+                }
+                onRetryFailedRecord();
+              }}
+              disabled={retryPending}
+              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-accent-border bg-accent-dim px-4 py-2 text-[13px] font-semibold text-accent transition-colors hover:border-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {retryPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : null}
+              {retryPending ? "재시도 준비 중..." : failure.retryLabel}
+            </button>
+            {retryFeedback.message ? (
+              <p
+                className={`mt-3 text-[12px] leading-relaxed ${
+                  retryFeedback.tone === "error"
+                    ? "text-red"
+                    : retryFeedback.tone === "success"
+                      ? "text-accent"
+                      : "text-text-dim"
+                }`}
+              >
+                {retryFeedback.message}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -237,7 +331,12 @@ export function CenterPanel({
   }
 
   /* 처리 중 */
-  if (phase === "processing" && selected.status === "processing") {
+  if (selected.status === "processing") {
+    const resolvedProcessingStep = getProcessingChecklistStep({
+      processingStage: selected.processingStage,
+      analysisStatus: selected.analysisStatus,
+    });
+
     return (
       <div
         key={selected.id}
@@ -251,12 +350,13 @@ export function CenterPanel({
             {selected.duration} · AI 분석 중
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
           <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
             <Loader2 size={36} className="animate-spin text-accent mb-4" />
             <p className="font-medium mt-4">음성을 분석하고 있습니다</p>
             <p className="text-text-dim text-[13px] mt-1">
-              화자 분리 → 전사 → 화자 식별 → 상담 분석
+              {selected.processingMessage ||
+                "화자 분리 → 전사 → 화자 식별 → 상담 분석"}
             </p>
             <div className="mt-6 w-full max-w-[300px]">
               {PROCESSING_STEPS.map((step, i) => (
@@ -265,13 +365,15 @@ export function CenterPanel({
                   className="flex items-center gap-2 py-[6px] text-[13px]"
                   style={{
                     color:
-                      i < processingStep ? "var(--accent)" : "var(--text-dim)",
+                      i < resolvedProcessingStep
+                        ? "var(--accent)"
+                        : "var(--text-dim)",
                   }}
                 >
                   <span>
-                    {i < processingStep
+                    {i < resolvedProcessingStep
                       ? "✓"
-                      : i === processingStep
+                      : i === resolvedProcessingStep
                         ? "⟳"
                         : "○"}
                   </span>
@@ -320,6 +422,27 @@ export function CenterPanel({
             {selected.memberId ? "연결됨" : "수강생 연결"}
           </button>
         </div>
+
+        {mismatchWarning && (
+          <div className="mx-5 mt-4 rounded-lg border border-amber/30 bg-amber/10 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 text-amber">⚠️</span>
+              <div className="min-w-0">
+                <p className="m-0 text-[13px] font-semibold text-amber">
+                  {mismatchWarning.title}
+                </p>
+                <p className="mt-1 mb-0 text-[12px] leading-relaxed text-text-secondary">
+                  {mismatchWarning.description}
+                </p>
+                <ul className="mt-2 mb-0 pl-4 text-[11px] leading-relaxed text-text-dim">
+                  {mismatchWarning.evidence.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 오디오 플레이어 */}
         <div className="flex items-center gap-[10px] bg-surface-2 border border-border rounded-lg px-[14px] py-2 mb-4 mx-5 mt-4">
@@ -372,7 +495,7 @@ export function CenterPanel({
         </div>
 
         {/* AI 분석 결과 */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
           {analyzing && !selected.analysisResult && (
             <div className="flex items-center gap-2 mb-4 px-4 py-3 bg-accent-dim border border-accent-border rounded-lg text-accent text-[13px] font-medium">
               <Loader2 size={14} className="animate-spin" />

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 import type { ReactNode } from "react";
 import { useRecords } from "../use-records";
+import type { RecordItem } from "../../_lib/types";
 
 /* ── fetch 모킹 ── */
 
@@ -42,7 +43,7 @@ function makeServerRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeTempRecord(overrides: Record<string, unknown> = {}) {
+function makeTempRecord(overrides: Partial<RecordItem> = {}): RecordItem {
   return {
     id: "temp-001",
     spaceId: null,
@@ -61,6 +62,11 @@ function makeTempRecord(overrides: Record<string, unknown> = {}) {
     aiSummary: "",
     aiMessages: [],
     analysisResult: null,
+    processingStage: "queued" as const,
+    processingProgress: 5,
+    processingMessage: "업로드를 준비하고 있습니다.",
+    analysisStatus: "idle" as const,
+    analysisProgress: 0,
     ...overrides,
   };
 }
@@ -286,8 +292,8 @@ describe("updateMessages", () => {
         { role: "user", text: "테스트" },
       ]);
     });
-    act(() => {
-      result.current.clearMessages("rec-clr");
+    await act(async () => {
+      await result.current.clearMessages("rec-clr");
     });
 
     const rec = result.current.records.find((r) => r.id === "rec-clr");

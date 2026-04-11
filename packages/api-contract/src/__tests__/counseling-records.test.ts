@@ -3,6 +3,7 @@ import {
   counselingRecordStatusSchema,
   counselingRecordSpeakerToneSchema,
   counselingTranscriptSegmentSchema,
+  counselingChatMessageSchema,
   counselingRecordListItemSchema,
   analysisResultSchema,
   analysisIssueSchema,
@@ -70,6 +71,13 @@ const validAnalysisResult = {
     nextSession: ["진행 상황 점검", "Q&A"],
   },
   keywords: ["API", "일정", "프로젝트"],
+};
+
+const validChatMessage = {
+  id: "msg-1",
+  role: "assistant" as const,
+  content: "안녕하세요.",
+  createdAt: "2024-01-01T00:00:00.000Z",
 };
 
 // ---------------------------------------------------------------------------
@@ -168,6 +176,29 @@ describe("counselingTranscriptSegmentSchema", () => {
       text: "",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("counselingChatMessageSchema", () => {
+  it("정상 데이터를 통과시킨다", () => {
+    const result = counselingChatMessageSchema.safeParse(validChatMessage);
+    expect(result.success).toBe(true);
+  });
+
+  it("assistant/user 외 role 값은 실패한다", () => {
+    const result = counselingChatMessageSchema.safeParse({
+      ...validChatMessage,
+      role: "system",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("createdAt 이 datetime 형식이 아니면 실패한다", () => {
+    const result = counselingChatMessageSchema.safeParse({
+      ...validChatMessage,
+      createdAt: "2024-01-01",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

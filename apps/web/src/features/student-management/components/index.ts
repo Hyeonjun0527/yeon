@@ -12,8 +12,6 @@ export { StudentDetailHeader } from "./student-detail-header";
 export { StudentDetailTabs } from "./student-detail-tabs";
 export { TabOverview } from "./tab-overview";
 export { TabCounseling } from "./tab-counseling";
-export { TabCourses } from "./tab-courses";
-export { TabGuardian } from "./tab-guardian";
 export { TabMemos } from "./tab-memos";
 export { ClassList } from "./class-list";
 export { ClassCard } from "./class-card";

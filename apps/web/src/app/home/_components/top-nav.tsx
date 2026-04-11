@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useExport } from "../_lib/export-context";
 
@@ -42,7 +43,16 @@ export function TopNav({ section }: TopNavProps) {
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        {section === "records" && (
+          <Link
+            href="/home/student-management"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[10px] border border-border bg-surface-3 text-[13px] font-medium text-text-secondary transition-all duration-150 hover:bg-surface-4 hover:text-text"
+          >
+            <StudentsIcon size={16} />
+            학생관리
+          </Link>
+        )}
         <button
           className="flex items-center justify-center w-9 h-9 rounded-full bg-none border-none text-text-dim cursor-pointer transition-all duration-150 hover:bg-surface-3 hover:text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed"
           title="DOCX로 내보내기"
@@ -106,6 +116,26 @@ function SpinnerIcon({ size = 18 }: { size?: number }) {
       className="animate-spin"
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function StudentsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
 }

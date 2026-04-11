@@ -12,6 +12,17 @@ export function useRecordingMachine() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef<number | null>(null);
 
+  function resetRecordingState() {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    recordingStartedAtRef.current = null;
+    setIsRecording(false);
+    setIsFinalizingRecording(false);
+    setRecordingElapsedMs(0);
+  }
+
   // 녹음 타이머 (250ms 간격)
   useEffect(() => {
     if (!isRecording) {
@@ -95,13 +106,13 @@ export function useRecordingMachine() {
       setRecordingElapsedMs(0);
       setRecordingError(null);
 
-      recorder.addEventListener("dataavailable", (event) => {
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
-      });
+      };
 
-      recorder.addEventListener("stop", async () => {
+      recorder.onstop = async () => {
         const activeType = recorder.mimeType || mimeType || "audio/webm";
         const extension = activeType.includes("webm")
           ? ".webm"
@@ -134,7 +145,7 @@ export function useRecordingMachine() {
 
         onAudioReady(file);
         setIsFinalizingRecording(false);
-      });
+      };
 
       recorder.start(1000);
       setIsRecording(true);
@@ -156,6 +167,21 @@ export function useRecordingMachine() {
     mediaRecorderRef.current?.stop();
   }
 
+  function cancelRecording() {
+    setRecordingError(null);
+
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+
+      if (mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    }
+
+    resetRecordingState();
+  }
+
   const recordingPhase: RecordingPhase = isRecording
     ? "recording"
     : isFinalizingRecording
@@ -168,5 +194,6 @@ export function useRecordingMachine() {
     recordingError,
     startRecording,
     stopRecording,
+    cancelRecording,
   };
 }

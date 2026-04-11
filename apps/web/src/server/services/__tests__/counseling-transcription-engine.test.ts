@@ -7,6 +7,8 @@ const {
   splitTranscriptIntoParagraphs,
   buildFallbackSegments,
   mapOpenAiSegments,
+  shouldChunkTranscription,
+  getPreferredTranscriptionStrategy,
 } = _testing;
 
 describe("mapSpeakerTone", () => {
@@ -419,5 +421,26 @@ describe("mapOpenAiSegments 추가 케이스", () => {
     ];
     const result = mapOpenAiSegments("알 수 없음", 2000, segments, 0, 0);
     expect(result[0].speakerTone).toBe("unknown");
+  });
+});
+
+describe("transcription strategy", () => {
+  it("1시간 오디오는 byte size가 작아도 duration 기준으로 chunk한다", () => {
+    expect(shouldChunkTranscription(12 * 1024 * 1024, 3599_736, 23 * 60)).toBe(
+      true,
+    );
+  });
+
+  it("짧은 오디오는 duration과 byte size가 작으면 chunk하지 않는다", () => {
+    expect(shouldChunkTranscription(4 * 1024 * 1024, 60 * 1000, 23 * 60)).toBe(
+      false,
+    );
+  });
+
+  it("긴 오디오는 non-diarize 우선 전략과 최대 청크를 선택한다", () => {
+    const strategy = getPreferredTranscriptionStrategy(3599_736);
+    expect(strategy.preferNonDiarization).toBe(true);
+    expect(strategy.chunkDurationSeconds).toBe(23 * 60);
+    expect(strategy.modelCandidates[0]).toContain("transcribe");
   });
 });

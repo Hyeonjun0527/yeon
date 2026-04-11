@@ -6,9 +6,72 @@ import { ServiceError } from "./service-error";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 const DRIVE_URL = "https://www.googleapis.com/drive/v3";
-const SCOPE =
-  "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets";
+
+const GOOGLE_DRIVE_READONLY_SCOPE =
+  "https://www.googleapis.com/auth/drive.readonly";
+const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+const GOOGLE_DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+
+const OAUTH_SCOPES = [
+  GOOGLE_DRIVE_READONLY_SCOPE,
+  GOOGLE_SHEETS_SCOPE,
+] as const;
+const SHEETS_REQUIRED_SCOPES = [
+  GOOGLE_SHEETS_SCOPE,
+  GOOGLE_DRIVE_FILE_SCOPE,
+  GOOGLE_DRIVE_SCOPE,
+] as const;
+const SCOPE = OAUTH_SCOPES.join(" ");
+
+type GoogleDriveTokenRow = typeof googledriveTokens.$inferSelect;
+
+function parseScopeSet(scopeText: string | undefined): Set<string> {
+  return new Set(
+    (scopeText ?? "")
+      .split(/\s+/)
+      .map((scope) => scope.trim())
+      .filter(Boolean),
+  );
+}
+
+function hasAnyRequiredScope(
+  grantedScopes: Set<string>,
+  requiredScopes: readonly string[],
+): boolean {
+  return requiredScopes.some((scope) => grantedScopes.has(scope));
+}
+
+async function getSavedTokenRow(
+  userId: string,
+): Promise<GoogleDriveTokenRow | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(googledriveTokens)
+    .where(eq(googledriveTokens.userId, userId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+async function fetchGrantedScopes(accessToken: string): Promise<Set<string>> {
+  const params = new URLSearchParams({ access_token: accessToken });
+  const res = await fetch(`${TOKEN_INFO_URL}?${params.toString()}`);
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new ServiceError(
+      502,
+      `Google 권한 범위를 확인하지 못했습니다: ${text || res.status}`,
+    );
+  }
+
+  const data = (await res.json()) as { scope?: string };
+  return parseScopeSet(data.scope);
+}
 
 function getClientId(): string {
   const id = process.env.GOOGLE_CLIENT_ID;
@@ -37,12 +100,29 @@ export function getOAuthUrl(state: string): string {
     scope: SCOPE,
     state,
     access_type: "offline",
+    include_granted_scopes: "true",
     prompt: "consent",
   });
   return `${AUTH_URL}?${params.toString()}`;
 }
 
 export async function exchangeCode(code: string): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}>;
+export async function exchangeCode(
+  code: string,
+  existingRefreshToken: string | null,
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}>;
+export async function exchangeCode(
+  code: string,
+  existingRefreshToken: string | null = null,
+): Promise<{
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -72,7 +152,7 @@ export async function exchangeCode(code: string): Promise<{
     expires_in: number;
   };
 
-  if (!data.refresh_token) {
+  if (!data.refresh_token && !existingRefreshToken) {
     // prompt=consent + access_type=offline 사용 중에도 refresh_token이 없으면
     // 이전에 연동했던 권한을 Google 계정에서 직접 제거 후 재시도 필요
     // 참고: https://developers.google.com/identity/protocols/oauth2/web-server#offline
@@ -82,9 +162,17 @@ export async function exchangeCode(code: string): Promise<{
     );
   }
 
+  const refreshToken = data.refresh_token ?? existingRefreshToken;
+  if (!refreshToken) {
+    throw new ServiceError(
+      502,
+      "Google refresh token을 확인하지 못했습니다. 다시 연결해주세요.",
+    );
+  }
+
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    refreshToken,
     expiresAt: new Date(Date.now() + data.expires_in * 1000),
   };
 }
@@ -150,16 +238,17 @@ export async function saveTokens(
     });
 }
 
+export async function getSavedRefreshToken(
+  userId: string,
+): Promise<string | null> {
+  const row = await getSavedTokenRow(userId);
+  return row?.refreshToken ?? null;
+}
+
 export async function getValidAccessToken(
   userId: string,
 ): Promise<string | null> {
-  const db = getDb();
-
-  const [row] = await db
-    .select()
-    .from(googledriveTokens)
-    .where(eq(googledriveTokens.userId, userId))
-    .limit(1);
+  const row = await getSavedTokenRow(userId);
 
   if (!row) return null;
 
@@ -172,6 +261,37 @@ export async function getValidAccessToken(
   const refreshed = await refreshAccessToken(row.refreshToken);
   await saveTokens(userId, refreshed);
   return refreshed.accessToken;
+}
+
+export async function hasGoogleSheetsAccess(userId: string): Promise<boolean> {
+  const accessToken = await getValidAccessToken(userId);
+
+  if (!accessToken) {
+    return false;
+  }
+
+  const grantedScopes = await fetchGrantedScopes(accessToken);
+  return hasAnyRequiredScope(grantedScopes, SHEETS_REQUIRED_SCOPES);
+}
+
+export async function getValidSheetsAccessToken(
+  userId: string,
+): Promise<string | null> {
+  const accessToken = await getValidAccessToken(userId);
+
+  if (!accessToken) {
+    return null;
+  }
+
+  const grantedScopes = await fetchGrantedScopes(accessToken);
+  if (hasAnyRequiredScope(grantedScopes, SHEETS_REQUIRED_SCOPES)) {
+    return accessToken;
+  }
+
+  throw new ServiceError(
+    401,
+    "Google Sheets 권한이 부족합니다. Google 계정을 다시 연결한 뒤 다시 시도해주세요.",
+  );
 }
 
 export async function isConnected(userId: string): Promise<boolean> {

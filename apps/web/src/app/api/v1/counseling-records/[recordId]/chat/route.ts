@@ -1,7 +1,14 @@
+import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import type { CounselingChatMessage } from "@yeon/api-contract/counseling-records";
 import { getCounselingRecordDetail } from "@/server/services/counseling-records-service";
+import {
+  appendCounselingRecordAssistantMessages,
+  clearCounselingRecordAssistantMessages,
+} from "@/server/services/counseling-records-service";
 import { streamCounselingAiChat } from "@/server/services/counseling-ai-service";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -23,6 +30,76 @@ const chatMessageSchema = z.object({
 const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).nonempty(),
 });
+
+async function persistAssistantMessageFromStream(params: {
+  stream: ReadableStream<Uint8Array>;
+  userId: string;
+  recordId: string;
+}) {
+  const reader = params.stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accumulated = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (!trimmed.startsWith("data: ")) {
+          continue;
+        }
+
+        const payload = trimmed.slice(6);
+
+        if (payload === "[DONE]") {
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(payload) as { content?: string };
+
+          if (parsed.content) {
+            accumulated += parsed.content;
+          }
+        } catch {
+          // ignore malformed stream chunks
+        }
+      }
+    }
+
+    const content = accumulated.trim();
+
+    if (!content) {
+      return;
+    }
+
+    const assistantMessage: CounselingChatMessage = {
+      id: randomUUID(),
+      role: "assistant",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
+    await appendCounselingRecordAssistantMessages(
+      params.userId,
+      params.recordId,
+      [assistantMessage],
+    );
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const { currentUser, response } = await requireAuthenticatedUser(request);
@@ -55,8 +132,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const detail = await getCounselingRecordDetail(currentUser.id, recordId);
+    const userMessage: CounselingChatMessage = {
+      id: randomUUID(),
+      role: "user",
+      content: lastMessage.content.trim(),
+      createdAt: new Date().toISOString(),
+    };
 
-    const stream = await streamCounselingAiChat(
+    await appendCounselingRecordAssistantMessages(currentUser.id, recordId, [
+      userMessage,
+    ]);
+
+    const upstream = await streamCounselingAiChat(
       {
         studentName: detail.studentName,
         sessionTitle: detail.sessionTitle,
@@ -71,7 +158,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       parsed.data.messages,
     );
 
-    return new Response(stream, {
+    const [clientStream, persistenceStream] = upstream.tee();
+
+    void persistAssistantMessageFromStream({
+      stream: persistenceStream,
+      userId: currentUser.id,
+      recordId,
+    }).catch((error) => {
+      console.error("counseling-ai-chat-persist-error", error);
+    });
+
+    return new Response(clientStream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -85,5 +182,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     console.error("counseling-ai-chat-error", error);
     return jsonError("AI 도우미 응답에 실패했습니다.", 500);
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { currentUser, response } = await requireAuthenticatedUser(request);
+
+  if (!currentUser) {
+    return response;
+  }
+
+  const { recordId } = await context.params;
+
+  try {
+    await clearCounselingRecordAssistantMessages(currentUser.id, recordId);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return jsonError(error.message, error.status);
+    }
+
+    console.error("counseling-ai-chat-clear-error", error);
+    return jsonError("채팅 기록을 초기화하지 못했습니다.", 500);
   }
 }

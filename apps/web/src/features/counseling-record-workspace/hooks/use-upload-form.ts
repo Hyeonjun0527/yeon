@@ -3,6 +3,12 @@ import {
   type CounselingRecordDetail,
 } from "@yeon/api-contract/counseling-records";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+
+import {
+  AUDIO_UPLOAD_ERROR_MESSAGE,
+  isAcceptedAudioFile,
+} from "@/lib/audio-file";
+
 import type { RecordingPhase, UploadFormState, UploadTone } from "../types";
 import { COUNSELING_TYPE_OPTIONS, MAX_AUDIO_UPLOAD_BYTES } from "../constants";
 import { fetchApi, buildClientRequestId, readAudioDurationMs } from "../utils";
@@ -77,10 +83,10 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
       return;
     }
 
-    if (!file.type.startsWith("audio/")) {
+    if (!isAcceptedAudioFile(file)) {
       setUploadState({
         isUploading: false,
-        message: "오디오 파일만 선택할 수 있습니다.",
+        message: AUDIO_UPLOAD_ERROR_MESSAGE,
         tone: "error",
       });
       return;

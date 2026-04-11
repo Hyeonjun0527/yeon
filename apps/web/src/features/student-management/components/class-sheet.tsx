@@ -49,7 +49,7 @@ export function ClassSheet({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-text-secondary mb-3">
               기본 정보

@@ -25,6 +25,8 @@ vi.mock("@/server/db/schema", () => ({
 vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
   eq: (col: unknown, val: unknown) => ({ col, val }),
+  inArray: (col: unknown, values: unknown[]) => ({ col, values }),
+  sql: (_strings: TemplateStringsArray, ...values: unknown[]) => values,
 }));
 
 import {
@@ -385,26 +387,10 @@ describe("getFieldValues", () => {
 
 describe("bulkUpsertFieldValues", () => {
   it("여러 필드 값을 한 번에 upsert한다", async () => {
-    // Promise.all은 병렬 실행이므로 두 upsert의 첫 번째 await(definition select)가
-    // 연속으로 소비된 뒤, 두 번째 await(existing select), 세 번째 await(insert) 순서로 소비된다.
     const def1 = makeDefinition({ id: "def-1", fieldType: "text" });
     const def2 = makeDefinition({ id: "def-2", fieldType: "number" });
-    const inserted1 = makeFieldValue({
-      fieldDefinitionId: "def-1",
-      valueText: "값1",
-    });
-    const inserted2 = makeFieldValue({
-      id: "val-2",
-      fieldDefinitionId: "def-2",
-      valueNumber: "99",
-    });
-
-    responses.push([def1]); // upsert #1: definition select
-    responses.push([def2]); // upsert #2: definition select
-    responses.push([]); // upsert #1: existing select → 없음
-    responses.push([]); // upsert #2: existing select → 없음
-    responses.push([inserted1]); // upsert #1: insert.returning()
-    responses.push([inserted2]); // upsert #2: insert.returning()
+    responses.push([def1, def2]); // definition select
+    responses.push(undefined); // insert.onConflictDoUpdate
 
     await expect(
       bulkUpsertFieldValues("member-1", "space-1", [

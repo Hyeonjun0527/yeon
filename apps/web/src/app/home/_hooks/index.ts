@@ -9,3 +9,5 @@ export { useCurrentSpace } from "./use-current-space";
 export { useSpaceMembers } from "./use-space-members";
 export type { Space } from "./use-current-space";
 export type { MemberWithStatus } from "./use-space-members";
+
+export { useRecordRetry } from "./use-record-retry";

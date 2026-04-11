@@ -42,10 +42,8 @@ type CustomFieldEntry = {
 const DEFAULT_SYSTEM_TABS = [
   { systemKey: "overview", name: "개요", displayOrder: 0 },
   { systemKey: "counseling", name: "상담기록", displayOrder: 1 },
-  { systemKey: "courses", name: "수강이력", displayOrder: 2 },
-  { systemKey: "guardian", name: "비상연락처", displayOrder: 3 },
-  { systemKey: "memos", name: "메모", displayOrder: 4 },
-  { systemKey: "report", name: "리포트", displayOrder: 5 },
+  { systemKey: "memos", name: "메모", displayOrder: 2 },
+  { systemKey: "report", name: "리포트", displayOrder: 3 },
 ] as const;
 
 const MEMBER_INSERT_CHUNK_SIZE = 500;

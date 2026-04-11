@@ -7,6 +7,7 @@ export { memberFieldDefinitions, memberFieldValues } from "./member-fields";
 export { memberTabDefinitions } from "./member-tabs";
 export { members } from "./members";
 export { sheetIntegrations } from "./sheet-integrations";
+export { sheetIntegrationMemberSnapshots } from "./sheet-integration-member-snapshots";
 export { spaces } from "./spaces";
 export { spaceTemplates } from "./space-templates";
 export { userIdentities } from "./user-identities";

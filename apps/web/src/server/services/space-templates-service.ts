@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 import { getDb } from "@/server/db";
@@ -9,12 +9,30 @@ import {
 } from "@/server/db/schema";
 
 import { ServiceError } from "./service-error";
+import { createDefaultSystemTabs } from "./member-tabs-service";
 import type { TabType } from "./member-tabs-service";
 import type { FieldType } from "./member-fields-service";
 
 /* ── 타입 ── */
 
 export type SpaceTemplate = typeof spaceTemplates.$inferSelect;
+
+export interface SpaceTemplateSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  tabCount: number;
+  fieldCount: number;
+  tabPreviewNames: string[];
+  fieldPreviewNames: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpaceTemplateDetail extends SpaceTemplateSummary {
+  tabsConfig: TemplateTab[];
+}
 
 export interface TemplateField {
   name: string;
@@ -36,6 +54,11 @@ export interface CreateTemplateInput {
   name: string;
   description?: string | null;
   tabsConfig: TemplateTab[];
+}
+
+export interface UpdateTemplateInput {
+  name?: string;
+  description?: string | null;
 }
 
 /* ── 시스템 템플릿 정의 ── */
@@ -64,31 +87,17 @@ const SYSTEM_TEMPLATES: {
         fields: [],
       },
       {
-        name: "수강이력",
-        tabType: "system",
-        systemKey: "courses",
-        displayOrder: 2,
-        fields: [],
-      },
-      {
-        name: "비상연락처",
-        tabType: "system",
-        systemKey: "guardian",
-        displayOrder: 3,
-        fields: [],
-      },
-      {
         name: "메모",
         tabType: "system",
         systemKey: "memos",
-        displayOrder: 4,
+        displayOrder: 2,
         fields: [],
       },
       {
         name: "리포트",
         tabType: "system",
         systemKey: "report",
-        displayOrder: 5,
+        displayOrder: 3,
         fields: [],
       },
     ],
@@ -144,31 +153,17 @@ const SYSTEM_TEMPLATES: {
         fields: [],
       },
       {
-        name: "수강이력",
-        tabType: "system",
-        systemKey: "courses",
-        displayOrder: 2,
-        fields: [],
-      },
-      {
-        name: "비상연락처",
-        tabType: "system",
-        systemKey: "guardian",
-        displayOrder: 3,
-        fields: [],
-      },
-      {
         name: "메모",
         tabType: "system",
         systemKey: "memos",
-        displayOrder: 4,
+        displayOrder: 2,
         fields: [],
       },
       {
         name: "리포트",
         tabType: "system",
         systemKey: "report",
-        displayOrder: 5,
+        displayOrder: 3,
         fields: [],
       },
     ],
@@ -224,31 +219,17 @@ const SYSTEM_TEMPLATES: {
         fields: [],
       },
       {
-        name: "수강이력",
-        tabType: "system",
-        systemKey: "courses",
-        displayOrder: 2,
-        fields: [],
-      },
-      {
-        name: "비상연락처",
-        tabType: "system",
-        systemKey: "guardian",
-        displayOrder: 3,
-        fields: [],
-      },
-      {
         name: "메모",
         tabType: "system",
         systemKey: "memos",
-        displayOrder: 4,
+        displayOrder: 2,
         fields: [],
       },
       {
         name: "리포트",
         tabType: "system",
         systemKey: "report",
-        displayOrder: 5,
+        displayOrder: 3,
         fields: [],
       },
     ],
@@ -304,31 +285,17 @@ const SYSTEM_TEMPLATES: {
         fields: [],
       },
       {
-        name: "수강이력",
-        tabType: "system",
-        systemKey: "courses",
-        displayOrder: 2,
-        fields: [],
-      },
-      {
-        name: "비상연락처",
-        tabType: "system",
-        systemKey: "guardian",
-        displayOrder: 3,
-        fields: [],
-      },
-      {
         name: "메모",
         tabType: "system",
         systemKey: "memos",
-        displayOrder: 4,
+        displayOrder: 2,
         fields: [],
       },
       {
         name: "리포트",
         tabType: "system",
         systemKey: "report",
-        displayOrder: 5,
+        displayOrder: 3,
         fields: [],
       },
     ],
@@ -338,6 +305,78 @@ const SYSTEM_TEMPLATES: {
 /* ── 내부 헬퍼 ── */
 
 type Db = ReturnType<typeof getDb>;
+
+function normalizeTemplateName(name: string) {
+  const normalized = name.trim().slice(0, 80);
+  if (!normalized) throw new ServiceError(400, "템플릿 이름은 필수입니다.");
+  return normalized;
+}
+
+function normalizeTemplateDescription(description?: string | null) {
+  const normalized = description?.trim().slice(0, 500) ?? "";
+  return normalized || null;
+}
+
+export function summarizeSpaceTemplate(
+  template: SpaceTemplate,
+): SpaceTemplateSummary {
+  const tabsConfig = template.tabsConfig as TemplateTab[];
+  const tabPreviewNames = tabsConfig
+    .slice()
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((tab) => tab.name)
+    .slice(0, 4);
+  const fieldPreviewNames = tabsConfig
+    .flatMap((tab) =>
+      tab.fields
+        .slice()
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((field) => field.name),
+    )
+    .slice(0, 6);
+
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description ?? null,
+    isSystem: template.isSystem,
+    tabCount: tabsConfig.length,
+    fieldCount: tabsConfig.reduce((sum, tab) => sum + tab.fields.length, 0),
+    tabPreviewNames,
+    fieldPreviewNames,
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  };
+}
+
+export function detailSpaceTemplate(
+  template: SpaceTemplate,
+): SpaceTemplateDetail {
+  return {
+    ...summarizeSpaceTemplate(template),
+    tabsConfig: (template.tabsConfig as TemplateTab[]).slice(),
+  };
+}
+
+async function getAccessibleTemplate(templateId: string, userId: string) {
+  const db = getDb();
+
+  const [template] = await db
+    .select()
+    .from(spaceTemplates)
+    .where(eq(spaceTemplates.id, templateId))
+    .limit(1);
+
+  if (!template) {
+    throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+  }
+
+  if (!template.isSystem && template.createdByUserId !== userId) {
+    throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+  }
+
+  return template;
+}
 
 /** 필드 행들을 탭에 삽입 (offsetOrder부터 순번 할당) */
 async function insertFieldRows(
@@ -496,8 +535,7 @@ export async function createTemplate(
   data: CreateTemplateInput,
 ): Promise<SpaceTemplate> {
   const db = getDb();
-  const name = data.name.trim().slice(0, 80);
-  if (!name) throw new ServiceError(400, "템플릿 이름은 필수입니다.");
+  const name = normalizeTemplateName(data.name);
 
   const now = new Date();
   const [template] = await db
@@ -506,7 +544,7 @@ export async function createTemplate(
       id: randomUUID(),
       createdByUserId: userId,
       name,
-      description: data.description ?? null,
+      description: normalizeTemplateDescription(data.description),
       isSystem: false,
       tabsConfig: data.tabsConfig as unknown,
       createdAt: now,
@@ -574,13 +612,8 @@ export async function applyTemplateToSpace(
 ): Promise<void> {
   const db = getDb();
 
-  const [template] = await db
-    .select()
-    .from(spaceTemplates)
-    .where(eq(spaceTemplates.id, templateId))
-    .limit(1);
-
-  if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+  await createDefaultSystemTabs(spaceId, userId);
+  const template = await getAccessibleTemplate(templateId, userId);
 
   const config = template.tabsConfig as TemplateTab[];
   const now = new Date();
@@ -590,12 +623,33 @@ export async function applyTemplateToSpace(
     .from(memberTabDefinitions)
     .where(eq(memberTabDefinitions.spaceId, spaceId));
 
+  await db
+    .delete(memberFieldDefinitions)
+    .where(eq(memberFieldDefinitions.spaceId, spaceId));
+
+  await db
+    .delete(memberTabDefinitions)
+    .where(
+      and(
+        eq(memberTabDefinitions.spaceId, spaceId),
+        ne(memberTabDefinitions.tabType, "system"),
+      ),
+    );
+
   for (const tplTab of config) {
     if (tplTab.tabType === "system" && tplTab.systemKey) {
       const existing = existingTabs.find(
         (t) => t.systemKey === tplTab.systemKey,
       );
       if (!existing) continue;
+      await db
+        .update(memberTabDefinitions)
+        .set({
+          name: tplTab.name,
+          displayOrder: tplTab.displayOrder,
+          updatedAt: now,
+        })
+        .where(eq(memberTabDefinitions.id, existing.id));
       await applySystemTabFields(
         existing.id,
         tplTab.fields,
@@ -623,6 +677,90 @@ export async function getTemplate(templateId: string): Promise<SpaceTemplate> {
 
   if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
   return template;
+}
+
+export async function getTemplateForUser(
+  templateId: string,
+  userId: string,
+): Promise<SpaceTemplate> {
+  return getAccessibleTemplate(templateId, userId);
+}
+
+/**
+ * 사용자 정의 템플릿 수정
+ */
+export async function updateTemplate(
+  templateId: string,
+  userId: string,
+  data: UpdateTemplateInput,
+): Promise<SpaceTemplate> {
+  const db = getDb();
+
+  const [template] = await db
+    .select()
+    .from(spaceTemplates)
+    .where(eq(spaceTemplates.id, templateId))
+    .limit(1);
+
+  if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+  if (template.isSystem)
+    throw new ServiceError(403, "시스템 템플릿은 수정할 수 없습니다.");
+  if (template.createdByUserId !== userId)
+    throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+
+  const patch: Partial<typeof spaceTemplates.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (data.name !== undefined) {
+    patch.name = normalizeTemplateName(data.name);
+  }
+
+  if (data.description !== undefined) {
+    patch.description = normalizeTemplateDescription(data.description);
+  }
+
+  const [updated] = await db
+    .update(spaceTemplates)
+    .set(patch)
+    .where(eq(spaceTemplates.id, templateId))
+    .returning();
+
+  if (!updated) throw new ServiceError(500, "템플릿을 수정하지 못했습니다.");
+
+  return updated;
+}
+
+/**
+ * 템플릿 복제 (시스템/사용자 템플릿 모두 사용자 템플릿으로 복제)
+ */
+export async function duplicateTemplate(
+  templateId: string,
+  userId: string,
+): Promise<SpaceTemplate> {
+  const db = getDb();
+  const template = await getAccessibleTemplate(templateId, userId);
+
+  const now = new Date();
+  const [duplicated] = await db
+    .insert(spaceTemplates)
+    .values({
+      id: randomUUID(),
+      createdByUserId: userId,
+      name: normalizeTemplateName(`${template.name} 복사본`),
+      description: normalizeTemplateDescription(template.description),
+      isSystem: false,
+      tabsConfig: template.tabsConfig,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  if (!duplicated) {
+    throw new ServiceError(500, "템플릿을 복제하지 못했습니다.");
+  }
+
+  return duplicated;
 }
 
 /**

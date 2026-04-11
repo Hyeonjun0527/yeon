@@ -12,12 +12,17 @@ interface UseRecordingParams {
   onUploadComplete: (tempId: string, realRecord: RecordItem) => void;
   /** 업로드 실패 시 임시 레코드 제거 */
   onUploadError: (tempId: string, message: string) => void;
+  getDefaultRecordContext?: () => {
+    memberId: string | null;
+    studentName: string;
+  };
 }
 
 export function useRecording({
   onRecordingStop,
   onUploadComplete,
   onUploadError,
+  getDefaultRecordContext,
 }: UseRecordingParams) {
   const [elapsed, setElapsed] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -29,6 +34,31 @@ export function useRecording({
   const chunksRef = useRef<Blob[]>([]);
   const elapsedRef = useRef(0);
   const tempIdRef = useRef<string>("");
+
+  const resetRecorderState = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+
+      if (mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    }
+
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
+    chunksRef.current = [];
+    elapsedRef.current = 0;
+    tempIdRef.current = "";
+    setElapsed(0);
+    setUploading(false);
+  }, []);
 
   const start = useCallback(async () => {
     // 이미 녹음 중이면 스트림 누수를 막기 위해 중복 호출 차단
@@ -64,11 +94,18 @@ export function useRecording({
 
       setUploading(true);
       try {
+        const context = getDefaultRecordContext?.() ?? {
+          memberId: null,
+          studentName: "",
+        };
         const formData = new FormData();
         formData.append("audio", blob, `녹음_${createTimestamp()}.webm`);
         formData.append("sessionTitle", `녹음 ${createTimestamp()}`);
-        formData.append("studentName", "");
+        formData.append("studentName", context.studentName);
         formData.append("counselingType", "");
+        if (context.memberId) {
+          formData.append("memberId", context.memberId);
+        }
         formData.append("audioDurationMs", String(elapsedRef.current * 1000));
 
         const res = await fetch("/api/v1/counseling-records", {
@@ -86,8 +123,7 @@ export function useRecording({
 
         const realRecord: RecordItem = {
           id: item.id,
-          spaceId: null,
-          memberId: null,
+          spaceId: item.spaceId,
           createdAt: item.createdAt,
           title: item.sessionTitle || `녹음 ${createTimestamp()}`,
           status: "processing",
@@ -97,13 +133,19 @@ export function useRecording({
             fmtDurationMs(item.audioDurationMs) ||
             fmtDuration(elapsedRef.current),
           durationMs: item.audioDurationMs ?? elapsedRef.current * 1000,
-          studentName: item.studentName || "",
+          studentName: item.studentName || context.studentName,
           type: item.counselingType || "",
           audioUrl: null,
           transcript: [],
           aiSummary: "",
           aiMessages: [],
           analysisResult: null,
+          memberId: item.memberId ?? context.memberId,
+          processingStage: item.processingStage,
+          processingProgress: item.processingProgress,
+          processingMessage: item.processingMessage,
+          analysisStatus: item.analysisStatus,
+          analysisProgress: item.analysisProgress,
         };
 
         onUploadComplete(tempId, realRecord);
@@ -139,7 +181,7 @@ export function useRecording({
     const tempRecord: RecordItem = {
       id: tempId,
       spaceId: null,
-      memberId: null,
+      memberId: getDefaultRecordContext?.().memberId ?? null,
       createdAt: new Date().toISOString(),
       title: `녹음 ${createTimestamp()}`,
       status: "processing",
@@ -147,13 +189,19 @@ export function useRecording({
       meta: "",
       duration: fmtDuration(elapsedRef.current),
       durationMs: elapsedRef.current * 1000,
-      studentName: "",
+      studentName: getDefaultRecordContext?.().studentName ?? "",
       type: "",
       audioUrl: null,
       transcript: [],
       aiSummary: "업로드 중...",
       aiMessages: [],
       analysisResult: null,
+      processingStage: "queued",
+      processingProgress: 5,
+      processingMessage:
+        "업로드가 완료되어 백그라운드 전사를 준비하고 있습니다.",
+      analysisStatus: "idle",
+      analysisProgress: 0,
     };
     onRecordingStop(tempRecord);
 
@@ -165,7 +213,12 @@ export function useRecording({
       mediaRecorderRef.current.stop();
     }
     mediaRecorderRef.current = null;
-  }, [onRecordingStop]);
+  }, [getDefaultRecordContext, onRecordingStop]);
 
-  return { elapsed, uploading, error, start, stop };
+  const cancel = useCallback(() => {
+    resetRecorderState();
+    setError(null);
+  }, [resetRecorderState]);
+
+  return { elapsed, uploading, error, start, stop, cancel };
 }

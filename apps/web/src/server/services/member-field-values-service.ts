@@ -1,21 +1,20 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import type {
+  MemberFieldType as FieldType,
+  MemberFieldValuePayload,
+} from "@yeon/api-contract/spaces";
 
 import { getDb } from "@/server/db";
 import { memberFieldDefinitions, memberFieldValues } from "@/server/db/schema";
 
 import { ServiceError } from "./service-error";
-import type { FieldType } from "./member-fields-service";
 
 /* ── 타입 ── */
 
 export type MemberFieldValue = typeof memberFieldValues.$inferSelect;
 
-export type FieldValuePayload = {
-  fieldDefinitionId: string;
-  /** 클라이언트가 보내는 raw 값. 서비스에서 field_type에 따라 적절한 컬럼에 저장 */
-  value: unknown;
-};
+export type FieldValuePayload = MemberFieldValuePayload;
 
 export type FieldValueWithDefinition = MemberFieldValue & {
   fieldDefinitionId: string;
@@ -103,6 +102,14 @@ export async function getFieldValues(
   memberId: string,
   spaceId: string,
 ): Promise<FieldValueWithDefinition[]> {
+  return getFieldValuesForDefinitions(memberId, spaceId);
+}
+
+export async function getFieldValuesForDefinitions(
+  memberId: string,
+  spaceId: string,
+  fieldDefinitionIds?: string[],
+): Promise<FieldValueWithDefinition[]> {
   const db = getDb();
 
   const rows = await db
@@ -128,6 +135,9 @@ export async function getFieldValues(
       and(
         eq(memberFieldValues.memberId, memberId),
         eq(memberFieldDefinitions.spaceId, spaceId),
+        ...(fieldDefinitionIds?.length
+          ? [inArray(memberFieldValues.fieldDefinitionId, fieldDefinitionIds)]
+          : []),
       ),
     );
 
@@ -213,5 +223,71 @@ export async function bulkUpsertFieldValues(
   spaceId: string,
   values: FieldValuePayload[],
 ): Promise<void> {
-  await Promise.all(values.map((v) => upsertFieldValue(memberId, spaceId, v)));
+  if (values.length === 0) {
+    return;
+  }
+
+  const db = getDb();
+  const definitionIds = [
+    ...new Set(values.map((value) => value.fieldDefinitionId)),
+  ];
+  const definitions = await db
+    .select()
+    .from(memberFieldDefinitions)
+    .where(
+      and(
+        eq(memberFieldDefinitions.spaceId, spaceId),
+        inArray(memberFieldDefinitions.id, definitionIds),
+      ),
+    );
+
+  const definitionById = new Map(
+    definitions.map((definition) => [definition.id, definition]),
+  );
+
+  for (const definitionId of definitionIds) {
+    if (!definitionById.has(definitionId)) {
+      throw new ServiceError(404, "필드 정의를 찾지 못했습니다.");
+    }
+  }
+
+  const now = new Date();
+  const upsertRows = values.map((payload) => {
+    const definition = definitionById.get(payload.fieldDefinitionId);
+
+    if (!definition) {
+      throw new ServiceError(404, "필드 정의를 찾지 못했습니다.");
+    }
+
+    const valueColumns = buildValueColumns(
+      definition.fieldType as FieldType,
+      payload.value,
+    );
+
+    return {
+      id: randomUUID(),
+      memberId,
+      fieldDefinitionId: payload.fieldDefinitionId,
+      valueText: valueColumns.valueText ?? null,
+      valueNumber: valueColumns.valueNumber ?? null,
+      valueBoolean: valueColumns.valueBoolean ?? null,
+      valueJson: valueColumns.valueJson ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+
+  await db
+    .insert(memberFieldValues)
+    .values(upsertRows)
+    .onConflictDoUpdate({
+      target: [memberFieldValues.memberId, memberFieldValues.fieldDefinitionId],
+      set: {
+        valueText: sql`excluded.value_text`,
+        valueNumber: sql`excluded.value_number`,
+        valueBoolean: sql`excluded.value_boolean`,
+        valueJson: sql`excluded.value_json`,
+        updatedAt: sql`excluded.updated_at`,
+      },
+    });
 }

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { createMemberFieldBodySchema } from "@yeon/api-contract/spaces";
 
 import {
   jsonError,
@@ -10,24 +10,10 @@ import {
   createField,
   getFieldsForTab,
 } from "@/server/services/member-fields-service";
-import type { FieldType } from "@/server/services/member-fields-service";
+import { getFieldValuesForDefinitions } from "@/server/services/member-field-values-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
-
-const createFieldBodySchema = z.object({
-  name: z.string().min(1).max(80),
-  fieldType: z.string(),
-  options: z
-    .array(
-      z.object({
-        value: z.string(),
-        color: z.string(),
-      }),
-    )
-    .nullish(),
-  isRequired: z.boolean().optional(),
-});
 
 export async function GET(
   request: NextRequest,
@@ -37,10 +23,22 @@ export async function GET(
   if (!currentUser) return response;
 
   const { spaceId, tabId } = await params;
+  const memberId = request.nextUrl.searchParams.get("memberId");
 
   try {
     const fields = await getFieldsForTab(tabId, spaceId);
-    return NextResponse.json({ fields });
+
+    if (!memberId) {
+      return NextResponse.json({ fields });
+    }
+
+    const values = await getFieldValuesForDefinitions(
+      memberId,
+      spaceId,
+      fields.map((field) => field.id),
+    );
+
+    return NextResponse.json({ fields, values });
   } catch (error) {
     if (error instanceof ServiceError)
       return jsonError(error.message, error.status);
@@ -65,15 +63,17 @@ export async function POST(
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = createFieldBodySchema.safeParse(body);
+  const parsed = createMemberFieldBodySchema.safeParse(body);
   if (!parsed.success)
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 
   try {
-    const field = await createField(spaceId, tabId, currentUser.id, {
-      ...parsed.data,
-      fieldType: parsed.data.fieldType as FieldType,
-    });
+    const field = await createField(
+      spaceId,
+      tabId,
+      currentUser.id,
+      parsed.data,
+    );
     return NextResponse.json({ field }, { status: 201 });
   } catch (error) {
     if (error instanceof ServiceError)

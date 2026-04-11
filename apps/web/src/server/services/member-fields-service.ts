@@ -1,5 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import {
+  memberFieldTypeValues,
+  type CreateMemberFieldBody,
+  type MemberFieldSelectOption,
+  type MemberFieldType,
+  type UpdateMemberFieldBody,
+} from "@yeon/api-contract/spaces";
 
 import { getDb } from "@/server/db";
 import { memberFieldDefinitions } from "@/server/db/schema";
@@ -8,52 +15,17 @@ import { ServiceError } from "./service-error";
 
 /* ── 타입 ── */
 
-export type FieldType =
-  | "text"
-  | "long_text"
-  | "number"
-  | "date"
-  | "select"
-  | "multi_select"
-  | "checkbox"
-  | "url"
-  | "email"
-  | "phone";
+export type FieldType = MemberFieldType;
 
-export const VALID_FIELD_TYPES = new Set<FieldType>([
-  "text",
-  "long_text",
-  "number",
-  "date",
-  "select",
-  "multi_select",
-  "checkbox",
-  "url",
-  "email",
-  "phone",
-]);
+export const VALID_FIELD_TYPES = new Set<FieldType>(memberFieldTypeValues);
 
-export type SelectOption = {
-  value: string;
-  color: string;
-};
+export type SelectOption = MemberFieldSelectOption;
 
 export type MemberFieldDefinition = typeof memberFieldDefinitions.$inferSelect;
 
-export type CreateFieldInput = {
-  name: string;
-  fieldType: FieldType;
-  options?: SelectOption[] | null;
-  isRequired?: boolean;
-};
+export type CreateFieldInput = CreateMemberFieldBody;
 
-export type UpdateFieldInput = {
-  name?: string;
-  options?: SelectOption[] | null;
-  isRequired?: boolean;
-  displayOrder?: number;
-  tabId?: string;
-};
+export type UpdateFieldInput = UpdateMemberFieldBody;
 
 /* ── 유효성 검사 ── */
 

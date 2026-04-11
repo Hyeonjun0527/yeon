@@ -209,6 +209,7 @@ export function CounselingRecordWorkspace() {
                   fileInputRef={uploadForm.fileInputRef}
                   onStartRecording={handleStartRecording}
                   onStopRecording={recording.stopRecording}
+                  onCancelRecording={recording.cancelRecording}
                   handleUploadSubmit={uploadForm.handleUploadSubmit}
                 />
               </section>
@@ -227,6 +228,7 @@ export function CounselingRecordWorkspace() {
               onFileInputClick={() => uploadForm.fileInputRef.current?.click()}
               onStartRecording={handleStartRecording}
               onStopRecording={recording.stopRecording}
+              onCancelRecording={recording.cancelRecording}
               onGoToUploadPanel={handleNewRecord}
             />
           )
@@ -362,6 +364,7 @@ export function CounselingRecordWorkspace() {
                     fileInputRef={uploadForm.fileInputRef}
                     onStartRecording={handleStartRecording}
                     onStopRecording={recording.stopRecording}
+                    onCancelRecording={recording.cancelRecording}
                     handleUploadSubmit={uploadForm.handleUploadSubmit}
                   />
                 ) : recordList.sidebarViewMode === "student" &&

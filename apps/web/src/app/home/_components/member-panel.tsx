@@ -9,7 +9,7 @@ export interface MemberPanelProps {
   member: MemberWithStatus;
   records: RecordItem[];
   onSelectRecord: (id: string) => void;
-  onStartRecording: () => void;
+  onOpenNewRecordEntry: () => void;
 }
 
 function fmtDaysSince(days: number | null): string {
@@ -39,7 +39,7 @@ export function MemberPanel({
   member,
   records,
   onSelectRecord,
-  onStartRecording,
+  onOpenNewRecordEntry,
 }: MemberPanelProps) {
   const [exporting, setExporting] = useState(false);
 
@@ -58,6 +58,17 @@ export function MemberPanel({
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
+  const latestRecord = memberRecords[0] ?? null;
+  const hasProcessingRecord = memberRecords.some(
+    (record) => record.status === "processing",
+  );
+  const statusText = hasProcessingRecord
+    ? "상담 분석 진행중"
+    : member.indicator === "recent"
+      ? "관리 중"
+      : member.indicator === "warning"
+        ? "주의 필요"
+        : "상담 필요";
 
   const indicatorColor =
     member.indicator === "recent"
@@ -74,7 +85,7 @@ export function MemberPanel({
         : "text-text-dim";
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
+    <div className="scrollbar-subtle flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
       {/* 수강생 헤더 */}
       <div className="flex items-start gap-4 mb-6">
         <div className="w-12 h-12 rounded-full bg-surface-3 border border-border flex items-center justify-center text-lg font-semibold text-text flex-shrink-0">
@@ -90,7 +101,11 @@ export function MemberPanel({
             <span
               className={`w-2 h-2 rounded-full flex-shrink-0 ${indicatorColor}`}
             />
-            <span>{fmtDaysSince(member.daysSinceLast)}</span>
+            <span>
+              {hasProcessingRecord
+                ? "상담 분석 진행중"
+                : fmtDaysSince(member.daysSinceLast)}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -132,12 +147,14 @@ export function MemberPanel({
             )}
             리포트
           </button>
-          <button
-            className="flex-shrink-0 px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:opacity-90 transition-opacity border-none cursor-pointer font-[inherit]"
-            onClick={onStartRecording}
-          >
-            + 새 상담 녹음
-          </button>
+          {memberRecords.length > 0 ? (
+            <button
+              className="flex-shrink-0 px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:opacity-90 transition-opacity border-none cursor-pointer font-[inherit]"
+              onClick={onOpenNewRecordEntry}
+            >
+              + 새 상담 녹음
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -148,7 +165,7 @@ export function MemberPanel({
             총 상담
           </div>
           <div className="text-2xl font-bold text-text font-mono">
-            {member.counselingCount}
+            {memberRecords.length}
           </div>
           <div className="text-xs text-text-dim mt-0.5">건</div>
         </div>
@@ -158,7 +175,7 @@ export function MemberPanel({
             마지막 상담
           </div>
           <div className={`text-sm font-semibold mt-1 ${indicatorTextColor}`}>
-            {member.lastCounselingAt ? fmtDate(member.lastCounselingAt) : "─"}
+            {latestRecord ? fmtDate(latestRecord.createdAt) : "─"}
           </div>
         </div>
 
@@ -167,11 +184,7 @@ export function MemberPanel({
             상태
           </div>
           <div className={`text-sm font-semibold mt-1 ${indicatorTextColor}`}>
-            {member.indicator === "recent"
-              ? "관리 중"
-              : member.indicator === "warning"
-                ? "주의 필요"
-                : "상담 필요"}
+            {statusText}
           </div>
         </div>
       </div>
@@ -182,6 +195,13 @@ export function MemberPanel({
           상담 기록 ({memberRecords.length})
         </div>
 
+        {hasProcessingRecord && (
+          <div className="mb-3 rounded-lg border border-accent-border bg-accent-dim px-4 py-3 text-[13px] text-accent">
+            이 수강생의 상담 음성이 백그라운드에서 분석 중입니다. 목록의 처리 중
+            기록을 다시 열면 진행 상태를 확인할 수 있습니다.
+          </div>
+        )}
+
         {memberRecords.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-surface-3 border border-border flex items-center justify-center">
@@ -190,7 +210,7 @@ export function MemberPanel({
             <p className="text-sm text-text-dim">아직 상담 기록이 없습니다</p>
             <button
               className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:opacity-90 transition-opacity border-none cursor-pointer font-[inherit]"
-              onClick={onStartRecording}
+              onClick={onOpenNewRecordEntry}
             >
               첫 상담 녹음 시작
             </button>

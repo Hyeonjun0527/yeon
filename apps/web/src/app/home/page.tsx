@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useRecords,
   useRecording,
@@ -10,8 +11,10 @@ import {
   useAiPanel,
   useCurrentSpace,
   useSpaceMembers,
+  useRecordRetry,
 } from "./_hooks";
 import { useExport } from "./_lib/export-context";
+import { detectRecordMemberMismatch } from "./_lib/record-member-mismatch";
 import { exportRecordDocx, exportMemberReportDocx } from "./_lib/export-docx";
 import {
   EmptyState,
@@ -23,18 +26,33 @@ import {
   MemberPanel,
   QuickMemoModal,
   InsightBanner,
+  NewRecordEntryModal,
 } from "./_components";
 import { HomeTutorial } from "@/components/tutorial";
 
 export default function MockV2Workspace() {
+  const queryClient = useQueryClient();
   const records = useRecords();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   // 모달 열림 시점의 recordId를 캡처 — async 완료 전에 selected가 바뀌어도 안전
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null);
   const [quickMemoOpen, setQuickMemoOpen] = useState(false);
+  const [newRecordEntryOpen, setNewRecordEntryOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const { spaces, currentSpace, currentSpaceId, setCurrentSpaceId, addSpace } =
-    useCurrentSpace();
+  const recordingReturnMemberIdRef = useRef<string | null>(null);
+  const quickMemoOriginMemberIdRef = useRef<string | null>(null);
+  const entryMemberContextRef = useRef<{
+    memberId: string | null;
+    studentName: string;
+  }>({ memberId: null, studentName: "" });
+  const {
+    spaces,
+    currentSpace,
+    currentSpaceId,
+    setCurrentSpaceId,
+    addSpace,
+    removeSpace,
+  } = useCurrentSpace();
   const { members, loading: membersLoading } = useSpaceMembers(
     currentSpaceId,
     records.records,
@@ -45,10 +63,19 @@ export default function MockV2Workspace() {
     onUploadComplete: (tempId, realRecord) =>
       records.replaceRecord(tempId, realRecord),
     onUploadError: (tempId, msg) => records.markUploadError(tempId, msg),
+    getDefaultRecordContext: () => entryMemberContextRef.current,
   });
 
   const fileUpload = useFileUpload({
+    onBeforeProcess: () => {
+      setSelectedMemberId(null);
+      recordingReturnMemberIdRef.current = null;
+    },
+    getDefaultRecordContext: () => entryMemberContextRef.current,
     onFileUpload: (rec) => records.addProcessingRecord(rec),
+    onUploadComplete: (tempId, realRecord) =>
+      records.replaceRecord(tempId, realRecord),
+    onUploadError: (tempId, msg) => records.markUploadError(tempId, msg),
   });
 
   const selectedAudioUrl = records.selected?.audioUrl ?? null;
@@ -68,6 +95,14 @@ export default function MockV2Workspace() {
 
   const aiPanel = useAiPanel();
 
+  const recordRetry = useRecordRetry({
+    selected: records.selected,
+    applyRecordDetail: records.applyRecordDetail,
+    boostPolling: records.boostPolling,
+    markAnalysisRetryStart: records.markAnalysisRetryStart,
+    selectRecord: records.selectRecord,
+  });
+
   const { register } = useExport();
 
   const handleSelectRecord = useCallback(
@@ -80,16 +115,157 @@ export default function MockV2Workspace() {
   );
 
   const handleSelectMember = useCallback((id: string) => {
-    setSelectedMemberId((prev) => (prev === id ? null : id));
+    setSelectedMemberId(id);
   }, []);
 
-  const handleStartRecording = useCallback(() => {
-    setSelectedMemberId(null);
-    records.startRecording();
-    recording.start();
-  }, [records, recording]);
+  const handleStartRecording = useCallback(
+    (returnMemberId: string | null = null) => {
+      recordingReturnMemberIdRef.current = returnMemberId;
+      setSelectedMemberId(null);
+      records.startRecording();
+      recording.start();
+    },
+    [records, recording],
+  );
+
+  const handleStopRecording = useCallback(() => {
+    recordingReturnMemberIdRef.current = null;
+    recording.stop();
+  }, [recording]);
+
+  const handleCancelRecording = useCallback(() => {
+    recording.cancel();
+    records.cancelRecording();
+    setSelectedMemberId(recordingReturnMemberIdRef.current);
+    recordingReturnMemberIdRef.current = null;
+  }, [recording, records]);
+
+  const handleOpenNewRecordEntry = useCallback(
+    (memberId: string | null = null, studentName = "") => {
+      quickMemoOriginMemberIdRef.current = memberId;
+      entryMemberContextRef.current = { memberId, studentName };
+      setNewRecordEntryOpen(true);
+    },
+    [],
+  );
+
+  const handleChooseRecordingEntry = useCallback(() => {
+    setNewRecordEntryOpen(false);
+    handleStartRecording(quickMemoOriginMemberIdRef.current);
+    quickMemoOriginMemberIdRef.current = null;
+  }, [handleStartRecording]);
+
+  const handleChooseUploadEntry = useCallback(() => {
+    setNewRecordEntryOpen(false);
+    fileUpload.openFilePicker();
+  }, [fileUpload]);
+
+  const handleChooseTextEntry = useCallback(() => {
+    setNewRecordEntryOpen(false);
+    setQuickMemoOpen(true);
+  }, []);
 
   const selectedMember = members.find((m) => m.id === selectedMemberId) ?? null;
+  const selectedRecordMismatchWarning = detectRecordMemberMismatch(
+    records.selected,
+    members,
+    records.selected?.memberId ?? null,
+  );
+
+  const handleDeleteRecord = useCallback(
+    async (recordId: string) => {
+      const res = await fetch(`/api/v1/counseling-records/${recordId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "상담 기록을 삭제하지 못했습니다.");
+      }
+
+      records.removeRecord(recordId);
+      setSelectedMemberId((prev) => {
+        if (!prev) return prev;
+        const stillExists = records.records.some(
+          (record) => record.memberId === prev && record.id !== recordId,
+        );
+        return stillExists ? prev : prev;
+      });
+    },
+    [records],
+  );
+
+  const handleDeleteMember = useCallback(
+    async (memberId: string) => {
+      if (!currentSpaceId) {
+        throw new Error("선택된 스페이스가 없습니다.");
+      }
+
+      const res = await fetch(
+        `/api/v1/spaces/${currentSpaceId}/members/${memberId}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "수강생을 삭제하지 못했습니다.");
+      }
+
+      setSelectedMemberId((prev) => (prev === memberId ? null : prev));
+      await queryClient.invalidateQueries({
+        queryKey: ["space-members", currentSpaceId],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+    },
+    [currentSpaceId, queryClient],
+  );
+
+  const handleDeleteSpace = useCallback(
+    async (spaceId: string) => {
+      const res = await fetch(`/api/v1/spaces/${spaceId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "스페이스를 삭제하지 못했습니다.");
+      }
+
+      removeSpace(spaceId);
+      if (currentSpaceId === spaceId) {
+        setSelectedMemberId(null);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+    },
+    [currentSpaceId, queryClient, removeSpace],
+  );
+
+  const handleExportRecord = useCallback(
+    async (recordId: string) => {
+      const target = records.records.find((record) => record.id === recordId);
+      if (!target) {
+        throw new Error("내보낼 상담 기록을 찾지 못했습니다.");
+      }
+
+      await exportRecordDocx(target);
+    },
+    [records.records],
+  );
+
+  const handleExportMember = useCallback(
+    async (memberId: string) => {
+      const target = members.find((member) => member.id === memberId);
+      if (!target) {
+        throw new Error("내보낼 수강생을 찾지 못했습니다.");
+      }
+
+      await exportMemberReportDocx(target, records.records);
+    },
+    [members, records.records],
+  );
 
   /* 멤버가 선택되면 레코드 선택 해제 */
   const showMemberPanel =
@@ -151,13 +327,17 @@ export default function MockV2Workspace() {
 
       {records.viewState.kind === "empty" && !selectedMember && (
         <EmptyState
-          onStartRecording={handleStartRecording}
+          onStartRecording={() => handleStartRecording()}
           onFileUpload={fileUpload.openFilePicker}
         />
       )}
 
       {records.viewState.kind === "recording" && (
-        <RecordingState elapsed={recording.elapsed} onStop={recording.stop} />
+        <RecordingState
+          elapsed={recording.elapsed}
+          onStop={handleStopRecording}
+          onCancel={handleCancelRecording}
+        />
       )}
 
       {(records.viewState.kind === "processing" ||
@@ -178,6 +358,11 @@ export default function MockV2Workspace() {
           selectedMemberId={selectedMemberId}
           onSelectMember={handleSelectMember}
           onOpenQuickMemo={() => setQuickMemoOpen(true)}
+          onDeleteRecord={handleDeleteRecord}
+          onDeleteMember={handleDeleteMember}
+          onDeleteSpace={handleDeleteSpace}
+          onExportRecord={handleExportRecord}
+          onExportMember={handleExportMember}
         />
       )}
 
@@ -187,7 +372,9 @@ export default function MockV2Workspace() {
             member={selectedMember}
             records={records.records}
             onSelectRecord={handleSelectRecord}
-            onStartRecording={handleStartRecording}
+            onOpenNewRecordEntry={() =>
+              handleOpenNewRecordEntry(selectedMember.id, selectedMember.name)
+            }
           />
         </div>
       )}
@@ -221,6 +408,15 @@ export default function MockV2Workspace() {
                   setLinkModalOpen(true);
                 }
               }}
+              mismatchWarning={selectedRecordMismatchWarning}
+              onRetryFailedRecord={() => {
+                void recordRetry.retryFailedRecord();
+              }}
+              onRetryFailedAnalysis={() => {
+                void recordRetry.retryFailedAnalysis();
+              }}
+              retryPending={recordRetry.retryPending}
+              retryFeedback={recordRetry.retryFeedback}
             />
 
             <AiPanel
@@ -254,10 +450,31 @@ export default function MockV2Workspace() {
         </div>
       )}
 
+      {newRecordEntryOpen && (
+        <NewRecordEntryModal
+          onClose={() => {
+            setNewRecordEntryOpen(false);
+            quickMemoOriginMemberIdRef.current = null;
+          }}
+          onChooseRecording={handleChooseRecordingEntry}
+          onChooseUpload={handleChooseUploadEntry}
+          onChooseText={handleChooseTextEntry}
+        />
+      )}
+
       {quickMemoOpen && (
         <QuickMemoModal
-          onClose={() => setQuickMemoOpen(false)}
+          onClose={() => {
+            setQuickMemoOpen(false);
+            quickMemoOriginMemberIdRef.current = null;
+          }}
+          defaultMemberId={entryMemberContextRef.current.memberId}
+          defaultStudentName={entryMemberContextRef.current.studentName}
           onCreated={(rec) => {
+            if (quickMemoOriginMemberIdRef.current) {
+              setSelectedMemberId(null);
+            }
+            quickMemoOriginMemberIdRef.current = null;
             records.addReadyRecord(rec);
           }}
         />
@@ -266,6 +483,7 @@ export default function MockV2Workspace() {
       {linkModalOpen && linkTargetId && records.selected && (
         <LinkMemberModal
           recordId={linkTargetId}
+          record={records.selected}
           studentName={records.selected.studentName}
           currentMemberId={records.selected.memberId}
           onClose={() => setLinkModalOpen(false)}

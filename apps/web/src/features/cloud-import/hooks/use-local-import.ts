@@ -9,7 +9,15 @@ import type {
   ImportResult,
 } from "../types";
 import { detectFileKind } from "../file-kind";
-import { diffText, nextId, readImportSSE, summaryText } from "./import-helpers";
+import {
+  diffText,
+  getCompletedAnalysisState,
+  getDraftRecoveryNotice,
+  getQueuedAnalysisState,
+  nextId,
+  readImportSSE,
+  summaryText,
+} from "./import-helpers";
 
 const LOCAL_IMPORT_DRAFT_STORAGE_KEY = "yeon:local-import:last-draft-id";
 const IMPORT_DRAFT_RETENTION_TEXT =
@@ -28,16 +36,23 @@ type LocalImportDraftSnapshot = {
   preview: ImportPreview | null;
   importResult: ImportResult | null;
   error: string | null;
+  processingStage: import("@/lib/import-analysis-progress").ImportAnalysisStage;
+  processingProgress: number;
+  processingMessage: string | null;
   expiresAt: string;
   updatedAt: string;
 };
 
 export interface UseLocalImportReturn extends ImportHook {
   selectLocalFile: (file: File) => void;
+  restoreDraftById: (draftId: string) => Promise<void>;
+  currentDraftId: string | null;
 }
 
 export function useLocalImport(
   onImportComplete?: () => void,
+  initialDraftId?: string | null,
+  onDraftDiscarded?: () => void,
 ): UseLocalImportReturn {
   const rawFileRef = useRef<File | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -50,6 +65,13 @@ export function useLocalImport(
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<
+    import("@/lib/import-analysis-progress").ImportAnalysisStage | null
+  >(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingMessage, setProcessingMessage] = useState<string | null>(
+    null,
+  );
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [editablePreview, setEditablePreview] = useState<ImportPreview | null>(
     null,
@@ -93,29 +115,29 @@ export function useLocalImport(
 
   const applyDraftSnapshot = useCallback(
     (snapshot: LocalImportDraftSnapshot) => {
-      setDraftId(snapshot.id);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+      rawFileRef.current = null;
+      persistDraftId(snapshot.id);
       setSelectedFile(snapshot.selectedFile);
+      setLocalPreviewUrl(null);
       setEditablePreview(snapshot.preview);
       setImportResult(snapshot.importResult);
       setError(snapshot.error);
+      setChatMessages([]);
       setAnalyzing(snapshot.status === "analyzing");
-      setRecoveryNotice(
-        snapshot.status === "analyzing"
-          ? "분석 중이던 작업을 복구했습니다. 완료되면 결과가 이어집니다."
-          : snapshot.status === "edited"
-            ? "수정 중이던 가져오기 초안을 복구했습니다."
-            : snapshot.status === "analyzed"
-              ? "분석 결과를 복구했습니다. 이어서 검토하고 가져오세요."
-              : null,
-      );
+      setProcessingStage(snapshot.processingStage);
+      setProcessingProgress(snapshot.processingProgress);
+      setProcessingMessage(snapshot.processingMessage);
+      setRecoveryNotice(getDraftRecoveryNotice(snapshot.status));
       setStreamingText(
-        snapshot.status === "analyzing"
-          ? "이전 분석 작업을 복구하고 있습니다..."
-          : null,
+        snapshot.status === "analyzing" ? snapshot.processingMessage : null,
       );
       setRestoredFromDraft(true);
     },
-    [],
+    [persistDraftId],
   );
 
   const restoreDraft = useCallback(
@@ -142,10 +164,15 @@ export function useLocalImport(
   );
 
   useEffect(() => {
+    const preferredDraftId = initialDraftId?.trim();
     const savedDraftId = localStorage.getItem(LOCAL_IMPORT_DRAFT_STORAGE_KEY);
-    if (!savedDraftId) return;
-    void restoreDraft(savedDraftId);
-  }, [restoreDraft]);
+    const targetDraftId = preferredDraftId || savedDraftId;
+    if (!targetDraftId) return;
+    if (preferredDraftId) {
+      persistDraftId(preferredDraftId);
+    }
+    void restoreDraft(targetDraftId);
+  }, [initialDraftId, persistDraftId, restoreDraft]);
 
   useEffect(() => {
     if (!draftId || !restoredFromDraft || !analyzing) return;
@@ -159,6 +186,12 @@ export function useLocalImport(
 
   const selectLocalFile = useCallback(
     (file: File) => {
+      analyzeAbortRef.current?.abort();
+      analyzeAbortRef.current = null;
+      if (previewSaveTimerRef.current) {
+        clearTimeout(previewSaveTimerRef.current);
+        previewSaveTimerRef.current = null;
+      }
       clearStoredDraftId();
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
       rawFileRef.current = file;
@@ -182,6 +215,9 @@ export function useLocalImport(
       setLocalPreviewUrl(url);
       setRecoveryNotice(null);
       setAnalyzing(false);
+      setProcessingStage(null);
+      setProcessingProgress(0);
+      setProcessingMessage(null);
       setStreamingText(null);
       setEditablePreview(null);
       setImportResult(null);
@@ -199,8 +235,12 @@ export function useLocalImport(
     analyzeAbortRef.current = controller;
 
     try {
+      const queuedState = getQueuedAnalysisState();
       setAnalyzing(true);
       setError(null);
+      setProcessingStage(queuedState.stage);
+      setProcessingProgress(queuedState.progress);
+      setProcessingMessage(queuedState.message);
       setStreamingText(null);
 
       const formData = new FormData();
@@ -233,12 +273,21 @@ export function useLocalImport(
 
       const result = await readImportSSE(
         res,
-        (text) => setStreamingText(text),
+        ({ text, stage, progress }) => {
+          setStreamingText(text);
+          if (stage) setProcessingStage(stage);
+          if (typeof progress === "number") setProcessingProgress(progress);
+          setProcessingMessage(text);
+        },
         controller.signal,
       );
       if (result.error) throw new Error(result.error);
 
       if (result.preview) {
+        const completedState = getCompletedAnalysisState();
+        setProcessingStage(completedState.stage);
+        setProcessingProgress(completedState.progress);
+        setProcessingMessage(completedState.message);
         setEditablePreview(structuredClone(result.preview));
         pushMessage(
           "ai",
@@ -366,7 +415,8 @@ export function useLocalImport(
     }).catch(() => {
       // 초안 삭제 실패는 조용히 무시하고 UI 상태만 정리
     });
-  }, [clearStoredDraftId, draftId]);
+    onDraftDiscarded?.();
+  }, [clearStoredDraftId, draftId, onDraftDiscarded]);
 
   const refineWithInstruction = useCallback(
     async (instruction: string) => {
@@ -379,8 +429,12 @@ export function useLocalImport(
       const prevPreview = editablePreview;
 
       try {
+        const queuedState = getQueuedAnalysisState();
         setAnalyzing(true);
         setError(null);
+        setProcessingStage(queuedState.stage);
+        setProcessingProgress(queuedState.progress);
+        setProcessingMessage(queuedState.message);
         setStreamingText(null);
 
         const formData = new FormData();
@@ -415,12 +469,21 @@ export function useLocalImport(
 
         const result = await readImportSSE(
           res,
-          (text) => setStreamingText(text),
+          ({ text, stage, progress }) => {
+            setStreamingText(text);
+            if (stage) setProcessingStage(stage);
+            if (typeof progress === "number") setProcessingProgress(progress);
+            setProcessingMessage(text);
+          },
           controller.signal,
         );
         if (result.error) throw new Error(result.error);
 
         if (result.preview) {
+          const completedState = getCompletedAnalysisState();
+          setProcessingStage(completedState.stage);
+          setProcessingProgress(completedState.progress);
+          setProcessingMessage(completedState.message);
           setEditablePreview(structuredClone(result.preview));
           pushMessage("ai", diffText(prevPreview, result.preview));
         }
@@ -453,6 +516,9 @@ export function useLocalImport(
     recoveryNotice,
     draftPolicyText,
     analyzing,
+    processingStage,
+    processingProgress,
+    processingMessage,
     streamingText,
     editablePreview,
     importing,
@@ -467,5 +533,7 @@ export function useLocalImport(
     discardDraft,
     refineWithInstruction,
     selectLocalFile,
+    restoreDraftById: restoreDraft,
+    currentDraftId: draftId,
   };
 }

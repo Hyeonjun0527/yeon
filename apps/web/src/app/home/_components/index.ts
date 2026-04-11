@@ -9,3 +9,4 @@ export { LinkMemberModal } from "./link-member-modal";
 export { MemberPanel } from "./member-panel";
 export { QuickMemoModal } from "./quick-memo-modal";
 export { InsightBanner } from "./insight-banner";
+export { NewRecordEntryModal } from "./new-record-entry-modal";

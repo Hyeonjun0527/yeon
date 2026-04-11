@@ -143,7 +143,11 @@ export function useAiChat({
 
       onUpdateMessages(recordId, (prev) => [
         ...prev,
-        { role: "assistant" as const, text: "" },
+        {
+          role: "assistant" as const,
+          text: "",
+          createdAt: new Date().toISOString(),
+        },
       ]);
 
       await readSseStream(reader, (chunk) => {
@@ -237,6 +241,7 @@ export function useAiChat({
       role: "user" as const,
       text: userMsg || `[파일 ${attachedImages?.length}개 첨부]`,
       images: attachedImages,
+      createdAt: new Date().toISOString(),
     };
 
     onUpdateMessages(selectedId, (prev) => [...prev, newUserMessage]);
@@ -282,7 +287,11 @@ export function useAiChat({
     (text: string) => {
       if (!selectedId || streaming) return;
 
-      const newUserMessage: AiMessage = { role: "user" as const, text };
+      const newUserMessage: AiMessage = {
+        role: "user" as const,
+        text,
+        createdAt: new Date().toISOString(),
+      };
 
       onUpdateMessages(selectedId, (prev) => [...prev, newUserMessage]);
 

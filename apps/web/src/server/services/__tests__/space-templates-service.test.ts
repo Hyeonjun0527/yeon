@@ -27,6 +27,7 @@ vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
   asc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
+  ne: (col: unknown, val: unknown) => ({ col, val }),
 }));
 
 import {
@@ -213,6 +214,7 @@ describe("getTemplate", () => {
 
 describe("applyTemplateToSpace", () => {
   it("존재하지 않는 템플릿은 404 ServiceError를 던진다", async () => {
+    responses.push(undefined); // createDefaultSystemTabs insert
     responses.push([]); // select → 없음
     await expect(
       applyTemplateToSpace("nonexistent", "space-1", "user-1"),
@@ -240,8 +242,11 @@ describe("applyTemplateToSpace", () => {
     const template = makeTemplate({ tabsConfig });
     const overviewTab = makeTab({ id: "overview-tab" });
 
+    responses.push(undefined); // createDefaultSystemTabs insert
     responses.push([template]); // getTemplate (select.limit)
     responses.push([overviewTab]); // existingTabs select
+    responses.push(undefined); // delete fields
+    responses.push(undefined); // delete custom tabs
     responses.push([]); // existingFields select (해당 탭)
     responses.push(undefined); // insert field
 
@@ -274,8 +279,11 @@ describe("applyTemplateToSpace", () => {
       systemKey: null,
     });
 
+    responses.push(undefined); // createDefaultSystemTabs insert
     responses.push([template]); // getTemplate
     responses.push([]); // existingTabs
+    responses.push(undefined); // delete fields
+    responses.push(undefined); // delete custom tabs
     responses.push([newTab]); // insert tab.returning()
     responses.push(undefined); // insert field
 
@@ -286,8 +294,11 @@ describe("applyTemplateToSpace", () => {
 
   it("빈 tabsConfig는 오류 없이 완료된다", async () => {
     const template = makeTemplate({ tabsConfig: [] });
+    responses.push(undefined); // createDefaultSystemTabs insert
     responses.push([template]); // getTemplate
     responses.push([]); // existingTabs
+    responses.push(undefined); // delete fields
+    responses.push(undefined); // delete custom tabs
 
     await expect(
       applyTemplateToSpace("tpl-1", "space-1", "user-1"),

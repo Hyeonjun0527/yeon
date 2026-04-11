@@ -11,8 +11,9 @@ import { downloadCounselingAudioObjectToFile } from "./counseling-record-audio-s
 const execFileAsync = promisify(execFile);
 
 const MAX_OPENAI_TRANSCRIPTION_BYTES = 24 * 1024 * 1024;
-const MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS = 8 * 60;
+const MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS = 23 * 60;
 const MAX_DIARIZE_CHUNK_DURATION_SECONDS = 120;
+const LONG_AUDIO_NON_DIARIZE_THRESHOLD_SECONDS = 20 * 60;
 const DEFAULT_TRANSCRIPTION_MODEL =
   process.env.OPENAI_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-transcribe-diarize";
 const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = (
@@ -144,26 +145,57 @@ function isDiarizationModel(model: string) {
   return model.toLowerCase().includes("diarize");
 }
 
-function getPreferredTranscriptionChunkDurationSeconds() {
-  return getTranscriptionModelCandidates().some(isDiarizationModel)
-    ? Math.min(
-        MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS,
-        MAX_DIARIZE_CHUNK_DURATION_SECONDS,
-      )
-    : MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS;
+type TranscriptionStrategy = {
+  modelCandidates: string[];
+  chunkDurationSeconds: number;
+  preferNonDiarization: boolean;
+};
+
+function getPreferredTranscriptionStrategy(
+  durationMs: number | null | undefined,
+): TranscriptionStrategy {
+  const modelCandidates = getTranscriptionModelCandidates();
+  const diarizationCandidates = modelCandidates.filter(isDiarizationModel);
+  const nonDiarizationCandidates = modelCandidates.filter(
+    (candidate) => !isDiarizationModel(candidate),
+  );
+  const shouldPreferNonDiarization =
+    typeof durationMs === "number" &&
+    durationMs > LONG_AUDIO_NON_DIARIZE_THRESHOLD_SECONDS * 1000 &&
+    nonDiarizationCandidates.length > 0;
+
+  if (shouldPreferNonDiarization) {
+    return {
+      modelCandidates: [...nonDiarizationCandidates, ...diarizationCandidates],
+      chunkDurationSeconds: MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS,
+      preferNonDiarization: true,
+    };
+  }
+
+  return {
+    modelCandidates,
+    chunkDurationSeconds:
+      diarizationCandidates.length > 0
+        ? Math.min(
+            MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS,
+            MAX_DIARIZE_CHUNK_DURATION_SECONDS,
+          )
+        : MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS,
+    preferNonDiarization: false,
+  };
 }
 
 function shouldChunkTranscription(
   byteSize: number,
   durationMs: number | null | undefined,
+  chunkDurationSeconds: number,
 ) {
   if (byteSize > MAX_OPENAI_TRANSCRIPTION_BYTES) {
     return true;
   }
 
   return (
-    typeof durationMs === "number" &&
-    durationMs > getPreferredTranscriptionChunkDurationSeconds() * 1000
+    typeof durationMs === "number" && durationMs > chunkDurationSeconds * 1000
   );
 }
 
@@ -190,8 +222,9 @@ async function buildTranscriptionSources(params: {
   originalName: string;
   byteSize: number;
   durationMs: number | null;
+  chunkDurationSeconds: number;
 }) {
-  const chunkDurationSeconds = getPreferredTranscriptionChunkDurationSeconds();
+  const chunkDurationSeconds = params.chunkDurationSeconds;
   const sourceDirectory = path.join(
     /* turbopackIgnore: true */ getLocalWorkDir(),
     "_transcription-source",
@@ -209,7 +242,13 @@ async function buildTranscriptionSources(params: {
     destinationPath: sourcePath,
   });
 
-  if (!shouldChunkTranscription(params.byteSize, params.durationMs)) {
+  if (
+    !shouldChunkTranscription(
+      params.byteSize,
+      params.durationMs,
+      chunkDurationSeconds,
+    )
+  ) {
     return {
       sources: [
         {
@@ -574,6 +613,7 @@ export async function transcribeStoredAudio(params: {
     );
   }
 
+  const strategy = getPreferredTranscriptionStrategy(params.durationMs);
   const { sources, cleanup } = await buildTranscriptionSources({
     recordId: params.recordId,
     storagePath: params.storagePath,
@@ -581,6 +621,7 @@ export async function transcribeStoredAudio(params: {
     originalName: params.originalName,
     byteSize: params.byteSize,
     durationMs: params.durationMs,
+    chunkDurationSeconds: strategy.chunkDurationSeconds,
   });
   const transcriptParts: string[] = [];
   const mergedSegments: PersistedTranscriptSegment[] = [];
@@ -588,7 +629,7 @@ export async function transcribeStoredAudio(params: {
   let language: string | null = null;
   let segmentIndexOffset = 0;
   let resolvedModel: string | null = null;
-  const modelCandidates = getTranscriptionModelCandidates();
+  const modelCandidates = strategy.modelCandidates;
   const existingChunks = new Map(
     (params.existingChunks ?? []).map((chunk) => [chunk.index, chunk]),
   );
@@ -750,4 +791,6 @@ export const _testing = {
   splitTranscriptIntoParagraphs,
   buildFallbackSegments,
   mapOpenAiSegments,
+  shouldChunkTranscription,
+  getPreferredTranscriptionStrategy,
 };

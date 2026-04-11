@@ -92,6 +92,27 @@
       "when": 1775895600000,
       "tag": "0012_long_audio_async_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775918875341,
+      "tag": "0013_silent_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775921700000,
+      "tag": "0014_import_draft_processing_stages",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0015_sheet_sync_conflicts",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import type { ImportAnalysisStage } from "@/lib/import-analysis-progress";
 import type { FileKind } from "./file-kind";
 
 export type CloudProvider = "onedrive" | "googledrive";
@@ -51,6 +52,9 @@ export interface ImportHook {
   recoveryNotice?: string | null;
   draftPolicyText?: string | null;
   analyzing: boolean;
+  processingStage: ImportAnalysisStage | null;
+  processingProgress: number;
+  processingMessage: string | null;
   streamingText: string | null;
   editablePreview: ImportPreview | null;
   importing: boolean;

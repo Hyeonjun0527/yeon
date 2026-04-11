@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 import { useStudentManagement } from "../student-management-provider";
 import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
 import { useStudentMemos } from "../hooks/use-student-memos";
+import { useMemberMemos } from "../hooks/use-member-memos";
 import { useDynamicMemberTabs } from "../hooks/use-dynamic-member-tabs";
 import { StudentDetailHeader } from "../components/student-detail-header";
 import { StudentDetailTabs } from "../components/student-detail-tabs";
@@ -12,12 +14,12 @@ import { TabOverview } from "../components/tab-overview";
 import { TabCounseling } from "../components/tab-counseling";
 import { TabCounselingRecords } from "../components/tab-counseling-records";
 import { TabMemberOverview } from "../components/tab-member-overview";
-import { TabCourses } from "../components/tab-courses";
-import { TabGuardian } from "../components/tab-guardian";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { CustomTabContent } from "../components/custom-tab-content";
 import { useSpaceSettingsDrawer } from "../../space-settings";
+
+const REMOVED_SYSTEM_TAB_KEYS = new Set(["courses", "guardian"]);
 
 interface StudentDetailScreenProps {
   paramsPromise: Promise<{ studentId: string }>;
@@ -29,16 +31,29 @@ export function StudentDetailScreen({
   const { studentId } = React.use(paramsPromise);
   const { sheetMode, selectedSpaceId, refetchMembers } = useStudentManagement();
   const { openSpaceSettings } = useSpaceSettingsDrawer();
+  const [memberCounselingRecordCount, setMemberCounselingRecordCount] =
+    React.useState<number | null>(null);
+  const backHref = selectedSpaceId
+    ? `/home/student-management?spaceId=${selectedSpaceId}`
+    : "/home/student-management";
 
   /* ── API 기반 멤버 조회 ── */
+  const { member, activeTab, setActiveTab } = useMemberDetail({
+    memberId: studentId,
+  });
   const {
-    member,
-    activeTab,
-    setActiveTab,
-    activityLogs,
-    logsLoading,
-    logsError,
-  } = useMemberDetail({ memberId: studentId });
+    memos: memberMemos,
+    newMemoText: memberMemoText,
+    setNewMemoText: setMemberMemoText,
+    addMemo: addMemberMemo,
+    loading: memberMemosLoading,
+    error: memberMemosError,
+    isSaving: memberMemoSaving,
+    totalCount: memberMemoCount,
+  } = useMemberMemos({
+    spaceId: member?.spaceId ?? null,
+    memberId: member?.id ?? null,
+  });
 
   /* ── 동적 탭 목록 ── */
   const { tabs: dynamicTabs, refetch: refetchTabs } =
@@ -58,15 +73,30 @@ export function StudentDetailScreen({
       onAfterClose: refetchTabs,
     });
   }
+  const visibleDynamicTabs = dynamicTabs.filter(
+    (tab) => !REMOVED_SYSTEM_TAB_KEYS.has(tab.systemKey ?? ""),
+  );
   const tabItems =
-    dynamicTabs.length > 0
-      ? dynamicTabs.map((t) => ({ id: t.systemKey ?? t.id, label: t.name }))
+    visibleDynamicTabs.length > 0
+      ? visibleDynamicTabs.map((t) => ({
+          id: t.systemKey ?? t.id,
+          label: t.name,
+        }))
       : undefined;
   // 현재 탭이 시스템 키가 아닌 UUID이면 커스텀 탭
-  const activeCustomTab = dynamicTabs.find(
+  const activeCustomTab = visibleDynamicTabs.find(
     (t) => t.tabType === "custom" && t.id === activeTab,
   );
-  const overviewTab = dynamicTabs.find((t) => t.systemKey === "overview");
+  const overviewTab = visibleDynamicTabs.find(
+    (t) => t.systemKey === "overview",
+  );
+  const legacyGuardianTab = dynamicTabs.find((t) => t.systemKey === "guardian");
+
+  React.useEffect(() => {
+    if (activeTab === "courses" || activeTab === "guardian") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, setActiveTab]);
 
   /* ── 레거시 mock 학생 조회 (member가 없을 때 폴백) ── */
   const { student } = useStudentDetail({ studentId });
@@ -103,8 +133,8 @@ export function StudentDetailScreen({
             marginBottom: 20,
           }}
         >
-          <a
-            href="/home/student-management"
+          <Link
+            href={backHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -115,7 +145,7 @@ export function StudentDetailScreen({
             }}
           >
             ← 수강생 목록으로
-          </a>
+          </Link>
         </div>
 
         <div
@@ -160,6 +190,29 @@ export function StudentDetailScreen({
               )}
             </div>
           </div>
+
+          {memberCounselingRecordCount === null ||
+          memberCounselingRecordCount > 0 ? (
+            <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+              <a
+                href={`/home?memberId=${member.id}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 16px",
+                  borderRadius: 12,
+                  background: "var(--surface3)",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                + 새 상담 녹음
+              </a>
+            </div>
+          ) : null}
         </div>
 
         <StudentDetailTabs
@@ -174,6 +227,11 @@ export function StudentDetailScreen({
             member={member}
             onMemberUpdated={refetchMembers}
             overviewTabId={overviewTab?.id}
+            guardianTabId={legacyGuardianTab?.id}
+            memos={memberMemos}
+            memosLoading={memberMemosLoading}
+            memosError={memberMemosError}
+            totalMemoCount={memberMemoCount}
             onManageFields={overviewTab ? handleManageFields : undefined}
           />
         )}
@@ -181,37 +239,30 @@ export function StudentDetailScreen({
         {activeTab === "report" && (
           <TabReport
             member={member}
-            activityLogs={activityLogs}
-            logsLoading={logsLoading}
-            logsError={logsError}
+            memos={memberMemos}
+            memosLoading={memberMemosLoading}
+            totalMemoCount={memberMemoCount}
           />
         )}
 
         {activeTab === "memos" && (
           <TabMemos
-            memos={memos}
-            newMemoText={newMemoText}
-            setNewMemoText={setNewMemoText}
-            addMemo={addMemo}
+            memos={memberMemos}
+            newMemoText={memberMemoText}
+            setNewMemoText={setMemberMemoText}
+            addMemo={addMemberMemo}
+            loading={memberMemosLoading}
+            error={memberMemosError}
+            isSaving={memberMemoSaving}
           />
         )}
 
         {activeTab === "counseling" && (
-          <TabCounselingRecords spaceId={member.spaceId} memberId={member.id} />
-        )}
-
-        {/* courses / guardian 탭은 미구현 안내 */}
-        {(activeTab === "courses" || activeTab === "guardian") && (
-          <div
-            style={{
-              padding: "32px 0",
-              textAlign: "center",
-              color: "var(--text-dim)",
-              fontSize: 14,
-            }}
-          >
-            해당 탭은 준비 중입니다.
-          </div>
+          <TabCounselingRecords
+            spaceId={member.spaceId}
+            memberId={member.id}
+            onRecordCountChange={setMemberCounselingRecordCount}
+          />
         )}
 
         {/* 커스텀 탭 */}
@@ -238,12 +289,6 @@ export function StudentDetailScreen({
       {activeTab === "counseling" && (
         <TabCounseling history={student!.counselingHistory} />
       )}
-      {activeTab === "courses" && (
-        <TabCourses history={student!.courseHistory} />
-      )}
-      {activeTab === "guardian" && (
-        <TabGuardian guardians={student!.guardians} />
-      )}
       {activeTab === "memos" && (
         <TabMemos
           memos={memos}
@@ -265,9 +310,6 @@ export function StudentDetailScreen({
             createdAt: student.registeredAt,
             updatedAt: student.registeredAt,
           }}
-          activityLogs={[]}
-          logsLoading={false}
-          logsError={null}
         />
       )}
 

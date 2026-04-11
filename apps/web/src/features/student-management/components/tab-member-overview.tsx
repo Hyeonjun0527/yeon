@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import type { Member } from "../types";
+import type { Member, Memo } from "../types";
+import { useCustomTabFields } from "../hooks/use-custom-tab-fields";
 import { fmtDate, fmtRelative } from "../utils";
 import { ProfileImportPanel } from "./profile-import-panel";
 import { CustomTabContent } from "./custom-tab-content";
@@ -11,13 +10,13 @@ interface TabMemberOverviewProps {
   member: Member;
   onMemberUpdated?: () => void;
   overviewTabId?: string;
+  guardianTabId?: string;
+  memos?: Memo[];
+  memosLoading?: boolean;
+  memosError?: string | null;
+  totalMemoCount?: number;
   /** 제공 시 "추가 정보" 섹션 헤더에 필드 관리 버튼 표시 */
   onManageFields?: () => void;
-}
-
-interface CounselingStats {
-  count: number;
-  lastDate: string | null;
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -102,57 +101,74 @@ function Section({
   );
 }
 
+function LegacyGuardianFieldsSection({
+  spaceId,
+  memberId,
+  guardianTabId,
+}: {
+  spaceId: string;
+  memberId: string;
+  guardianTabId?: string;
+}) {
+  const { fields, loading } = useCustomTabFields(
+    spaceId,
+    memberId,
+    guardianTabId ?? "",
+  );
+
+  if (!guardianTabId || loading || fields.length === 0) {
+    return null;
+  }
+
+  return (
+    <Section title="비상 연락 정보">
+      <CustomTabContent
+        spaceId={spaceId}
+        memberId={memberId}
+        tabId={guardianTabId}
+      />
+    </Section>
+  );
+}
+
 export function TabMemberOverview({
   member,
   onMemberUpdated,
   overviewTabId,
+  guardianTabId,
+  memos = [],
+  memosLoading = false,
+  memosError = null,
+  totalMemoCount = memos.length,
   onManageFields,
 }: TabMemberOverviewProps) {
-  const { data: counselingData } = useQuery({
-    queryKey: ["member-counseling-stats", member.spaceId, member.id],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`,
-      );
-      if (!res.ok) return { records: [] as { createdAt: string }[] };
-      return res.json() as Promise<{ records: { createdAt: string }[] }>;
-    },
-  });
-
-  const counseling = useMemo((): CounselingStats | null => {
-    if (!counselingData) return null;
-    const sorted = [...counselingData.records].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    return {
-      count: sorted.length,
-      lastDate: sorted[0]?.createdAt ?? null,
-    };
-  }, [counselingData]);
+  const counselingCount = member.counselingRecordCount ?? 0;
+  const lastCounselingAt = member.lastCounselingAt ?? null;
 
   const fields = [
     !!member.name,
     !!member.email,
     !!member.phone,
     !!member.status,
-    !!member.initialRiskLevel,
-    !!(counseling && counseling.count > 0),
+    !!(member.aiRiskLevel ?? member.initialRiskLevel),
+    counselingCount > 0,
   ];
   const filledCount = fields.filter(Boolean).length;
   const totalCount = fields.length;
   const pct = Math.round((filledCount / totalCount) * 100);
 
+  const resolvedRiskLevel = member.aiRiskLevel ?? member.initialRiskLevel;
   const statusMeta = STATUS_LABEL[member.status] ?? {
     label: member.status,
     color: "var(--text)",
   };
-  const riskMeta = member.initialRiskLevel
-    ? (RISK_LABEL[member.initialRiskLevel] ?? {
-        label: member.initialRiskLevel,
+  const riskMeta = resolvedRiskLevel
+    ? (RISK_LABEL[resolvedRiskLevel] ?? {
+        label: resolvedRiskLevel,
         color: "var(--text)",
       })
     : null;
+  const latestMemo = memos[0] ?? null;
 
   return (
     <div className="pt-1">
@@ -214,9 +230,16 @@ export function TabMemberOverview({
         />
         <DataRow
           label="위험도"
-          value={riskMeta?.label ?? ""}
+          value={
+            riskMeta
+              ? member.aiRiskLevel
+                ? `${riskMeta.label} · 상담 AI 기준`
+                : riskMeta.label
+              : ""
+          }
           filled={!!riskMeta}
           valueColor={riskMeta?.color}
+          note={member.aiRiskSummary ?? undefined}
         />
         <DataRow
           label="등록일"
@@ -229,13 +252,47 @@ export function TabMemberOverview({
       <Section title="상담 기록">
         <DataRow
           label="연결된 상담"
-          value={`${counseling?.count ?? "─"}건`}
-          filled={!!(counseling && counseling.count > 0)}
-          note={
-            counseling?.lastDate ? fmtRelative(counseling.lastDate) : undefined
+          value={`${counselingCount}건`}
+          filled={counselingCount > 0}
+          note={lastCounselingAt ? fmtRelative(lastCounselingAt) : undefined}
+        />
+        <DataRow
+          label="운영 메모"
+          value={
+            memosLoading
+              ? "불러오는 중..."
+              : memosError
+                ? "불러오기 실패"
+                : `${totalMemoCount}건`
           }
+          filled={memosLoading || !!memosError || memos.length > 0}
+          note={
+            !memosLoading && !memosError && latestMemo
+              ? latestMemo.date
+              : undefined
+          }
+          valueColor={memosError ? "#f87171" : undefined}
+        />
+        <DataRow
+          label="AI 위험 신호"
+          value={
+            member.aiRiskSignals?.length ? member.aiRiskSignals.join(", ") : ""
+          }
+          filled={!!(member.aiRiskSignals && member.aiRiskSignals.length > 0)}
         />
       </Section>
+
+      {!memosLoading && !memosError && latestMemo ? (
+        <Section title="최근 메모">
+          <div className="py-3 text-[13px] leading-[1.7] text-text-secondary">
+            <div className="mb-1 text-[11px] text-text-dim">
+              {latestMemo.date}
+              {latestMemo.author ? ` · ${latestMemo.author}` : ""}
+            </div>
+            <div>{latestMemo.text}</div>
+          </div>
+        </Section>
+      ) : null}
 
       {/* 커스텀 필드 (개요 탭에 연결된 필드) */}
       {overviewTabId && (
@@ -266,6 +323,14 @@ export function TabMemberOverview({
             tabId={overviewTabId}
           />
         </Section>
+      )}
+
+      {guardianTabId && (
+        <LegacyGuardianFieldsSection
+          spaceId={member.spaceId}
+          memberId={member.id}
+          guardianTabId={guardianTabId}
+        />
       )}
 
       {/* AI 프로필 자동완성 */}

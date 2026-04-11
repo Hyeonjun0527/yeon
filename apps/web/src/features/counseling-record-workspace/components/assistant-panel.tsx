@@ -12,6 +12,25 @@ import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-rec
 import type { Message } from "../types";
 import styles from "../counseling-record-workspace.module.css";
 
+function formatMessageTime(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 interface StatusMetaEntry {
   label: string;
   className: string;
@@ -178,7 +197,7 @@ export function AssistantPanel({
       {/* 메시지 리스트 */}
       <div
         ref={messageListRef}
-        className="min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-[10px] pr-1"
+        className="scrollbar-subtle min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-[10px] pr-1"
       >
         {assistantMessages.map((message) => (
           <article
@@ -222,6 +241,14 @@ export function AssistantPanel({
                 style={{ color: "var(--text-muted)" }}
               >
                 {message.supportingNote}
+              </p>
+            ) : null}
+            {formatMessageTime(message.createdAt) ? (
+              <p
+                className="m-0 text-[10px]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {formatMessageTime(message.createdAt)}
               </p>
             ) : null}
           </article>

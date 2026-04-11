@@ -1,220 +1,416 @@
 "use client";
 
-import { RISK_LEVEL_META } from "../constants";
-import type { ActivityLog, Member, RiskLevel } from "../types";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type {
+  CounselingRecordDetail,
+  CounselingRecordListItem,
+} from "@yeon/api-contract/counseling-records";
+import { bulkCounselingRecordDetailsResponseSchema } from "@yeon/api-contract/counseling-records";
+import {
+  Download,
+  FileText,
+  Loader2,
+  RefreshCcw,
+  Settings2,
+} from "lucide-react";
+
+import { exportStudentReportDocx } from "../report-docx";
+import {
+  buildStudentReportDocument,
+  createDefaultStudentReportSettings,
+  type StudentReportRecordScope,
+} from "../report-builder";
+import type { Member, Memo } from "../types";
+import { fmtDate } from "../utils";
 
 interface TabReportProps {
   member: Member;
-  activityLogs: ActivityLog[];
-  logsLoading: boolean;
-  logsError: string | null;
+  memos?: Memo[];
+  memosLoading?: boolean;
+  totalMemoCount?: number;
 }
 
-function calcRate(total: number, done: number): number {
-  if (total === 0) return 0;
-  return Math.round((done / total) * 100);
-}
+const RECORD_SCOPE_OPTIONS: Array<{
+  value: StudentReportRecordScope;
+  label: string;
+}> = [
+  { value: 3, label: "최근 3건" },
+  { value: 5, label: "최근 5건" },
+  { value: "all", label: "전체" },
+];
 
 export function TabReport({
   member,
-  activityLogs,
-  logsLoading,
-  logsError,
+  memos = [],
+  memosLoading = false,
+  totalMemoCount = memos.length,
 }: TabReportProps) {
-  /* ── 출결 통계 ── */
-  const attendanceLogs = activityLogs.filter((l) => l.type === "attendance");
-  const attendancePresent = attendanceLogs.filter(
-    (l) => l.status === "present",
-  ).length;
-  const attendanceAbsent = attendanceLogs.filter(
-    (l) => l.status === "absent",
-  ).length;
-  const attendanceLate = attendanceLogs.filter(
-    (l) => l.status === "late",
-  ).length;
-  const attendanceTotal = attendancePresent + attendanceAbsent + attendanceLate;
-  const attendanceRate = calcRate(attendanceTotal, attendancePresent);
+  const [settings, setSettings] = useState(() =>
+    createDefaultStudentReportSettings(member.name),
+  );
+  const [saveToast, setSaveToast] = useState<string | null>(null);
 
-  /* ── 과제 통계 ── */
-  const assignmentLogs = activityLogs.filter((l) => l.type === "assignment");
-  const assignmentDone = assignmentLogs.filter(
-    (l) => l.status === "submitted",
-  ).length;
-  const assignmentTotal = assignmentLogs.length;
-  const assignmentRate = calcRate(assignmentTotal, assignmentDone);
+  const canLoadRecords = !!member.spaceId;
 
-  /* ── 위험도 뱃지 ── */
-  const riskLevel = member.initialRiskLevel as RiskLevel | null | undefined;
-  const riskMeta = riskLevel ? RISK_LEVEL_META[riskLevel] : null;
+  const recordsQuery = useQuery({
+    queryKey: ["member-report-records", member.spaceId, member.id],
+    enabled: canLoadRecords,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`,
+      );
+      if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
+      return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
+    },
+  });
+
+  const allRecords = useMemo(() => {
+    if (!recordsQuery.data) {
+      return [] as CounselingRecordListItem[];
+    }
+
+    return recordsQuery.data.records;
+  }, [recordsQuery.data]);
+
+  const selectedRecords = useMemo(() => {
+    const sorted = [...allRecords].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    return settings.recordScope === "all"
+      ? sorted
+      : sorted.slice(0, settings.recordScope);
+  }, [allRecords, settings.recordScope]);
+
+  const detailsQuery = useQuery({
+    queryKey: [
+      "member-report-record-details",
+      member.id,
+      selectedRecords.map((record) => record.id).join(","),
+    ],
+    enabled: selectedRecords.length > 0,
+    queryFn: async () => {
+      const res = await fetch("/api/v1/counseling-records/details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recordIds: selectedRecords.map((record) => record.id),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("상담 상세를 불러오지 못했습니다.");
+      }
+
+      const parsed = bulkCounselingRecordDetailsResponseSchema.parse(
+        await res.json(),
+      );
+
+      return parsed.records.reduce<Record<string, CounselingRecordDetail>>(
+        (acc, item) => {
+          acc[item.id] = item;
+          return acc;
+        },
+        {},
+      );
+    },
+  });
+
+  const reportDocument = useMemo(
+    () =>
+      buildStudentReportDocument({
+        member,
+        records: allRecords,
+        detailsById: detailsQuery.data,
+        memos,
+        memoCount: totalMemoCount,
+        settings,
+      }),
+    [allRecords, member, detailsQuery.data, memos, settings, totalMemoCount],
+  );
+
+  const latestRecord = selectedRecords[0] ?? null;
+  const analysisReadyCount = detailsQuery.data
+    ? Object.values(detailsQuery.data).filter(
+        (record) => !!record.analysisResult,
+      ).length
+    : 0;
+  const recordsLoading = canLoadRecords && recordsQuery.isPending;
+  const recordsErrorMessage =
+    recordsQuery.error instanceof Error
+      ? recordsQuery.error.message
+      : recordsQuery.error
+        ? "리포트 데이터를 불러오지 못했습니다."
+        : null;
+
+  async function handleDownloadDocx() {
+    try {
+      await exportStudentReportDocx(reportDocument);
+      setSaveToast("워드 리포트를 다운로드했습니다.");
+    } catch {
+      setSaveToast("워드 리포트 생성에 실패했습니다.");
+    }
+  }
 
   return (
-    <div>
-      {logsLoading && (
-        <div
-          style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 16 }}
-        >
-          활동 로그 불러오는 중...
+    <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="rounded-xl border border-border bg-surface-2 p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings2 size={15} className="text-text-dim" />
+          <h3 className="m-0 text-[14px] font-semibold text-text">
+            리포트 구성 설정
+          </h3>
         </div>
-      )}
-      {logsError && !logsLoading && (
-        <div className="text-red text-[13px] mb-4 py-2 px-3 bg-red-dim rounded-sm">
-          활동 로그를 불러오지 못했습니다. 통계가 표시되지 않을 수 있습니다.
-        </div>
-      )}
 
-      {/* 통계 카드 */}
-      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] gap-3 mb-6">
-        <div className="p-4 bg-surface-2 border border-border rounded">
-          <div className="text-xs text-text-dim mb-1">출석률</div>
-          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">
-            {attendanceRate}%
+        <div className="grid gap-4">
+          <label className="grid gap-2">
+            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
+              리포트 제목
+            </span>
+            <input
+              value={settings.title}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none focus:border-accent-border"
+            />
+          </label>
+
+          <label className="grid gap-2">
+            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
+              작성 메모
+            </span>
+            <textarea
+              value={settings.focusNote}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  focusNote: event.target.value,
+                }))
+              }
+              placeholder="예: 학부모 공유용으로 불안 요소보다 개선 흐름을 더 강조해줘"
+              className="min-h-[96px] w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none focus:border-accent-border resize-y"
+            />
+          </label>
+
+          <div className="grid gap-2">
+            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
+              반영 범위
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {RECORD_SCOPE_OPTIONS.map((option) => (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  onClick={() =>
+                    setSettings((current) => ({
+                      ...current,
+                      recordScope: option.value,
+                    }))
+                  }
+                  className={`rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                    settings.recordScope === option.value
+                      ? "border-accent-border bg-accent-dim text-accent"
+                      : "border-border bg-surface text-text-secondary"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {attendanceTotal > 0 && (
-            <div
-              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
-            >
-              {attendancePresent}회 출석 / {attendanceTotal}회 전체
-            </div>
-          )}
-          {attendanceTotal === 0 && (
-            <div
-              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
-            >
-              데이터 없음
-            </div>
-          )}
-        </div>
 
-        <div className="p-4 bg-surface-2 border border-border rounded">
-          <div className="text-xs text-text-dim mb-1">과제 완료율</div>
-          <div className="text-[22px] font-bold text-text font-mono tracking-[-0.5px]">
-            {assignmentRate}%
+          <div className="grid gap-2">
+            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
+              포함 콘텐츠
+            </span>
+            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+              <input
+                type="checkbox"
+                checked={settings.includeKeywords}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    includeKeywords: event.target.checked,
+                  }))
+                }
+              />
+              핵심 키워드
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+              <input
+                type="checkbox"
+                checked={settings.includeIssues}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    includeIssues: event.target.checked,
+                  }))
+                }
+              />
+              주요 이슈
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+              <input
+                type="checkbox"
+                checked={settings.includeActions}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    includeActions: event.target.checked,
+                  }))
+                }
+              />
+              후속 액션
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+              <input
+                type="checkbox"
+                checked={settings.includeRecordPreviews}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    includeRecordPreviews: event.target.checked,
+                  }))
+                }
+              />
+              상담 기록 요약
+            </label>
           </div>
-          {assignmentTotal > 0 && (
-            <div
-              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
-            >
-              {assignmentDone}건 완료 / {assignmentTotal}건 전체
+        </div>
+      </section>
+
+      <section className="grid gap-4">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-border bg-surface-2 p-4">
+            <div className="text-[11px] text-text-dim mb-1">
+              연결된 상담 기록
             </div>
-          )}
-          {assignmentTotal === 0 && (
-            <div
-              style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}
-            >
-              데이터 없음
+            <div className="text-[24px] font-semibold text-text">
+              {allRecords.length}
             </div>
-          )}
+          </div>
+          <div className="rounded-xl border border-border bg-surface-2 p-4">
+            <div className="text-[11px] text-text-dim mb-1">AI 분석 반영</div>
+            <div className="text-[24px] font-semibold text-text">
+              {analysisReadyCount}
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-surface-2 p-4">
+            <div className="text-[11px] text-text-dim mb-1">최근 상담일</div>
+            <div className="text-[18px] font-semibold text-text">
+              {latestRecord ? fmtDate(latestRecord.createdAt) : "-"}
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-surface-2 p-4">
+            <div className="text-[11px] text-text-dim mb-1">운영 메모</div>
+            <div className="text-[24px] font-semibold text-text">
+              {memosLoading ? "..." : totalMemoCount}
+            </div>
+          </div>
         </div>
 
-        <div className="p-4 bg-surface-2 border border-border rounded">
-          <div className="text-xs text-text-dim mb-1">위험도</div>
-          <div style={{ marginTop: 8 }}>
-            {riskMeta ? (
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "4px 12px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: riskMeta.color,
-                  background: riskMeta.bgColor,
-                  border: `1px solid ${riskMeta.borderColor}`,
+        <div className="rounded-xl border border-border bg-surface-2 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="m-0 text-[15px] font-semibold text-text">
+                리포트 프리뷰
+              </h3>
+              <p className="m-0 mt-1 text-[12px] text-text-dim">
+                어떤 콘텐츠를 넣을지 먼저 조정하고, 그대로 워드 문서로
+                내려받습니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void recordsQuery.refetch();
+                  void detailsQuery.refetch();
                 }}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-[12px] text-text-secondary"
               >
-                {riskMeta.label}
-              </span>
-            ) : (
-              <span style={{ fontSize: 14, color: "var(--text-dim)" }}>
-                미설정
-              </span>
-            )}
+                <RefreshCcw size={13} />
+                새로고침
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDownloadDocx()}
+                className="inline-flex items-center gap-1 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white"
+              >
+                <Download size={13} />
+                Word 다운로드
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* 출결 상세 */}
-      {attendanceTotal > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <div className="text-base font-semibold text-text mb-3">
-            출결 상세
-          </div>
-          <div className="flex flex-col gap-2">
-            {attendanceLogs.slice(0, 10).map((log) => (
-              <div
-                key={log.id}
-                className="flex items-center gap-3 py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
-              >
-                <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
-                  {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
-                </span>
-                <span className="flex-1 font-medium text-text-secondary">
-                  출결
-                </span>
-                <span
-                  className="text-xs py-0.5 px-2 rounded-[10px]"
-                  style={{
-                    color:
-                      log.status === "present"
-                        ? "#34d399"
-                        : log.status === "late"
-                          ? "#fbbf24"
-                          : "#f87171",
-                    background:
-                      log.status === "present"
-                        ? "rgba(52,211,153,0.1)"
-                        : log.status === "late"
-                          ? "rgba(251,191,36,0.1)"
-                          : "rgba(248,113,113,0.08)",
-                  }}
-                >
-                  {log.status === "present"
-                    ? "출석"
-                    : log.status === "late"
-                      ? "지각"
-                      : "결석"}
-                </span>
+          {!canLoadRecords ? (
+            <div className="rounded-lg border border-border bg-surface px-4 py-10 text-center text-[13px] text-text-dim">
+              레거시 수강생 상세에서는 아직 상담 기록 기반 리포트를 만들 수
+              없습니다.
+            </div>
+          ) : recordsLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-10 text-[13px] text-text-dim">
+              <Loader2 size={15} className="animate-spin" /> 상담 기록 불러오는
+              중...
+            </div>
+          ) : recordsErrorMessage ? (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-6 text-[13px] text-red-300">
+              {recordsErrorMessage}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <div className="rounded-lg border border-border bg-surface px-4 py-4">
+                <div className="flex items-center gap-2 text-text-secondary">
+                  <FileText size={14} />
+                  <span className="text-[14px] font-semibold text-text">
+                    {reportDocument.title}
+                  </span>
+                </div>
+                <p className="mt-3 text-[13px] leading-6 text-text-secondary">
+                  {reportDocument.summary}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {reportDocument.meta.map((item) => (
+                    <span
+                      key={item.label}
+                      className="rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-dim"
+                    >
+                      {item.label}: {item.value}
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* 과제 상세 */}
-      {assignmentTotal > 0 && (
-        <div>
-          <div className="text-base font-semibold text-text mb-3">
-            과제 상세
-          </div>
-          <div className="flex flex-col gap-2">
-            {assignmentLogs.slice(0, 10).map((log) => (
-              <div
-                key={log.id}
-                className="flex items-center gap-3 py-3 px-4 bg-surface-2 border border-border rounded-lg text-sm transition-[border-color] duration-150 hover:border-border-light"
-              >
-                <span className="text-[11px] text-text-dim whitespace-nowrap font-mono">
-                  {new Date(log.recordedAt).toLocaleDateString("ko-KR")}
-                </span>
-                <span className="flex-1 font-medium text-text-secondary">
-                  과제
-                </span>
-                <span
-                  className="text-xs py-0.5 px-2 rounded-[10px]"
-                  style={{
-                    color: log.status === "submitted" ? "#34d399" : "#f87171",
-                    background:
-                      log.status === "submitted"
-                        ? "rgba(52,211,153,0.1)"
-                        : "rgba(248,113,113,0.08)",
-                  }}
+              {reportDocument.sections.map((section) => (
+                <div
+                  key={section.id}
+                  className="rounded-lg border border-border bg-surface px-4 py-4"
                 >
-                  {log.status === "submitted" ? "제출" : "미제출"}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <h4 className="m-0 text-[14px] font-semibold text-text">
+                    {section.title}
+                  </h4>
+                  <ul className="mt-3 grid gap-2 pl-5 text-[13px] leading-6 text-text-secondary">
+                    {section.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {saveToast && (
+            <p className="mt-3 text-[12px] text-text-dim">{saveToast}</p>
+          )}
         </div>
-      )}
+      </section>
     </div>
   );
 }

@@ -151,7 +151,7 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* 브레드크럼 */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-border text-[12px] text-text-dim overflow-x-auto flex-shrink-0">
+      <div className="scrollbar-subtle flex items-center gap-1 px-4 py-2 border-b border-border text-[12px] text-text-dim overflow-x-auto flex-shrink-0">
         {hook.folderStack.length > 1 && (
           <button
             className="flex items-center gap-1 hover:text-text transition-colors bg-transparent border-none cursor-pointer p-0"
@@ -178,7 +178,7 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
       </div>
 
       {/* 파일 목록 */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="scrollbar-subtle flex-1 overflow-y-auto">
         {hook.filesLoading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-text-dim text-[13px]">
             <Loader2 size={16} className="animate-spin" />

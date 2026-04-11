@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { Loader2, FileAudio, Link2Off } from "lucide-react";
@@ -8,6 +9,7 @@ import { fmtDate } from "../utils";
 interface TabCounselingRecordsProps {
   spaceId: string;
   memberId: string;
+  onRecordCountChange?: (count: number) => void;
 }
 
 function fmtDuration(ms: number | null) {
@@ -21,6 +23,7 @@ function fmtDuration(ms: number | null) {
 export function TabCounselingRecords({
   spaceId,
   memberId,
+  onRecordCountChange,
 }: TabCounselingRecordsProps) {
   const { data, isPending, error } = useQuery({
     queryKey: ["member-counseling-records", spaceId, memberId],
@@ -34,12 +37,17 @@ export function TabCounselingRecords({
   });
 
   const records = data ? data.records : ([] as CounselingRecordListItem[]);
+  const recordCount = records.length;
   const errorMessage =
     error instanceof Error
       ? error.message
       : error
         ? "상담 기록을 불러오지 못했습니다."
         : null;
+
+  useEffect(() => {
+    onRecordCountChange?.(recordCount);
+  }, [onRecordCountChange, recordCount]);
 
   if (isPending) {
     return (

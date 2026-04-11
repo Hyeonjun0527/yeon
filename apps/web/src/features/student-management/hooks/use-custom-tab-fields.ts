@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FieldType } from "../../space-settings/types";
 
 export interface FieldDef {
@@ -44,42 +44,73 @@ export function useCustomTabFields(
   memberId: string,
   tabId: string,
 ) {
-  const [fields, setFields] = useState<FieldDef[]>([]);
-  const [values, setValues] = useState<FieldValue[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const enabled = !!spaceId && !!memberId && !!tabId;
+  const queryKey = ["custom-tab-fields", spaceId, memberId, tabId] as const;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fieldsRes, valuesRes] = await Promise.all([
-        fetch(`/api/v1/spaces/${spaceId}/member-tabs/${tabId}/fields`),
-        fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/field-values`),
-      ]);
-      if (fieldsRes.ok) {
-        const d = (await fieldsRes.json()) as { fields: FieldDef[] };
-        setFields(d.fields);
-      }
-      if (valuesRes.ok) {
-        const d = (await valuesRes.json()) as { values: FieldValue[] };
-        setValues(d.values);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [spaceId, memberId, tabId]);
+  const { data, isPending } = useQuery({
+    queryKey,
+    enabled,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/v1/spaces/${spaceId}/member-tabs/${tabId}/fields?memberId=${memberId}`,
+      );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+      if (!res.ok) {
+        throw new Error("커스텀 필드를 불러오지 못했습니다.");
+      }
+
+      return res.json() as Promise<{
+        fields: FieldDef[];
+        values: FieldValue[];
+      }>;
+    },
+  });
 
   async function saveValue(fieldId: string, value: string | null) {
-    await fetch(`/api/v1/spaces/${spaceId}/members/${memberId}/field-values`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ values: [{ fieldDefinitionId: fieldId, value }] }),
+    const res = await fetch(
+      `/api/v1/spaces/${spaceId}/members/${memberId}/field-values`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          values: [{ fieldDefinitionId: fieldId, value }],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error("필드 값을 저장하지 못했습니다.");
+    }
+
+    const payload = (await res.json()) as { values?: FieldValue[] };
+    const updatedValues = Array.isArray(payload.values) ? payload.values : [];
+
+    queryClient.setQueryData<
+      { fields: FieldDef[]; values: FieldValue[] } | undefined
+    >(queryKey, (current) => {
+      if (!current || updatedValues.length === 0) {
+        return current;
+      }
+
+      const nextValues = current.values.filter(
+        (item) =>
+          !updatedValues.some(
+            (updated) => updated.fieldDefinitionId === item.fieldDefinitionId,
+          ),
+      );
+
+      return {
+        ...current,
+        values: [...nextValues, ...updatedValues],
+      };
     });
-    await load();
   }
 
-  return { fields, values, loading, saveValue };
+  return {
+    fields: data ? data.fields : [],
+    values: data ? data.values : [],
+    loading: enabled && isPending,
+    saveValue,
+  };
 }

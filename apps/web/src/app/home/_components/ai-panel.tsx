@@ -17,6 +17,25 @@ import {
   SendIcon,
 } from "./icons";
 
+function formatMessageTime(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export interface AiPanelProps {
   /* 패널 상태 */
   width: number;
@@ -33,7 +52,7 @@ export interface AiPanelProps {
   phase: "processing" | "ready";
   selected: RecordItem | null;
   selectedId: string | null;
-  onClearMessages: (id: string) => void;
+  onClearMessages: (id: string) => Promise<void>;
   /* 채팅 */
   aiInput: string;
   onAiInputChange: (val: string) => void;
@@ -137,8 +156,10 @@ export function AiPanel({
             <button
               className="w-7 h-7 flex items-center justify-center rounded-[6px] border-none bg-none cursor-pointer text-text-secondary text-sm transition-colors duration-150 hover:bg-surface-3"
               title="새 채팅"
-              onClick={() => {
-                if (selectedId) onClearMessages(selectedId);
+              onClick={async () => {
+                if (selectedId) {
+                  await onClearMessages(selectedId);
+                }
                 onSetTab("chat");
               }}
             >
@@ -162,7 +183,7 @@ export function AiPanel({
         </div>
 
         {/* 채팅 기록 탭 */}
-        {tab === "history" && <ChatHistoryTab />}
+        {tab === "history" && <ChatHistoryTab selected={selected} />}
 
         {/* 채팅 탭 */}
         {tab === "chat" && (
@@ -179,7 +200,7 @@ export function AiPanel({
               )}
 
             {isProcessing && (
-              <div className="flex-1 px-4 py-3 overflow-y-auto">
+              <div className="scrollbar-subtle flex-1 px-4 py-3 overflow-y-auto">
                 <div className="bg-none text-text-dim text-[11px] text-center max-w-full px-4 py-4 rounded mb-2">
                   전사가 완료되면 자동으로 상담 요약을 생성합니다
                 </div>
@@ -188,7 +209,7 @@ export function AiPanel({
 
             {/* 메시지 목록 */}
             {selected && selected.aiMessages.length > 0 && (
-              <div className="flex-1 px-4 py-3 overflow-y-auto min-h-0">
+              <div className="scrollbar-subtle flex-1 px-4 py-3 overflow-y-auto min-h-0">
                 {selected.aiMessages.map((msg, i) => (
                   <div
                     key={i}
@@ -225,6 +246,11 @@ export function AiPanel({
                     ) : (
                       msg.text
                     )}
+                    {formatMessageTime(msg.createdAt) ? (
+                      <div className="mt-[6px] text-[10px] text-text-dim">
+                        {formatMessageTime(msg.createdAt)}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
                 <div ref={endRef} />
@@ -292,7 +318,7 @@ export function AiPanel({
               <div className="flex flex-col border border-border rounded-[10px] bg-bg overflow-hidden transition-[border-color] duration-150 focus-within:border-accent-border">
                 <textarea
                   ref={textareaRef}
-                  className="w-full min-h-[44px] max-h-[120px] px-[14px] pt-3 pb-1 text-text text-[13px] leading-[1.5] outline-none font-[inherit] bg-transparent border-none resize-none overflow-y-auto placeholder:text-text-dim"
+                  className="scrollbar-subtle w-full min-h-[44px] max-h-[120px] px-[14px] pt-3 pb-1 text-text text-[13px] leading-[1.5] outline-none font-[inherit] bg-transparent border-none resize-none overflow-y-auto placeholder:text-text-dim"
                   placeholder={
                     isProcessing
                       ? "전사 완료 후 질문 가능"
@@ -394,11 +420,60 @@ export function AiPanel({
 
 /* ── 하위 프레젠테이션 컴포넌트 ── */
 
-function ChatHistoryTab() {
+function ChatHistoryTab({ selected }: { selected: RecordItem | null }) {
+  if (!selected || selected.aiMessages.length === 0) {
+    return (
+      <div className="scrollbar-subtle flex-1 flex items-center justify-center px-4 py-3 overflow-y-auto">
+        <div className="text-xs text-text-dim text-center py-6 px-4">
+          아직 저장된 채팅 기록이 없습니다
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-3 overflow-y-auto">
-      <div className="text-xs text-text-dim text-center py-6 px-4">
-        아직 저장된 채팅 기록이 없습니다
+    <div className="scrollbar-subtle flex-1 px-4 py-3 overflow-y-auto min-h-0">
+      <div className="mb-3 rounded-[10px] border border-border bg-surface-2 px-3 py-[10px]">
+        <div className="text-[11px] font-semibold text-text-secondary">
+          저장된 대화 {selected.aiMessages.length}개
+        </div>
+        {formatMessageTime(
+          selected.aiMessages[selected.aiMessages.length - 1]?.createdAt,
+        ) ? (
+          <div className="mt-1 text-[11px] text-text-dim">
+            최근 대화{" "}
+            {formatMessageTime(
+              selected.aiMessages[selected.aiMessages.length - 1]?.createdAt,
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {selected.aiMessages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}-${message.text.slice(0, 20)}`}
+            className={`px-[14px] py-[10px] rounded max-w-[92%] text-[12.5px] leading-relaxed ${
+              message.role === "user"
+                ? "bg-accent-dim border border-accent-border ml-auto"
+                : "bg-surface-2 border border-border"
+            }`}
+            style={
+              message.role === "user" ? { whiteSpace: "pre-wrap" } : undefined
+            }
+          >
+            {message.role === "assistant" ? (
+              <Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown>
+            ) : (
+              message.text
+            )}
+            {formatMessageTime(message.createdAt) ? (
+              <div className="mt-[6px] text-[10px] text-text-dim">
+                {formatMessageTime(message.createdAt)}
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   );

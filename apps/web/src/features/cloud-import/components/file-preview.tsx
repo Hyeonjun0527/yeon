@@ -28,7 +28,7 @@ export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
       return <HeicPreview uri={uri} fileName={fileName} />;
     }
     return (
-      <div className="h-full w-full flex items-center justify-center overflow-auto bg-surface">
+      <div className="scrollbar-subtle h-full w-full flex items-center justify-center overflow-auto bg-surface">
         <img
           src={uri}
           alt={fileName}
@@ -121,7 +121,7 @@ function HeicPreview({ uri, fileName }: { uri: string; fileName: string }) {
   if (!objectUrl) return null;
 
   return (
-    <div className="h-full w-full flex items-center justify-center overflow-auto bg-surface">
+    <div className="scrollbar-subtle h-full w-full flex items-center justify-center overflow-auto bg-surface">
       <img
         src={objectUrl}
         alt={fileName}
@@ -177,7 +177,7 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
 
   return (
     <div
-      className="spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface"
+      className="scrollbar-subtle spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: DOMPurify로 sanitize 후 렌더
       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
     />
@@ -224,7 +224,7 @@ function CsvPreview({ uri }: { uri: string }) {
   }
 
   return (
-    <div className="spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface">
+    <div className="scrollbar-subtle spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface">
       <table>
         <tbody>
           {rows.map((row, ri) => (
@@ -272,7 +272,7 @@ function TxtPreview({ uri }: { uri: string }) {
   if (text == null) return null;
 
   return (
-    <div className="h-full w-full overflow-auto p-4 text-[13px] text-text bg-surface">
+    <div className="scrollbar-subtle h-full w-full overflow-auto p-4 text-[13px] text-text bg-surface">
       <pre className="m-0 whitespace-pre-wrap break-words font-[inherit] leading-relaxed">
         {text}
       </pre>

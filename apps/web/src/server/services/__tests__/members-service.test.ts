@@ -23,6 +23,20 @@ vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
   desc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
+  inArray: (col: unknown, values: unknown[]) => ({ col, values }),
+}));
+vi.mock("../member-risk-service", () => ({
+  attachMemberRiskProfiles: vi.fn(
+    async (_userId: string, members: unknown[]) => members,
+  ),
+  getMemberRiskProfile: vi.fn(async () => ({
+    aiRiskLevel: null,
+    aiRiskSummary: null,
+    aiRiskSignals: [],
+    riskSource: null,
+    counselingRecordCount: 0,
+    lastCounselingAt: null,
+  })),
 }));
 
 import {
@@ -31,6 +45,7 @@ import {
   getMemberById,
   getMemberByIdForUser,
   updateMember,
+  bulkDeleteMembersInSpace,
 } from "../members-service";
 
 /* ── 헬퍼 ── */
@@ -229,5 +244,37 @@ describe("getMembers", () => {
 
     const result = await getMembers("space-empty");
     expect(result).toEqual([]);
+  });
+});
+
+/* ── bulkDeleteMembersInSpace ── */
+
+describe("bulkDeleteMembersInSpace", () => {
+  it("빈 배열이면 400 ServiceError를 던진다", async () => {
+    await expect(
+      bulkDeleteMembersInSpace("user-1", "space-1", []),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("권한 없는 멤버가 섞이면 404 ServiceError를 던진다", async () => {
+    responses.push([{ id: "member-1" }]);
+
+    await expect(
+      bulkDeleteMembersInSpace("user-1", "space-1", ["member-1", "member-2"]),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("중복을 제거한 뒤 일괄 삭제 결과를 반환한다", async () => {
+    responses.push([{ id: "member-1" }, { id: "member-2" }]);
+    responses.push([{ id: "member-1" }, { id: "member-2" }]);
+
+    const result = await bulkDeleteMembersInSpace("user-1", "space-1", [
+      "member-1",
+      "member-2",
+      "member-1",
+    ]);
+
+    expect(result.deletedCount).toBe(2);
+    expect(result.deletedIds).toEqual(["member-1", "member-2"]);
   });
 });

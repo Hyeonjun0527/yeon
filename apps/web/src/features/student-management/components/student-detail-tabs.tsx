@@ -25,7 +25,7 @@ export function StudentDetailTabs({
   const tabList: TabItem[] = tabs ?? DETAIL_TABS;
 
   return (
-    <div className="flex items-stretch gap-0 border-b border-border mb-6 md:overflow-x-visible overflow-x-auto">
+    <div className="scrollbar-subtle flex items-stretch gap-0 border-b border-border mb-6 md:overflow-x-visible overflow-x-auto">
       {tabList.map((t) => (
         <button
           key={t.id}

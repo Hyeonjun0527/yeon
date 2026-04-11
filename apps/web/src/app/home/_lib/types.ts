@@ -1,4 +1,8 @@
-import type { AnalysisResult } from "@yeon/api-contract/counseling-records";
+import type {
+  AnalysisResult,
+  CounselingRecordAnalysisStatus,
+  CounselingRecordProcessingStage,
+} from "@yeon/api-contract/counseling-records";
 export type { AnalysisResult };
 
 // 내부 상태 (use-records.ts 전용, 외부 노출 금지)
@@ -23,6 +27,7 @@ export interface AiMessage {
   role: "assistant" | "user" | "system";
   text: string;
   images?: AttachedImage[];
+  createdAt?: string;
 }
 
 /** 실제 API CounselingTranscriptSegment와 동일한 형태 */
@@ -53,5 +58,11 @@ export interface RecordItem {
   transcript: TranscriptSegment[];
   aiSummary: string;
   aiMessages: AiMessage[];
+  aiMessagesLoaded?: boolean;
   analysisResult: AnalysisResult | null;
+  processingStage?: CounselingRecordProcessingStage;
+  processingProgress?: number;
+  processingMessage?: string | null;
+  analysisStatus?: CounselingRecordAnalysisStatus;
+  analysisProgress?: number;
 }

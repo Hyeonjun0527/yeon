@@ -77,7 +77,7 @@ export function ImportPreviewModal({
           </button>
         </div>
 
-        <div className="px-5 py-4 overflow-y-auto flex-1">
+        <div className="scrollbar-subtle px-5 py-4 overflow-y-auto flex-1">
           {importResult ? (
             <div className="flex items-center gap-2.5 p-5 rounded-lg bg-[rgba(34,197,94,0.1)] text-green text-sm font-medium">
               <Check size={20} />

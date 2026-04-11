@@ -5,7 +5,7 @@ import {
   jsonError,
   requireAuthenticatedUser,
 } from "@/app/api/v1/counseling-records/_shared";
-import { getMemberById } from "@/server/services/members-service";
+import { getMemberByIdForUserWithRisk } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function GET(
   const { memberId } = await params;
 
   try {
-    const member = await getMemberById(memberId);
+    const member = await getMemberByIdForUserWithRisk(currentUser.id, memberId);
     return NextResponse.json({ member });
   } catch (error) {
     if (error instanceof ServiceError)

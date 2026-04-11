@@ -13,6 +13,7 @@ export type Message = {
   id: string;
   role: MessageRole;
   content: string;
+  createdAt?: string;
   supportingNote?: string;
   isStreaming?: boolean;
 };

@@ -12,12 +12,15 @@ interface StudentDetailHeaderProps {
 }
 
 export function StudentDetailHeader({ student }: StudentDetailHeaderProps) {
-  const { openSheet } = useStudentManagement();
+  const { openSheet, selectedSpaceId } = useStudentManagement();
+  const backHref = selectedSpaceId
+    ? `/home/student-management?spaceId=${selectedSpaceId}`
+    : "/home/student-management";
 
   return (
     <div>
       <Link
-        href="/home/student-management"
+        href={backHref}
         className="inline-flex items-center gap-1.5 text-text-dim no-underline text-sm mb-5 transition-colors duration-150 hover:text-text-secondary"
       >
         <ArrowLeft size={16} />

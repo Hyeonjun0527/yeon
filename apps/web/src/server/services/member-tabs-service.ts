@@ -1,5 +1,11 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import type {
+  CreateMemberTabBody,
+  MemberTabSystemKey,
+  MemberTabType,
+  UpdateMemberTabBody,
+} from "@yeon/api-contract/spaces";
 
 import { getDb } from "@/server/db";
 import { memberTabDefinitions } from "@/server/db/schema";
@@ -8,29 +14,17 @@ import { ServiceError } from "./service-error";
 
 /* ── 타입 ── */
 
-export type TabType = "system" | "custom";
+export type TabType = MemberTabType;
 
-export type SystemKey =
-  | "overview"
-  | "counseling"
-  | "courses"
-  | "guardian"
-  | "memos"
-  | "report";
+export type SystemKey = MemberTabSystemKey;
 
 export type MemberTabDefinition = typeof memberTabDefinitions.$inferSelect;
 
-export type CreateCustomTabInput = {
-  name: string;
-};
+export type CreateCustomTabInput = CreateMemberTabBody;
 
-export type UpdateTabInput = {
-  name?: string;
-  isVisible?: boolean;
-  displayOrder?: number;
-};
+export type UpdateTabInput = UpdateMemberTabBody;
 
-/* ── 기본 시스템 탭 6개 ── */
+/* ── 기본 시스템 탭 4개 ── */
 
 const DEFAULT_SYSTEM_TABS: {
   systemKey: SystemKey;
@@ -39,16 +33,14 @@ const DEFAULT_SYSTEM_TABS: {
 }[] = [
   { systemKey: "overview", name: "개요", displayOrder: 0 },
   { systemKey: "counseling", name: "상담기록", displayOrder: 1 },
-  { systemKey: "courses", name: "수강이력", displayOrder: 2 },
-  { systemKey: "guardian", name: "비상연락처", displayOrder: 3 },
-  { systemKey: "memos", name: "메모", displayOrder: 4 },
-  { systemKey: "report", name: "리포트", displayOrder: 5 },
+  { systemKey: "memos", name: "메모", displayOrder: 2 },
+  { systemKey: "report", name: "리포트", displayOrder: 3 },
 ];
 
 /* ── 서비스 함수 ── */
 
 /**
- * 스페이스 생성 시 호출 — 시스템 탭 6개를 일괄 INSERT
+ * 스페이스 생성 시 호출 — 시스템 탭 4개를 일괄 INSERT
  * 이미 존재하면 UNIQUE 충돌로 skip (ON CONFLICT DO NOTHING)
  */
 export async function createDefaultSystemTabs(

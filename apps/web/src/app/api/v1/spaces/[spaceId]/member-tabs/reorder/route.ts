@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { reorderMemberTabsBodySchema } from "@yeon/api-contract/spaces";
 
 import {
   jsonError,
@@ -10,10 +10,6 @@ import { reorderTabs } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
-
-const reorderBodySchema = z.object({
-  order: z.array(z.string().uuid()),
-});
 
 export async function PATCH(
   request: NextRequest,
@@ -31,7 +27,7 @@ export async function PATCH(
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = reorderBodySchema.safeParse(body);
+  const parsed = reorderMemberTabsBodySchema.safeParse(body);
   if (!parsed.success)
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 

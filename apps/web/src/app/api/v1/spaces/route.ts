@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { createSpaceBodySchema } from "@yeon/api-contract/spaces";
 
 import { createSpace, getSpaces } from "@/server/services/spaces-service";
 import { createDefaultSystemTabs } from "@/server/services/member-tabs-service";
@@ -12,13 +12,6 @@ import {
 } from "@/app/api/v1/counseling-records/_shared";
 
 export const runtime = "nodejs";
-
-const createSpaceBodySchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(1000).nullish(),
-  startDate: z.string().nullish(),
-  endDate: z.string().nullish(),
-});
 
 export async function GET(request: NextRequest) {
   const { currentUser, response } = await requireAuthenticatedUser(request);

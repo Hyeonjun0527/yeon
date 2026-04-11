@@ -5,9 +5,14 @@ import styles from "../home.module.css";
 export interface RecordingStateProps {
   elapsed: number;
   onStop: () => void;
+  onCancel: () => void;
 }
 
-export function RecordingState({ elapsed, onStop }: RecordingStateProps) {
+export function RecordingState({
+  elapsed,
+  onStop,
+  onCancel,
+}: RecordingStateProps) {
   return (
     <div className="flex-1 flex items-center justify-center min-h-0">
       <div className="flex flex-col items-center gap-4 text-center max-w-[360px]">
@@ -49,12 +54,20 @@ export function RecordingState({ elapsed, onStop }: RecordingStateProps) {
             style={{ width: 3, background: "var(--red)", borderRadius: 2 }}
           />
         </div>
-        <button
-          className="bg-red text-white border-none px-4 py-[7px] rounded-sm text-xs cursor-pointer font-[inherit] font-medium"
-          onClick={onStop}
-        >
-          ⏹ 녹음 종료
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="bg-transparent text-text-secondary border border-border px-4 py-[7px] rounded-sm text-xs cursor-pointer font-[inherit] font-medium"
+            onClick={onCancel}
+          >
+            취소
+          </button>
+          <button
+            className="bg-red text-white border-none px-4 py-[7px] rounded-sm text-xs cursor-pointer font-[inherit] font-medium"
+            onClick={onStop}
+          >
+            ⏹ 녹음 종료
+          </button>
+        </div>
       </div>
     </div>
   );

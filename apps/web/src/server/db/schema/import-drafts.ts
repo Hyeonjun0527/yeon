@@ -26,6 +26,11 @@ export const importDrafts = pgTable("import_drafts", {
     withTimezone: true,
   }),
   sourceFileBase64: text("source_file_base64"),
+  processingStage: varchar("processing_stage", { length: 30 })
+    .notNull()
+    .default("queued"),
+  processingProgress: integer("processing_progress").notNull().default(0),
+  processingMessage: text("processing_message"),
   preview: jsonb("preview"),
   importResult: jsonb("import_result"),
   errorMessage: text("error_message"),

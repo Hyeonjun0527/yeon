@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import {
   exchangeCode,
+  getSavedRefreshToken,
   saveTokens,
 } from "@/server/services/googledrive-service";
 
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
 
   let tokens: Awaited<ReturnType<typeof exchangeCode>>;
   try {
-    tokens = await exchangeCode(code);
+    const existingRefreshToken = await getSavedRefreshToken(userId);
+    tokens = await exchangeCode(code, existingRefreshToken);
   } catch (error) {
     console.error("Google Drive 토큰 교환 실패:", error);
     return NextResponse.redirect(

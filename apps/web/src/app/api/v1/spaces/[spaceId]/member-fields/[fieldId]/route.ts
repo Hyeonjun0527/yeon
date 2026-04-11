@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { updateMemberFieldBodySchema } from "@yeon/api-contract/spaces";
 
 import {
   jsonError,
@@ -13,21 +13,6 @@ import {
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
-
-const patchBodySchema = z.object({
-  name: z.string().min(1).max(80).optional(),
-  options: z
-    .array(
-      z.object({
-        value: z.string(),
-        color: z.string(),
-      }),
-    )
-    .nullish(),
-  isRequired: z.boolean().optional(),
-  displayOrder: z.number().int().min(0).optional(),
-  tabId: z.string().uuid().optional(),
-});
 
 export async function PATCH(
   request: NextRequest,
@@ -45,7 +30,7 @@ export async function PATCH(
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = patchBodySchema.safeParse(body);
+  const parsed = updateMemberFieldBodySchema.safeParse(body);
   if (!parsed.success)
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 

@@ -31,7 +31,9 @@ function filterMembers(
   }
 
   if (filters.riskLevel && filters.riskLevel !== "all") {
-    result = result.filter((m) => m.initialRiskLevel === filters.riskLevel);
+    result = result.filter(
+      (m) => (m.aiRiskLevel ?? m.initialRiskLevel) === filters.riskLevel,
+    );
   }
 
   return result;

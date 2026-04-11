@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
@@ -73,8 +74,9 @@ const FEATURES = [
 const FLOW_STEPS = [
   {
     number: "01",
-    title: "로그인",
-    description: "상담 기록 서비스에 로그인하고 작업 화면을 엽니다.",
+    title: "데모 보기 또는 로그인",
+    description:
+      "평가용 데모로 바로 들어가거나 소셜 로그인으로 실제 작업 화면을 엽니다.",
   },
   {
     number: "02",
@@ -238,24 +240,38 @@ export function LandingHome({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1.0 }}
             >
-              <button
+              <Link
                 className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
+                href="/mockdata/app"
+              >
+                데모 보기
+                <ArrowRight size={18} strokeWidth={2.5} />
+              </Link>
+              <button
+                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
                 type="button"
                 onClick={openLoginModal}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
-                상담 기록 시작하기
-                <ArrowRight size={18} strokeWidth={2.5} />
+                로그인하고 시작하기
               </button>
               <button
-                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2.5 px-5 py-4 bg-transparent text-[var(--text-muted)] font-medium text-sm border-0 cursor-pointer transition-colors duration-300 hover:text-[var(--text-primary)]"
                 type="button"
                 onClick={() => scrollToSection("features")}
               >
                 핵심 기능 보기
               </button>
             </motion.div>
+            <motion.p
+              className="m-0 text-[13px] leading-[1.6] text-[var(--text-muted)]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.1 }}
+            >
+              데모 보기에서는 평가용 샘플 데이터가 바로 열립니다.
+            </motion.p>
           </motion.div>
 
           <motion.button
@@ -471,16 +487,26 @@ export function LandingHome({
             >
               녹음, 원문, 요약, AI 질의를 하나의 흐름으로 연결합니다.
             </motion.p>
-            <motion.div variants={fadeUp} transition={{ duration: 0.5 }}>
-              <button
+            <motion.div
+              className="flex flex-wrap items-center justify-center gap-4"
+              variants={fadeUp}
+              transition={{ duration: 0.5 }}
+            >
+              <Link
                 className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
+                href="/mockdata/app"
+              >
+                데모 보기
+                <ArrowRight size={18} strokeWidth={2.5} />
+              </Link>
+              <button
+                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
                 type="button"
                 onClick={openLoginModal}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
-                시작하기
-                <ArrowRight size={18} strokeWidth={2.5} />
+                로그인하고 시작하기
               </button>
             </motion.div>
           </div>

@@ -42,6 +42,15 @@ export const counselingTranscriptSegmentSchema = z.object({
   text: z.string(),
 });
 
+export const counselingChatMessageRoleSchema = z.enum(["assistant", "user"]);
+
+export const counselingChatMessageSchema = z.object({
+  id: z.string().min(1),
+  role: counselingChatMessageRoleSchema,
+  content: z.string(),
+  createdAt: z.string().datetime(),
+});
+
 export const counselingRecordListItemSchema = z.object({
   id: z.string().uuid(),
   spaceId: z.string().uuid().nullable(),
@@ -92,6 +101,12 @@ export const analysisActionsSchema = z.object({
   nextSession: z.array(z.string()),
 });
 
+export const analysisRiskAssessmentSchema = z.object({
+  level: z.enum(["low", "medium", "high"]),
+  basis: z.string(),
+  signals: z.array(z.string()),
+});
+
 export const analysisResultSchema = z.object({
   summary: z.string(),
   member: z.object({
@@ -102,6 +117,7 @@ export const analysisResultSchema = z.object({
   issues: z.array(analysisIssueSchema),
   actions: analysisActionsSchema,
   keywords: z.array(z.string()),
+  riskAssessment: analysisRiskAssessmentSchema.optional(),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
@@ -112,6 +128,7 @@ export const counselingRecordDetailSchema =
     transcriptSegments: z.array(counselingTranscriptSegmentSchema),
     audioUrl: z.string().nullable(),
     analysisResult: analysisResultSchema.nullable(),
+    assistantMessages: z.array(counselingChatMessageSchema),
   });
 
 export const listCounselingRecordsResponseSchema = z.object({
@@ -120,6 +137,14 @@ export const listCounselingRecordsResponseSchema = z.object({
 
 export const counselingRecordDetailResponseSchema = z.object({
   record: counselingRecordDetailSchema,
+});
+
+export const bulkCounselingRecordDetailsRequestSchema = z.object({
+  recordIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
+export const bulkCounselingRecordDetailsResponseSchema = z.object({
+  records: z.array(counselingRecordDetailSchema),
 });
 
 export type CounselingRecordStatus = z.infer<
@@ -137,6 +162,10 @@ export type CounselingRecordSpeakerTone = z.infer<
 export type CounselingTranscriptSegment = z.infer<
   typeof counselingTranscriptSegmentSchema
 >;
+export type CounselingChatMessageRole = z.infer<
+  typeof counselingChatMessageRoleSchema
+>;
+export type CounselingChatMessage = z.infer<typeof counselingChatMessageSchema>;
 export type CounselingRecordListItem = z.infer<
   typeof counselingRecordListItemSchema
 >;
@@ -148,6 +177,12 @@ export type ListCounselingRecordsResponse = z.infer<
 >;
 export type CounselingRecordDetailResponse = z.infer<
   typeof counselingRecordDetailResponseSchema
+>;
+export type BulkCounselingRecordDetailsRequest = z.infer<
+  typeof bulkCounselingRecordDetailsRequestSchema
+>;
+export type BulkCounselingRecordDetailsResponse = z.infer<
+  typeof bulkCounselingRecordDetailsResponseSchema
 >;
 
 export const updateSegmentRequestSchema = z.object({
@@ -200,7 +235,6 @@ export const studentSummarySchema = z.object({
   recordCount: z.number().int().nonnegative(),
   firstCounselingAt: z.string().datetime(),
   lastCounselingAt: z.string().datetime(),
-  records: z.array(counselingRecordListItemSchema),
 });
 
 export const listStudentSummariesResponseSchema = z.object({

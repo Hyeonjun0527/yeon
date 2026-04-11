@@ -1,6 +1,11 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
 
+import {
+  IMPORT_ANALYSIS_STAGES,
+  createImportAnalysisProgressState,
+  type ImportAnalysisStage,
+} from "@/lib/import-analysis-progress";
 import type { FileKind } from "@/lib/file-kind";
 import { getDb } from "@/server/db";
 import { importDrafts } from "@/server/db/schema";
@@ -22,6 +27,7 @@ export const importDraftStatusSchema = z.enum([
   "imported",
   "error",
 ]);
+export const importDraftProcessingStageSchema = z.enum(IMPORT_ANALYSIS_STAGES);
 
 export const importResultSchema = z.object({
   spaces: z.number().int().nonnegative(),
@@ -68,6 +74,11 @@ function parseStoredImportResult(
 ): z.infer<typeof importResultSchema> | null {
   const parsed = importResultSchema.safeParse(result);
   return parsed.success ? parsed.data : null;
+}
+
+function ensureImportDraftProcessingStage(value: string): ImportAnalysisStage {
+  const parsed = importDraftProcessingStageSchema.safeParse(value);
+  return parsed.success ? parsed.data : "error";
 }
 
 function buildDriveFile(row: ImportDraftRow) {
@@ -119,6 +130,19 @@ async function findAccessibleDraft(userId: string, draftId: string) {
   return row;
 }
 
+function buildProcessingStateSnapshot(
+  row: Pick<
+    ImportDraftRow,
+    "processingStage" | "processingProgress" | "processingMessage"
+  >,
+) {
+  return {
+    processingStage: ensureImportDraftProcessingStage(row.processingStage),
+    processingProgress: row.processingProgress,
+    processingMessage: row.processingMessage,
+  };
+}
+
 export async function createLocalImportDraft(params: {
   userId: string;
   fileName: string;
@@ -132,6 +156,10 @@ export async function createLocalImportDraft(params: {
   const db = getDb();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + IMPORT_DRAFT_TTL_MS);
+  const initialProgress = createImportAnalysisProgressState("queued", {
+    message: "분석 대기 중입니다.",
+    progress: 0,
+  });
 
   const [row] = await db
     .insert(importDrafts)
@@ -146,6 +174,9 @@ export async function createLocalImportDraft(params: {
       sourceByteSize: params.byteSize,
       sourceLastModifiedAt: params.lastModifiedAt ?? null,
       sourceFileBase64: params.buffer.toString("base64"),
+      processingStage: initialProgress.stage,
+      processingProgress: initialProgress.progress,
+      processingMessage: initialProgress.message,
       expiresAt,
       updatedAt: now,
     })
@@ -163,6 +194,10 @@ export async function createCloudImportDraft(params: {
   const db = getDb();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + IMPORT_DRAFT_TTL_MS);
+  const initialProgress = createImportAnalysisProgressState("queued", {
+    message: "분석 대기 중입니다.",
+    progress: 0,
+  });
 
   const [row] = await db
     .insert(importDrafts)
@@ -179,6 +214,9 @@ export async function createCloudImportDraft(params: {
         ? new Date(params.file.lastModifiedAt)
         : null,
       sourceFileBase64: null,
+      processingStage: initialProgress.stage,
+      processingProgress: initialProgress.progress,
+      processingMessage: initialProgress.message,
       expiresAt,
       updatedAt: now,
     })
@@ -197,9 +235,50 @@ export async function getImportDraftSnapshot(userId: string, draftId: string) {
     preview: parseStoredPreview(row.preview),
     importResult: parseStoredImportResult(row.importResult),
     error: row.errorMessage,
+    ...buildProcessingStateSnapshot(row),
     expiresAt: row.expiresAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+export async function listImportDraftSnapshots(params: {
+  userId: string;
+  provider?: ImportDraftProvider;
+  statuses?: ImportDraftStatus[];
+  limit?: number;
+}) {
+  const db = getDb();
+  const filters = [
+    eq(importDrafts.createdByUserId, params.userId),
+    gt(importDrafts.expiresAt, new Date()),
+  ];
+
+  if (params.provider) {
+    filters.push(eq(importDrafts.provider, params.provider));
+  }
+
+  if (params.statuses && params.statuses.length > 0) {
+    filters.push(inArray(importDrafts.status, params.statuses));
+  }
+
+  const rows = await db.query.importDrafts.findMany({
+    where: and(...filters),
+    orderBy: [desc(importDrafts.updatedAt)],
+    limit: params.limit,
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    provider: ensureImportDraftProvider(row.provider),
+    status: ensureImportDraftStatus(row.status),
+    selectedFile: buildDriveFile(row),
+    preview: parseStoredPreview(row.preview),
+    importResult: parseStoredImportResult(row.importResult),
+    error: row.errorMessage,
+    ...buildProcessingStateSnapshot(row),
+    expiresAt: row.expiresAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }));
 }
 
 export async function deleteImportDraft(userId: string, draftId: string) {
@@ -254,17 +333,62 @@ export async function markImportDraftAnalyzing(
 ) {
   await findAccessibleDraft(userId, draftId);
   const db = getDb();
+  const progress = createImportAnalysisProgressState("queued");
   await db
     .update(importDrafts)
     .set({
       status: "analyzing",
       errorMessage: null,
+      processingStage: progress.stage,
+      processingProgress: progress.progress,
+      processingMessage: progress.message,
       updatedAt: new Date(),
     })
     .where(
       and(
         eq(importDrafts.id, draftId),
         eq(importDrafts.createdByUserId, userId),
+      ),
+    );
+}
+
+export async function saveImportDraftProcessingState(params: {
+  userId: string;
+  draftId: string;
+  stage: ImportAnalysisStage;
+  progress?: number;
+  message?: string;
+}) {
+  await findAccessibleDraft(params.userId, params.draftId);
+  const db = getDb();
+  const state = createImportAnalysisProgressState(params.stage, {
+    progress: params.progress,
+    message: params.message,
+  });
+
+  await db
+    .update(importDrafts)
+    .set({
+      status:
+        params.stage === "error"
+          ? "error"
+          : params.stage === "completed"
+            ? "imported"
+            : params.stage === "preview_ready"
+              ? "analyzed"
+              : params.stage === "importing"
+                ? "analyzing"
+                : "analyzing",
+      processingStage: state.stage,
+      processingProgress: state.progress,
+      processingMessage: state.message,
+      errorMessage: params.stage === "error" ? state.message : null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.createdByUserId, params.userId),
       ),
     );
 }
@@ -281,6 +405,12 @@ export async function saveImportDraftPreview(params: {
     .update(importDrafts)
     .set({
       status: params.status,
+      processingStage: "preview_ready",
+      processingProgress: 100,
+      processingMessage:
+        params.status === "edited"
+          ? "수정된 미리보기를 저장했습니다."
+          : "분석이 완료되었습니다.",
       preview: params.preview,
       errorMessage: null,
       updatedAt: new Date(),
@@ -304,6 +434,9 @@ export async function saveImportDraftError(params: {
     .update(importDrafts)
     .set({
       status: "error",
+      processingStage: "error",
+      processingProgress: 0,
+      processingMessage: params.message,
       errorMessage: params.message,
       updatedAt: new Date(),
     })
@@ -326,7 +459,35 @@ export async function markImportDraftImported(params: {
     .update(importDrafts)
     .set({
       status: "imported",
+      processingStage: "completed",
+      processingProgress: 100,
+      processingMessage: "가져오기가 완료되었습니다.",
       importResult: params.result,
+      errorMessage: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.createdByUserId, params.userId),
+      ),
+    );
+}
+
+export async function markImportDraftImporting(params: {
+  userId: string;
+  draftId: string;
+}) {
+  await findAccessibleDraft(params.userId, params.draftId);
+  const db = getDb();
+  const progress = createImportAnalysisProgressState("importing");
+  await db
+    .update(importDrafts)
+    .set({
+      status: "analyzing",
+      processingStage: progress.stage,
+      processingProgress: progress.progress,
+      processingMessage: progress.message,
       errorMessage: null,
       updatedAt: new Date(),
     })

@@ -65,7 +65,7 @@ beforeEach(() => {
 /* ── createDefaultSystemTabs ── */
 
 describe("createDefaultSystemTabs", () => {
-  it("시스템 탭 6개를 INSERT하고 오류 없이 완료된다", async () => {
+  it("시스템 탭 4개를 INSERT하고 오류 없이 완료된다", async () => {
     responses.push(undefined); // insert.onConflictDoNothing()
 
     await expect(

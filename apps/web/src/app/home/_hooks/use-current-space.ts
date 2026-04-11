@@ -61,6 +61,43 @@ export function useCurrentSpace() {
     [queryClient],
   );
 
+  const removeSpace = useCallback(
+    (spaceId: string) => {
+      queryClient.setQueryData<{ spaces: Space[] }>(["spaces"], (old) => {
+        const currentSpaces = old ? old.spaces : [];
+        const nextSpaces = currentSpaces.filter(
+          (space) => space.id !== spaceId,
+        );
+        return { spaces: nextSpaces };
+      });
+
+      setCurrentSpaceIdState((prev) => {
+        if (prev !== spaceId) {
+          return prev;
+        }
+
+        const cachedSpaces = queryClient.getQueryData<{ spaces: Space[] }>([
+          "spaces",
+        ]);
+        const nextSpaces = (cachedSpaces ? cachedSpaces.spaces : []).filter(
+          (space) => space.id !== spaceId,
+        );
+        const next = nextSpaces[0]?.id ?? null;
+
+        if (typeof window !== "undefined") {
+          if (next) {
+            localStorage.setItem(STORAGE_KEY, next);
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+
+        return next;
+      });
+    },
+    [queryClient],
+  );
+
   const currentSpace = spaces.find((s) => s.id === currentSpaceId) ?? null;
 
   return {
@@ -69,6 +106,7 @@ export function useCurrentSpace() {
     currentSpace,
     setCurrentSpaceId,
     addSpace,
+    removeSpace,
     loading,
   };
 }

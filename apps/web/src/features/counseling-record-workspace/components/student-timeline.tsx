@@ -45,7 +45,7 @@ export function StudentTimeline({
     );
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[640px] mx-auto overflow-y-auto">
+    <div className="scrollbar-subtle flex flex-col gap-5 p-6 max-w-[640px] mx-auto overflow-y-auto">
       <div
         className="flex items-center gap-[10px]"
         style={{ color: "var(--text-primary)" }}

@@ -63,6 +63,38 @@ a {
   text-decoration: none;
 }
 
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface4) transparent;
+  scrollbar-gutter: stable;
+}
+
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: var(--surface4);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scrollbar-subtle:hover::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  background-clip: padding-box;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:active {
+  background: color-mix(in srgb, var(--border-light) 70%, var(--text-dim) 30%);
+  background-clip: padding-box;
+}
+
 button,
 input,
 textarea,

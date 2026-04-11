@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useStudentManagement } from "../student-management-provider";
-import type { ActivityLog, Member } from "../types";
+import type { Member } from "../types";
 
 interface UseMemberDetailParams {
   memberId: string;
@@ -43,43 +43,10 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
     (memberData?.member && selectedSpaceId === memberData.member.spaceId
       ? memberData.member
       : undefined);
-  const spaceId = member?.spaceId ?? selectedSpaceId;
-
-  const {
-    data: logsData,
-    isPending: logsPending,
-    error: logsQueryError,
-  } = useQuery({
-    queryKey: ["activity-logs", spaceId, memberId],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/spaces/${spaceId}/members/${memberId}/activity-logs`,
-      );
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || "활동 로그를 불러오지 못했습니다.");
-      }
-      return res.json() as Promise<{ logs: ActivityLog[] }>;
-    },
-    enabled: !!spaceId && !!memberId,
-  });
-
-  const activityLogs = logsData ? logsData.logs : ([] as ActivityLog[]);
-  // spaceId/memberId 없으면 쿼리 disabled → isPending=true 고정이므로 가드
-  const logsLoading = !!spaceId && !!memberId && logsPending;
-  const logsError =
-    logsQueryError instanceof Error
-      ? logsQueryError.message
-      : logsQueryError
-        ? "활동 로그를 불러오지 못했습니다."
-        : null;
 
   return {
     member,
     activeTab,
     setActiveTab,
-    activityLogs,
-    logsLoading,
-    logsError,
   };
 }

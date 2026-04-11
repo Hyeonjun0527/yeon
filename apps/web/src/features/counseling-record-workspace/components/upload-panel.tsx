@@ -33,6 +33,7 @@ export interface UploadPanelProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  onCancelRecording: () => void;
   handleUploadSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }
 
@@ -53,6 +54,7 @@ export function UploadPanel({
   fileInputRef,
   onStartRecording,
   onStopRecording,
+  onCancelRecording,
   handleUploadSubmit,
 }: UploadPanelProps) {
   return (
@@ -169,22 +171,37 @@ export function UploadPanel({
               background: "rgba(191,51,61,0.04)",
             }}
           >
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-[14px] border font-bold cursor-pointer transition-[opacity,background-color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-[0.62]"
-              style={{
-                borderColor: "rgba(191,51,61,0.2)",
-                background: "rgba(191,51,61,0.08)",
-                color: "var(--danger-text)",
-              }}
-              onClick={
-                recordingPhase === "recording" ? onStopRecording : undefined
-              }
-              disabled={recordingPhase === "finalizing"}
-            >
-              <Mic size={16} strokeWidth={2.1} />
-              {recordingPhase === "recording" ? "녹음 중지" : "녹음 정리 중"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-[14px] border font-bold cursor-pointer transition-[opacity,background-color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-[0.62]"
+                style={{
+                  borderColor: "var(--border-soft)",
+                  background: "var(--surface-primary)",
+                  color: "var(--text-secondary)",
+                }}
+                onClick={onCancelRecording}
+                disabled={recordingPhase === "finalizing"}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-[14px] border font-bold cursor-pointer transition-[opacity,background-color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-[0.62]"
+                style={{
+                  borderColor: "rgba(191,51,61,0.2)",
+                  background: "rgba(191,51,61,0.08)",
+                  color: "var(--danger-text)",
+                }}
+                onClick={
+                  recordingPhase === "recording" ? onStopRecording : undefined
+                }
+                disabled={recordingPhase === "finalizing"}
+              >
+                <Mic size={16} strokeWidth={2.1} />
+                {recordingPhase === "recording" ? "녹음 종료" : "녹음 정리 중"}
+              </button>
+            </div>
             <div className="grid gap-[2px]">
               <p className="m-0 text-sm font-semibold leading-[1.3]">
                 {recordingPhase === "recording"

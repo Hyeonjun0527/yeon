@@ -40,6 +40,8 @@ If verification fails, keep iterating.
 
 <execution_protocols>
 Broad requests: explore first, then plan. 2+ independent tasks in parallel. `run_in_background` for builds/tests.
+Use `run_in_background` only when meaningful non-overlapping work exists. If the next decision depends on the result immediately, prefer foreground execution.
+If a required background task does not produce a `<system-reminder>` after a reasonable wait, treat the reminder path as degraded: report status, continue with direct local tools, or rerun synchronously. Never block indefinitely on a missing reminder.
 Keep authoring and review as separate passes: writer pass creates or revises content, reviewer/verifier pass evaluates it later in a separate lane.
 Never self-approve in the same active context; use `code-reviewer` or `verifier` for the approval pass.
 Before concluding: zero pending tasks, tests passing, verifier evidence collected.

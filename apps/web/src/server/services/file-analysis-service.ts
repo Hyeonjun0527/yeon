@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
 import { z } from "zod";
 import { ServiceError } from "./service-error";
+import {
+  extractTableFromImageWithGoogleVision,
+  type OCRTableResult,
+} from "./import-ocr-service";
+import type { ImportAnalysisProgressState } from "@/lib/import-analysis-progress";
 import type { FileKind } from "@/lib/file-kind";
 
 /* ── Validation ── */
@@ -22,6 +27,65 @@ const ImportPreviewSchema = z.object({
   ),
 });
 
+function normalizeLooseString(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+}
+
+function coerceImportPreviewPayload(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object") {
+    return parsed;
+  }
+
+  const data = parsed as { cohorts?: unknown[] };
+  if (!Array.isArray(data.cohorts)) {
+    return parsed;
+  }
+
+  return {
+    cohorts: data.cohorts.map((cohort) => {
+      const cohortData = cohort as { name?: unknown; students?: unknown[] };
+      return {
+        name: normalizeLooseString(cohortData.name) ?? "",
+        students: Array.isArray(cohortData.students)
+          ? cohortData.students.map((student) => {
+              const studentData = student as {
+                name?: unknown;
+                email?: unknown;
+                phone?: unknown;
+                status?: unknown;
+                customFields?: Record<string, unknown> | null;
+              };
+              return {
+                name: normalizeLooseString(studentData.name) ?? "",
+                email: normalizeLooseString(studentData.email),
+                phone: normalizeLooseString(studentData.phone),
+                status: normalizeLooseString(studentData.status),
+                customFields:
+                  studentData.customFields &&
+                  typeof studentData.customFields === "object"
+                    ? Object.fromEntries(
+                        Object.entries(studentData.customFields).map(
+                          ([key, value]) => [
+                            key,
+                            normalizeLooseString(value) ?? null,
+                          ],
+                        ),
+                      )
+                    : null,
+              };
+            })
+          : [],
+      };
+    }),
+  };
+}
+
 function parseImportPreview(raw: string): ImportPreview {
   let parsed: unknown;
   try {
@@ -29,7 +93,8 @@ function parseImportPreview(raw: string): ImportPreview {
   } catch {
     throw new ServiceError(500, "AI 응답 JSON 파싱 실패");
   }
-  const result = ImportPreviewSchema.safeParse(parsed);
+  const coerced = coerceImportPreviewPayload(parsed);
+  const result = ImportPreviewSchema.safeParse(coerced);
   if (!result.success) {
     throw new ServiceError(
       500,
@@ -527,7 +592,15 @@ async function analyzeStructuredSheets(
   sheets: SheetRows[],
   refine?: RefineContext,
   fieldHints?: FieldSchemaHint[],
+  reportProgress?: (
+    progress: ImportAnalysisProgressState,
+  ) => Promise<void> | void,
 ): Promise<ImportPreview> {
+  await reportProgress?.({
+    stage: "parsing_file",
+    progress: 38,
+    message: "데이터 구조를 해석하고 있습니다.",
+  });
   const workbookPlan = await identifyWorkbookPlanWithAI(sheets);
 
   const activePlans = workbookPlan.sheets.filter(
@@ -540,9 +613,14 @@ async function analyzeStructuredSheets(
 
   if (plansToUse.length === 0) {
     const fallbackText = buildSampleText(sheets, 40);
-    return analyzeFileWithAI(fallbackText, refine, fieldHints);
+    return analyzeFileWithAI(fallbackText, refine, fieldHints, reportProgress);
   }
 
+  await reportProgress?.({
+    stage: "extracting_rows",
+    progress: 58,
+    message: "수강생 정보를 추출하고 있습니다.",
+  });
   const cohorts = plansToUse.flatMap((plan) => {
     const sheet = sheets.find(
       (candidate) => candidate.sheetName === plan.sheetName,
@@ -553,9 +631,14 @@ async function analyzeStructuredSheets(
 
   if (cohorts.length === 0) {
     const fallbackText = buildSampleText(sheets, 40);
-    return analyzeFileWithAI(fallbackText, refine, fieldHints);
+    return analyzeFileWithAI(fallbackText, refine, fieldHints, reportProgress);
   }
 
+  await reportProgress?.({
+    stage: "building_preview",
+    progress: 92,
+    message: "미리보기를 정리하고 있습니다.",
+  });
   const normalizedPreview = normalizeImportPreview({ cohorts });
 
   if (!refine) {
@@ -567,6 +650,7 @@ async function analyzeStructuredSheets(
     sheets,
     refine,
     fieldHints,
+    reportProgress,
   );
 }
 
@@ -575,7 +659,15 @@ async function refineStructuredPreviewWithAI(
   sheets: SheetRows[],
   refine: RefineContext,
   fieldHints?: FieldSchemaHint[],
+  reportProgress?: (
+    progress: ImportAnalysisProgressState,
+  ) => Promise<void> | void,
 ): Promise<ImportPreview> {
+  await reportProgress?.({
+    stage: "applying_refinement",
+    progress: 84,
+    message: "수정 요청을 반영하고 있습니다.",
+  });
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey)
     throw new ServiceError(500, "OPENAI_API_KEY가 설정되지 않았습니다.");
@@ -631,6 +723,11 @@ JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students":
   const raw = data.choices[0]?.message?.content;
   if (!raw) throw new ServiceError(500, "AI 응답이 비어 있습니다.");
 
+  await reportProgress?.({
+    stage: "building_preview",
+    progress: 92,
+    message: "수정된 미리보기를 정리하고 있습니다.",
+  });
   return normalizeImportPreview(parseImportPreview(raw));
 }
 
@@ -691,6 +788,146 @@ function buildCustomFieldsFromRow(
   });
 
   return Object.keys(customFields).length > 0 ? customFields : null;
+}
+
+function buildImageOCRText(ocrResult: OCRTableResult) {
+  const OCR_ROW_LIMIT = 60;
+  const OCR_FULL_TEXT_CHAR_LIMIT = 4000;
+  const rowText = ocrResult.rows
+    .slice(0, OCR_ROW_LIMIT)
+    .map(
+      (row, index) => `${index}: ${row.map((cell) => cell || "∅").join(" | ")}`,
+    )
+    .join("\n");
+  const fullText = ocrResult.fullText.trim();
+  const truncatedFullText =
+    fullText.length > OCR_FULL_TEXT_CHAR_LIMIT
+      ? `${fullText.slice(0, OCR_FULL_TEXT_CHAR_LIMIT)}\n... (생략 ${fullText.length - OCR_FULL_TEXT_CHAR_LIMIT}자)`
+      : fullText;
+
+  return [
+    `OCR confidence: ${ocrResult.confidence.toFixed(2)}`,
+    `OCR rowCount: ${ocrResult.rowCount}`,
+    `OCR maxColumnCount: ${ocrResult.maxColumnCount}`,
+    "=== OCR reconstructed rows ===",
+    rowText,
+    "=== OCR full text ===",
+    truncatedFullText,
+  ].join("\n");
+}
+
+function countNonEmptyCells(row: string[] | undefined) {
+  return (row ?? []).filter((cell) => cell.trim().length > 0).length;
+}
+
+function classifyImageHeaders(headerRow: string[] | undefined) {
+  const headers = (headerRow ?? [])
+    .map((cell) => normalizeWhitespace(cell).toLowerCase())
+    .filter(Boolean);
+
+  const coreHeaderPatterns = [
+    /이름|성명|name/,
+    /이메일|email|e-mail/,
+    /전화|연락처|phone|mobile/,
+    /상태|수강상태|status/,
+    /기수|코호트|cohort|반/,
+    /등록일|등록 일자|입과일|시작일/,
+    /성별|gender/,
+  ];
+  const customLikePatterns = [
+    /전공/,
+    /github|git\s*hub/,
+    /면접\s*점수|평가\s*점수|점수/,
+    /학교|school/,
+    /학번/,
+    /메모|비고|notes?/,
+    /포트폴리오|portfolio/,
+    /노션|notion/,
+    /블로그|blog/,
+    /직무|트랙/,
+  ];
+
+  let coreHeaderCount = 0;
+  let customLikeHeaderCount = 0;
+
+  for (const header of headers) {
+    if (coreHeaderPatterns.some((pattern) => pattern.test(header))) {
+      coreHeaderCount += 1;
+      continue;
+    }
+
+    if (customLikePatterns.some((pattern) => pattern.test(header))) {
+      customLikeHeaderCount += 1;
+    }
+  }
+
+  return {
+    coreHeaderCount,
+    customLikeHeaderCount,
+  };
+}
+
+function assertImagePreviewConfidence(
+  preview: ImportPreview,
+  ocrResult: OCRTableResult,
+) {
+  const studentCount = preview.cohorts.reduce(
+    (sum, cohort) => sum + cohort.students.length,
+    0,
+  );
+  const likelyDataRows = Math.max(
+    0,
+    ocrResult.rows.filter((row) => countNonEmptyCells(row) >= 2).length - 1,
+  );
+  const { coreHeaderCount, customLikeHeaderCount } = classifyImageHeaders(
+    ocrResult.rows[0],
+  );
+  const customFieldCount = preview.cohorts.reduce(
+    (sum, cohort) =>
+      sum +
+      cohort.students.reduce(
+        (studentSum, student) =>
+          studentSum + Object.keys(student.customFields ?? {}).length,
+        0,
+      ),
+    0,
+  );
+
+  if (ocrResult.confidence < 0.28) {
+    throw new ServiceError(
+      422,
+      "이미지 표 구조를 안정적으로 인식하지 못했습니다. 더 선명한 원본 이미지나 엑셀/CSV 업로드를 권장합니다.",
+    );
+  }
+
+  if (likelyDataRows >= 3 && studentCount === 0) {
+    throw new ServiceError(
+      422,
+      "이미지에서 학생 행은 감지됐지만 이름/학생 정보를 안정적으로 추출하지 못했습니다. 원본 이미지를 다시 업로드하거나 엑셀/CSV를 사용해주세요.",
+    );
+  }
+
+  if (
+    likelyDataRows >= 6 &&
+    studentCount < Math.max(2, Math.floor(likelyDataRows * 0.4))
+  ) {
+    throw new ServiceError(
+      422,
+      "이미지에서 감지된 행 수에 비해 추출된 학생 수가 너무 적습니다. 자동 추출 결과 신뢰도가 낮아 가져오기를 중단했습니다.",
+    );
+  }
+
+  if (
+    coreHeaderCount >= 2 &&
+    customLikeHeaderCount > 0 &&
+    customFieldCount === 0 &&
+    studentCount > 0
+  ) {
+    throw new ServiceError(
+      422,
+      "이 이미지에는 이름 외 추가 컬럼이 있는 것으로 보이지만 추출 결과에 반영되지 않았습니다. 현재 결과 신뢰도가 낮아 가져오기를 중단했습니다.",
+    );
+  }
 }
 
 function buildSampleText(sheets: SheetRows[], sampleSize = 20): string {
@@ -916,7 +1153,17 @@ export async function analyzeFileWithAI(
   content: string,
   refine?: RefineContext,
   fieldHints?: FieldSchemaHint[],
+  reportProgress?: (
+    progress: ImportAnalysisProgressState,
+  ) => Promise<void> | void,
 ): Promise<ImportPreview> {
+  await reportProgress?.({
+    stage: refine ? "applying_refinement" : "ai_mapping",
+    progress: refine ? 84 : 74,
+    message: refine
+      ? "수정 요청을 AI가 반영하고 있습니다."
+      : "AI가 데이터를 해석하고 있습니다.",
+  });
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey)
     throw new ServiceError(500, "OPENAI_API_KEY가 설정되지 않았습니다.");
@@ -973,6 +1220,12 @@ JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{
   const raw = data.choices[0]?.message?.content;
   if (!raw) throw new ServiceError(500, "AI 응답이 비어 있습니다.");
 
+  await reportProgress?.({
+    stage: "building_preview",
+    progress: 92,
+    message: "미리보기를 정리하고 있습니다.",
+  });
+
   return normalizeImportPreview(parseImportPreview(raw));
 }
 
@@ -981,9 +1234,20 @@ JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{
 export async function analyzeImageWithAI(
   base64Data: string,
   mimeType: string,
+  ocrResult: OCRTableResult,
   refine?: RefineContext,
   fieldHints?: FieldSchemaHint[],
+  reportProgress?: (
+    progress: ImportAnalysisProgressState,
+  ) => Promise<void> | void,
 ): Promise<ImportPreview> {
+  await reportProgress?.({
+    stage: refine ? "applying_refinement" : "ai_mapping",
+    progress: refine ? 84 : 74,
+    message: refine
+      ? "OCR 결과와 원본 이미지를 다시 해석하고 있습니다."
+      : "OCR 결과를 기반으로 이미지 표를 해석하고 있습니다.",
+  });
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey)
     throw new ServiceError(500, "OPENAI_API_KEY가 설정되지 않았습니다.");
@@ -995,23 +1259,42 @@ export async function analyzeImageWithAI(
     "gpt-4.1-nano";
 
   const dataUrl = `data:${mimeType};base64,${base64Data}`;
+  const ocrText = buildImageOCRText(ocrResult);
 
   const imgFieldHintSection =
     fieldHints && fieldHints.length > 0
-      ? `\n추가 커스텀 필드 목록 (가능하면 추출): ${fieldHints.map((f) => `${f.name}(${f.fieldType})`).join(", ")}\n추출된 커스텀 필드는 "customFields": { "필드이름": "값" } 으로 포함해라.`
-      : "";
+      ? `
+추가 커스텀 필드 목록 (가능하면 추출): ${fieldHints
+          .map((f) => `${f.name}(${f.fieldType})`)
+          .join(", ")}
+추출된 커스텀 필드는 반드시 "customFields": { "필드이름": "값" } 형태로 포함해라. 숫자도 문자열로 반환해라.`
+      : `
+모든 customFields 값은 반드시 문자열 또는 null로 반환해라. 숫자를 그대로 number로 내보내지 마라.`;
 
-  const basePrompt = `이 이미지에서 수강생 목록을 추출해라.
-JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active", "customFields": {} }] }] }
-- status 기본값은 "active"
-- 이메일, 전화번호 없으면 null
-- 수강생 정보가 없으면 cohorts를 빈 배열로 반환
-- 이름을 명확히 식별할 수 없는 데이터는 포함하지 마라
-- 코호트명은 가능하면 '1기', '2기', 필요하면 '1기(백엔드)'처럼 compact하게 반환해라${imgFieldHintSection}`;
+  const basePrompt = `너는 스크린샷/이미지 형태의 표에서 수강생 데이터를 복원하는 추출기다.
+JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
+- source of truth는 원본 이미지와 OCR 텍스트다.
+- 이전 분석 결과는 힌트일 뿐이며, 누락된 이름/열이 보이면 원본을 다시 읽어 보강해라.
+- 이름, 등록일, 기수, 성별, 전공, github id, 면접점수처럼 표에 보이는 열을 누락하지 말아라.
+- customFields 값은 반드시 문자열 또는 null이어야 한다.
+- 이미지에 표가 보이면 행/열 기준으로 최대한 전체 행을 빠짐없이 복원해라.
+- 확신 없는 값은 null로 두되, 보이는 열 자체를 통째로 누락시키지 마라.
+- status 기본값은 "active"${imgFieldHintSection}`;
 
   const textPrompt = refine
-    ? `${basePrompt}\n\n이전 분석 결과:\n${JSON.stringify(refine.previousResult, null, 2)}\n\n사용자 보완 요청: ${refine.instruction}`
-    : basePrompt;
+    ? `${basePrompt}
+
+OCR 결과:
+${ocrText}
+
+이전 분석 결과:
+${JSON.stringify(refine.previousResult, null, 2)}
+
+사용자 보완 요청: ${refine.instruction}`
+    : `${basePrompt}
+
+OCR 결과:
+${ocrText}`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -1046,7 +1329,15 @@ JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students":
   const raw = data.choices[0]?.message?.content;
   if (!raw) throw new ServiceError(500, "AI 응답이 비어 있습니다.");
 
-  return normalizeImportPreview(parseImportPreview(raw));
+  await reportProgress?.({
+    stage: "building_preview",
+    progress: 92,
+    message: "OCR 기반 이미지 분석 결과를 정리하고 있습니다.",
+  });
+
+  const preview = normalizeImportPreview(parseImportPreview(raw));
+  assertImagePreviewConfidence(preview, ocrResult);
+  return preview;
 }
 
 /* ── PDF → 텍스트 변환 ── */
@@ -1069,19 +1360,47 @@ export async function analyzeBuffer(
   kind: FileKind,
   refine?: RefineContext,
   fieldHints?: FieldSchemaHint[],
+  reportProgress?: (
+    progress: ImportAnalysisProgressState,
+  ) => Promise<void> | void,
 ): Promise<ImportPreview> {
   switch (kind) {
     case "spreadsheet": {
+      await reportProgress?.({
+        stage: "loading_bytes",
+        progress: 22,
+        message: "스프레드시트 내용을 읽고 있습니다.",
+      });
       const sheets = parseExcelToRows(buffer);
-      return analyzeStructuredSheets(sheets, refine, fieldHints);
+      return analyzeStructuredSheets(
+        sheets,
+        refine,
+        fieldHints,
+        reportProgress,
+      );
     }
     case "csv":
     case "txt": {
+      await reportProgress?.({
+        stage: "loading_bytes",
+        progress: 22,
+        message: "파일 내용을 읽고 있습니다.",
+      });
       const text = buffer.toString("utf-8");
       const sheets = parseCsvToRows(text);
-      return analyzeStructuredSheets(sheets, refine, fieldHints);
+      return analyzeStructuredSheets(
+        sheets,
+        refine,
+        fieldHints,
+        reportProgress,
+      );
     }
     case "pdf": {
+      await reportProgress?.({
+        stage: "loading_bytes",
+        progress: 22,
+        message: "PDF 내용을 읽고 있습니다.",
+      });
       let text = "";
       try {
         text = await parsePdfToText(buffer);
@@ -1089,18 +1408,60 @@ export async function analyzeBuffer(
         // 암호화되거나 손상된 PDF → 텍스트 추출 불가
       }
       if (!text.trim()) {
+        await reportProgress?.({
+          stage: "building_preview",
+          progress: 92,
+          message: "텍스트를 찾지 못한 PDF 결과를 정리하고 있습니다.",
+        });
         // 스캔본 PDF 등 텍스트 없음 → 빈 결과 반환 (Vision은 PDF를 지원하지 않음)
         return { cohorts: [] };
       }
-      return analyzeFileWithAI(text, refine, fieldHints);
+      return analyzeFileWithAI(text, refine, fieldHints, reportProgress);
     }
     case "image": {
+      await reportProgress?.({
+        stage: "loading_bytes",
+        progress: 22,
+        message: "이미지 파일을 읽고 있습니다.",
+      });
+      await reportProgress?.({
+        stage: "parsing_file",
+        progress: 34,
+        message: "Google Vision OCR로 표를 읽고 있습니다.",
+      });
+      const ocrResult = await extractTableFromImageWithGoogleVision({
+        buffer,
+        mimeType: mimeType || "image/png",
+      });
+
+      if (
+        !refine &&
+        ocrResult.rowCount >= 2 &&
+        ocrResult.maxColumnCount >= 2 &&
+        ocrResult.confidence >= 0.45
+      ) {
+        try {
+          const preview = await analyzeStructuredSheets(
+            [{ sheetName: "이미지 OCR", rows: ocrResult.rows }],
+            undefined,
+            fieldHints,
+            reportProgress,
+          );
+          assertImagePreviewConfidence(preview, ocrResult);
+          return preview;
+        } catch {
+          // OCR 구조 해석 실패 시 이미지 재해석 경로로 폴백
+        }
+      }
+
       const base64 = buffer.toString("base64");
       return analyzeImageWithAI(
         base64,
         mimeType || "image/png",
+        ocrResult,
         refine,
         fieldHints,
+        reportProgress,
       );
     }
     default:

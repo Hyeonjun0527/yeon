@@ -62,7 +62,7 @@ export function StudentForm() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
         {/* 기본 정보 */}
         <div className="mb-6">
           <p className="text-sm font-semibold text-text-secondary mb-3">

@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ChevronRight,
   CloudCog,
   File,
+  FileClock,
   FileSpreadsheet,
   FileText,
   Folder,
@@ -13,6 +15,8 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  RotateCcw,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -38,10 +42,75 @@ function formatDate(iso: string): string {
   });
 }
 
+type LocalImportDraftListItem = {
+  id: string;
+  status:
+    | "uploaded"
+    | "analyzing"
+    | "analyzed"
+    | "edited"
+    | "imported"
+    | "error";
+  selectedFile: DriveFile;
+  error: string | null;
+  processingMessage: string | null;
+  updatedAt: string;
+  expiresAt: string;
+};
+
+function formatUpdatedAt(iso: string) {
+  return new Date(iso).toLocaleString("ko-KR", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getDraftStatusLabel(status: LocalImportDraftListItem["status"]) {
+  switch (status) {
+    case "uploaded":
+      return "업로드 완료";
+    case "analyzing":
+      return "분석 중";
+    case "analyzed":
+      return "분석 완료";
+    case "edited":
+      return "수정 중";
+    case "error":
+      return "오류";
+    default:
+      return "임시초안";
+  }
+}
+
+function getDraftRowSummary(draft: LocalImportDraftListItem) {
+  if (draft.error) {
+    return draft.status === "error"
+      ? "오류가 발생한 작업입니다. 다시 열어 확인하거나 삭제할 수 있습니다."
+      : "상태 확인이 필요한 작업입니다. 다시 열어 이어서 진행해 주세요.";
+  }
+
+  switch (draft.status) {
+    case "uploaded":
+      return "업로드한 파일입니다. 분석을 시작할 수 있습니다.";
+    case "analyzing":
+      return "분석 중이던 작업입니다. 결과를 이어서 확인할 수 있습니다.";
+    case "analyzed":
+      return "분석 결과가 저장되어 있습니다. 검토 후 가져올 수 있습니다.";
+    case "edited":
+      return "수정 중이던 초안입니다. 이어서 마무리할 수 있습니다.";
+    default:
+      return "가져오기 작업을 이어서 확인할 수 있습니다.";
+  }
+}
+
 interface CloudImportInlineProps {
   onClose: () => void;
   onImportComplete: () => void;
+  onDraftDiscarded?: () => void;
   expanded?: boolean;
+  initialLocalDraftId?: string | null;
 }
 
 function getExpandedBottomPanelHeight(hasEditablePreview: boolean) {
@@ -61,7 +130,9 @@ const IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX = 380;
 export function CloudImportInline({
   onClose,
   onImportComplete,
+  onDraftDiscarded,
   expanded = false,
+  initialLocalDraftId = null,
 }: CloudImportInlineProps) {
   const [activeProvider, setActiveProvider] =
     useState<CloudProvider>("onedrive");
@@ -170,8 +241,35 @@ export function CloudImportInline({
 
   const onedrive = useCloudImport("onedrive", onImportComplete);
   const googledrive = useCloudImport("googledrive", onImportComplete);
-  const localImport = useLocalImport(onImportComplete);
+  const localImport = useLocalImport(
+    onImportComplete,
+    initialLocalDraftId,
+    onDraftDiscarded,
+  );
   const activeHook = activeProvider === "onedrive" ? onedrive : googledrive;
+  const {
+    data: localDraftsData,
+    isPending: localDraftsLoading,
+    error: localDraftsQueryError,
+    refetch: refetchLocalDrafts,
+  } = useQuery({
+    queryKey: ["local-import-drafts", "modal"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/integrations/local/drafts?limit=20");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "가져오기 작업 목록을 불러오지 못했습니다.");
+      }
+      return res.json() as Promise<{ drafts: LocalImportDraftListItem[] }>;
+    },
+  });
+  const localDrafts = localDraftsData ? localDraftsData.drafts : [];
+  const localDraftsError =
+    localDraftsQueryError instanceof Error
+      ? localDraftsQueryError.message
+      : localDraftsQueryError
+        ? "가져오기 작업 목록을 불러오지 못했습니다."
+        : null;
 
   useEffect(() => {
     activeHook.checkStatus();
@@ -196,10 +294,42 @@ export function CloudImportInline({
 
   useEffect(() => {
     if (localImport.importResult) {
+      void refetchLocalDrafts();
       const timer = setTimeout(onClose, 2000);
       return () => clearTimeout(timer);
     }
-  }, [localImport.importResult, onClose]);
+  }, [localImport.importResult, onClose, refetchLocalDrafts]);
+
+  useEffect(() => {
+    if (!localImport.currentDraftId) return;
+    void refetchLocalDrafts();
+  }, [localImport.currentDraftId, refetchLocalDrafts]);
+
+  const openLocalDraft = useCallback(
+    async (draftId: string) => {
+      await localImport.restoreDraftById(draftId);
+      void refetchLocalDrafts();
+    },
+    [localImport, refetchLocalDrafts],
+  );
+
+  const discardDraftFromList = useCallback(
+    async (draftId: string) => {
+      if (localImport.currentDraftId === draftId) {
+        await localImport.discardDraft?.();
+      } else {
+        await fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
+          method: "DELETE",
+        }).catch(() => {
+          // 목록 새로고침으로 상태를 다시 맞춘다.
+        });
+      }
+
+      onDraftDiscarded?.();
+      void refetchLocalDrafts();
+    },
+    [localImport, onDraftDiscarded, refetchLocalDrafts],
+  );
 
   const switchProvider = (p: CloudProvider) => {
     if (p === activeProvider) return;
@@ -322,7 +452,19 @@ export function CloudImportInline({
       {/* 헤더: 프리뷰 모드에서는 숨김 */}
       {!isLocalMode && !hasSelectedFile && (
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-          <h3 className="text-[15px] font-semibold text-text">파일 가져오기</h3>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="flex items-center gap-1 px-2 py-1 rounded-[5px] border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer whitespace-nowrap flex-shrink-0 transition-[background,color] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
+              onClick={onClose}
+            >
+              <ArrowLeft size={13} />
+              뒤로가기
+            </button>
+            <h3 className="text-[15px] font-semibold text-text">
+              파일 가져오기
+            </h3>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button
               className="flex items-center gap-[5px] px-2.5 py-[5px] rounded-[6px] border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer transition-[background,color,border-color] duration-[120ms] hover:bg-accent-dim hover:text-accent hover:border-accent-border"
@@ -341,6 +483,99 @@ export function CloudImportInline({
               <X size={18} />
             </button>
           </div>
+        </div>
+      )}
+
+      {!isLocalMode && !hasSelectedFile && (
+        <div className="border-b border-border bg-surface-2/40 px-5 py-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="m-0 text-[12px] font-semibold text-text">
+                저장된 가져오기 작업
+              </p>
+              <p className="m-0 mt-1 text-[11px] leading-relaxed text-text-dim">
+                작업이 여러 개여도 여기서 원하는 초안을 골라 이어서 볼 수
+                있습니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 rounded-[6px] border border-border bg-transparent px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text"
+              onClick={() => {
+                void refetchLocalDrafts();
+              }}
+            >
+              새로고침
+            </button>
+          </div>
+
+          {localDraftsLoading ? (
+            <div className="rounded-lg border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
+              가져오기 작업을 불러오는 중...
+            </div>
+          ) : localDraftsError ? (
+            <div className="rounded-lg border border-red/20 bg-red/10 px-3 py-3 text-[12px] text-red">
+              {localDraftsError}
+            </div>
+          ) : localDrafts.length > 0 ? (
+            <div className="grid gap-2">
+              {localDrafts.map((draft) => (
+                <div
+                  key={draft.id}
+                  className="rounded-lg border border-border bg-surface px-3 py-3"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="mt-0.5 rounded-lg bg-accent-dim px-2 py-2 text-accent shrink-0">
+                      <FileClock size={14} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <p className="m-0 min-w-0 flex-1 truncate text-[13px] font-semibold text-text">
+                          {draft.selectedFile.name}
+                        </p>
+                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
+                          {getDraftStatusLabel(draft.status)}
+                        </span>
+                      </div>
+                      <p className="m-0 mt-1 text-[11px] leading-relaxed text-text-dim line-clamp-2">
+                        {getDraftRowSummary(draft)}
+                      </p>
+                      <p className="m-0 mt-2 text-[11px] text-text-dim">
+                        최근 저장 {formatUpdatedAt(draft.updatedAt)}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 rounded-[6px] bg-accent px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                          onClick={() => {
+                            void openLocalDraft(draft.id);
+                          }}
+                        >
+                          <RotateCcw size={12} />
+                          이어서 보기
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 rounded-[6px] border border-border bg-transparent px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text"
+                          onClick={() => {
+                            void discardDraftFromList(draft.id);
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
+              아직 저장된 가져오기 작업이 없습니다. 새 파일을 선택하거나
+              클라우드에서 가져오기를 시작해 보세요.
+            </div>
+          )}
         </div>
       )}
 
@@ -579,7 +814,7 @@ export function CloudImportInline({
             <>
               {/* 브레드크럼 */}
               <div
-                className="flex items-center px-5 py-2.5 text-[13px] text-text-dim border-b border-border flex-shrink-0 overflow-x-auto"
+                className="scrollbar-subtle flex items-center px-5 py-2.5 text-[13px] text-text-dim border-b border-border flex-shrink-0 overflow-x-auto"
                 style={{ justifyContent: "space-between" }}
               >
                 <div
@@ -686,7 +921,7 @@ export function CloudImportInline({
 
               {/* 파일 그리드 */}
               <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-surface">
-                <div className="min-h-0 min-w-0 flex-1 overflow-auto px-5 py-4">
+                <div className="scrollbar-subtle min-h-0 min-w-0 flex-1 overflow-auto px-5 py-4">
                   <FileGrid
                     files={activeHook.files}
                     loading={activeHook.filesLoading}

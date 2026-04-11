@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  CounselingChatMessage,
   CounselingRecordListItem,
   CounselingRecordDetail,
 } from "@yeon/api-contract/counseling-records";
@@ -15,13 +16,20 @@ import type {
   AnalysisResult,
   TranscriptSegment,
 } from "../_lib/types";
+import { getProcessingChecklistStep } from "../_lib/processing-progress";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
-const PROCESSING_STEP_COUNT = 6;
-const PROCESSING_STEP_INTERVAL_MS = 2000;
-const MIN_PROCESSING_DISPLAY_MS =
-  PROCESSING_STEP_COUNT * PROCESSING_STEP_INTERVAL_MS + 1000;
+const BOOSTED_POLL_INTERVAL_MS = 1000;
+const BOOSTED_POLL_WINDOW_MS = 15000;
+
+function mapAssistantMessages(messages: CounselingChatMessage[]): AiMessage[] {
+  return messages.map((message) => ({
+    role: message.role,
+    text: message.content,
+    createdAt: message.createdAt,
+  }));
+}
 
 function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
   return {
@@ -42,7 +50,13 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
     transcript: [],
     aiSummary: item.preview || "",
     aiMessages: [],
+    aiMessagesLoaded: false,
     analysisResult: null,
+    processingStage: item.processingStage,
+    processingProgress: item.processingProgress,
+    processingMessage: item.processingMessage,
+    analysisStatus: item.analysisStatus,
+    analysisProgress: item.analysisProgress,
   };
 }
 
@@ -60,6 +74,42 @@ function detailToTranscript(
   }));
 }
 
+function detailToRecordPatch(
+  detail: CounselingRecordDetail,
+): Partial<RecordItem> {
+  const rawAnalysis = detail.analysisResult;
+  const parsedAnalysis =
+    rawAnalysis != null ? analysisResultSchema.safeParse(rawAnalysis) : null;
+  const analysisResult = parsedAnalysis?.success ? parsedAnalysis.data : null;
+
+  return {
+    spaceId: detail.spaceId ?? null,
+    memberId: detail.memberId ?? null,
+    createdAt: detail.createdAt,
+    title: detail.sessionTitle || "제목 없음",
+    status: detail.status,
+    errorMessage:
+      detail.status === "error"
+        ? (detail.errorMessage ?? "알 수 없는 오류")
+        : null,
+    meta: `${detail.studentName || "수강생 미지정"} · ${fmtRelativeDate(detail.createdAt)}`,
+    duration: fmtDurationMs(detail.audioDurationMs),
+    durationMs: detail.audioDurationMs ?? 0,
+    studentName: detail.studentName || "",
+    type: detail.counselingType || "",
+    audioUrl: detail.audioUrl || null,
+    transcript: detailToTranscript(detail),
+    aiSummary: detail.preview || "",
+    aiMessages: mapAssistantMessages(detail.assistantMessages),
+    aiMessagesLoaded: true,
+    analysisResult,
+    processingStage: detail.processingStage,
+    processingProgress: detail.processingProgress,
+    processingMessage: detail.processingMessage,
+    analysisStatus: detail.analysisStatus,
+    analysisProgress: detail.analysisProgress,
+  };
+}
 export function useRecords() {
   const queryClient = useQueryClient();
 
@@ -69,17 +119,8 @@ export function useRecords() {
   const [tempRecords, setTempRecords] = useState<RecordItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [phase, setPhase] = useState<InternalPhase>("idle");
-  const [processingStep, setProcessingStep] = useState(0);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
-
-  const processingStartRef = useRef<number | null>(null);
-  const phaseRef = useRef<InternalPhase>("idle");
-  const selectedIdRef = useRef<string | null>(null);
-  const readyTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  phaseRef.current = phase;
-  selectedIdRef.current = selectedId;
+  const [pollBoostUntil, setPollBoostUntil] = useState<number>(0);
 
   // 서버 목록 쿼리
   const { data: serverData, isPending } = useQuery({
@@ -91,9 +132,13 @@ export function useRecords() {
     },
     refetchInterval: (query) => {
       const items = query.state.data?.records || [];
-      return items.some((r) => r.status === "processing")
-        ? POLL_INTERVAL_MS
-        : false;
+      if (!items.some((r) => r.status === "processing")) {
+        return false;
+      }
+
+      return Date.now() < pollBoostUntil
+        ? BOOSTED_POLL_INTERVAL_MS
+        : POLL_INTERVAL_MS;
     },
   });
 
@@ -146,64 +191,25 @@ export function useRecords() {
           return res.json() as Promise<{ record: CounselingRecordDetail }>;
         },
       });
-
-      if (
-        selectedIdRef.current === item.id &&
-        phaseRef.current === "processing"
-      ) {
-        const elapsed =
-          processingStartRef.current != null
-            ? Date.now() - processingStartRef.current
-            : MIN_PROCESSING_DISPLAY_MS;
-        const delay = Math.max(0, MIN_PROCESSING_DISPLAY_MS - elapsed);
-
-        if (readyTransitionTimerRef.current)
-          clearTimeout(readyTransitionTimerRef.current);
-        readyTransitionTimerRef.current = setTimeout(() => {
-          readyTransitionTimerRef.current = null;
-          if (
-            selectedIdRef.current === item.id &&
-            phaseRef.current === "processing"
-          ) {
-            setPhase("idle");
-          }
-        }, delay);
-      }
     }
   }, [serverData, queryClient]);
 
-  // 처리 단계 시각 애니메이션
-  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (phase !== "processing") {
-      if (stepTimerRef.current) {
-        clearInterval(stepTimerRef.current);
-        stepTimerRef.current = null;
-      }
-      setProcessingStep(0);
-      return;
+    if (phase === "processing" && selected?.status !== "processing") {
+      setPhase("idle");
+    }
+  }, [phase, selected?.status]);
+
+  const processingStep = useMemo(() => {
+    if (selected?.status !== "processing") {
+      return 0;
     }
 
-    setProcessingStep(0);
-    stepTimerRef.current = setInterval(() => {
-      setProcessingStep((prev) => Math.min(prev + 1, PROCESSING_STEP_COUNT));
-    }, PROCESSING_STEP_INTERVAL_MS);
-
-    return () => {
-      if (stepTimerRef.current) {
-        clearInterval(stepTimerRef.current);
-        stepTimerRef.current = null;
-      }
-    };
-  }, [phase]);
-
-  // 언마운트 시 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (readyTransitionTimerRef.current)
-        clearTimeout(readyTransitionTimerRef.current);
-    };
-  }, []);
+    return getProcessingChecklistStep({
+      processingStage: selected.processingStage,
+      analysisStatus: selected.analysisStatus,
+    });
+  }, [selected?.analysisStatus, selected?.processingStage, selected?.status]);
 
   const fetchDetail = useCallback(
     async (id: string) => {
@@ -233,7 +239,14 @@ export function useRecords() {
         setLocalOverrides((prev) => {
           const next = new Map(prev);
           const existing = next.get(id) ?? {};
-          next.set(id, { ...existing, transcript, audioUrl, analysisResult });
+          next.set(id, {
+            ...existing,
+            transcript,
+            audioUrl,
+            analysisResult,
+            aiMessages: mapAssistantMessages(data.record.assistantMessages),
+            aiMessagesLoaded: true,
+          });
           return next;
         });
       } catch {
@@ -252,7 +265,6 @@ export function useRecords() {
     });
     setSelectedId(record.id);
     setPhase("processing");
-    processingStartRef.current = Date.now();
   }, []);
 
   const addReadyRecord = useCallback(
@@ -278,7 +290,9 @@ export function useRecords() {
 
       if (
         rec.status === "ready" &&
-        (rec.transcript.length === 0 || rec.analysisResult === null)
+        (rec.transcript.length === 0 ||
+          rec.analysisResult === null ||
+          rec.aiMessagesLoaded !== true)
       ) {
         fetchDetail(id);
       }
@@ -345,21 +359,57 @@ export function useRecords() {
         const next = new Map(prev);
         const existing = next.get(id) ?? {};
         const currentMessages = (existing.aiMessages as AiMessage[]) || [];
-        next.set(id, { ...existing, aiMessages: updater(currentMessages) });
+        next.set(id, {
+          ...existing,
+          aiMessages: updater(currentMessages),
+          aiMessagesLoaded: true,
+        });
         return next;
       });
     },
     [],
   );
 
-  const clearMessages = useCallback((id: string) => {
+  const clearMessages = useCallback(async (id: string) => {
+    const response = await fetch(`/api/v1/counseling-records/${id}/chat`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("채팅 기록을 초기화하지 못했습니다.");
+    }
+
     setLocalOverrides((prev) => {
       const next = new Map(prev);
       const existing = next.get(id) ?? {};
-      next.set(id, { ...existing, aiMessages: [] });
+      next.set(id, { ...existing, aiMessages: [], aiMessagesLoaded: true });
       return next;
     });
   }, []);
+
+  const boostPolling = useCallback(() => {
+    setPollBoostUntil(Date.now() + BOOSTED_POLL_WINDOW_MS);
+  }, []);
+
+  const markAnalysisRetryStart = useCallback(
+    (id: string) => {
+      setLocalOverrides((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(id) ?? {};
+        next.set(id, {
+          ...existing,
+          analysisStatus: "processing",
+          analysisProgress: 0,
+          processingMessage: "AI 분석을 다시 준비하고 있습니다.",
+        });
+        return next;
+      });
+      setSelectedId(id);
+      setPhase("idle");
+      boostPolling();
+    },
+    [boostPolling],
+  );
 
   const updateAnalysisResult = useCallback(
     (id: string, result: AnalysisResult) => {
@@ -382,6 +432,28 @@ export function useRecords() {
     });
   }, []);
 
+  const applyRecordDetail = useCallback(
+    (detail: CounselingRecordDetail) => {
+      const patch = detailToRecordPatch(detail);
+      setLocalOverrides((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(detail.id) ?? {};
+        next.set(detail.id, { ...existing, ...patch });
+        return next;
+      });
+      queryClient.setQueryData(["counseling-record", detail.id], {
+        record: detail,
+      });
+      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+      setSelectedId(detail.id);
+      setPhase(detail.status === "processing" ? "processing" : "idle");
+      if (detail.status === "processing") {
+        boostPolling();
+      }
+    },
+    [boostPolling, queryClient],
+  );
+
   // viewState — 단일 진실의 원천
   // isPending: 서버 데이터가 한 번도 도착하지 않은 상태 (첫 렌더 포함)
   // isLoading(=isPending&&isFetching)만 쓰면 마운트 첫 렌더에서 isFetching=false 구간이 생겨 "empty" 깜빡임 발생
@@ -397,6 +469,10 @@ export function useRecords() {
   // 외부용 recording 시작 메서드
   const startRecording = useCallback(() => {
     setPhase("recording");
+  }, []);
+
+  const cancelRecording = useCallback(() => {
+    setPhase("idle");
   }, []);
 
   return {
@@ -416,6 +492,10 @@ export function useRecords() {
     clearMessages,
     updateAnalysisResult,
     updateMemberId,
+    applyRecordDetail,
+    markAnalysisRetryStart,
+    boostPolling,
     startRecording,
+    cancelRecording,
   };
 }

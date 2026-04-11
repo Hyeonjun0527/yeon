@@ -75,16 +75,18 @@ export function Gnav({ activeMenu }: GnavProps) {
               <SettingsIcon size={14} />
               설정
             </button>
-            <button
-              className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-red text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4"
-              onClick={() => {
-                setShowMenu(false);
-                alert("로그아웃 (시뮬레이션)");
-              }}
-            >
-              <LogOutIcon size={14} />
-              로그아웃
-            </button>
+            <form action="/api/auth/logout" method="post" className="m-0">
+              <button
+                type="submit"
+                className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-red text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4"
+                onClick={() => {
+                  setShowMenu(false);
+                }}
+              >
+                <LogOutIcon size={14} />
+                로그아웃
+              </button>
+            </form>
           </div>
         )}
       </div>

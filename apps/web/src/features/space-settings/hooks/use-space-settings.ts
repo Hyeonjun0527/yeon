@@ -2,20 +2,31 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { FieldType, SpaceField, SpaceTab } from "../types";
-
-async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `API 오류 (${res.status})`);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
+import {
+  applySpaceTemplate,
+  createSpaceField,
+  createSpaceTab,
+  deleteSpaceField,
+  deleteSpaceTab,
+  deleteSpaceTemplate,
+  duplicateSpaceTemplate,
+  fetchSpaceFields,
+  fetchSpaceTabs,
+  fetchSpaceTemplates,
+  patchSpaceTab,
+  reorderSpaceFields,
+  reorderSpaceTabs,
+  resetSpaceTabs,
+  snapshotSpaceTemplate,
+  updateSpaceTemplate,
+} from "../space-settings-api";
+import { moveItem, resolveInitialSelectedTabId } from "../space-settings-utils";
+import type {
+  FieldType,
+  SpaceField,
+  SpaceTab,
+  SpaceTemplateSummary,
+} from "../types";
 
 export function useSpaceSettings(
   spaceId: string | null,
@@ -27,6 +38,8 @@ export function useSpaceSettings(
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [fields, setFields] = useState<SpaceField[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(false);
+  const [templates, setTemplates] = useState<SpaceTemplateSummary[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -35,21 +48,31 @@ export function useSpaceSettings(
     setTabsLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<{ tabs: SpaceTab[] }>(
-        `/api/v1/spaces/${spaceId}/member-tabs`,
-      );
+      const data = await fetchSpaceTabs(spaceId);
       setTabs(data.tabs);
-      if (!selectedTabId && data.tabs.length > 0) {
-        const preselect =
-          initialTabId && data.tabs.find((t) => t.id === initialTabId);
-        setSelectedTabId(preselect ? initialTabId! : data.tabs[0].id);
-      }
+      setSelectedTabId((prev) =>
+        resolveInitialSelectedTabId(data.tabs, prev, initialTabId),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "탭을 불러오지 못했습니다.");
     } finally {
       setTabsLoading(false);
     }
-  }, [spaceId, selectedTabId, initialTabId]);
+  }, [spaceId, initialTabId]);
+
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    try {
+      const data = await fetchSpaceTemplates();
+      setTemplates(data.templates);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "템플릿 목록을 불러오지 못했습니다.",
+      );
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, []);
 
   const loadFields = useCallback(
     async (tabId: string) => {
@@ -57,9 +80,7 @@ export function useSpaceSettings(
       setFieldsLoading(true);
       setError(null);
       try {
-        const data = await apiFetch<{ fields: SpaceField[] }>(
-          `/api/v1/spaces/${spaceId}/member-tabs/${tabId}/fields`,
-        );
+        const data = await fetchSpaceFields(spaceId, tabId);
         setFields(data.fields);
       } catch (e) {
         setError(
@@ -81,15 +102,16 @@ export function useSpaceSettings(
     loadTabs();
   }, [loadTabs]);
 
+  useEffect(() => {
+    void loadTemplates();
+  }, [loadTemplates]);
+
   const createTab = useCallback(
     async (name: string) => {
       if (!spaceId) return;
       setError(null);
       try {
-        const data = await apiFetch<{ tab: SpaceTab }>(
-          `/api/v1/spaces/${spaceId}/member-tabs`,
-          { method: "POST", body: JSON.stringify({ name }) },
-        );
+        const data = await createSpaceTab(spaceId, name);
         setTabs((prev) => [...prev, data.tab]);
         setSelectedTabId(data.tab.id);
       } catch (e) {
@@ -110,10 +132,7 @@ export function useSpaceSettings(
       );
       setError(null);
       try {
-        await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/${tabId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ name: trimmed }),
-        });
+        await patchSpaceTab(spaceId, tabId, { name: trimmed });
       } catch (e) {
         setTabs(prev);
         setError(
@@ -128,9 +147,7 @@ export function useSpaceSettings(
     if (!spaceId) return;
     setError(null);
     try {
-      await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/reset`, {
-        method: "POST",
-      });
+      await resetSpaceTabs(spaceId);
       setSelectedTabId(null);
       setFields([]);
       await loadTabs();
@@ -150,10 +167,7 @@ export function useSpaceSettings(
         prev.map((t) => (t.id === tabId ? { ...t, isVisible: newVisible } : t)),
       );
       try {
-        await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/${tabId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ isVisible: newVisible }),
-        });
+        await patchSpaceTab(spaceId, tabId, { isVisible: newVisible });
       } catch (e) {
         setTabs((prev) =>
           prev.map((t) =>
@@ -177,9 +191,7 @@ export function useSpaceSettings(
         setSelectedTabId(remaining[0]?.id ?? null);
       }
       try {
-        await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/${tabId}`, {
-          method: "DELETE",
-        });
+        await deleteSpaceTab(spaceId, tabId);
       } catch (e) {
         setTabs(prev);
         setError(e instanceof Error ? e.message : "탭을 삭제하지 못했습니다.");
@@ -191,16 +203,14 @@ export function useSpaceSettings(
   const reorderTabs = useCallback(
     async (fromIdx: number, toIdx: number) => {
       if (!spaceId) return;
-      const reordered = [...tabs];
-      const [moved] = reordered.splice(fromIdx, 1);
-      reordered.splice(toIdx, 0, moved);
+      const reordered = moveItem(tabs, fromIdx, toIdx);
       setTabs(reordered);
       setError(null);
       try {
-        await apiFetch(`/api/v1/spaces/${spaceId}/member-tabs/reorder`, {
-          method: "PATCH",
-          body: JSON.stringify({ order: reordered.map((t) => t.id) }),
-        });
+        await reorderSpaceTabs(
+          spaceId,
+          reordered.map((tab) => tab.id),
+        );
       } catch (e) {
         setTabs(tabs);
         setError(
@@ -216,10 +226,7 @@ export function useSpaceSettings(
       if (!spaceId) return;
       setError(null);
       try {
-        const data = await apiFetch<{ field: SpaceField }>(
-          `/api/v1/spaces/${spaceId}/member-tabs/${tabId}/fields`,
-          { method: "POST", body: JSON.stringify({ name, fieldType }) },
-        );
+        const data = await createSpaceField(spaceId, tabId, name, fieldType);
         setFields((prev) => [...prev, data.field]);
       } catch (e) {
         setError(
@@ -237,9 +244,7 @@ export function useSpaceSettings(
       const prev = fields;
       setFields((f) => f.filter((field) => field.id !== fieldId));
       try {
-        await apiFetch(`/api/v1/spaces/${spaceId}/member-fields/${fieldId}`, {
-          method: "DELETE",
-        });
+        await deleteSpaceField(spaceId, fieldId);
       } catch (e) {
         setFields(prev);
         setError(
@@ -253,18 +258,14 @@ export function useSpaceSettings(
   const reorderFields = useCallback(
     async (tabId: string, fromIdx: number, toIdx: number) => {
       if (!spaceId) return;
-      const reordered = [...fields];
-      const [moved] = reordered.splice(fromIdx, 1);
-      reordered.splice(toIdx, 0, moved);
+      const reordered = moveItem(fields, fromIdx, toIdx);
       setFields(reordered);
       setError(null);
       try {
-        await apiFetch(
-          `/api/v1/spaces/${spaceId}/member-tabs/${tabId}/fields/reorder`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ order: reordered.map((f) => f.id) }),
-          },
+        await reorderSpaceFields(
+          spaceId,
+          tabId,
+          reordered.map((field) => field.id),
         );
       } catch (e) {
         setFields(fields);
@@ -276,6 +277,101 @@ export function useSpaceSettings(
     [spaceId, fields],
   );
 
+  const updateTemplate = useCallback(
+    async (
+      templateId: string,
+      input: { name?: string; description?: string | null },
+    ) => {
+      setError(null);
+      try {
+        const data = await updateSpaceTemplate(templateId, input);
+        setTemplates((prev) =>
+          prev.map((template) =>
+            template.id === templateId ? data.template : template,
+          ),
+        );
+        return data.template;
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "템플릿을 수정하지 못했습니다.",
+        );
+        return null;
+      }
+    },
+    [],
+  );
+
+  const deleteTemplate = useCallback(async (templateId: string) => {
+    setError(null);
+    try {
+      await deleteSpaceTemplate(templateId);
+      setTemplates((prev) =>
+        prev.filter((template) => template.id !== templateId),
+      );
+      return true;
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "템플릿을 삭제하지 못했습니다.",
+      );
+      return false;
+    }
+  }, []);
+
+  const duplicateTemplate = useCallback(async (templateId: string) => {
+    setError(null);
+    try {
+      const data = await duplicateSpaceTemplate(templateId);
+      setTemplates((prev) => [data.template, ...prev]);
+      return data.template;
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "템플릿을 복제하지 못했습니다.",
+      );
+      return null;
+    }
+  }, []);
+
+  const snapshotTemplate = useCallback(
+    async (name: string, description?: string | null) => {
+      if (!spaceId) return null;
+      setError(null);
+      try {
+        const data = await snapshotSpaceTemplate(spaceId, {
+          name,
+          description,
+        });
+        setTemplates((prev) => [...prev, data.template]);
+        return data.template;
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "템플릿 스냅샷을 저장하지 못했습니다.",
+        );
+        return null;
+      }
+    },
+    [spaceId],
+  );
+
+  const applyTemplate = useCallback(
+    async (templateId: string) => {
+      if (!spaceId) return;
+      setError(null);
+      try {
+        await applySpaceTemplate(spaceId, templateId);
+        setSelectedTabId(null);
+        setFields([]);
+        await loadTabs();
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "템플릿을 적용하지 못했습니다.",
+        );
+      }
+    },
+    [spaceId, loadTabs],
+  );
+
   return {
     tabs,
     tabsLoading,
@@ -283,6 +379,8 @@ export function useSpaceSettings(
     setSelectedTabId,
     fields,
     fieldsLoading,
+    templates,
+    templatesLoading,
     error,
     createTab,
     renameTab,
@@ -293,5 +391,10 @@ export function useSpaceSettings(
     createField,
     deleteField,
     reorderFields,
+    updateTemplate,
+    deleteTemplate,
+    duplicateTemplate,
+    snapshotTemplate,
+    applyTemplate,
   };
 }

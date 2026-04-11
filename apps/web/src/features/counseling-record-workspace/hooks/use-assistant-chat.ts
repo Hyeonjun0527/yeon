@@ -1,10 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import type {
+  CounselingChatMessage,
   CounselingRecordDetail,
   CounselingRecordListItem,
 } from "@yeon/api-contract";
 import type { Message } from "../types";
 import { buildInitialAssistantMessages } from "../utils";
+
+function mapPersistedAssistantMessages(
+  messages: CounselingChatMessage[],
+): Message[] {
+  return messages.map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt,
+  }));
+}
 
 export function useAssistantChat(
   selectedRecord: CounselingRecordListItem | null,
@@ -65,6 +77,9 @@ export function useAssistantChat(
     setAssistantDraft("");
     setAssistantMessagesByRecord((current) => {
       const existingMessages = current[selectedRecord.id];
+      const persistedMessages = selectedRecordDetail
+        ? mapPersistedAssistantMessages(selectedRecordDetail.assistantMessages)
+        : [];
       const nextMessages = buildInitialAssistantMessages(
         selectedRecord,
         statusMeta,
@@ -73,8 +88,22 @@ export function useAssistantChat(
       if (!existingMessages) {
         return {
           ...current,
-          [selectedRecord.id]: nextMessages,
+          [selectedRecord.id]:
+            persistedMessages.length > 0 ? persistedMessages : nextMessages,
         };
+      }
+
+      if (persistedMessages.length > 0) {
+        if (existingMessages.some((message) => message.isStreaming)) {
+          return current;
+        }
+
+        if (!existingMessages.some((message) => message.role === "user")) {
+          return {
+            ...current,
+            [selectedRecord.id]: persistedMessages,
+          };
+        }
       }
 
       if (existingMessages.some((message) => message.role === "user")) {
@@ -139,6 +168,7 @@ export function useAssistantChat(
       id: `${capturedRecordId}-user-auto-${Date.now()}`,
       role: "user",
       content: analysisPrompt,
+      createdAt: new Date().toISOString(),
     };
     const allMessages = [...welcomeMessages, userMessage];
 
@@ -165,6 +195,7 @@ export function useAssistantChat(
       id: assistantId,
       role: "assistant",
       content: "",
+      createdAt: new Date().toISOString(),
       isStreaming: true,
     };
 
@@ -315,6 +346,7 @@ export function useAssistantChat(
       id: `${selectedRecord.id}-user-${Date.now()}`,
       role: "user",
       content: trimmedPrompt,
+      createdAt: new Date().toISOString(),
     };
 
     const currentMessages = assistantMessagesByRecord[selectedRecord.id] || [];

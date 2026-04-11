@@ -1,4 +1,47 @@
+import type { ImportAnalysisStage } from "@/lib/import-analysis-progress";
 import type { ImportPreview } from "../types";
+
+export type RecoverableImportDraftStatus =
+  | "uploaded"
+  | "analyzing"
+  | "analyzed"
+  | "edited"
+  | "imported"
+  | "error";
+
+export function getDraftRecoveryNotice(
+  status: RecoverableImportDraftStatus,
+): string | null {
+  if (status === "analyzing") {
+    return "분석 중이던 작업을 복구했습니다. 완료되면 결과가 이어집니다.";
+  }
+
+  if (status === "edited") {
+    return "수정 중이던 가져오기 초안을 복구했습니다.";
+  }
+
+  if (status === "analyzed") {
+    return "분석 결과를 복구했습니다. 이어서 검토하고 가져오세요.";
+  }
+
+  return null;
+}
+
+export function getQueuedAnalysisState() {
+  return {
+    stage: "queued" as const,
+    progress: 0,
+    message: "분석 대기 중입니다.",
+  };
+}
+
+export function getCompletedAnalysisState() {
+  return {
+    stage: "preview_ready" as const,
+    progress: 100,
+    message: "분석이 완료되었습니다.",
+  };
+}
 
 /* ── Message ID ── */
 
@@ -60,7 +103,11 @@ export function diffText(prev: ImportPreview, next: ImportPreview): string {
 
 export async function readImportSSE(
   res: Response,
-  onProgress: (text: string) => void,
+  onProgress: (event: {
+    text: string;
+    stage?: ImportAnalysisStage;
+    progress?: number;
+  }) => void,
   signal?: AbortSignal,
 ): Promise<{ preview?: ImportPreview; error?: string }> {
   if (!res.body) return { error: "응답 스트림을 받지 못했습니다." };
@@ -86,10 +133,18 @@ export async function readImportSSE(
           const event = JSON.parse(line.slice(6)) as {
             type: string;
             text?: string;
+            stage?: ImportAnalysisStage;
+            progress?: number;
             preview?: ImportPreview;
             message?: string;
           };
-          if (event.type === "progress" && event.text) onProgress(event.text);
+          if (event.type === "progress" && event.text) {
+            onProgress({
+              text: event.text,
+              stage: event.stage,
+              progress: event.progress,
+            });
+          }
           if (event.type === "done" && event.preview)
             return { preview: event.preview };
           if (event.type === "error")

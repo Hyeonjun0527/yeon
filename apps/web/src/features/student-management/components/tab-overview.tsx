@@ -1,6 +1,7 @@
 "use client";
 
 import type { Student } from "../types";
+import { Avatar } from "./avatar";
 
 interface TabOverviewProps {
   student: Student;
@@ -64,6 +65,32 @@ export function TabOverview({ student }: TabOverviewProps) {
                 <span className="text-xs py-0.5 px-2 rounded-[10px]">
                   {item.type}
                 </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {student.guardians.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div className="text-base font-semibold text-text mb-3">
+            비상연락처
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {student.guardians.map((guardian) => (
+              <div
+                key={guardian.id}
+                className="flex items-center gap-3 p-4 bg-surface-2 border border-border rounded"
+              >
+                <Avatar name={guardian.name} size={40} />
+                <div>
+                  <div className="font-semibold text-text text-sm">
+                    {guardian.name}
+                  </div>
+                  <div className="text-[13px] text-text-secondary">
+                    {guardian.relation} · {guardian.phone}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

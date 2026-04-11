@@ -24,8 +24,22 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { spaceId, memberId } = await context.params;
+  const rawLimit = request.nextUrl.searchParams.get("limit");
+  const rawBefore = request.nextUrl.searchParams.get("before");
 
   try {
+    const limit = rawLimit ? Number(rawLimit) : undefined;
+    if (limit !== undefined) {
+      if (!Number.isInteger(limit) || limit <= 0 || limit > 500) {
+        return jsonError("limit은 1 이상 500 이하의 정수여야 합니다.", 400);
+      }
+    }
+
+    const beforeCreatedAt = rawBefore ? new Date(rawBefore) : undefined;
+    if (beforeCreatedAt && Number.isNaN(beforeCreatedAt.getTime())) {
+      return jsonError("before 커서 형식이 올바르지 않습니다.", 400);
+    }
+
     // memberId가 spaceId에 속하며 현재 사용자 소유인지 검증
     const member = await getMemberByIdForUser(currentUser.id, memberId);
     if (member.spaceId !== spaceId) {
@@ -35,6 +49,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const records = await listCounselingRecordsByMember(
       currentUser.id,
       memberId,
+      { limit, beforeCreatedAt },
     );
 
     return NextResponse.json(

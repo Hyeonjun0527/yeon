@@ -26,7 +26,7 @@ export const memberTabDefinitions = pgTable(
     tabType: varchar("tab_type", { length: 20 }).notNull(),
 
     /**
-     * 시스템 탭 식별자: 'overview' | 'counseling' | 'courses' | 'guardian' | 'memos' | 'report'
+     * 시스템 탭 식별자: 'overview' | 'counseling' | 'memos' | 'report'
      * 커스텀 탭은 null
      */
     systemKey: varchar("system_key", { length: 30 }),

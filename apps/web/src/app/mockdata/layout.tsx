@@ -24,7 +24,7 @@ export default function MockdataLayout({ children }: { children: ReactNode }) {
           ))}
         </div>
         <div className={styles.navSpacer} />
-        <span className={styles.navMeta}>Design Mockup · 2026.04.08</span>
+        <span className={styles.navMeta}>데모 모드 · 평가용 샘플 데이터</span>
       </nav>
       {children}
     </div>

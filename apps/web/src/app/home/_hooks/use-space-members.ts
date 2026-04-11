@@ -57,9 +57,7 @@ export function useSpaceMembers(
   const members = useMemo(
     (): MemberWithStatus[] =>
       rawMembers.map((member) => {
-        const memberRecords = records.filter(
-          (r) => r.memberId === member.id && r.status === "ready",
-        );
+        const memberRecords = records.filter((r) => r.memberId === member.id);
 
         if (memberRecords.length === 0) {
           return {

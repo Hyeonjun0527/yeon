@@ -77,7 +77,7 @@ function hasDiarization(segments: TranscriptSegmentInput[]): boolean {
   );
 }
 
-function buildSystemPrompt(
+function buildChatSystemPrompt(
   meta: RecordMetaInput,
   segments: TranscriptSegmentInput[],
 ) {
@@ -110,6 +110,8 @@ ${transcriptBlock}
 
 ## 응답 가이드라인
 - 한국어로 답변합니다.
+- 첫 문단은 쉬운 표현으로 짧고 간단하게 요약합니다.
+- 사용자가 더 자세한 설명을 원할 때만, 다음 문단에서 근거 인용과 실행 제안을 덧붙입니다.
 - 마크다운 서식을 자유롭게 사용합니다 (볼드, 리스트, 헤딩 등).
 - 핵심을 먼저 말하고, 근거를 원문 인용으로 뒷받침합니다.
 - 원문 인용 시 타임스탬프를 함께 표기합니다.
@@ -377,7 +379,20 @@ ${transcriptBlock}
     "member": ["수강생에게 권하는 다음 단계"],
     "nextSession": ["후속 상담에서 확인할 사항"]
   },
-  "keywords": ["상담 핵심 키워드 3-5개"]
+  "keywords": ["상담 핵심 키워드 3-5개"],
+  "riskAssessment": {
+    "level": "low | medium | high",
+    "basis": "왜 이 위험도로 판단했는지 원문 근거 기반 1-2문장 요약",
+    "signals": ["반복 결석", "과제 지연", "자신감 저하" 같은 핵심 위험 신호 1-3개]
+  }
+}
+
+## 위험도 분류 기준
+- low: 현재 큰 이탈 위험은 낮고 관찰 중심으로 충분합니다.
+- medium: 반복 확인이 필요한 경고 신호가 있으며 후속 상담/추적이 필요합니다.
+- high: 이탈, 중도 포기, 심한 정서 저하, 지속적 수행 붕괴처럼 즉시 개입이 필요한 상태입니다.
+- riskAssessment는 반드시 포함합니다.
+- basis와 signals는 반드시 상담 원문에 근거해야 합니다.
 }`;
 
   await onProgress?.(10);
@@ -472,7 +487,7 @@ export async function streamCounselingAiChat(
     process.env.OPENAI_AI_CHAT_MODEL?.trim() || DEFAULT_AI_CHAT_MODEL;
 
   const messages: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt(meta, segments) },
+    { role: "system", content: buildChatSystemPrompt(meta, segments) },
     ...conversationMessages,
   ];
 
