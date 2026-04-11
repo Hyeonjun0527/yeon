@@ -41,7 +41,8 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error("OneDrive 파일 프록시 오류:", error);
     return jsonError("파일을 가져오지 못했습니다.", 500);
   }

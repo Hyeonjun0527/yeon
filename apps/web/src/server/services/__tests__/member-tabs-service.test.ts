@@ -68,12 +68,16 @@ describe("createDefaultSystemTabs", () => {
   it("시스템 탭 6개를 INSERT하고 오류 없이 완료된다", async () => {
     responses.push(undefined); // insert.onConflictDoNothing()
 
-    await expect(createDefaultSystemTabs("space-1", "user-1")).resolves.toBeUndefined();
+    await expect(
+      createDefaultSystemTabs("space-1", "user-1"),
+    ).resolves.toBeUndefined();
   });
 
   it("이미 존재하는 경우에도 오류 없이 완료된다 (ON CONFLICT DO NOTHING)", async () => {
     responses.push(undefined);
-    await expect(createDefaultSystemTabs("space-1", "user-1")).resolves.toBeUndefined();
+    await expect(
+      createDefaultSystemTabs("space-1", "user-1"),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -95,9 +99,11 @@ describe("createCustomTab", () => {
     const newTab = makeTab({ name: "새 탭", displayOrder: 3, id: "tab-new" });
 
     responses.push(existingTabs); // getTabsForSpace
-    responses.push([newTab]);     // insert.returning()
+    responses.push([newTab]); // insert.returning()
 
-    const result = await createCustomTab("space-1", "user-1", { name: "새 탭" });
+    const result = await createCustomTab("space-1", "user-1", {
+      name: "새 탭",
+    });
     expect(result.name).toBe("새 탭");
     expect(result.id).toBe("tab-new");
   });
@@ -107,10 +113,12 @@ describe("createCustomTab", () => {
     const truncated = "가".repeat(80);
     const newTab = makeTab({ name: truncated });
 
-    responses.push([]);        // getTabsForSpace (빈 공간)
-    responses.push([newTab]);  // insert.returning()
+    responses.push([]); // getTabsForSpace (빈 공간)
+    responses.push([newTab]); // insert.returning()
 
-    const result = await createCustomTab("space-1", "user-1", { name: longName });
+    const result = await createCustomTab("space-1", "user-1", {
+      name: longName,
+    });
     expect(result.name.length).toBeLessThanOrEqual(80);
   });
 });
@@ -131,7 +139,10 @@ describe("updateTab", () => {
 
     await expect(
       updateTab("tab-1", "space-1", { isVisible: false }),
-    ).rejects.toMatchObject({ status: 403, message: "개요 탭은 숨길 수 없습니다." });
+    ).rejects.toMatchObject({
+      status: 403,
+      message: "개요 탭은 숨길 수 없습니다.",
+    });
   });
 
   it("overview 탭의 이름 변경은 허용된다", async () => {
@@ -178,9 +189,10 @@ describe("deleteCustomTab", () => {
     const systemTab = makeTab({ tabType: "system", systemKey: "overview" });
     responses.push([systemTab]);
 
-    await expect(
-      deleteCustomTab("tab-1", "space-1"),
-    ).rejects.toMatchObject({ status: 403, message: "시스템 탭은 삭제할 수 없습니다." });
+    await expect(deleteCustomTab("tab-1", "space-1")).rejects.toMatchObject({
+      status: 403,
+      message: "시스템 탭은 삭제할 수 없습니다.",
+    });
   });
 
   it("커스텀 탭은 정상 삭제된다", async () => {

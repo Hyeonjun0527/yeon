@@ -91,12 +91,16 @@ export function SidebarSearchFilter({
                   border: isActive
                     ? "1px solid rgba(99,102,241,0.24)"
                     : "1px solid rgba(255,255,255,0.08)",
-                  background: isActive ? "rgba(99,102,241,0.1)" : "var(--surface-soft)",
+                  background: isActive
+                    ? "rgba(99,102,241,0.1)"
+                    : "var(--surface-soft)",
                   color: isActive ? "var(--accent)" : "var(--text-secondary)",
                 }}
                 onClick={() => setRecordFilter(filter.id)}
               >
-                <span className="text-[11px] tracking-[-0.02em]">{filter.label}</span>
+                <span className="text-[11px] tracking-[-0.02em]">
+                  {filter.label}
+                </span>
                 <span className="text-[13px] font-extrabold">{count}</span>
               </button>
             );

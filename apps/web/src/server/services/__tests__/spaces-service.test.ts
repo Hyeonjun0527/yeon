@@ -24,11 +24,7 @@ vi.mock("drizzle-orm", () => ({
   eq: (col: unknown, val: unknown) => ({ col, val }),
 }));
 
-import {
-  createSpace,
-  getSpaces,
-  getSpaceById,
-} from "../spaces-service";
+import { createSpace, getSpaces, getSpaceById } from "../spaces-service";
 
 /* ── 헬퍼 ── */
 
@@ -52,15 +48,15 @@ beforeEach(() => {
 
 describe("createSpace", () => {
   it("빈 이름이면 400 ServiceError를 던진다", async () => {
-    await expect(
-      createSpace("user-1", { name: "" }),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(createSpace("user-1", { name: "" })).rejects.toMatchObject({
+      status: 400,
+    });
   });
 
   it("공백만 있는 이름이면 400 ServiceError를 던진다", async () => {
-    await expect(
-      createSpace("user-1", { name: "   " }),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(createSpace("user-1", { name: "   " })).rejects.toMatchObject({
+      status: 400,
+    });
   });
 
   it("정상 이름으로 생성에 성공한다", async () => {
@@ -84,7 +80,10 @@ describe("createSpace", () => {
     const space = makeSpace({ description: null });
     responses.push([space]);
 
-    const result = await createSpace("user-1", { name: "스페이스", description: null });
+    const result = await createSpace("user-1", {
+      name: "스페이스",
+      description: null,
+    });
     expect(result.description).toBeNull();
   });
 
@@ -92,7 +91,10 @@ describe("createSpace", () => {
     const space = makeSpace({ description: null });
     responses.push([space]);
 
-    const result = await createSpace("user-1", { name: "스페이스", description: "   " });
+    const result = await createSpace("user-1", {
+      name: "스페이스",
+      description: "   ",
+    });
     expect(result.description).toBeNull();
   });
 });
@@ -127,9 +129,9 @@ describe("getSpaceById", () => {
   it("존재하지 않는 spaceId이면 404 ServiceError를 던진다", async () => {
     responses.push([]);
 
-    await expect(
-      getSpaceById("nonexistent"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(getSpaceById("nonexistent")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("존재하는 space를 정상 반환한다", async () => {
@@ -141,11 +143,11 @@ describe("getSpaceById", () => {
     expect(result.name).toBe("백엔드 3기");
   });
 
-  it("존재하지 않으면 \"스페이스를 찾지 못했습니다.\" 메시지를 포함한다", async () => {
+  it('존재하지 않으면 "스페이스를 찾지 못했습니다." 메시지를 포함한다', async () => {
     responses.push([]);
 
-    await expect(
-      getSpaceById("nonexistent"),
-    ).rejects.toMatchObject({ message: "스페이스를 찾지 못했습니다." });
+    await expect(getSpaceById("nonexistent")).rejects.toMatchObject({
+      message: "스페이스를 찾지 못했습니다.",
+    });
   });
 });

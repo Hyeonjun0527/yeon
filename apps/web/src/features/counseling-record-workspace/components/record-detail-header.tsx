@@ -39,6 +39,7 @@ export interface RecordDetailHeaderProps {
   handleAudioTimeUpdate: () => void;
   refreshRecordDetail: (recordId: string) => void;
   retryTranscription: (recordId: string) => void;
+  retryAnalysis: (recordId: string) => void;
 }
 
 export function RecordDetailHeader({
@@ -58,7 +59,12 @@ export function RecordDetailHeader({
   handleAudioTimeUpdate,
   refreshRecordDetail,
   retryTranscription,
+  retryAnalysis,
 }: RecordDetailHeaderProps) {
+  const isAnalysisProcessing =
+    selectedRecord.analysisStatus === "queued" ||
+    selectedRecord.analysisStatus === "processing";
+
   return (
     <header
       className="grid gap-[10px] py-[14px] px-4 border rounded-xl"
@@ -68,7 +74,9 @@ export function RecordDetailHeader({
         boxShadow: "var(--shadow-lg)",
       }}
     >
-      <div className={`flex items-start justify-between gap-3 ${styles.detailHeaderTop}`}>
+      <div
+        className={`flex items-start justify-between gap-3 ${styles.detailHeaderTop}`}
+      >
         <div className="min-w-0 grid gap-1">
           <h2
             className="m-0 font-bold tracking-[-0.04em] leading-[1.1]"
@@ -76,7 +84,10 @@ export function RecordDetailHeader({
           >
             {selectedRecord.studentName}
           </h2>
-          <p className="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
+          <p
+            className="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap"
+            style={{ color: "var(--text-secondary)" }}
+          >
             {selectedRecord.sessionTitle}
           </p>
         </div>
@@ -90,6 +101,31 @@ export function RecordDetailHeader({
             })()}
             {statusMeta[selectedRecord.status].label}
           </span>
+          {selectedRecord.status === "ready" ? (
+            <span
+              className="inline-flex items-center gap-1 py-[3px] px-2 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap"
+              style={{
+                background:
+                  selectedRecord.analysisStatus === "error"
+                    ? "rgba(191,51,61,0.08)"
+                    : selectedRecord.analysisStatus === "ready"
+                      ? "rgba(17,132,91,0.08)"
+                      : "rgba(99,102,241,0.1)",
+                color:
+                  selectedRecord.analysisStatus === "error"
+                    ? "var(--danger-text)"
+                    : selectedRecord.analysisStatus === "ready"
+                      ? "var(--success-text)"
+                      : "var(--accent)",
+              }}
+            >
+              {selectedRecord.analysisStatus === "error"
+                ? "AI 분석 실패"
+                : selectedRecord.analysisStatus === "ready"
+                  ? "AI 분석 완료"
+                  : "AI 분석 진행 중"}
+            </span>
+          ) : null}
           <button
             type="button"
             className="inline-flex items-center justify-center w-8 h-8 border border-transparent rounded-lg bg-transparent cursor-pointer transition-[color,background-color,border-color] duration-[120ms] hover:border-[var(--danger-text)]"
@@ -110,7 +146,10 @@ export function RecordDetailHeader({
             borderColor: "rgba(248,113,113,0.2)",
           }}
         >
-          <p className="m-0 text-[13px]" style={{ color: "var(--danger-text)" }}>
+          <p
+            className="m-0 text-[13px]"
+            style={{ color: "var(--danger-text)" }}
+          >
             이 기록을 삭제하시겠습니까? 음성 파일도 함께 삭제됩니다.
           </p>
           <div className="flex gap-2 flex-shrink-0">
@@ -135,7 +174,11 @@ export function RecordDetailHeader({
             >
               {isDeleting ? (
                 <>
-                  <LoaderCircle size={14} strokeWidth={2.1} className={styles.spinningIcon} />
+                  <LoaderCircle
+                    size={14}
+                    strokeWidth={2.1}
+                    className={styles.spinningIcon}
+                  />
                   삭제 중
                 </>
               ) : (
@@ -150,19 +193,28 @@ export function RecordDetailHeader({
       <div className="flex flex-wrap items-center gap-[6px]">
         <span
           className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+          style={{
+            background: "var(--surface-secondary)",
+            color: "var(--text-secondary)",
+          }}
         >
           {formatDateTimeLabel(selectedRecord.createdAt)}
         </span>
         <span
           className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+          style={{
+            background: "var(--surface-secondary)",
+            color: "var(--text-secondary)",
+          }}
         >
           {formatDurationLabel(selectedRecord.audioDurationMs)}
         </span>
         <span
           className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-          style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+          style={{
+            background: "var(--surface-secondary)",
+            color: "var(--text-secondary)",
+          }}
         >
           {selectedRecord.counselingType}
         </span>
@@ -183,34 +235,96 @@ export function RecordDetailHeader({
             size={12}
             strokeWidth={2.4}
             className="transition-transform duration-[180ms]"
-            style={{ transform: isDetailMetaOpen ? "rotate(180deg)" : undefined }}
+            style={{
+              transform: isDetailMetaOpen ? "rotate(180deg)" : undefined,
+            }}
           />
         </button>
       </div>
 
       {isDetailMetaOpen ? (
-        <div id="detail-extra-meta" className="flex flex-wrap items-center gap-[6px]">
+        <div
+          id="detail-extra-meta"
+          className="flex flex-wrap items-center gap-[6px]"
+        >
           <span
             className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-            style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+            style={{
+              background: "var(--surface-secondary)",
+              color: "var(--text-secondary)",
+            }}
           >
             세그먼트 {selectedRecord.transcriptSegmentCount}개
           </span>
           <span
             className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-            style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+            style={{
+              background: "var(--surface-secondary)",
+              color: "var(--text-secondary)",
+            }}
           >
             원문 {selectedRecord.transcriptTextLength.toLocaleString("ko-KR")}자
           </span>
           {selectedRecord.sttModel ? (
             <span
               className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
-              style={{ background: "var(--surface-secondary)", color: "var(--text-secondary)" }}
+              style={{
+                background: "var(--surface-secondary)",
+                color: "var(--text-secondary)",
+              }}
             >
               {selectedRecord.sttModel}
             </span>
           ) : null}
+          <span
+            className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+            style={{
+              background: "var(--surface-secondary)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            진행률{" "}
+            {selectedRecord.status === "processing"
+              ? `${selectedRecord.processingProgress}%`
+              : `${selectedRecord.analysisProgress}%`}
+          </span>
+          {selectedRecord.processingChunkCount > 0 ? (
+            <span
+              className="inline-flex items-center min-h-[26px] py-[6px] px-[10px] rounded-full text-xs leading-none"
+              style={{
+                background: "var(--surface-secondary)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              구간 {selectedRecord.processingChunkCompletedCount}/
+              {selectedRecord.processingChunkCount}
+            </span>
+          ) : null}
         </div>
+      ) : null}
+
+      {selectedRecord.processingMessage ? (
+        <p
+          className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
+          style={{
+            background: "rgba(99,102,241,0.08)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {selectedRecord.processingMessage}
+        </p>
+      ) : null}
+
+      {selectedRecord.analysisErrorMessage ? (
+        <p
+          className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
+          style={{
+            background: "rgba(191,51,61,0.08)",
+            color: "var(--danger-text)",
+          }}
+        >
+          {selectedRecord.analysisErrorMessage}
+        </p>
       ) : null}
 
       {/* 오디오 패널 슬림 */}
@@ -221,7 +335,10 @@ export function RecordDetailHeader({
           background: "var(--surface-secondary)",
         }}
       >
-        <p className="m-0 text-xs leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="m-0 text-xs leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap"
+          style={{ color: "var(--text-muted)" }}
+        >
           {selectedRecord.audioOriginalName}
           <span className="mx-1 opacity-50">·</span>
           {formatFileSize(selectedRecord.audioByteSize)}
@@ -243,7 +360,10 @@ export function RecordDetailHeader({
             }
           />
         ) : (
-          <p className="m-0 text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p
+            className="m-0 text-[13px] leading-relaxed"
+            style={{ color: "var(--text-secondary)" }}
+          >
             원본 음성을 불러오는 중입니다.
           </p>
         )}
@@ -266,9 +386,15 @@ export function RecordDetailHeader({
           className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
           style={
             retryState.tone === "error"
-              ? { background: "rgba(191,51,61,0.08)", color: "var(--danger-text)" }
+              ? {
+                  background: "rgba(191,51,61,0.08)",
+                  color: "var(--danger-text)",
+                }
               : retryState.tone === "success"
-                ? { background: "rgba(17,132,91,0.08)", color: "var(--success-text)" }
+                ? {
+                    background: "rgba(17,132,91,0.08)",
+                    color: "var(--success-text)",
+                  }
                 : { background: "rgba(99,102,241,0.1)", color: "var(--accent)" }
           }
         >
@@ -277,8 +403,13 @@ export function RecordDetailHeader({
       ) : null}
 
       {/* 상태에 맞는 액션만 노출 */}
-      {selectedRecord.status === "processing" || selectedRecord.status === "error" ? (
-        <div className={`flex items-start justify-between gap-3 flex-wrap ${styles.panelActionRow}`}>
+      {selectedRecord.status === "processing" ||
+      selectedRecord.status === "error" ||
+      isAnalysisProcessing ||
+      selectedRecord.analysisStatus === "error" ? (
+        <div
+          className={`flex items-start justify-between gap-3 flex-wrap ${styles.panelActionRow}`}
+        >
           {selectedRecord.status === "processing" ? (
             <button
               type="button"
@@ -292,11 +423,32 @@ export function RecordDetailHeader({
               disabled={retryState.isSubmitting}
             >
               {retryState.isSubmitting ? (
-                <LoaderCircle size={16} strokeWidth={2.1} className={styles.spinningIcon} />
+                <LoaderCircle
+                  size={16}
+                  strokeWidth={2.1}
+                  className={styles.spinningIcon}
+                />
               ) : (
                 <RefreshCcw size={16} strokeWidth={2.1} />
               )}
               최신 상태 확인
+            </button>
+          ) : null}
+
+          {isAnalysisProcessing ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,border-color,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{
+                borderColor: "var(--border-primary)",
+                background: "var(--surface-secondary)",
+                color: "var(--text-primary)",
+              }}
+              onClick={() => refreshRecordDetail(selectedRecord.id)}
+              disabled={retryState.isSubmitting}
+            >
+              <RefreshCcw size={16} strokeWidth={2.1} />
+              AI 분석 상태 확인
             </button>
           ) : null}
 
@@ -310,13 +462,43 @@ export function RecordDetailHeader({
             >
               {retryState.isSubmitting ? (
                 <>
-                  <LoaderCircle size={16} strokeWidth={2.1} className={styles.spinningIcon} />
+                  <LoaderCircle
+                    size={16}
+                    strokeWidth={2.1}
+                    className={styles.spinningIcon}
+                  />
                   재전사 요청 중
                 </>
               ) : (
                 <>
                   <RefreshCcw size={16} strokeWidth={2.1} />
                   전사 다시 시도
+                </>
+              )}
+            </button>
+          ) : null}
+
+          {selectedRecord.analysisStatus === "error" ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border-none rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{ background: "var(--accent)", color: "#ffffff" }}
+              onClick={() => retryAnalysis(selectedRecord.id)}
+              disabled={retryState.isSubmitting}
+            >
+              {retryState.isSubmitting ? (
+                <>
+                  <LoaderCircle
+                    size={16}
+                    strokeWidth={2.1}
+                    className={styles.spinningIcon}
+                  />
+                  분석 재시작 중
+                </>
+              ) : (
+                <>
+                  <RefreshCcw size={16} strokeWidth={2.1} />
+                  AI 분석 다시 시도
                 </>
               )}
             </button>

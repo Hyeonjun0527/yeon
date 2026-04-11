@@ -3,6 +3,7 @@
 **작성일**: 2026-04-11  
 **브랜치**: `feat/counseling-records-real-api` (현재 작업 브랜치 기준)  
 **대상 파일**:
+
 - `apps/web/src/app/home/_hooks/use-records.ts`
 - `apps/web/src/app/home/_hooks/use-ai-chat.ts`
 - `apps/web/src/features/student-management/components/profile-import-panel.tsx`
@@ -86,21 +87,24 @@ T=3202ms  : syncFromServer의 setRecords(merged) 실행 — merged 안에 analys
 `syncFromServer` 내부에서 상태 병합을 functional updater로 이동:
 
 ```ts
-setRecords(currentRecords => {
-  const serverMerged = items.map(listItemToRecordItem).map(r => {
-    const existing = currentRecords.find(p => p.id === r.id);
+setRecords((currentRecords) => {
+  const serverMerged = items.map(listItemToRecordItem).map((r) => {
+    const existing = currentRecords.find((p) => p.id === r.id);
     if (!existing) return r;
     return {
       ...r,
       aiMessages: existing.aiMessages,
-      transcript: existing.transcript.length > 0 ? existing.transcript : r.transcript,
+      transcript:
+        existing.transcript.length > 0 ? existing.transcript : r.transcript,
       analysisResult: existing.analysisResult ?? r.analysisResult,
       audioUrl: existing.audioUrl ?? r.audioUrl,
     };
   });
-  const serverIds = new Set(items.map(item => item.id));
+  const serverIds = new Set(items.map((item) => item.id));
   const preservedRecords = currentRecords.filter(
-    p => !serverIds.has(p.id) && (p.id.startsWith("temp-") || p.status === "processing")
+    (p) =>
+      !serverIds.has(p.id) &&
+      (p.id.startsWith("temp-") || p.status === "processing"),
   );
   return [...preservedRecords, ...serverMerged];
 });
@@ -219,6 +223,7 @@ T=201ms : replaceRecord setRecords 실행
 ### 발현 조건 분석
 
 이 케이스 B가 발현되려면:
+
 1. 서버 업로드가 폴링 주기(3초) 이내에 완료될 것
 2. 서버가 응답으로 새 레코드를 이미 반환할 것
 3. React의 `replaceRecord` state 업데이트가 폴링 fetch 완료 이전에 반영되지 않을 것
@@ -236,7 +241,7 @@ T=201ms : replaceRecord setRecords 실행
 ```ts
 // merged에서 ID 중복 제거 — realId가 preservedRecords와 serverMerged 양쪽에 있을 경우 serverMerged 우선
 const seen = new Set<string>();
-const deduped = [...preservedRecords, ...serverMerged].filter(r => {
+const deduped = [...preservedRecords, ...serverMerged].filter((r) => {
   if (seen.has(r.id)) return false;
   seen.add(r.id);
   return true;
@@ -256,7 +261,8 @@ return deduped;
 
 ```ts
 // use-records.ts:106
-const analysisResult = (data.record.analysisResult as AnalysisResult | null) ?? null;
+const analysisResult =
+  (data.record.analysisResult as AnalysisResult | null) ?? null;
 ```
 
 ### 문제점
@@ -266,7 +272,11 @@ const analysisResult = (data.record.analysisResult as AnalysisResult | null) ?? 
 ```ts
 export const analysisResultSchema = z.object({
   summary: z.string(),
-  member: z.object({ name: z.string().nullable(), traits: z.array(z.string()), emotion: z.string() }),
+  member: z.object({
+    name: z.string().nullable(),
+    traits: z.array(z.string()),
+    emotion: z.string(),
+  }),
   issues: z.array(analysisIssueSchema),
   actions: analysisActionsSchema,
   keywords: z.array(z.string()),
@@ -294,6 +304,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 ```
 
 이렇게 하면:
+
 - 서버가 올바른 구조를 반환하면 → 정상 동작
 - 서버가 잘못된 구조를 반환하면 → `null`로 처리, UI는 "분석 결과 없음" 상태로 표시
 - 런타임 크래시 없음
@@ -305,6 +316,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 ### 1차수: 버그 1 + 3 — `use-records.ts` syncFromServer functional updater 전환
 
 **작업 내용**:
+
 - `syncFromServer` 내부에서 `const prev = recordsRef.current` 기반으로 계산한 `merged`를 직접 `setRecords(merged)` 하던 방식을 제거
 - `setRecords(currentRecords => ...)` functional updater로 병합 로직 이동
 - `readyTransitioned` 감지는 `recordsRef.current` 스냅샷 유지 (side effect 전용, 상태 변경 없음)
@@ -313,6 +325,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 **논의 필요**: 없음. 기존 로직을 그대로 이동하는 리팩토링 수준.
 
 **선택지**:
+
 - A. functional updater로 이동 (권장)
 - B. `analysisResult` 필드만 별도 상태로 분리 (과잉 복잡도)
 
@@ -320,6 +333,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 **사용자 방향**: 추천대로 진행
 
 **검증**:
+
 - 기존 preserve 로직(`temp-`, `processing`) 동작 그대로인지 확인
 - `readyTransitioned` 감지 로직이 여전히 외부에서 동작하는지 확인
 
@@ -328,6 +342,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 ### 2차수: 버그 2 — `profile-import-panel.tsx` setTimeout 정리
 
 **작업 내용**:
+
 - `resetTimeoutRef` 추가
 - `handleSave`의 setTimeout을 ref로 관리
 - `reset()` 내부에서 clearTimeout 추가
@@ -336,6 +351,7 @@ const analysisResult = parsed?.success ? parsed.data : null;
 **논의 필요**: 없음.
 
 **선택지**:
+
 - A. useRef + clearTimeout (권장)
 - B. useEffect로 done phase 감지 후 타이머 등록 (간접적으로 동일한 효과, 더 선언적)
 
@@ -347,12 +363,14 @@ const analysisResult = parsed?.success ? parsed.data : null;
 ### 3차수: 버그 4 — `fetchDetail` analysisResult safeParse
 
 **작업 내용**:
+
 - `use-records.ts`의 `fetchDetail`에서 `as AnalysisResult | null` 캐스팅 제거
 - `analysisResultSchema.safeParse` 적용
 
 **논의 필요**: 없음.
 
 **선택지**:
+
 - A. safeParse (권장)
 - B. 수동 shape check (zod를 쓰는 프로젝트에서 불필요)
 

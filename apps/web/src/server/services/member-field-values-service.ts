@@ -28,7 +28,7 @@ export type FieldValueWithDefinition = MemberFieldValue & {
 /**
  * field_type에 따라 어느 컬럼에 저장할지 결정
  */
-function buildValueColumns(
+export function buildValueColumns(
   fieldType: FieldType,
   value: unknown,
 ): Partial<{
@@ -56,7 +56,11 @@ function buildValueColumns(
       return { valueText: String(value).slice(0, 5000) };
     case "number": {
       const n = Number(value);
-      if (isNaN(n)) throw new ServiceError(400, `숫자 필드에 유효하지 않은 값입니다: ${value}`);
+      if (isNaN(n))
+        throw new ServiceError(
+          400,
+          `숫자 필드에 유효하지 않은 값입니다: ${value}`,
+        );
       return { valueNumber: String(n) };
     }
     case "checkbox":
@@ -163,7 +167,11 @@ export async function upsertFieldValue(
 
   const now = new Date();
 
-  const existing = await findExistingFieldValue(memberId, payload.fieldDefinitionId, db);
+  const existing = await findExistingFieldValue(
+    memberId,
+    payload.fieldDefinitionId,
+    db,
+  );
 
   if (existing) {
     // UPDATE
@@ -205,8 +213,5 @@ export async function bulkUpsertFieldValues(
   spaceId: string,
   values: FieldValuePayload[],
 ): Promise<void> {
-  await Promise.all(
-    values.map((v) => upsertFieldValue(memberId, spaceId, v)),
-  );
+  await Promise.all(values.map((v) => upsertFieldValue(memberId, spaceId, v)));
 }
-

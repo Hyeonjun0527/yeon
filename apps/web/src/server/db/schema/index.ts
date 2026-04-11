@@ -2,6 +2,7 @@ export { activityLogs } from "./activity-logs";
 export { authSessions } from "./auth-sessions";
 export { counselingRecords } from "./counseling-records";
 export { counselingTranscriptSegments } from "./counseling-transcript-segments";
+export { importDrafts } from "./import-drafts";
 export { memberFieldDefinitions, memberFieldValues } from "./member-fields";
 export { memberTabDefinitions } from "./member-tabs";
 export { members } from "./members";

@@ -114,7 +114,11 @@ export function CounselingRecordWorkspace() {
     recording.startRecording(uploadForm.applySelectedAudioFile, () =>
       uploadForm.setIsUploadPanelOpen(true),
     );
-  }, [recording.startRecording, uploadForm.applySelectedAudioFile, uploadForm.setIsUploadPanelOpen]);
+  }, [
+    recording.startRecording,
+    uploadForm.applySelectedAudioFile,
+    uploadForm.setIsUploadPanelOpen,
+  ]);
 
   const handleNewRecord = useCallback(() => {
     recordList.setSelectedRecordId(null);
@@ -142,7 +146,10 @@ export function CounselingRecordWorkspace() {
         {/* 슬림 헤더 */}
         <header className="flex items-start justify-between gap-4 pt-4 px-1">
           <div className="grid gap-[6px] min-w-0">
-            <p className="m-0 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+            <p
+              className="m-0 text-xs font-medium"
+              style={{ color: "var(--text-muted)" }}
+            >
               YEON
             </p>
             <h1
@@ -151,7 +158,10 @@ export function CounselingRecordWorkspace() {
             >
               상담 기록 워크스페이스
             </h1>
-            <p className="m-0 max-w-[42ch] text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p
+              className="m-0 max-w-[42ch] text-sm leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
               업로드부터 원문 확인까지 한 화면에서 정리합니다.
             </p>
           </div>
@@ -180,9 +190,7 @@ export function CounselingRecordWorkspace() {
         ) : recordList.records.length === 0 ? (
           uploadForm.isUploadPanelOpen ? (
             <div className={styles.workspace}>
-              <section
-                className={`${styles.centerColumn} col-[2_/_-1]`}
-              >
+              <section className={`${styles.centerColumn} col-[2_/_-1]`}>
                 <UploadPanel
                   isUploadPanelOpen={uploadForm.isUploadPanelOpen}
                   setIsUploadPanelOpen={uploadForm.setIsUploadPanelOpen}
@@ -273,6 +281,7 @@ export function CounselingRecordWorkspace() {
                     handleAudioTimeUpdate={audioPlayer.handleAudioTimeUpdate}
                     refreshRecordDetail={(id) => detail.refreshRecordDetail(id)}
                     retryTranscription={(id) => detail.retryTranscription(id)}
+                    retryAnalysis={(id) => detail.retryAnalysis(id)}
                   />
 
                   <TranscriptViewer

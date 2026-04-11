@@ -120,14 +120,17 @@ describe("listTemplates", () => {
   });
 
   it("시스템 템플릿 먼저, 그 다음 사용자 템플릿을 반환한다", async () => {
-    const systemTemplates = [
-      makeTemplate({ name: "기본" }),
-    ];
+    const systemTemplates = [makeTemplate({ name: "기본" })];
     const userTemplates = [
-      makeTemplate({ name: "내 템플릿", id: "tpl-user", isSystem: false, createdByUserId: "user-1" }),
+      makeTemplate({
+        name: "내 템플릿",
+        id: "tpl-user",
+        isSystem: false,
+        createdByUserId: "user-1",
+      }),
     ];
     responses.push(systemTemplates); // 시스템 조회
-    responses.push(userTemplates);   // 사용자 조회
+    responses.push(userTemplates); // 사용자 조회
 
     const result = await listTemplates("user-1");
     expect(result).toHaveLength(2);
@@ -138,7 +141,7 @@ describe("listTemplates", () => {
 
   it("사용자 템플릿이 없으면 시스템 템플릿만 반환한다", async () => {
     responses.push([makeTemplate()]); // 시스템
-    responses.push([]);               // 사용자 (없음)
+    responses.push([]); // 사용자 (없음)
 
     const result = await listTemplates("user-1");
     expect(result).toHaveLength(1);
@@ -152,7 +155,10 @@ describe("createTemplate", () => {
   it("빈 이름이면 400 ServiceError를 던진다", async () => {
     await expect(
       createTemplate("user-1", { name: "   ", tabsConfig: [] }),
-    ).rejects.toMatchObject({ status: 400, message: "템플릿 이름은 필수입니다." });
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "템플릿 이름은 필수입니다.",
+    });
   });
 
   it("정상 데이터로 템플릿을 생성하고 반환한다", async () => {
@@ -176,7 +182,10 @@ describe("createTemplate", () => {
     const newTemplate = makeTemplate({ name: "X".repeat(80), isSystem: false });
     responses.push([newTemplate]);
 
-    const result = await createTemplate("user-1", { name: longName, tabsConfig: [] });
+    const result = await createTemplate("user-1", {
+      name: longName,
+      tabsConfig: [],
+    });
     expect(result.name.length).toBeLessThanOrEqual(80);
   });
 });
@@ -186,7 +195,9 @@ describe("createTemplate", () => {
 describe("getTemplate", () => {
   it("존재하지 않는 템플릿은 404 ServiceError를 던진다", async () => {
     responses.push([]);
-    await expect(getTemplate("nonexistent")).rejects.toMatchObject({ status: 404 });
+    await expect(getTemplate("nonexistent")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("존재하는 템플릿을 반환한다", async () => {
@@ -216,17 +227,23 @@ describe("applyTemplateToSpace", () => {
         systemKey: "overview",
         displayOrder: 0,
         fields: [
-          { name: "트랙", fieldType: "select", isRequired: false, displayOrder: 0, options: [] },
+          {
+            name: "트랙",
+            fieldType: "select",
+            isRequired: false,
+            displayOrder: 0,
+            options: [],
+          },
         ],
       },
     ];
     const template = makeTemplate({ tabsConfig });
     const overviewTab = makeTab({ id: "overview-tab" });
 
-    responses.push([template]);                   // getTemplate (select.limit)
-    responses.push([overviewTab]);                // existingTabs select
-    responses.push([]);                           // existingFields select (해당 탭)
-    responses.push(undefined);                    // insert field
+    responses.push([template]); // getTemplate (select.limit)
+    responses.push([overviewTab]); // existingTabs select
+    responses.push([]); // existingFields select (해당 탭)
+    responses.push(undefined); // insert field
 
     await expect(
       applyTemplateToSpace("tpl-1", "space-1", "user-1"),
@@ -241,17 +258,26 @@ describe("applyTemplateToSpace", () => {
         systemKey: null,
         displayOrder: 6,
         fields: [
-          { name: "링크", fieldType: "url", isRequired: false, displayOrder: 0 },
+          {
+            name: "링크",
+            fieldType: "url",
+            isRequired: false,
+            displayOrder: 0,
+          },
         ],
       },
     ];
     const template = makeTemplate({ tabsConfig });
-    const newTab = makeTab({ id: "custom-tab", tabType: "custom", systemKey: null });
+    const newTab = makeTab({
+      id: "custom-tab",
+      tabType: "custom",
+      systemKey: null,
+    });
 
-    responses.push([template]);                   // getTemplate
-    responses.push([]);                           // existingTabs
-    responses.push([newTab]);                     // insert tab.returning()
-    responses.push(undefined);                    // insert field
+    responses.push([template]); // getTemplate
+    responses.push([]); // existingTabs
+    responses.push([newTab]); // insert tab.returning()
+    responses.push(undefined); // insert field
 
     await expect(
       applyTemplateToSpace("tpl-1", "space-1", "user-1"),
@@ -261,7 +287,7 @@ describe("applyTemplateToSpace", () => {
   it("빈 tabsConfig는 오류 없이 완료된다", async () => {
     const template = makeTemplate({ tabsConfig: [] });
     responses.push([template]); // getTemplate
-    responses.push([]);         // existingTabs
+    responses.push([]); // existingTabs
 
     await expect(
       applyTemplateToSpace("tpl-1", "space-1", "user-1"),
@@ -274,18 +300,19 @@ describe("applyTemplateToSpace", () => {
 describe("deleteTemplate", () => {
   it("존재하지 않는 템플릿은 404 ServiceError를 던진다", async () => {
     responses.push([]); // select → 없음
-    await expect(
-      deleteTemplate("nonexistent", "user-1"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(deleteTemplate("nonexistent", "user-1")).rejects.toMatchObject(
+      { status: 404 },
+    );
   });
 
   it("시스템 템플릿을 삭제하려 하면 403 ServiceError를 던진다", async () => {
     const systemTemplate = makeTemplate({ isSystem: true });
     responses.push([systemTemplate]); // single select
 
-    await expect(
-      deleteTemplate("tpl-1", "user-1"),
-    ).rejects.toMatchObject({ status: 403, message: "시스템 템플릿은 삭제할 수 없습니다." });
+    await expect(deleteTemplate("tpl-1", "user-1")).rejects.toMatchObject({
+      status: 403,
+      message: "시스템 템플릿은 삭제할 수 없습니다.",
+    });
   });
 
   it("본인 소유가 아닌 사용자 템플릿은 404 ServiceError를 던진다", async () => {
@@ -295,9 +322,9 @@ describe("deleteTemplate", () => {
     });
     responses.push([otherTemplate]); // single select → found but wrong owner
 
-    await expect(
-      deleteTemplate("tpl-other", "user-1"),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(deleteTemplate("tpl-other", "user-1")).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("본인 소유 사용자 템플릿은 정상 삭제된다", async () => {
@@ -307,7 +334,7 @@ describe("deleteTemplate", () => {
       createdByUserId: "user-1",
     });
     responses.push([userTemplate]); // single select
-    responses.push(undefined);      // delete
+    responses.push(undefined); // delete
 
     await expect(deleteTemplate("tpl-mine", "user-1")).resolves.toBeUndefined();
   });

@@ -1,12 +1,12 @@
 import type { CounselingRecordSpeakerTone } from "@yeon/api-contract/counseling-records";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
 import { ServiceError } from "./service-error";
-import { downloadCounselingAudioObject } from "./counseling-record-audio-storage";
+import { downloadCounselingAudioObjectToFile } from "./counseling-record-audio-storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -33,6 +33,21 @@ export type PersistedTranscriptSegment = {
   speakerLabel: string;
   speakerTone: CounselingRecordSpeakerTone;
   text: string;
+};
+
+export type PersistedTranscriptSegmentSnapshot = Omit<
+  PersistedTranscriptSegment,
+  "id" | "segmentIndex"
+>;
+
+export type PersistedTranscriptionChunkSnapshot = {
+  index: number;
+  offsetMs: number;
+  transcriptText: string;
+  language: string | null;
+  durationMs: number | null;
+  model: string;
+  segments: PersistedTranscriptSegmentSnapshot[];
 };
 
 export type TranscriptionResult = {
@@ -69,6 +84,12 @@ type OpenAiTranscriptionResponse = {
 type OpenAiTranscriptionSuccess = {
   data: OpenAiTranscriptionResponse;
   model: string;
+};
+
+type TranscriptionChunkProgressInfo = {
+  chunkIndex: number;
+  chunkCount: number;
+  offsetMs: number;
 };
 
 function getLocalWorkDir() {
@@ -181,10 +202,12 @@ async function buildTranscriptionSources(params: {
     path.extname(params.originalName) ||
     guessExtensionFromMimeType(params.mimeType);
   const sourcePath = path.join(sourceDirectory, `source${sourceExtension}`);
-  const sourceAudio = await downloadCounselingAudioObject(params.storagePath);
 
   await mkdir(sourceDirectory, { recursive: true });
-  await writeFile(sourcePath, sourceAudio.bytes);
+  await downloadCounselingAudioObjectToFile({
+    objectKey: params.storagePath,
+    destinationPath: sourcePath,
+  });
 
   if (!shouldChunkTranscription(params.byteSize, params.durationMs)) {
     return {
@@ -368,6 +391,33 @@ function buildFallbackSegments(
   });
 }
 
+function toSegmentSnapshots(
+  segments: PersistedTranscriptSegment[],
+): PersistedTranscriptSegmentSnapshot[] {
+  return segments.map((segment) => ({
+    startMs: segment.startMs,
+    endMs: segment.endMs,
+    speakerLabel: segment.speakerLabel,
+    speakerTone: segment.speakerTone,
+    text: segment.text,
+  }));
+}
+
+function restorePersistedSegments(
+  snapshots: PersistedTranscriptSegmentSnapshot[],
+  startingSegmentIndex: number,
+): PersistedTranscriptSegment[] {
+  return snapshots.map((segment, index) => ({
+    id: randomUUID(),
+    segmentIndex: startingSegmentIndex + index,
+    startMs: segment.startMs,
+    endMs: segment.endMs,
+    speakerLabel: segment.speakerLabel,
+    speakerTone: segment.speakerTone,
+    text: segment.text,
+  }));
+}
+
 function mapOpenAiSegments(
   transcriptText: string,
   durationMs: number | null,
@@ -407,14 +457,11 @@ function mapOpenAiSegments(
     return normalizedSegments;
   }
 
-  console.warn(
-    "화자분리 세그먼트 없음 — fallback 진입",
-    {
-      segmentsReceived: segments?.length ?? 0,
-      transcriptLength: transcriptText.length,
-      offsetMs,
-    },
-  );
+  console.warn("화자분리 세그먼트 없음 — fallback 진입", {
+    segmentsReceived: segments?.length ?? 0,
+    transcriptLength: transcriptText.length,
+    offsetMs,
+  });
 
   return buildFallbackSegments(
     transcriptText,
@@ -480,7 +527,8 @@ async function requestOpenAiTranscription(params: {
     console.info("전사 API 응답", {
       model: params.model,
       segmentsCount: data.segments?.length ?? 0,
-      hasSpeaker: data.segments?.some((s) => s.speaker || s.speaker_label) ?? false,
+      hasSpeaker:
+        data.segments?.some((s) => s.speaker || s.speaker_label) ?? false,
       textLength: data.text?.length ?? 0,
     });
     return { data, model: params.model };
@@ -506,6 +554,16 @@ export async function transcribeStoredAudio(params: {
   clientRequestId?: string | null;
   /** 화자 이름 힌트 — diarize 모델의 known_speaker_names에 전달 */
   speakerHints?: string[];
+  existingChunks?: PersistedTranscriptionChunkSnapshot[];
+  onSourcesPrepared?: (info: { chunkCount: number }) => Promise<void> | void;
+  onChunkStarted?: (
+    info: TranscriptionChunkProgressInfo,
+  ) => Promise<void> | void;
+  onChunkCompleted?: (info: {
+    chunkIndex: number;
+    chunkCount: number;
+    snapshot: PersistedTranscriptionChunkSnapshot;
+  }) => Promise<void> | void;
 }): Promise<TranscriptionResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
@@ -531,9 +589,47 @@ export async function transcribeStoredAudio(params: {
   let segmentIndexOffset = 0;
   let resolvedModel: string | null = null;
   const modelCandidates = getTranscriptionModelCandidates();
+  const existingChunks = new Map(
+    (params.existingChunks ?? []).map((chunk) => [chunk.index, chunk]),
+  );
+
+  await params.onSourcesPrepared?.({ chunkCount: sources.length });
 
   try {
     for (const [index, source] of sources.entries()) {
+      const existingChunk = existingChunks.get(index);
+
+      if (existingChunk) {
+        transcriptParts.push(existingChunk.transcriptText);
+        language = language ?? existingChunk.language ?? "ko";
+        resolvedModel = resolvedModel ?? existingChunk.model;
+
+        const restoredSegments = restorePersistedSegments(
+          existingChunk.segments,
+          segmentIndexOffset,
+        );
+
+        mergedSegments.push(...restoredSegments);
+        segmentIndexOffset = mergedSegments.length;
+
+        if (existingChunk.durationMs !== null) {
+          const candidateDurationMs =
+            source.offsetMs + existingChunk.durationMs;
+          mergedDurationMs =
+            mergedDurationMs === null
+              ? candidateDurationMs
+              : Math.max(mergedDurationMs, candidateDurationMs);
+        }
+
+        continue;
+      }
+
+      await params.onChunkStarted?.({
+        chunkIndex: index,
+        chunkCount: sources.length,
+        offsetMs: source.offsetMs,
+      });
+
       let transcriptionResult: OpenAiTranscriptionSuccess | null = null;
       let lastError: ServiceError | null = null;
 
@@ -608,6 +704,20 @@ export async function transcribeStoredAudio(params: {
 
       mergedSegments.push(...mappedSegments);
       segmentIndexOffset = mergedSegments.length;
+
+      await params.onChunkCompleted?.({
+        chunkIndex: index,
+        chunkCount: sources.length,
+        snapshot: {
+          index,
+          offsetMs: source.offsetMs,
+          transcriptText,
+          language: data.language?.trim() ?? language ?? "ko",
+          durationMs,
+          model,
+          segments: toSegmentSnapshots(mappedSegments),
+        },
+      });
 
       if (durationMs !== null) {
         const candidateDurationMs = source.offsetMs + durationMs;

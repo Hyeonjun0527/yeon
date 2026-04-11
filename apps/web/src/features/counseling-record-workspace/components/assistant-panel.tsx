@@ -96,7 +96,10 @@ export function AssistantPanel({
                 boxShadow: "var(--shadow-lg)",
               }}
             >
-              <p className="m-0 py-[6px] px-2 pb-[2px] text-[11px] font-bold tracking-[0.02em]" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="m-0 py-[6px] px-2 pb-[2px] text-[11px] font-bold tracking-[0.02em]"
+                style={{ color: "var(--text-muted)" }}
+              >
                 AI 분석
               </p>
               <button
@@ -117,8 +120,14 @@ export function AssistantPanel({
                 <FileText size={13} strokeWidth={2} />
                 텍스트 파일 다운로드
               </button>
-              <div className="h-px my-1 mx-2" style={{ background: "var(--border-primary)" }} />
-              <p className="m-0 py-[6px] px-2 pb-[2px] text-[11px] font-bold tracking-[0.02em]" style={{ color: "var(--text-muted)" }}>
+              <div
+                className="h-px my-1 mx-2"
+                style={{ background: "var(--border-primary)" }}
+              />
+              <p
+                className="m-0 py-[6px] px-2 pb-[2px] text-[11px] font-bold tracking-[0.02em]"
+                style={{ color: "var(--text-muted)" }}
+              >
                 종합 보고서
               </p>
               <button
@@ -153,7 +162,10 @@ export function AssistantPanel({
           color: "var(--text-secondary)",
         }}
       >
-        <p className="m-0 text-[11px] font-bold whitespace-nowrap flex-shrink-0" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="m-0 text-[11px] font-bold whitespace-nowrap flex-shrink-0"
+          style={{ color: "var(--text-muted)" }}
+        >
           문맥
         </p>
         <div className="flex gap-[6px] overflow-hidden">
@@ -184,10 +196,15 @@ export function AssistantPanel({
                   : "rgba(99,102,241,0.12)",
             }}
           >
-            <p className="m-0 text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+            <p
+              className="m-0 text-[11px] font-semibold"
+              style={{ color: "var(--text-muted)" }}
+            >
               {message.role === "assistant" ? "AI" : "나"}
             </p>
-            <div className={`m-0 text-sm leading-[1.7] ${styles.messageContent}`}>
+            <div
+              className={`m-0 text-sm leading-[1.7] ${styles.messageContent}`}
+            >
               {message.role === "assistant" ? (
                 <Markdown remarkPlugins={[remarkGfm]}>
                   {message.content}
@@ -200,7 +217,10 @@ export function AssistantPanel({
               ) : null}
             </div>
             {message.supportingNote ? (
-              <p className="m-0 text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="m-0 text-[11px] leading-relaxed"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {message.supportingNote}
               </p>
             ) : null}

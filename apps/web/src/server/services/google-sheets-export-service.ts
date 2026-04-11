@@ -79,10 +79,7 @@ function formatFieldValue(
   }
 }
 
-async function clearSheet(
-  accessToken: string,
-  sheetId: string,
-): Promise<void> {
+async function clearSheet(accessToken: string, sheetId: string): Promise<void> {
   const res = await fetch(
     `${SHEETS_URL}/${encodeURIComponent(sheetId)}/values/A1:ZZ10000:clear`,
     {

@@ -23,9 +23,16 @@ export function UploadAudioSourcePicker({
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
       >
-        <Upload size={20} strokeWidth={2} style={{ flexShrink: 0, color: "var(--accent)" }} />
+        <Upload
+          size={20}
+          strokeWidth={2}
+          style={{ flexShrink: 0, color: "var(--accent)" }}
+        />
         <div className="grid gap-[2px]">
-          <span className="text-[15px] font-bold leading-[1.3]" style={{ color: "var(--text-primary)" }}>
+          <span
+            className="text-[15px] font-bold leading-[1.3]"
+            style={{ color: "var(--text-primary)" }}
+          >
             파일 업로드
           </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -43,9 +50,16 @@ export function UploadAudioSourcePicker({
         onClick={onStartRecording}
         disabled={isUploading}
       >
-        <Mic size={20} strokeWidth={2} style={{ flexShrink: 0, color: "var(--accent)" }} />
+        <Mic
+          size={20}
+          strokeWidth={2}
+          style={{ flexShrink: 0, color: "var(--accent)" }}
+        />
         <div className="grid gap-[2px]">
-          <span className="text-[15px] font-bold leading-[1.3]" style={{ color: "var(--text-primary)" }}>
+          <span
+            className="text-[15px] font-bold leading-[1.3]"
+            style={{ color: "var(--text-primary)" }}
+          >
             바로 녹음하기
           </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>

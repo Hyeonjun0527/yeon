@@ -168,7 +168,9 @@ describe("sanitizeOptionalValue", () => {
 describe("sanitizeRequiredValue", () => {
   it("빈 값이면 400 ServiceError를 던진다", () => {
     expect(() => sanitizeRequiredValue("", 80, "이름")).toThrow(ServiceError);
-    expect(() => sanitizeRequiredValue("", 80, "이름")).toThrow("이름을 입력해 주세요.");
+    expect(() => sanitizeRequiredValue("", 80, "이름")).toThrow(
+      "이름을 입력해 주세요.",
+    );
   });
 
   it("null이면 400 ServiceError를 던진다", () => {
@@ -176,7 +178,9 @@ describe("sanitizeRequiredValue", () => {
   });
 
   it("공백만 있는 값이면 400 ServiceError를 던진다", () => {
-    expect(() => sanitizeRequiredValue("   ", 80, "내용")).toThrow(ServiceError);
+    expect(() => sanitizeRequiredValue("   ", 80, "내용")).toThrow(
+      ServiceError,
+    );
   });
 
   it("정상 값은 정리된 문자열을 반환한다", () => {
@@ -202,7 +206,9 @@ describe("isPlaceholderAudioStoragePath", () => {
   });
 
   it("일반 storage 경로는 placeholder가 아니다", () => {
-    expect(isPlaceholderAudioStoragePath("record-1/1234-recording.webm")).toBe(false);
+    expect(isPlaceholderAudioStoragePath("record-1/1234-recording.webm")).toBe(
+      false,
+    );
   });
 
   it("PLACEHOLDER_AUDIO_STORAGE_PREFIXES 상수가 두 항목을 포함한다", () => {
@@ -227,7 +233,9 @@ describe("상수", () => {
 describe("mapRecordListItem", () => {
   it("record row를 CounselingRecordListItem DTO로 변환한다", () => {
     const record = makeRecord();
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.id).toBe("record-1");
     expect(result.studentName).toBe("홍길동");
     expect(result.status).toBe("ready");
@@ -235,39 +243,51 @@ describe("mapRecordListItem", () => {
 
   it("createdAt을 ISO 문자열로 변환한다", () => {
     const record = makeRecord();
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(typeof result.createdAt).toBe("string");
     expect(result.createdAt).toContain("2024-01-01");
   });
 
   it("status가 유효하지 않으면 'error'로 변환한다", () => {
     const record = makeRecord({ status: "invalid_status" });
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.status).toBe("error");
   });
 
   it("status가 'processing'이면 preview에 준비 중 메시지를 반환한다", () => {
     const record = makeRecord({ status: "processing", transcriptText: "" });
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.preview).toBe("원문 전사를 준비 중입니다.");
   });
 
   it("transcriptionCompletedAt이 null이면 null을 반환한다", () => {
     const record = makeRecord({ transcriptionCompletedAt: null });
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.transcriptionCompletedAt).toBeNull();
   });
 
   it("tags 배열에 counselingType이 포함된다", () => {
     const record = makeRecord({ counselingType: "비대면 상담" });
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.tags).toContain("비대면 상담");
   });
 
   it("transcriptTextLength는 transcriptText 길이이다", () => {
     const text = "안녕하세요";
     const record = makeRecord({ transcriptText: text });
-    const result = mapRecordListItem(record as Parameters<typeof mapRecordListItem>[0]);
+    const result = mapRecordListItem(
+      record as Parameters<typeof mapRecordListItem>[0],
+    );
     expect(result.transcriptTextLength).toBe(text.length);
   });
 });
@@ -277,7 +297,9 @@ describe("mapRecordListItem", () => {
 describe("mapSegmentRow", () => {
   it("segment row를 CounselingTranscriptSegment DTO로 변환한다", () => {
     const segment = makeSegment();
-    const result = mapSegmentRow(segment as Parameters<typeof mapSegmentRow>[0]);
+    const result = mapSegmentRow(
+      segment as Parameters<typeof mapSegmentRow>[0],
+    );
     expect(result.id).toBe("seg-1");
     expect(result.speakerTone).toBe("teacher");
     expect(result.text).toBe("안녕하세요.");
@@ -285,13 +307,17 @@ describe("mapSegmentRow", () => {
 
   it("speakerTone이 유효하지 않으면 'unknown'으로 변환한다", () => {
     const segment = makeSegment({ speakerTone: "invalid_tone" });
-    const result = mapSegmentRow(segment as Parameters<typeof mapSegmentRow>[0]);
+    const result = mapSegmentRow(
+      segment as Parameters<typeof mapSegmentRow>[0],
+    );
     expect(result.speakerTone).toBe("unknown");
   });
 
   it("speakerTone 'student'를 그대로 반환한다", () => {
     const segment = makeSegment({ speakerTone: "student" });
-    const result = mapSegmentRow(segment as Parameters<typeof mapSegmentRow>[0]);
+    const result = mapSegmentRow(
+      segment as Parameters<typeof mapSegmentRow>[0],
+    );
     expect(result.speakerTone).toBe("student");
   });
 });
@@ -320,7 +346,9 @@ describe("mapRecordDetail", () => {
   });
 
   it("일반 audio path이면 audioUrl이 /api/v1/... 경로를 반환한다", () => {
-    const record = makeRecord({ audioStoragePath: "record-1/1234-recording.webm" });
+    const record = makeRecord({
+      audioStoragePath: "record-1/1234-recording.webm",
+    });
     const result = mapRecordDetail(
       record as Parameters<typeof mapRecordDetail>[0],
       [],
@@ -455,7 +483,10 @@ describe("findOwnedRecord", () => {
     responses.push([]);
     await expect(
       findOwnedRecord("user-1", "nonexistent"),
-    ).rejects.toMatchObject({ status: 404, message: "상담 기록을 찾지 못했습니다." });
+    ).rejects.toMatchObject({
+      status: 404,
+      message: "상담 기록을 찾지 못했습니다.",
+    });
   });
 
   it("다른 userId의 레코드는 접근 불가 (빈 배열 반환 → 404)", async () => {
@@ -478,7 +509,10 @@ describe("findOwnedRecord", () => {
 
 describe("findTranscriptSegments", () => {
   it("recordId에 속한 세그먼트 목록을 반환한다", async () => {
-    const segments = [makeSegment(), makeSegment({ id: "seg-2", segmentIndex: 1 })];
+    const segments = [
+      makeSegment(),
+      makeSegment({ id: "seg-2", segmentIndex: 1 }),
+    ];
     responses.push(segments);
 
     const result = await findTranscriptSegments("record-1");
@@ -542,12 +576,18 @@ describe("parseSingleAudioRange", () => {
   });
 
   it("start가 totalByteSize 이상이면 416 ServiceError를 던진다", () => {
-    expect(() => parseSingleAudioRange("bytes=1000-1999", 1000)).toThrow(ServiceError);
-    expect(() => parseSingleAudioRange("bytes=1000-1999", 1000)).toThrow(/범위/);
+    expect(() => parseSingleAudioRange("bytes=1000-1999", 1000)).toThrow(
+      ServiceError,
+    );
+    expect(() => parseSingleAudioRange("bytes=1000-1999", 1000)).toThrow(
+      /범위/,
+    );
   });
 
   it("'bytes=' 접두어가 없으면 416 ServiceError를 던진다", () => {
-    expect(() => parseSingleAudioRange("invalid-range", 1000)).toThrow(ServiceError);
+    expect(() => parseSingleAudioRange("invalid-range", 1000)).toThrow(
+      ServiceError,
+    );
   });
 
   it("쉼표로 구분된 멀티 범위는 첫 번째 범위만 처리한다", () => {
@@ -556,7 +596,9 @@ describe("parseSingleAudioRange", () => {
   });
 
   it("end가 start보다 작으면 416 ServiceError를 던진다", () => {
-    expect(() => parseSingleAudioRange("bytes=500-100", 1000)).toThrow(ServiceError);
+    expect(() => parseSingleAudioRange("bytes=500-100", 1000)).toThrow(
+      ServiceError,
+    );
   });
 });
 
@@ -566,7 +608,11 @@ describe("rebuildTranscriptText", () => {
   it("세그먼트 텍스트를 줄바꿈으로 합쳐 record를 업데이트한다", async () => {
     const segments = [
       makeSegment({ text: "안녕하세요." }),
-      makeSegment({ id: "seg-2", segmentIndex: 1, text: "오늘 상담을 시작합니다." }),
+      makeSegment({
+        id: "seg-2",
+        segmentIndex: 1,
+        text: "오늘 상담을 시작합니다.",
+      }),
     ];
     responses.push(segments); // select segments
     responses.push(undefined); // update counselingRecords
@@ -589,7 +635,10 @@ describe("rebuildTranscriptText", () => {
 
     // tx로 chain을 전달해도 정상 동작해야 함
     await expect(
-      rebuildTranscriptText("record-1", chain as Parameters<typeof rebuildTranscriptText>[1]),
+      rebuildTranscriptText(
+        "record-1",
+        chain as Parameters<typeof rebuildTranscriptText>[1],
+      ),
     ).resolves.toBeUndefined();
   });
 });

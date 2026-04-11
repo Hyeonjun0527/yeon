@@ -1,4 +1,8 @@
-import type { ImportPreview, RefineContext } from "./file-analysis-service";
+import type {
+  FieldSchemaHint,
+  ImportPreview,
+  RefineContext,
+} from "./file-analysis-service";
 import { analyzeBuffer } from "./file-analysis-service";
 import { ServiceError } from "./service-error";
 import type { FileKind } from "@/lib/file-kind";
@@ -24,12 +28,20 @@ export type ImportSSEEvent =
   | { type: "done"; preview: ImportPreview }
   | { type: "error"; message: string };
 
+interface ImportSSEOptions {
+  onDone?: (preview: ImportPreview) => Promise<void> | void;
+  onError?: (message: string) => Promise<void> | void;
+  extraHeaders?: Record<string, string>;
+}
+
 export function createImportSSEStream(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
   kind: FileKind,
   refine?: RefineContext,
+  fieldHints?: FieldSchemaHint[],
+  options?: ImportSSEOptions,
 ): Response {
   const encoder = new TextEncoder();
   const steps = refine ? REFINE_STEPS : ANALYSIS_STEPS;
@@ -40,7 +52,9 @@ export function createImportSSEStream(
   const stream = new ReadableStream({
     start(controller) {
       function send(event: ImportSSEEvent) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+        );
       }
 
       const startTime = Date.now();
@@ -54,23 +68,28 @@ export function createImportSSEStream(
           send({ type: "progress", text: steps[stepIdx++]! });
         } else {
           const elapsed = Math.round((Date.now() - startTime) / 1000);
-          send({ type: "progress", text: `대용량 파일을 분석하고 있습니다... (${elapsed}초 경과)` });
+          send({
+            type: "progress",
+            text: `대용량 파일을 분석하고 있습니다... (${elapsed}초 경과)`,
+          });
         }
       }, 2200);
 
       // AI 분석 병렬 실행
-      analyzeBuffer(buffer, fileName, mimeType, kind, refine)
-        .then((preview) => {
+      analyzeBuffer(buffer, fileName, mimeType, kind, refine, fieldHints)
+        .then(async (preview) => {
+          await Promise.resolve(options?.onDone?.(preview));
           if (cancelled) return;
           if (intervalHandle) clearInterval(intervalHandle);
           send({ type: "done", preview });
           controller.close();
         })
-        .catch((err) => {
-          if (cancelled) return;
-          if (intervalHandle) clearInterval(intervalHandle);
+        .catch(async (err) => {
           const message =
             err instanceof ServiceError ? err.message : "분석에 실패했습니다.";
+          await Promise.resolve(options?.onError?.(message)).catch(() => {});
+          if (cancelled) return;
+          if (intervalHandle) clearInterval(intervalHandle);
           send({ type: "error", message });
           controller.close();
         });
@@ -86,6 +105,7 @@ export function createImportSSEStream(
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
+      ...(options?.extraHeaders ?? {}),
     },
   });
 }

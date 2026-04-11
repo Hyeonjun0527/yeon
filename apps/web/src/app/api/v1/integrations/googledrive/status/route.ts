@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     const connected = await isConnected(currentUser.id);
     return NextResponse.json({ connected });
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("Google Drive 연결 상태를 확인하지 못했습니다.", 500);
   }

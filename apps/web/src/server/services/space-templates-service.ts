@@ -2,7 +2,11 @@ import { and, asc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 import { getDb } from "@/server/db";
-import { memberFieldDefinitions, memberTabDefinitions, spaceTemplates } from "@/server/db/schema";
+import {
+  memberFieldDefinitions,
+  memberTabDefinitions,
+  spaceTemplates,
+} from "@/server/db/schema";
 
 import { ServiceError } from "./service-error";
 import type { TabType } from "./member-tabs-service";
@@ -36,22 +40,63 @@ export interface CreateTemplateInput {
 
 /* ── 시스템 템플릿 정의 ── */
 
-const SYSTEM_TEMPLATES: { name: string; description: string; tabsConfig: TemplateTab[] }[] = [
+const SYSTEM_TEMPLATES: {
+  name: string;
+  description: string;
+  tabsConfig: TemplateTab[];
+}[] = [
   {
     name: "기본",
     description: "필수 탭만 포함된 기본 구성입니다.",
     tabsConfig: [
-      { name: "개요", tabType: "system", systemKey: "overview", displayOrder: 0, fields: [] },
-      { name: "상담기록", tabType: "system", systemKey: "counseling", displayOrder: 1, fields: [] },
-      { name: "수강이력", tabType: "system", systemKey: "courses", displayOrder: 2, fields: [] },
-      { name: "비상연락처", tabType: "system", systemKey: "guardian", displayOrder: 3, fields: [] },
-      { name: "메모", tabType: "system", systemKey: "memos", displayOrder: 4, fields: [] },
-      { name: "리포트", tabType: "system", systemKey: "report", displayOrder: 5, fields: [] },
+      {
+        name: "개요",
+        tabType: "system",
+        systemKey: "overview",
+        displayOrder: 0,
+        fields: [],
+      },
+      {
+        name: "상담기록",
+        tabType: "system",
+        systemKey: "counseling",
+        displayOrder: 1,
+        fields: [],
+      },
+      {
+        name: "수강이력",
+        tabType: "system",
+        systemKey: "courses",
+        displayOrder: 2,
+        fields: [],
+      },
+      {
+        name: "비상연락처",
+        tabType: "system",
+        systemKey: "guardian",
+        displayOrder: 3,
+        fields: [],
+      },
+      {
+        name: "메모",
+        tabType: "system",
+        systemKey: "memos",
+        displayOrder: 4,
+        fields: [],
+      },
+      {
+        name: "리포트",
+        tabType: "system",
+        systemKey: "report",
+        displayOrder: 5,
+        fields: [],
+      },
     ],
   },
   {
     name: "부트캠프",
-    description: "개발 부트캠프에 최적화된 구성입니다. 트랙, 기수, GitHub 등 필드를 포함합니다.",
+    description:
+      "개발 부트캠프에 최적화된 구성입니다. 트랙, 기수, GitHub 등 필드를 포함합니다.",
     tabsConfig: [
       {
         name: "개요",
@@ -59,27 +104,79 @@ const SYSTEM_TEMPLATES: { name: string; description: string; tabsConfig: Templat
         systemKey: "overview",
         displayOrder: 0,
         fields: [
-          { name: "트랙", fieldType: "select", isRequired: false, displayOrder: 0, options: [
-            { value: "프론트엔드", color: "#818cf8" },
-            { value: "백엔드", color: "#34d399" },
-            { value: "풀스택", color: "#fbbf24" },
-            { value: "데이터", color: "#f87171" },
-          ]},
-          { name: "기수", fieldType: "text", isRequired: false, displayOrder: 1 },
-          { name: "GitHub", fieldType: "url", isRequired: false, displayOrder: 2 },
-          { name: "포트폴리오", fieldType: "url", isRequired: false, displayOrder: 3 },
+          {
+            name: "트랙",
+            fieldType: "select",
+            isRequired: false,
+            displayOrder: 0,
+            options: [
+              { value: "프론트엔드", color: "#818cf8" },
+              { value: "백엔드", color: "#34d399" },
+              { value: "풀스택", color: "#fbbf24" },
+              { value: "데이터", color: "#f87171" },
+            ],
+          },
+          {
+            name: "기수",
+            fieldType: "text",
+            isRequired: false,
+            displayOrder: 1,
+          },
+          {
+            name: "GitHub",
+            fieldType: "url",
+            isRequired: false,
+            displayOrder: 2,
+          },
+          {
+            name: "포트폴리오",
+            fieldType: "url",
+            isRequired: false,
+            displayOrder: 3,
+          },
         ],
       },
-      { name: "상담기록", tabType: "system", systemKey: "counseling", displayOrder: 1, fields: [] },
-      { name: "수강이력", tabType: "system", systemKey: "courses", displayOrder: 2, fields: [] },
-      { name: "비상연락처", tabType: "system", systemKey: "guardian", displayOrder: 3, fields: [] },
-      { name: "메모", tabType: "system", systemKey: "memos", displayOrder: 4, fields: [] },
-      { name: "리포트", tabType: "system", systemKey: "report", displayOrder: 5, fields: [] },
+      {
+        name: "상담기록",
+        tabType: "system",
+        systemKey: "counseling",
+        displayOrder: 1,
+        fields: [],
+      },
+      {
+        name: "수강이력",
+        tabType: "system",
+        systemKey: "courses",
+        displayOrder: 2,
+        fields: [],
+      },
+      {
+        name: "비상연락처",
+        tabType: "system",
+        systemKey: "guardian",
+        displayOrder: 3,
+        fields: [],
+      },
+      {
+        name: "메모",
+        tabType: "system",
+        systemKey: "memos",
+        displayOrder: 4,
+        fields: [],
+      },
+      {
+        name: "리포트",
+        tabType: "system",
+        systemKey: "report",
+        displayOrder: 5,
+        fields: [],
+      },
     ],
   },
   {
     name: "디자인스쿨",
-    description: "디자인 교육 과정에 맞는 구성입니다. 포트폴리오, 툴 스택, Behance 필드를 포함합니다.",
+    description:
+      "디자인 교육 과정에 맞는 구성입니다. 포트폴리오, 툴 스택, Behance 필드를 포함합니다.",
     tabsConfig: [
       {
         name: "개요",
@@ -87,27 +184,79 @@ const SYSTEM_TEMPLATES: { name: string; description: string; tabsConfig: Templat
         systemKey: "overview",
         displayOrder: 0,
         fields: [
-          { name: "포트폴리오", fieldType: "url", isRequired: false, displayOrder: 0 },
-          { name: "Behance", fieldType: "url", isRequired: false, displayOrder: 1 },
-          { name: "툴 스택", fieldType: "multi_select", isRequired: false, displayOrder: 2, options: [
-            { value: "Figma", color: "#818cf8" },
-            { value: "Photoshop", color: "#34d399" },
-            { value: "Illustrator", color: "#fbbf24" },
-            { value: "Blender", color: "#f87171" },
-          ]},
-          { name: "전공", fieldType: "text", isRequired: false, displayOrder: 3 },
+          {
+            name: "포트폴리오",
+            fieldType: "url",
+            isRequired: false,
+            displayOrder: 0,
+          },
+          {
+            name: "Behance",
+            fieldType: "url",
+            isRequired: false,
+            displayOrder: 1,
+          },
+          {
+            name: "툴 스택",
+            fieldType: "multi_select",
+            isRequired: false,
+            displayOrder: 2,
+            options: [
+              { value: "Figma", color: "#818cf8" },
+              { value: "Photoshop", color: "#34d399" },
+              { value: "Illustrator", color: "#fbbf24" },
+              { value: "Blender", color: "#f87171" },
+            ],
+          },
+          {
+            name: "전공",
+            fieldType: "text",
+            isRequired: false,
+            displayOrder: 3,
+          },
         ],
       },
-      { name: "상담기록", tabType: "system", systemKey: "counseling", displayOrder: 1, fields: [] },
-      { name: "수강이력", tabType: "system", systemKey: "courses", displayOrder: 2, fields: [] },
-      { name: "비상연락처", tabType: "system", systemKey: "guardian", displayOrder: 3, fields: [] },
-      { name: "메모", tabType: "system", systemKey: "memos", displayOrder: 4, fields: [] },
-      { name: "리포트", tabType: "system", systemKey: "report", displayOrder: 5, fields: [] },
+      {
+        name: "상담기록",
+        tabType: "system",
+        systemKey: "counseling",
+        displayOrder: 1,
+        fields: [],
+      },
+      {
+        name: "수강이력",
+        tabType: "system",
+        systemKey: "courses",
+        displayOrder: 2,
+        fields: [],
+      },
+      {
+        name: "비상연락처",
+        tabType: "system",
+        systemKey: "guardian",
+        displayOrder: 3,
+        fields: [],
+      },
+      {
+        name: "메모",
+        tabType: "system",
+        systemKey: "memos",
+        displayOrder: 4,
+        fields: [],
+      },
+      {
+        name: "리포트",
+        tabType: "system",
+        systemKey: "report",
+        displayOrder: 5,
+        fields: [],
+      },
     ],
   },
   {
     name: "어학원",
-    description: "외국어 교육 과정에 맞는 구성입니다. 레벨, 목표 점수, 시험일 필드를 포함합니다.",
+    description:
+      "외국어 교육 과정에 맞는 구성입니다. 레벨, 목표 점수, 시험일 필드를 포함합니다.",
     tabsConfig: [
       {
         name: "개요",
@@ -115,22 +264,73 @@ const SYSTEM_TEMPLATES: { name: string; description: string; tabsConfig: Templat
         systemKey: "overview",
         displayOrder: 0,
         fields: [
-          { name: "언어", fieldType: "select", isRequired: false, displayOrder: 0, options: [
-            { value: "영어", color: "#818cf8" },
-            { value: "일본어", color: "#34d399" },
-            { value: "중국어", color: "#fbbf24" },
-            { value: "스페인어", color: "#f87171" },
-          ]},
-          { name: "현재 레벨", fieldType: "text", isRequired: false, displayOrder: 1 },
-          { name: "목표 점수", fieldType: "text", isRequired: false, displayOrder: 2 },
-          { name: "시험 예정일", fieldType: "date", isRequired: false, displayOrder: 3 },
+          {
+            name: "언어",
+            fieldType: "select",
+            isRequired: false,
+            displayOrder: 0,
+            options: [
+              { value: "영어", color: "#818cf8" },
+              { value: "일본어", color: "#34d399" },
+              { value: "중국어", color: "#fbbf24" },
+              { value: "스페인어", color: "#f87171" },
+            ],
+          },
+          {
+            name: "현재 레벨",
+            fieldType: "text",
+            isRequired: false,
+            displayOrder: 1,
+          },
+          {
+            name: "목표 점수",
+            fieldType: "text",
+            isRequired: false,
+            displayOrder: 2,
+          },
+          {
+            name: "시험 예정일",
+            fieldType: "date",
+            isRequired: false,
+            displayOrder: 3,
+          },
         ],
       },
-      { name: "상담기록", tabType: "system", systemKey: "counseling", displayOrder: 1, fields: [] },
-      { name: "수강이력", tabType: "system", systemKey: "courses", displayOrder: 2, fields: [] },
-      { name: "비상연락처", tabType: "system", systemKey: "guardian", displayOrder: 3, fields: [] },
-      { name: "메모", tabType: "system", systemKey: "memos", displayOrder: 4, fields: [] },
-      { name: "리포트", tabType: "system", systemKey: "report", displayOrder: 5, fields: [] },
+      {
+        name: "상담기록",
+        tabType: "system",
+        systemKey: "counseling",
+        displayOrder: 1,
+        fields: [],
+      },
+      {
+        name: "수강이력",
+        tabType: "system",
+        systemKey: "courses",
+        displayOrder: 2,
+        fields: [],
+      },
+      {
+        name: "비상연락처",
+        tabType: "system",
+        systemKey: "guardian",
+        displayOrder: 3,
+        fields: [],
+      },
+      {
+        name: "메모",
+        tabType: "system",
+        systemKey: "memos",
+        displayOrder: 4,
+        fields: [],
+      },
+      {
+        name: "리포트",
+        tabType: "system",
+        systemKey: "report",
+        displayOrder: 5,
+        fields: [],
+      },
     ],
   },
 ];
@@ -180,8 +380,19 @@ async function applySystemTabFields(
     .from(memberFieldDefinitions)
     .where(eq(memberFieldDefinitions.tabId, existingTabId));
 
-  const maxOrder = existingFields.reduce((acc, f) => Math.max(acc, f.displayOrder), -1);
-  await insertFieldRows(existingTabId, fields, spaceId, userId, db, now, maxOrder + 1);
+  const maxOrder = existingFields.reduce(
+    (acc, f) => Math.max(acc, f.displayOrder),
+    -1,
+  );
+  await insertFieldRows(
+    existingTabId,
+    fields,
+    spaceId,
+    userId,
+    db,
+    now,
+    maxOrder + 1,
+  );
 }
 
 /** 커스텀 탭을 새로 생성하고 필드 삽입 */
@@ -230,7 +441,9 @@ export async function seedSystemTemplates(): Promise<void> {
   const existingNames = new Set(existing.map((t) => t.name));
   const now = new Date();
 
-  const toInsert = SYSTEM_TEMPLATES.filter((t) => !existingNames.has(t.name)).map((t) => ({
+  const toInsert = SYSTEM_TEMPLATES.filter(
+    (t) => !existingNames.has(t.name),
+  ).map((t) => ({
     id: randomUUID(),
     createdByUserId: null,
     name: t.name,
@@ -379,9 +592,18 @@ export async function applyTemplateToSpace(
 
   for (const tplTab of config) {
     if (tplTab.tabType === "system" && tplTab.systemKey) {
-      const existing = existingTabs.find((t) => t.systemKey === tplTab.systemKey);
+      const existing = existingTabs.find(
+        (t) => t.systemKey === tplTab.systemKey,
+      );
       if (!existing) continue;
-      await applySystemTabFields(existing.id, tplTab.fields, spaceId, userId, db, now);
+      await applySystemTabFields(
+        existing.id,
+        tplTab.fields,
+        spaceId,
+        userId,
+        db,
+        now,
+      );
     } else {
       await createCustomTabWithFields(tplTab, spaceId, userId, db, now);
     }
@@ -406,7 +628,10 @@ export async function getTemplate(templateId: string): Promise<SpaceTemplate> {
 /**
  * 사용자 정의 템플릿 삭제 (시스템 템플릿 삭제 시도 → 403)
  */
-export async function deleteTemplate(templateId: string, userId: string): Promise<void> {
+export async function deleteTemplate(
+  templateId: string,
+  userId: string,
+): Promise<void> {
   const db = getDb();
 
   const [template] = await db
@@ -416,8 +641,10 @@ export async function deleteTemplate(templateId: string, userId: string): Promis
     .limit(1);
 
   if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
-  if (template.isSystem) throw new ServiceError(403, "시스템 템플릿은 삭제할 수 없습니다.");
-  if (template.createdByUserId !== userId) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
+  if (template.isSystem)
+    throw new ServiceError(403, "시스템 템플릿은 삭제할 수 없습니다.");
+  if (template.createdByUserId !== userId)
+    throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
 
   await db.delete(spaceTemplates).where(eq(spaceTemplates.id, templateId));
 }

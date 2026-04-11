@@ -54,10 +54,16 @@ export function EmptyLanding({
         >
           <Mic size={32} strokeWidth={1.5} />
         </div>
-        <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]" style={{ color: "var(--text-primary)" }}>
+        <h2
+          className="m-0 text-[22px] font-bold tracking-[-0.02em]"
+          style={{ color: "var(--text-primary)" }}
+        >
           첫 상담 기록을 만들어 보세요
         </h2>
-        <p className="m-0 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        <p
+          className="m-0 text-sm leading-relaxed"
+          style={{ color: "var(--text-muted)" }}
+        >
           음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.
         </p>
 
@@ -104,7 +110,9 @@ export function EmptyLanding({
                 background: "rgba(191,51,61,0.08)",
                 color: "var(--danger-text)",
               }}
-              onClick={recordingPhase === "recording" ? onStopRecording : undefined}
+              onClick={
+                recordingPhase === "recording" ? onStopRecording : undefined
+              }
               disabled={recordingPhase === "finalizing"}
             >
               <Mic size={16} strokeWidth={2.1} />
@@ -112,9 +120,14 @@ export function EmptyLanding({
             </button>
             <div className="grid gap-[2px]">
               <p className="m-0 text-sm font-semibold leading-[1.3]">
-                {recordingPhase === "recording" ? "현재 녹음 중" : "녹음 정리 중"}
+                {recordingPhase === "recording"
+                  ? "현재 녹음 중"
+                  : "녹음 정리 중"}
               </p>
-              <p className="m-0 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="m-0 text-xs leading-relaxed"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {recordingPhase === "recording"
                   ? `${formatCompactDuration(recordingElapsedMs)} 경과 · 중지 후 저장 준비`
                   : "저장 전 확인을 준비하고 있습니다"}
@@ -131,18 +144,28 @@ export function EmptyLanding({
               background: "var(--surface-soft)",
             }}
           >
-            <p className="m-0 text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+            <p
+              className="m-0 text-[11px] font-semibold"
+              style={{ color: "var(--text-muted)" }}
+            >
               선택한 오디오
             </p>
             <p className="m-0 text-[15px] font-bold leading-[1.35]">
               {selectedAudioFile.name}
             </p>
-            <p className="m-0 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p
+              className="m-0 text-xs leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {formatFileSize(selectedAudioFile.size)} ·{" "}
               {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
             </p>
             {selectedAudioPreviewUrl ? (
-              <audio className="w-full" controls src={selectedAudioPreviewUrl} />
+              <audio
+                className="w-full"
+                controls
+                src={selectedAudioPreviewUrl}
+              />
             ) : null}
             <div className="grid grid-cols-2 gap-3 mt-2">
               <button

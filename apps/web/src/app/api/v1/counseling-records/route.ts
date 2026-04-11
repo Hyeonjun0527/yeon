@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
         { status: 201 },
       );
     } catch (error) {
-      if (error instanceof ServiceError) return jsonError(error.message, error.status);
+      if (error instanceof ServiceError)
+        return jsonError(error.message, error.status);
       console.error(error);
       return jsonError("텍스트 메모 생성에 실패했습니다.", 500);
     }

@@ -9,21 +9,24 @@ import { ServiceError } from "./service-error";
 
 const AUTH_URL =
   "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-const TOKEN_URL =
-  "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+const TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
 const SCOPES = ["Files.ReadWrite.All", "offline_access", "User.Read"].join(" ");
 
 function getClientId(): string {
   const id = process.env.MICROSOFT_CLIENT_ID;
-  if (!id) throw new ServiceError(500, "MICROSOFT_CLIENT_ID가 설정되지 않았습니다.");
+  if (!id)
+    throw new ServiceError(500, "MICROSOFT_CLIENT_ID가 설정되지 않았습니다.");
   return id;
 }
 
 function getClientSecret(): string {
   const secret = process.env.MICROSOFT_CLIENT_SECRET;
   if (!secret)
-    throw new ServiceError(500, "MICROSOFT_CLIENT_SECRET가 설정되지 않았습니다.");
+    throw new ServiceError(
+      500,
+      "MICROSOFT_CLIENT_SECRET가 설정되지 않았습니다.",
+    );
   return secret;
 }
 
@@ -49,9 +52,7 @@ export function getOAuthUrl(state: string): string {
 
 /* ── 코드 → 토큰 교환 ── */
 
-export async function exchangeCode(
-  code: string,
-): Promise<{
+export async function exchangeCode(code: string): Promise<{
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -219,11 +220,19 @@ export async function listFiles(
 
   if (!res.ok) {
     if (res.status === 403 || res.status === 401) {
-      const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: { code?: string };
+      };
       if (body.error?.code === "accessDenied") {
-        throw new ServiceError(403, "이 폴더는 Personal Vault로 보호되어 있어 접근할 수 없습니다. OneDrive 앱에서 직접 잠금을 해제한 뒤 다시 시도해 주세요.");
+        throw new ServiceError(
+          403,
+          "이 폴더는 Personal Vault로 보호되어 있어 접근할 수 없습니다. OneDrive 앱에서 직접 잠금을 해제한 뒤 다시 시도해 주세요.",
+        );
       }
-      throw new ServiceError(403, "OneDrive 접근 권한이 없습니다. 다시 연결해 주세요.");
+      throw new ServiceError(
+        403,
+        "OneDrive 접근 권한이 없습니다. 다시 연결해 주세요.",
+      );
     }
     throw new ServiceError(502, "OneDrive 파일 목록 조회 실패");
   }
@@ -253,10 +262,9 @@ export async function downloadFile(
   accessToken: string,
   fileId: string,
 ): Promise<Buffer> {
-  const res = await fetch(
-    `${GRAPH_URL}/me/drive/items/${fileId}/content`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  const res = await fetch(`${GRAPH_URL}/me/drive/items/${fileId}/content`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 
   if (!res.ok) {
     throw new ServiceError(502, "OneDrive 파일 다운로드 실패");
@@ -265,4 +273,3 @@ export async function downloadFile(
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
-

@@ -1,10 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import {
-  exchangeCode,
-  saveTokens,
-} from "@/server/services/onedrive-service";
+import { exchangeCode, saveTokens } from "@/server/services/onedrive-service";
 
 export const runtime = "nodejs";
 

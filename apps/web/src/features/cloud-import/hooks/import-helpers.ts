@@ -13,20 +13,46 @@ export function summaryText(preview: ImportPreview): string {
   return `${preview.cohorts.length}개 스페이스, ${total}명 수강생`;
 }
 
+function previewFingerprint(preview: ImportPreview): string {
+  return JSON.stringify(
+    preview.cohorts.map((cohort) => ({
+      name: cohort.name,
+      students: cohort.students.map((student) => ({
+        name: student.name,
+        email: student.email ?? null,
+        phone: student.phone ?? null,
+        status: student.status ?? null,
+        customFields: Object.fromEntries(
+          Object.entries(student.customFields ?? {}).sort(([a], [b]) =>
+            a.localeCompare(b, "ko"),
+          ),
+        ),
+      })),
+    })),
+  );
+}
+
 export function diffText(prev: ImportPreview, next: ImportPreview): string {
   const prevTotal = prev.cohorts.reduce((s, c) => s + c.students.length, 0);
   const nextTotal = next.cohorts.reduce((s, c) => s + c.students.length, 0);
   const studentDiff = nextTotal - prevTotal;
   const cohortDiff = next.cohorts.length - prev.cohorts.length;
+  const changed = previewFingerprint(prev) !== previewFingerprint(next);
 
   const parts: string[] = [];
   if (cohortDiff > 0) parts.push(`스페이스 ${cohortDiff}개 추가`);
-  else if (cohortDiff < 0) parts.push(`스페이스 ${Math.abs(cohortDiff)}개 제거`);
+  else if (cohortDiff < 0)
+    parts.push(`스페이스 ${Math.abs(cohortDiff)}개 제거`);
   if (studentDiff > 0) parts.push(`수강생 ${studentDiff}명 추가`);
-  else if (studentDiff < 0) parts.push(`수강생 ${Math.abs(studentDiff)}명 제거`);
+  else if (studentDiff < 0)
+    parts.push(`수강생 ${Math.abs(studentDiff)}명 제거`);
 
   const base = `현재 ${summaryText(next)}`;
-  if (parts.length === 0) return `완료! 데이터를 업데이트했습니다. (${base})`;
+  if (!changed) {
+    return `요청을 검토했지만 반영된 변경을 찾지 못했습니다. 더 구체적으로 말씀해 주세요. (${base})`;
+  }
+  if (parts.length === 0)
+    return `완료! 데이터 내용을 업데이트했습니다. (${base})`;
   return `완료! ${parts.join(", ")}했습니다. (${base})`;
 }
 
@@ -64,8 +90,10 @@ export async function readImportSSE(
             message?: string;
           };
           if (event.type === "progress" && event.text) onProgress(event.text);
-          if (event.type === "done" && event.preview) return { preview: event.preview };
-          if (event.type === "error") return { error: event.message ?? "분석에 실패했습니다." };
+          if (event.type === "done" && event.preview)
+            return { preview: event.preview };
+          if (event.type === "error")
+            return { error: event.message ?? "분석에 실패했습니다." };
         } catch {
           // JSON 파싱 실패 무시
         }

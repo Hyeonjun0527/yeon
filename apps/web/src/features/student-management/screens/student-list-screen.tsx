@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Plus, Search, Settings, Upload, User } from "lucide-react";
+import {
+  AlertTriangle,
+  Plus,
+  Search,
+  Settings,
+  Upload,
+  User,
+} from "lucide-react";
 import { useMemberList } from "../hooks/use-member-list";
 import { useStudentManagement } from "../student-management-provider";
 import { MEMBER_STATUS_META, RISK_LEVEL_META } from "../constants";
@@ -40,11 +47,16 @@ export function StudentListScreen() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4 md:flex-row flex-col md:items-center items-start">
         <div>
-          <h2 className="text-2xl font-bold text-text tracking-[-0.02em]" data-tutorial="space-title">
+          <h2
+            className="text-2xl font-bold text-text tracking-[-0.02em]"
+            data-tutorial="space-title"
+          >
             {spaceName ?? "전체 수강생"}
           </h2>
           {!loading && (
-            <p className="text-sm text-text-secondary mt-0.5">{filteredMembers.length}명</p>
+            <p className="text-sm text-text-secondary mt-0.5">
+              {filteredMembers.length}명
+            </p>
           )}
         </div>
         <div className="flex items-center gap-[10px] md:w-auto w-full flex-wrap">
@@ -61,7 +73,13 @@ export function StudentListScreen() {
 
       {/* 필터 바 */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
           <Search
             size={14}
             style={{
@@ -90,7 +108,21 @@ export function StudentListScreen() {
             <option value="withdrawn">중도포기</option>
             <option value="graduated">수료</option>
           </select>
-          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim"
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M2 4l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
         <div className="relative">
           <select
@@ -105,25 +137,57 @@ export function StudentListScreen() {
             <option value="medium">보통</option>
             <option value="high">높음</option>
           </select>
-          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim"
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M2 4l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
         <div className="relative">
           <select
             className="appearance-none py-1.5 pl-3 pr-7 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer outline-none transition-[border-color] duration-150 hover:border-border-light focus:border-accent-border"
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as "name" | "createdAt" | "status")}
+            onChange={(e) =>
+              setSortKey(e.target.value as "name" | "createdAt" | "status")
+            }
           >
             <option value="createdAt">최근 등록순</option>
             <option value="name">이름순</option>
             <option value="status">상태순</option>
           </select>
-          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-dim"
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M2 4l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
 
         {selectedSpaceId && (
           <button
             className="ml-auto flex items-center gap-1.5 py-1.5 px-3 border border-border rounded-lg text-[13px] text-text-secondary bg-surface-2 cursor-pointer hover:border-border-light transition-colors"
-            onClick={() => selectedSpaceId && openSpaceSettings({ spaceId: selectedSpaceId })}
+            onClick={() =>
+              selectedSpaceId && openSpaceSettings({ spaceId: selectedSpaceId })
+            }
             title="수강생 탭·항목 설정"
           >
             <Settings size={14} />
@@ -151,10 +215,7 @@ export function StudentListScreen() {
       {/* 빈 상태 */}
       {isEmpty && (
         <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
-          <User
-            size={40}
-            className="text-text-dim mb-4"
-          />
+          <User size={40} className="text-text-dim mb-4" />
           <p className="text-lg font-semibold text-text mb-2">
             {search || statusFilter !== "all" || riskLevelFilter !== "all"
               ? "검색 결과가 없습니다."
@@ -165,7 +226,14 @@ export function StudentListScreen() {
               <p className="text-sm text-text-secondary mb-6">
                 왼쪽에서 스페이스를 선택하거나 수강생을 추가해보세요.
               </p>
-              <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 16,
+                  justifyContent: "center",
+                }}
+              >
                 <Link
                   href="/home/student-management/members/new"
                   style={{
@@ -187,7 +255,7 @@ export function StudentListScreen() {
                   수강생 직접 추가
                 </Link>
                 <button
-                  onClick={() => enterImportMode("onedrive")}
+                  onClick={enterImportMode}
                   type="button"
                   style={{
                     display: "inline-flex",
@@ -250,7 +318,9 @@ export function StudentListScreen() {
                     {member.name.charAt(0)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="text-[15px] font-semibold text-text">{member.name}</div>
+                    <div className="text-[15px] font-semibold text-text">
+                      {member.name}
+                    </div>
                     <div className="text-xs text-text-dim mt-0.5">
                       {member.email ?? member.phone ?? "연락처 없음"}
                     </div>
@@ -258,9 +328,7 @@ export function StudentListScreen() {
                 </div>
 
                 {/* 뱃지 */}
-                <div
-                  style={{ display: "flex", gap: 6, flexWrap: "wrap" }}
-                >
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span
                     style={{
                       padding: "2px 8px",

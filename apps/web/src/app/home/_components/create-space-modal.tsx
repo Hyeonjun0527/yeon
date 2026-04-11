@@ -6,7 +6,11 @@ import { X, FolderPlus, FileUp, LayoutTemplate } from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
 
-type Step = { kind: "choose" } | { kind: "template" } | { kind: "form" } | { kind: "import" };
+type Step =
+  | { kind: "choose" }
+  | { kind: "template" }
+  | { kind: "form" }
+  | { kind: "import" };
 
 interface TemplateOption {
   id: string;
@@ -20,7 +24,10 @@ interface CreateSpaceModalProps {
   onCreated: (space: Space) => void;
 }
 
-export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) {
+export function CreateSpaceModal({
+  onClose,
+  onCreated,
+}: CreateSpaceModalProps) {
   const [step, setStep] = useState<Step>({ kind: "choose" });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -29,7 +36,9 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
 
   const { data: templatesData, isPending: templatesLoading } = useQuery({
     queryKey: ["space-templates"],
@@ -40,7 +49,9 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
     },
     enabled: step.kind === "template",
   });
-  const templates = templatesData ? templatesData.templates : ([] as TemplateOption[]);
+  const templates = templatesData
+    ? templatesData.templates
+    : ([] as TemplateOption[]);
 
   const handleCreate = async () => {
     const trimmed = name.trim();
@@ -78,7 +89,9 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
       onCreated(data.space);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "스페이스를 만들지 못했습니다.");
+      setError(
+        err instanceof Error ? err.message : "스페이스를 만들지 못했습니다.",
+      );
     } finally {
       setSaving(false);
     }
@@ -87,16 +100,13 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
   if (step.kind === "import") {
     return (
       <div
-        className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[300] p-3"
         style={{ background: "rgba(0,0,0,0.6)" }}
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div
-          className="bg-surface border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden"
-          style={{ width: 800, height: 560 }}
-        >
+        <div className="h-full w-full bg-surface border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
             <button
               className="text-xs text-text-dim hover:text-text border-none bg-transparent cursor-pointer px-0 py-0"
@@ -111,8 +121,9 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
               <X size={16} />
             </button>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
             <CloudImportInline
+              expanded
               onClose={onClose}
               onImportComplete={onClose}
             />
@@ -150,16 +161,25 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
 
         {step.kind === "choose" && (
           <div className="p-5 space-y-3">
-            <p className="text-xs text-text-dim mb-4">스페이스를 어떻게 만들까요?</p>
+            <p className="text-xs text-text-dim mb-4">
+              스페이스를 어떻게 만들까요?
+            </p>
 
             <button
               className="w-full flex items-start gap-3 px-4 py-3.5 rounded-lg border border-border bg-surface-3 hover:border-accent hover:bg-accent-dim text-left transition-colors cursor-pointer font-[inherit]"
               onClick={() => setStep({ kind: "template" })}
             >
-              <FolderPlus size={18} className="text-accent flex-shrink-0 mt-0.5" />
+              <FolderPlus
+                size={18}
+                className="text-accent flex-shrink-0 mt-0.5"
+              />
               <div>
-                <div className="text-sm font-semibold text-text">직접 만들기</div>
-                <div className="text-xs text-text-dim mt-0.5">이름과 기간을 직접 입력해 스페이스를 생성합니다</div>
+                <div className="text-sm font-semibold text-text">
+                  직접 만들기
+                </div>
+                <div className="text-xs text-text-dim mt-0.5">
+                  이름과 기간을 직접 입력해 스페이스를 생성합니다
+                </div>
               </div>
             </button>
 
@@ -169,8 +189,12 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
             >
               <FileUp size={18} className="text-accent flex-shrink-0 mt-0.5" />
               <div>
-                <div className="text-sm font-semibold text-text">파일에서 가져오기</div>
-                <div className="text-xs text-text-dim mt-0.5">스프레드시트나 클라우드 파일에서 수강생 목록을 불러옵니다</div>
+                <div className="text-sm font-semibold text-text">
+                  파일에서 가져오기
+                </div>
+                <div className="text-xs text-text-dim mt-0.5">
+                  스프레드시트나 클라우드 파일에서 수강생 목록을 불러옵니다
+                </div>
               </div>
             </button>
           </div>
@@ -178,10 +202,14 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
 
         {step.kind === "template" && (
           <div className="p-5">
-            <p className="text-xs text-text-dim mb-3">템플릿을 선택하면 탭과 커스텀 필드가 자동으로 설정됩니다.</p>
+            <p className="text-xs text-text-dim mb-3">
+              템플릿을 선택하면 탭과 커스텀 필드가 자동으로 설정됩니다.
+            </p>
 
             {templatesLoading ? (
-              <div className="py-6 text-center text-xs text-text-dim">불러오는 중…</div>
+              <div className="py-6 text-center text-xs text-text-dim">
+                불러오는 중…
+              </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto mb-3">
                 {/* 템플릿 없음 옵션 */}
@@ -193,15 +221,28 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
                   }`}
                   onClick={() => setSelectedTemplateId(null)}
                 >
-                  <LayoutTemplate size={16} className="text-text-dim flex-shrink-0 mt-0.5" />
+                  <LayoutTemplate
+                    size={16}
+                    className="text-text-dim flex-shrink-0 mt-0.5"
+                  />
                   <div>
-                    <div className="text-sm font-medium text-text">템플릿 없음</div>
-                    <div className="text-xs text-text-dim mt-0.5">기본 탭만 생성합니다</div>
+                    <div className="text-sm font-medium text-text">
+                      템플릿 없음
+                    </div>
+                    <div className="text-xs text-text-dim mt-0.5">
+                      기본 탭만 생성합니다
+                    </div>
                   </div>
                   {selectedTemplateId === null && (
                     <div className="ml-auto w-4 h-4 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-0.5">
                       <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                        <path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M1 3l2 2 4-4"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </div>
                   )}
@@ -217,22 +258,37 @@ export function CreateSpaceModal({ onClose, onCreated }: CreateSpaceModalProps) 
                     }`}
                     onClick={() => setSelectedTemplateId(tpl.id)}
                   >
-                    <LayoutTemplate size={16} className="text-accent flex-shrink-0 mt-0.5" />
+                    <LayoutTemplate
+                      size={16}
+                      className="text-accent flex-shrink-0 mt-0.5"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-text">{tpl.name}</span>
+                        <span className="text-sm font-medium text-text">
+                          {tpl.name}
+                        </span>
                         {tpl.isSystem && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-4 text-text-dim border border-border">기본</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-4 text-text-dim border border-border">
+                            기본
+                          </span>
                         )}
                       </div>
                       {tpl.description && (
-                        <div className="text-xs text-text-dim mt-0.5 truncate">{tpl.description}</div>
+                        <div className="text-xs text-text-dim mt-0.5 truncate">
+                          {tpl.description}
+                        </div>
                       )}
                     </div>
                     {selectedTemplateId === tpl.id && (
                       <div className="ml-auto w-4 h-4 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-0.5">
                         <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                          <path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path
+                            d="M1 3l2 2 4-4"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       </div>
                     )}

@@ -6,26 +6,18 @@ import {
   jsonError,
   requireAuthenticatedUser,
 } from "@/app/api/v1/counseling-records/_shared";
-import { createSpace } from "@/server/services/spaces-service";
-import { createMember } from "@/server/services/members-service";
+import { markImportDraftImported } from "@/server/services/import-drafts-service";
+import {
+  importPreviewBodySchema,
+  importPreviewIntoSpaces,
+} from "@/server/services/import-preview-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
 
-const studentSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().nullish(),
-  phone: z.string().nullish(),
-  status: z.string().nullish(),
-});
-
-const cohortSchema = z.object({
-  name: z.string().min(1),
-  students: z.array(studentSchema),
-});
-
-const bodySchema = z.object({
-  cohorts: z.array(cohortSchema).min(1),
+const importRequestSchema = z.object({
+  draftId: z.string().uuid().optional(),
+  preview: importPreviewBodySchema,
 });
 
 export async function POST(request: NextRequest) {
@@ -42,34 +34,26 @@ export async function POST(request: NextRequest) {
     return jsonError("요청 본문이 올바른 JSON 형식이 아닙니다.", 400);
   }
 
-  const parsed = bodySchema.safeParse(body);
+  const parsed = importRequestSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
   }
 
   try {
-    let spacesCreated = 0;
-    let membersCreated = 0;
+    const created = await importPreviewIntoSpaces(
+      currentUser.id,
+      parsed.data.preview,
+    );
 
-    for (const cohort of parsed.data.cohorts) {
-      const space = await createSpace(currentUser.id, { name: cohort.name });
-      spacesCreated++;
-
-      for (const student of cohort.students) {
-        await createMember(space.id, {
-          name: student.name,
-          email: student.email,
-          phone: student.phone,
-          status: student.status,
-        });
-        membersCreated++;
-      }
+    if (parsed.data.draftId) {
+      await markImportDraftImported({
+        userId: currentUser.id,
+        draftId: parsed.data.draftId,
+        result: created,
+      });
     }
 
-    return NextResponse.json(
-      { created: { spaces: spacesCreated, members: membersCreated } },
-      { status: 201 },
-    );
+    return NextResponse.json({ created }, { status: 201 });
   } catch (error) {
     if (error instanceof ServiceError) {
       return jsonError(error.message, error.status);

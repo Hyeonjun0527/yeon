@@ -154,7 +154,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
 
     setUploadState({
       isUploading: true,
-      message: "원본 음성을 저장하고 한국어 전사를 큐에 등록합니다.",
+      message: "원본 음성을 저장하고 백그라운드 전사·분석 작업을 등록합니다.",
       tone: "idle",
     });
 
@@ -188,7 +188,9 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
         message: null,
         tone: "idle",
       });
-      setSaveToast("기록이 저장되었습니다. 전사를 시작합니다.");
+      setSaveToast(
+        "기록이 저장되었습니다. 이제 백그라운드에서 전사와 분석을 진행합니다.",
+      );
       setRecentlySavedId(data.record.id);
       setSelectedAudioFile(null);
       setSelectedAudioDurationMs(null);

@@ -66,12 +66,16 @@ describe("formatSpeakerLabel", () => {
 
 describe("splitTranscriptIntoParagraphs", () => {
   it("줄바꿈으로 분할", () => {
-    const result = splitTranscriptIntoParagraphs("첫째 문장\n둘째 문장\n셋째 문장");
+    const result = splitTranscriptIntoParagraphs(
+      "첫째 문장\n둘째 문장\n셋째 문장",
+    );
     expect(result).toEqual(["첫째 문장", "둘째 문장", "셋째 문장"]);
   });
 
   it("줄바꿈이 없고 문장부호 뒤 공백이 없으면 단일 문단", () => {
-    const result = splitTranscriptIntoParagraphs("첫째 문장. 둘째 문장! 셋째 문장?");
+    const result = splitTranscriptIntoParagraphs(
+      "첫째 문장. 둘째 문장! 셋째 문장?",
+    );
     expect(result).toEqual(["첫째 문장. 둘째 문장! 셋째 문장?"]);
   });
 
@@ -89,7 +93,12 @@ describe("splitTranscriptIntoParagraphs", () => {
 
 describe("buildFallbackSegments", () => {
   it("문단 기반으로 세그먼트 생성, speakerLabel은 원문", () => {
-    const result = buildFallbackSegments("안녕하세요.\n반갑습니다.", 4000, 0, 0);
+    const result = buildFallbackSegments(
+      "안녕하세요.\n반갑습니다.",
+      4000,
+      0,
+      0,
+    );
     expect(result).toHaveLength(2);
     expect(result[0].speakerLabel).toBe("원문");
     expect(result[0].speakerTone).toBe("unknown");
@@ -144,7 +153,13 @@ describe("mapOpenAiSegments", () => {
 
   it("speaker_label 우선, speaker fallback", () => {
     const segments = [
-      { start: 0, end: 3, text: "테스트", speaker_label: "Teacher", speaker: "speaker_0" },
+      {
+        start: 0,
+        end: 3,
+        text: "테스트",
+        speaker_label: "Teacher",
+        speaker: "speaker_0",
+      },
     ];
 
     const result = mapOpenAiSegments("테스트", 3000, segments, 0, 0);
@@ -153,9 +168,7 @@ describe("mapOpenAiSegments", () => {
   });
 
   it("speaker 필드만 있을 때도 동작", () => {
-    const segments = [
-      { start: 0, end: 3, text: "테스트", speaker: "학생" },
-    ];
+    const segments = [{ start: 0, end: 3, text: "테스트", speaker: "학생" }];
 
     const result = mapOpenAiSegments("테스트", 3000, segments, 0, 0);
     expect(result[0].speakerTone).toBe("student");
@@ -168,15 +181,19 @@ describe("mapOpenAiSegments", () => {
   });
 
   it("segments가 undefined이면 fallback으로 전환", () => {
-    const result = mapOpenAiSegments("문장 하나.\n문장 둘.", 6000, undefined, 0, 0);
+    const result = mapOpenAiSegments(
+      "문장 하나.\n문장 둘.",
+      6000,
+      undefined,
+      0,
+      0,
+    );
     expect(result).toHaveLength(2);
     expect(result[0].speakerLabel).toBe("원문");
   });
 
   it("offsetMs를 세그먼트 시간에 반영", () => {
-    const segments = [
-      { start: 0, end: 3, text: "테스트", speaker: "A" },
-    ];
+    const segments = [{ start: 0, end: 3, text: "테스트", speaker: "A" }];
 
     const result = mapOpenAiSegments("테스트", 3000, segments, 30000, 0);
     expect(result[0].startMs).toBe(30000);
@@ -372,26 +389,34 @@ describe("mapOpenAiSegments 추가 케이스", () => {
   });
 
   it("startMs가 초→밀리초 변환 (start * 1000)", () => {
-    const segments = [{ start: 2.0, end: 5.0, text: "변환 확인", speaker: "A" }];
+    const segments = [
+      { start: 2.0, end: 5.0, text: "변환 확인", speaker: "A" },
+    ];
     const result = mapOpenAiSegments("변환 확인", 5000, segments, 0, 0);
     expect(result[0].startMs).toBe(2000);
     expect(result[0].endMs).toBe(5000);
   });
 
   it("speaker가 'Teacher'인 경우 speakerTone = 'teacher'", () => {
-    const segments = [{ start: 0, end: 2, text: "강사 발화", speaker: "Teacher" }];
+    const segments = [
+      { start: 0, end: 2, text: "강사 발화", speaker: "Teacher" },
+    ];
     const result = mapOpenAiSegments("강사 발화", 2000, segments, 0, 0);
     expect(result[0].speakerTone).toBe("teacher");
   });
 
   it("speaker가 'Student'인 경우 speakerTone = 'student'", () => {
-    const segments = [{ start: 0, end: 2, text: "수강생 발화", speaker: "Student" }];
+    const segments = [
+      { start: 0, end: 2, text: "수강생 발화", speaker: "Student" },
+    ];
     const result = mapOpenAiSegments("수강생 발화", 2000, segments, 0, 0);
     expect(result[0].speakerTone).toBe("student");
   });
 
   it("speaker가 알 수 없는 경우 speakerTone = 'unknown'", () => {
-    const segments = [{ start: 0, end: 2, text: "알 수 없음", speaker: "speaker_99" }];
+    const segments = [
+      { start: 0, end: 2, text: "알 수 없음", speaker: "speaker_99" },
+    ];
     const result = mapOpenAiSegments("알 수 없음", 2000, segments, 0, 0);
     expect(result[0].speakerTone).toBe("unknown");
   });

@@ -157,7 +157,12 @@ export function useRecordDetail(
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {
-    if (!selectedRecordId || selectedRecord?.status !== "processing") {
+    if (
+      !selectedRecordId ||
+      !selectedRecord ||
+      (selectedRecord.status !== "processing" &&
+        !["queued", "processing"].includes(selectedRecord.analysisStatus))
+    ) {
       return;
     }
 
@@ -214,6 +219,44 @@ export function useRecordDetail(
     }
   }
 
+  async function retryAnalysis(recordId: string) {
+    setRetryState({
+      isSubmitting: true,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      await fetchApi(
+        `/api/v1/counseling-records/${recordId}/analyze`,
+        {
+          method: "POST",
+          headers: {
+            "X-Client-Request-Id": buildClientRequestId(),
+          },
+        },
+        (value) => value,
+      );
+
+      await refreshRecordDetail(recordId, { silent: true });
+      setRetryState({
+        isSubmitting: false,
+        message:
+          "AI 분석을 다시 시작했습니다. 백그라운드에서 상태를 갱신합니다.",
+        tone: "success",
+      });
+    } catch (error) {
+      setRetryState({
+        isSubmitting: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "AI 분석을 다시 시작하지 못했습니다.",
+        tone: "error",
+      });
+    }
+  }
+
   return {
     selectedRecordDetail,
     isLoadingDetail,
@@ -223,6 +266,7 @@ export function useRecordDetail(
     setRetryState,
     refreshRecordDetail,
     retryTranscription,
+    retryAnalysis,
     setRecordDetails,
     recordDetails,
   };

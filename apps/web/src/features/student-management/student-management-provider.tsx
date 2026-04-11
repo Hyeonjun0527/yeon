@@ -10,14 +10,7 @@ import {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MOCK_CLASSES, MOCK_STUDENTS } from "./mock-data";
-import type {
-  ClassRoom,
-  Member,
-  SheetMode,
-  Space,
-  Student,
-} from "./types";
-import type { CloudProvider } from "@/features/cloud-import/types";
+import type { ClassRoom, Member, SheetMode, Space, Student } from "./types";
 
 interface StudentManagementContextValue {
   /* ── 레거시 (mock 기반 로컬 상태) ── */
@@ -51,8 +44,7 @@ interface StudentManagementContextValue {
   closeSheet: () => void;
   /* ── Import Mode ── */
   importMode: boolean;
-  importInitialProvider: CloudProvider | null;
-  enterImportMode: (provider: CloudProvider) => void;
+  enterImportMode: () => void;
   exitImportMode: () => void;
 }
 
@@ -75,12 +67,15 @@ export function StudentManagementProvider({
 
   /* ── Import Mode 상태 ── */
   const [importMode, setImportMode] = useState(false);
-  const [importInitialProvider, setImportInitialProvider] = useState<CloudProvider | null>(null);
 
   /* ── API 상태: spaces (TanStack Query) ── */
   const queryClient = useQueryClient();
 
-  const { data: spacesData, isPending: spacesLoading, error: spacesQueryError } = useQuery({
+  const {
+    data: spacesData,
+    isPending: spacesLoading,
+    error: spacesQueryError,
+  } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
       const res = await fetch("/api/v1/spaces");
@@ -92,21 +87,28 @@ export function StudentManagementProvider({
     },
   });
   const spaces = spacesData ? spacesData.spaces : [];
-  const spacesError = spacesQueryError instanceof Error
-    ? spacesQueryError.message
-    : spacesQueryError
-      ? "스페이스 목록을 불러오지 못했습니다."
-      : null;
+  const spacesError =
+    spacesQueryError instanceof Error
+      ? spacesQueryError.message
+      : spacesQueryError
+        ? "스페이스 목록을 불러오지 못했습니다."
+        : null;
 
   /* ── selectedSpaceId: 사용자 선택 없으면 첫 번째 space로 자동 파생 ── */
-  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<string | null>(null);
+  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<string | null>(
+    null,
+  );
   const selectedSpaceId = userSelectedSpaceId ?? spaces[0]?.id ?? null;
   const setSelectedSpaceId = useCallback((id: string | null) => {
     setUserSelectedSpaceId(id);
   }, []);
 
   /* ── API 상태: members (TanStack Query) ── */
-  const { data: membersData, isPending: membersPending, error: membersQueryError } = useQuery({
+  const {
+    data: membersData,
+    isPending: membersPending,
+    error: membersQueryError,
+  } = useQuery({
     queryKey: ["members", selectedSpaceId],
     queryFn: async () => {
       const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`);
@@ -121,18 +123,21 @@ export function StudentManagementProvider({
   const members = membersData ? membersData.members : [];
   // selectedSpaceId가 없으면 members 쿼리는 disabled → isPending=true 고정이므로 !!selectedSpaceId로 가드
   const membersLoading = !!selectedSpaceId && membersPending;
-  const membersError = membersQueryError instanceof Error
-    ? membersQueryError.message
-    : membersQueryError
-      ? "수강생 목록을 불러오지 못했습니다."
-      : null;
+  const membersError =
+    membersQueryError instanceof Error
+      ? membersQueryError.message
+      : membersQueryError
+        ? "수강생 목록을 불러오지 못했습니다."
+        : null;
 
   const refetchSpaces = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["spaces"] });
   }, [queryClient]);
 
   const refetchMembers = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["members", selectedSpaceId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["members", selectedSpaceId],
+    });
   }, [queryClient, selectedSpaceId]);
 
   /* ── 레거시 Student 조작 ── */
@@ -209,14 +214,12 @@ export function StudentManagementProvider({
     setSheetStudentId(null);
   }, []);
 
-  const enterImportMode = useCallback((provider: CloudProvider) => {
+  const enterImportMode = useCallback(() => {
     setImportMode(true);
-    setImportInitialProvider(provider);
   }, []);
 
   const exitImportMode = useCallback(() => {
     setImportMode(false);
-    setImportInitialProvider(null);
   }, []);
 
   const value = useMemo(
@@ -248,7 +251,6 @@ export function StudentManagementProvider({
       openSheet,
       closeSheet,
       importMode,
-      importInitialProvider,
       enterImportMode,
       exitImportMode,
     }),
@@ -278,7 +280,6 @@ export function StudentManagementProvider({
       openSheet,
       closeSheet,
       importMode,
-      importInitialProvider,
       enterImportMode,
       exitImportMode,
     ],

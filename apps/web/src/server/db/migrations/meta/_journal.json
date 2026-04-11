@@ -78,6 +78,20 @@
       "when": 1775848782573,
       "tag": "0010_lame_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775892000000,
+      "tag": "0011_import_draft_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775895600000,
+      "tag": "0012_long_audio_async_pipeline",
+      "breakpoints": true
     }
   ]
 }

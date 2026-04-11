@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
     });
     return res;
   } catch (error) {
-    if (error instanceof ServiceError) return jsonError(error.message, error.status);
+    if (error instanceof ServiceError)
+      return jsonError(error.message, error.status);
     console.error(error);
     return jsonError("Google Drive 인증 URL 생성에 실패했습니다.", 500);
   }

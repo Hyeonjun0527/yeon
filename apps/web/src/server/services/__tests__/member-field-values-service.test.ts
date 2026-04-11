@@ -87,9 +87,14 @@ describe("upsertFieldValue - 필드 정의 없음", () => {
 describe("upsertFieldValue - fieldType별 컬럼 라우팅", () => {
   it("fieldType=text → valueText에 저장, 나머지 컬럼 null", async () => {
     const def = makeDefinition({ fieldType: "text" });
-    const inserted = makeFieldValue({ valueText: "hello", valueNumber: null, valueBoolean: null, valueJson: null });
-    responses.push([def]);   // definition select
-    responses.push([]);      // existing value select → 없음
+    const inserted = makeFieldValue({
+      valueText: "hello",
+      valueNumber: null,
+      valueBoolean: null,
+      valueJson: null,
+    });
+    responses.push([def]); // definition select
+    responses.push([]); // existing value select → 없음
     responses.push([inserted]); // insert.returning()
 
     const result = await upsertFieldValue("member-1", "space-1", {
@@ -279,10 +284,13 @@ describe("upsertFieldValue - upsert 분기", () => {
   it("기존 값이 있으면 UPDATE 경로를 탄다 (INSERT 아님)", async () => {
     const def = makeDefinition({ fieldType: "text" });
     const existing = makeFieldValue({ valueText: "기존값" });
-    const updated = makeFieldValue({ valueText: "새값", updatedAt: new Date() });
-    responses.push([def]);      // definition select
+    const updated = makeFieldValue({
+      valueText: "새값",
+      updatedAt: new Date(),
+    });
+    responses.push([def]); // definition select
     responses.push([existing]); // existing value select
-    responses.push([updated]);  // update.returning()
+    responses.push([updated]); // update.returning()
 
     const result = await upsertFieldValue("member-1", "space-1", {
       fieldDefinitionId: "def-1",
@@ -294,8 +302,8 @@ describe("upsertFieldValue - upsert 분기", () => {
   it("기존 값이 없으면 INSERT 경로를 탄다", async () => {
     const def = makeDefinition({ fieldType: "text" });
     const inserted = makeFieldValue({ valueText: "신규값" });
-    responses.push([def]);   // definition select
-    responses.push([]);      // existing value select → 없음
+    responses.push([def]); // definition select
+    responses.push([]); // existing value select → 없음
     responses.push([inserted]); // insert.returning()
 
     const result = await upsertFieldValue("member-1", "space-1", {
@@ -381,13 +389,20 @@ describe("bulkUpsertFieldValues", () => {
     // 연속으로 소비된 뒤, 두 번째 await(existing select), 세 번째 await(insert) 순서로 소비된다.
     const def1 = makeDefinition({ id: "def-1", fieldType: "text" });
     const def2 = makeDefinition({ id: "def-2", fieldType: "number" });
-    const inserted1 = makeFieldValue({ fieldDefinitionId: "def-1", valueText: "값1" });
-    const inserted2 = makeFieldValue({ id: "val-2", fieldDefinitionId: "def-2", valueNumber: "99" });
+    const inserted1 = makeFieldValue({
+      fieldDefinitionId: "def-1",
+      valueText: "값1",
+    });
+    const inserted2 = makeFieldValue({
+      id: "val-2",
+      fieldDefinitionId: "def-2",
+      valueNumber: "99",
+    });
 
     responses.push([def1]); // upsert #1: definition select
     responses.push([def2]); // upsert #2: definition select
-    responses.push([]);     // upsert #1: existing select → 없음
-    responses.push([]);     // upsert #2: existing select → 없음
+    responses.push([]); // upsert #1: existing select → 없음
+    responses.push([]); // upsert #2: existing select → 없음
     responses.push([inserted1]); // upsert #1: insert.returning()
     responses.push([inserted2]); // upsert #2: insert.returning()
 

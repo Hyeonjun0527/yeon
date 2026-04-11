@@ -69,8 +69,13 @@ export function UploadPanel({
       >
         <header className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="m-0 text-xl font-bold tracking-[-0.03em]">새 기록 만들기</h2>
-            <p className="mt-1 mb-0 text-[13px]" style={{ color: "var(--text-secondary)" }}>
+            <h2 className="m-0 text-xl font-bold tracking-[-0.03em]">
+              새 기록 만들기
+            </h2>
+            <p
+              className="mt-1 mb-0 text-[13px]"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {hasAudioReady
                 ? "선택한 오디오를 확인한 뒤 저장합니다."
                 : recordingPhase !== "idle"
@@ -103,12 +108,22 @@ export function UploadPanel({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadState.isUploading}
             >
-              <Upload size={20} strokeWidth={2} style={{ flexShrink: 0, color: "var(--accent)" }} />
+              <Upload
+                size={20}
+                strokeWidth={2}
+                style={{ flexShrink: 0, color: "var(--accent)" }}
+              />
               <div className="grid gap-[2px]">
-                <span className="text-[15px] font-bold leading-[1.3]" style={{ color: "var(--text-primary)" }}>
+                <span
+                  className="text-[15px] font-bold leading-[1.3]"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   파일 업로드
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   오디오 파일에서 시작
                 </span>
               </div>
@@ -123,12 +138,22 @@ export function UploadPanel({
               onClick={onStartRecording}
               disabled={uploadState.isUploading}
             >
-              <Mic size={20} strokeWidth={2} style={{ flexShrink: 0, color: "var(--accent)" }} />
+              <Mic
+                size={20}
+                strokeWidth={2}
+                style={{ flexShrink: 0, color: "var(--accent)" }}
+              />
               <div className="grid gap-[2px]">
-                <span className="text-[15px] font-bold leading-[1.3]" style={{ color: "var(--text-primary)" }}>
+                <span
+                  className="text-[15px] font-bold leading-[1.3]"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   바로 녹음하기
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   지금 바로 녹음 시작
                 </span>
               </div>
@@ -152,7 +177,9 @@ export function UploadPanel({
                 background: "rgba(191,51,61,0.08)",
                 color: "var(--danger-text)",
               }}
-              onClick={recordingPhase === "recording" ? onStopRecording : undefined}
+              onClick={
+                recordingPhase === "recording" ? onStopRecording : undefined
+              }
               disabled={recordingPhase === "finalizing"}
             >
               <Mic size={16} strokeWidth={2.1} />
@@ -160,9 +187,14 @@ export function UploadPanel({
             </button>
             <div className="grid gap-[2px]">
               <p className="m-0 text-sm font-semibold leading-[1.3]">
-                {recordingPhase === "recording" ? "현재 녹음 중" : "녹음 정리 중"}
+                {recordingPhase === "recording"
+                  ? "현재 녹음 중"
+                  : "녹음 정리 중"}
               </p>
-              <p className="m-0 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="m-0 text-xs leading-relaxed"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {recordingPhase === "recording"
                   ? `${formatCompactDuration(recordingElapsedMs)} 경과 · 중지 후 저장 준비`
                   : "저장 전 확인을 준비하고 있습니다"}
@@ -180,28 +212,43 @@ export function UploadPanel({
                 background: "var(--surface-soft)",
               }}
             >
-              <p className="m-0 text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="m-0 text-[11px] font-semibold"
+                style={{ color: "var(--text-muted)" }}
+              >
                 선택한 오디오
               </p>
               <p className="m-0 text-[15px] font-bold leading-[1.35]">
                 {selectedAudioFile.name}
               </p>
-              <p className="m-0 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              <p
+                className="m-0 text-xs leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 {formatFileSize(selectedAudioFile.size)} ·{" "}
                 {formatDurationLabel(selectedAudioDurationMs)} · 저장 준비
               </p>
               {selectedAudioPreviewUrl ? (
-                <audio className="w-full" controls src={selectedAudioPreviewUrl} />
+                <audio
+                  className="w-full"
+                  controls
+                  src={selectedAudioPreviewUrl}
+                />
               ) : null}
             </div>
 
             <label className="grid gap-[6px]">
-              <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+              <span
+                className="text-xs font-bold tracking-[0.02em]"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 수강생 이름
               </span>
               <input
                 value={formState.studentName}
-                onChange={(event) => updateFormState("studentName", event.target.value)}
+                onChange={(event) =>
+                  updateFormState("studentName", event.target.value)
+                }
                 className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
                 style={{
                   borderColor: "var(--border-primary)",
@@ -221,23 +268,37 @@ export function UploadPanel({
                 aria-controls="create-record-additional-fields"
                 onClick={() => setIsAdditionalInfoOpen((current) => !current)}
               >
-                <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
+                <span
+                  className="text-[13px] font-bold"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   추가 정보
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   제목, 상담 유형
                 </span>
               </button>
 
               {isAdditionalInfoOpen ? (
-                <div id="create-record-additional-fields" className="grid gap-3 pt-3">
+                <div
+                  id="create-record-additional-fields"
+                  className="grid gap-3 pt-3"
+                >
                   <label className="grid gap-2">
-                    <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+                    <span
+                      className="text-xs font-bold tracking-[0.02em]"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       상담 제목
                     </span>
                     <input
                       value={formState.sessionTitle}
-                      onChange={(event) => updateFormState("sessionTitle", event.target.value)}
+                      onChange={(event) =>
+                        updateFormState("sessionTitle", event.target.value)
+                      }
                       className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
                       style={{
                         borderColor: "var(--border-primary)",
@@ -249,12 +310,17 @@ export function UploadPanel({
                   </label>
                   <div className={styles.additionalInfoGrid}>
                     <label className="grid gap-2">
-                      <span className="text-xs font-bold tracking-[0.02em]" style={{ color: "var(--text-secondary)" }}>
+                      <span
+                        className="text-xs font-bold tracking-[0.02em]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         상담 유형
                       </span>
                       <select
                         value={formState.counselingType}
-                        onChange={(event) => updateFormState("counselingType", event.target.value)}
+                        onChange={(event) =>
+                          updateFormState("counselingType", event.target.value)
+                        }
                         className="w-full min-h-[44px] px-[14px] rounded-[10px] border outline-none transition-[border-color,background-color] duration-[180ms]"
                         style={{
                           borderColor: "var(--border-primary)",
@@ -320,10 +386,19 @@ export function UploadPanel({
             className="m-0 py-[11px] px-3 rounded-[14px] text-[13px] leading-relaxed"
             style={
               uploadState.tone === "error"
-                ? { background: "rgba(191,51,61,0.08)", color: "var(--danger-text)" }
+                ? {
+                    background: "rgba(191,51,61,0.08)",
+                    color: "var(--danger-text)",
+                  }
                 : uploadState.tone === "success"
-                  ? { background: "rgba(17,132,91,0.08)", color: "var(--success-text)" }
-                  : { background: "rgba(99,102,241,0.1)", color: "var(--accent)" }
+                  ? {
+                      background: "rgba(17,132,91,0.08)",
+                      color: "var(--success-text)",
+                    }
+                  : {
+                      background: "rgba(99,102,241,0.1)",
+                      color: "var(--accent)",
+                    }
             }
           >
             {uploadState.message}
@@ -339,7 +414,11 @@ export function UploadPanel({
           >
             {uploadState.isUploading ? (
               <>
-                <LoaderCircle size={16} strokeWidth={2.1} className={styles.spinningIcon} />
+                <LoaderCircle
+                  size={16}
+                  strokeWidth={2.1}
+                  className={styles.spinningIcon}
+                />
                 저장 후 전사 큐 등록 중
               </>
             ) : (

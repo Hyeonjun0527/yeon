@@ -41,7 +41,9 @@ export function SidebarStudentGroupList({
   if (studentGroups.length === 0) {
     return (
       <div className="grid place-items-center gap-[6px] min-h-[120px] p-5 text-center">
-        <p className="m-0 text-sm font-bold leading-[1.4]">표시할 상담 기록이 없습니다.</p>
+        <p className="m-0 text-sm font-bold leading-[1.4]">
+          표시할 상담 기록이 없습니다.
+        </p>
       </div>
     );
   }

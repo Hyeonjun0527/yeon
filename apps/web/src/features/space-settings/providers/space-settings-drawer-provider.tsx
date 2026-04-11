@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
 import { SpaceSettingsContent } from "../components/space-settings-content";
 
@@ -25,15 +32,23 @@ interface SpaceSettingsDrawerContextValue {
   closeSpaceSettings: () => void;
 }
 
-const SpaceSettingsDrawerContext = createContext<SpaceSettingsDrawerContextValue | null>(null);
+const SpaceSettingsDrawerContext =
+  createContext<SpaceSettingsDrawerContextValue | null>(null);
 
 export function useSpaceSettingsDrawer() {
   const ctx = useContext(SpaceSettingsDrawerContext);
-  if (!ctx) throw new Error("useSpaceSettingsDrawer must be used within SpaceSettingsDrawerProvider");
+  if (!ctx)
+    throw new Error(
+      "useSpaceSettingsDrawer must be used within SpaceSettingsDrawerProvider",
+    );
   return ctx;
 }
 
-export function SpaceSettingsDrawerProvider({ children }: { children: React.ReactNode }) {
+export function SpaceSettingsDrawerProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { selectedSpaceId } = useStudentManagement();
   const [state, setState] = useState<DrawerState>({
     open: false,
@@ -46,7 +61,9 @@ export function SpaceSettingsDrawerProvider({ children }: { children: React.Reac
 
   const openSpaceSettings = useCallback((opts: OpenSpaceSettingsOptions) => {
     if (!opts.spaceId) {
-      console.warn("[SpaceSettingsDrawer] spaceId is required to open settings");
+      console.warn(
+        "[SpaceSettingsDrawer] spaceId is required to open settings",
+      );
       return;
     }
     setState({
@@ -86,7 +103,8 @@ export function SpaceSettingsDrawerProvider({ children }: { children: React.Reac
 }
 
 export function SpaceSettingsDrawerHost() {
-  const { open, spaceId, initialTabId, closeSpaceSettings } = useSpaceSettingsDrawer();
+  const { open, spaceId, initialTabId, closeSpaceSettings } =
+    useSpaceSettingsDrawer();
   const { spaces } = useStudentManagement();
   const spaceName = spaces.find((s) => s.id === spaceId)?.name;
 
@@ -103,13 +121,13 @@ export function SpaceSettingsDrawerHost() {
     <>
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm"
           onClick={closeSpaceSettings}
           aria-hidden="true"
         />
       )}
       <div
-        className={`fixed right-0 top-0 h-full w-full max-w-[800px] z-50 bg-surface border-l border-border shadow-[0_24px_64px_rgba(0,0,0,0.5)] flex flex-col transition-transform duration-200 ${
+        className={`fixed right-0 top-0 h-full w-full max-w-[800px] z-[310] bg-surface border-l border-border shadow-[0_24px_64px_rgba(0,0,0,0.5)] flex flex-col transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

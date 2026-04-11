@@ -26,8 +26,7 @@ export async function GET(request: NextRequest) {
       return jsonError("OneDrive가 연결되어 있지 않습니다.", 401);
     }
 
-    const folderId =
-      request.nextUrl.searchParams.get("folderId") ?? undefined;
+    const folderId = request.nextUrl.searchParams.get("folderId") ?? undefined;
     const files = await listFiles(accessToken, folderId);
 
     return NextResponse.json({ files });
