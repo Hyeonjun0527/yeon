@@ -131,19 +131,9 @@ async function writeSheetValues(
   }
 }
 
-export async function exportSpaceToSheet(
+export async function buildSpaceExportData(
   spaceId: string,
-  sheetId: string,
-  userId: string,
-): Promise<{ exported: number; lastSyncedAt: Date }> {
-  const accessToken = await getValidAccessToken(userId);
-  if (!accessToken) {
-    throw new ServiceError(
-      401,
-      "Google 계정이 연결되어 있지 않습니다. 먼저 Google 계정을 연결해주세요.",
-    );
-  }
-
+): Promise<{ values: string[][]; memberCount: number }> {
   const db = getDb();
 
   /* 1) 스페이스 수강생 목록 */
@@ -234,7 +224,23 @@ export async function exportSpaceToSheet(
     return [...base, ...fieldCells];
   });
 
-  const values = [header, ...dataRows];
+  return { values: [header, ...dataRows], memberCount: memberRows.length };
+}
+
+export async function exportSpaceToSheet(
+  spaceId: string,
+  sheetId: string,
+  userId: string,
+): Promise<{ exported: number; lastSyncedAt: Date }> {
+  const accessToken = await getValidAccessToken(userId);
+  if (!accessToken) {
+    throw new ServiceError(
+      401,
+      "Google 계정이 연결되어 있지 않습니다. 먼저 Google 계정을 연결해주세요.",
+    );
+  }
+
+  const { values, memberCount } = await buildSpaceExportData(spaceId);
 
   /* 5) 시트 clear → write */
   await clearSheet(accessToken, sheetId);
@@ -242,6 +248,7 @@ export async function exportSpaceToSheet(
 
   /* 6) lastSyncedAt 갱신 */
   const now = new Date();
+  const db = getDb();
   await db
     .update(sheetIntegrations)
     .set({ lastSyncedAt: now, updatedAt: now })
@@ -253,5 +260,5 @@ export async function exportSpaceToSheet(
       ),
     );
 
-  return { exported: memberRows.length, lastSyncedAt: now };
+  return { exported: memberCount, lastSyncedAt: now };
 }

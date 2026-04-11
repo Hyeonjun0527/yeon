@@ -184,6 +184,7 @@ export function useAiChat({
     analyzeAbortRef.current = controller;
     setAnalyzing(true);
 
+    // eslint-disable-next-line no-restricted-syntax
     fetch(`/api/v1/counseling-records/${capturedId}/analyze`, {
       method: "POST",
       signal: controller.signal,

@@ -4,11 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MOCK_CLASSES, MOCK_STUDENTS } from "./mock-data";
 import type {
   ClassRoom,
@@ -69,19 +69,6 @@ export function StudentManagementProvider({
   const [classes, setClasses] = useState<ClassRoom[]>(MOCK_CLASSES);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
-  /* ── API 상태: spaces ── */
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [spacesLoading, setSpacesLoading] = useState(true);
-  const [spacesError, setSpacesError] = useState<string | null>(null);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
-  const [spacesFetchKey, setSpacesFetchKey] = useState(0);
-
-  /* ── API 상태: members ── */
-  const [members, setMembers] = useState<Member[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [membersError, setMembersError] = useState<string | null>(null);
-  const [membersFetchKey, setMembersFetchKey] = useState(0);
-
   /* ── Sheet UI 상태 ── */
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
@@ -90,91 +77,63 @@ export function StudentManagementProvider({
   const [importMode, setImportMode] = useState(false);
   const [importInitialProvider, setImportInitialProvider] = useState<CloudProvider | null>(null);
 
-  const refetchSpaces = useCallback(() => {
-    setSpacesFetchKey((k) => k + 1);
+  /* ── API 상태: spaces (TanStack Query) ── */
+  const queryClient = useQueryClient();
+
+  const { data: spacesData, isPending: spacesLoading, error: spacesQueryError } = useQuery({
+    queryKey: ["spaces"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/spaces");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "스페이스 목록을 불러오지 못했습니다.");
+      }
+      return res.json() as Promise<{ spaces: Space[] }>;
+    },
+  });
+  const spaces = spacesData ? spacesData.spaces : [];
+  const spacesError = spacesQueryError instanceof Error
+    ? spacesQueryError.message
+    : spacesQueryError
+      ? "스페이스 목록을 불러오지 못했습니다."
+      : null;
+
+  /* ── selectedSpaceId: 사용자 선택 없으면 첫 번째 space로 자동 파생 ── */
+  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<string | null>(null);
+  const selectedSpaceId = userSelectedSpaceId ?? spaces[0]?.id ?? null;
+  const setSelectedSpaceId = useCallback((id: string | null) => {
+    setUserSelectedSpaceId(id);
   }, []);
 
-  /* ── spaces fetch ── */
-  useEffect(() => {
-    let cancelled = false;
-    setSpacesLoading(true);
-    setSpacesError(null);
+  /* ── API 상태: members (TanStack Query) ── */
+  const { data: membersData, isPending: membersPending, error: membersQueryError } = useQuery({
+    queryKey: ["members", selectedSpaceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || "수강생 목록을 불러오지 못했습니다.");
+      }
+      return res.json() as Promise<{ members: Member[] }>;
+    },
+    enabled: !!selectedSpaceId,
+  });
+  const members = membersData ? membersData.members : [];
+  // selectedSpaceId가 없으면 members 쿼리는 disabled → isPending=true 고정이므로 !!selectedSpaceId로 가드
+  const membersLoading = !!selectedSpaceId && membersPending;
+  const membersError = membersQueryError instanceof Error
+    ? membersQueryError.message
+    : membersQueryError
+      ? "수강생 목록을 불러오지 못했습니다."
+      : null;
 
-    fetch("/api/v1/spaces")
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(text || "스페이스 목록을 불러오지 못했습니다.");
-        }
-        return res.json() as Promise<{ spaces: Space[] }>;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setSpaces(data.spaces);
-        if (data.spaces.length > 0 && selectedSpaceId === null) {
-          setSelectedSpaceId(data.spaces[0].id);
-        }
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error
-            ? err.message
-            : "스페이스 목록을 불러오지 못했습니다.";
-        setSpacesError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setSpacesLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [spacesFetchKey]);
-
-  /* ── members fetch (selectedSpaceId 변경 시 재조회) ── */
-  useEffect(() => {
-    if (!selectedSpaceId) {
-      setMembers([]);
-      return;
-    }
-
-    let cancelled = false;
-    setMembersLoading(true);
-    setMembersError(null);
-
-    fetch(`/api/v1/spaces/${selectedSpaceId}/members`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(text || "수강생 목록을 불러오지 못했습니다.");
-        }
-        return res.json() as Promise<{ members: Member[] }>;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setMembers(data.members);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error
-            ? err.message
-            : "수강생 목록을 불러오지 못했습니다.";
-        setMembersError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setMembersLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSpaceId, membersFetchKey]);
+  const refetchSpaces = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+  }, [queryClient]);
 
   const refetchMembers = useCallback(() => {
-    setMembersFetchKey((k) => k + 1);
-  }, []);
+    void queryClient.invalidateQueries({ queryKey: ["members", selectedSpaceId] });
+  }, [queryClient, selectedSpaceId]);
 
   /* ── 레거시 Student 조작 ── */
   const addStudent = useCallback((student: Student) => {

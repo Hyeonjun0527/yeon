@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Member } from "../types";
 import { fmtDate, fmtRelative } from "../utils";
 import { ProfileImportPanel } from "./profile-import-panel";
@@ -98,27 +99,25 @@ function Section({
 }
 
 export function TabMemberOverview({ member, onMemberUpdated, overviewTabId, onManageFields }: TabMemberOverviewProps) {
-  const [counseling, setCounseling] = useState<CounselingStats | null>(null);
+  const { data: counselingData } = useQuery({
+    queryKey: ["member-counseling-stats", member.spaceId, member.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`);
+      if (!res.ok) return { records: [] as { createdAt: string }[] };
+      return res.json() as Promise<{ records: { createdAt: string }[] }>;
+    },
+  });
 
-  useEffect(() => {
-    fetch(`/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`)
-      .then(async (res) => {
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          records: { createdAt: string }[];
-        };
-        const sorted = [...data.records].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        setCounseling({
-          count: sorted.length,
-          lastDate: sorted[0]?.createdAt ?? null,
-        });
-      })
-      .catch(() => {
-        setCounseling({ count: 0, lastDate: null });
-      });
-  }, [member.spaceId, member.id]);
+  const counseling = useMemo((): CounselingStats | null => {
+    if (!counselingData) return null;
+    const sorted = [...counselingData.records].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    return {
+      count: sorted.length,
+      lastDate: sorted[0]?.createdAt ?? null,
+    };
+  }, [counselingData]);
 
   const fields = [
     !!member.name,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { RecordItem, RecordPhase, AttachedImage } from "../_lib/types";
+import type { RecordItem, AttachedImage } from "../_lib/types";
 import type { AiModelType } from "../_lib/constants";
 import { AI_QUICK_CHIPS, AI_MODELS } from "../_lib/constants";
 import { useClickOutside } from "../_hooks";
@@ -30,7 +30,7 @@ export interface AiPanelProps {
   onToggleModel: () => void;
   onStartResize: (e: React.MouseEvent) => void;
   /* 데이터 */
-  phase: RecordPhase;
+  phase: "processing" | "ready";
   selected: RecordItem | null;
   selectedId: string | null;
   onClearMessages: (id: string) => void;

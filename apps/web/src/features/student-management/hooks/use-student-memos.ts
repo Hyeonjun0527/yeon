@@ -31,7 +31,7 @@ export function useStudentMemos({ studentId }: UseStudentMemosParams) {
   }
 
   return {
-    memos: student?.memos ?? [],
+    memos: student?.memos || [],
     newMemoText,
     setNewMemoText,
     addMemo,

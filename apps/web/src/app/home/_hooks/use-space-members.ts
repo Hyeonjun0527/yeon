@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { RecordItem } from "../_lib/types";
 
 export interface SpaceMember {
@@ -37,68 +38,54 @@ export function useSpaceMembers(
   members: MemberWithStatus[];
   loading: boolean;
 } {
-  const [rawMembers, setRawMembers] = useState<SpaceMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isPending } = useQuery({
+    queryKey: ["space-members", spaceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/spaces/${spaceId}/members`);
+      if (!res.ok) return { members: [] as SpaceMember[] };
+      return res.json() as Promise<{ members: SpaceMember[] }>;
+    },
+    enabled: !!spaceId,
+  });
 
-  useEffect(() => {
-    if (!spaceId) {
-      setRawMembers([]);
-      setLoading(false);
-      return;
-    }
+  const rawMembers = data ? data.members : ([] as SpaceMember[]);
+  // spaceId가 없으면 쿼리가 disabled → isPending=true 고정이므로 !!spaceId로 가드
+  const loading = !!spaceId && isPending;
 
-    let cancelled = false;
-    setLoading(true);
+  const members = useMemo((): MemberWithStatus[] =>
+    rawMembers.map((member) => {
+      const memberRecords = records.filter(
+        (r) => r.memberId === member.id && r.status === "ready",
+      );
 
-    fetch(`/api/v1/spaces/${spaceId}/members`)
-      .then(async (res) => {
-        if (!res.ok) return;
-        const data = (await res.json()) as { members: SpaceMember[] };
-        if (!cancelled) setRawMembers(data.members);
-      })
-      .catch(() => {/* 무시 */})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      if (memberRecords.length === 0) {
+        return {
+          ...member,
+          counselingCount: 0,
+          lastCounselingAt: null,
+          daysSinceLast: null,
+          indicator: "none" as const,
+        };
+      }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [spaceId]);
+      const sorted = [...memberRecords].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      const lastDate = sorted[0].createdAt;
+      const daysSinceLast = Math.floor(
+        (Date.now() - new Date(lastDate).getTime()) / 86400000,
+      );
 
-  /* records에서 memberId별 마지막 상담 날짜 계산 */
-  const members: MemberWithStatus[] = rawMembers.map((member) => {
-    const memberRecords = records.filter(
-      (r) => r.memberId === member.id && r.status === "ready",
-    );
-
-    if (memberRecords.length === 0) {
       return {
         ...member,
-        counselingCount: 0,
-        lastCounselingAt: null,
-        daysSinceLast: null,
-        indicator: "none",
+        counselingCount: memberRecords.length,
+        lastCounselingAt: lastDate,
+        daysSinceLast,
+        indicator: computeIndicator(daysSinceLast),
       };
-    }
-
-    /* 가장 최근 기록 */
-    const sorted = [...memberRecords].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    const lastDate = sorted[0].createdAt;
-    const daysSinceLast = Math.floor(
-      (Date.now() - new Date(lastDate).getTime()) / 86400000,
-    );
-
-    return {
-      ...member,
-      counselingCount: memberRecords.length,
-      lastCounselingAt: lastDate,
-      daysSinceLast,
-      indicator: computeIndicator(daysSinceLast),
-    };
-  });
+    }),
+    [rawMembers, records],
+  );
 
   return { members, loading };
 }
