@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
 import { Loader2, FileAudio, Link2Off } from "lucide-react";
+import { useMemberCounselingRecords } from "../hooks/use-member-counseling-records";
 import { fmtDate } from "../utils";
 
 interface TabCounselingRecordsProps {
@@ -25,16 +25,10 @@ export function TabCounselingRecords({
   memberId,
   onRecordCountChange,
 }: TabCounselingRecordsProps) {
-  const { data, isPending, error } = useQuery({
-    queryKey: ["member-counseling-records", spaceId, memberId],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`,
-      );
-      if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
-      return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
-    },
-  });
+  const { data, isPending, error } = useMemberCounselingRecords(
+    spaceId,
+    memberId,
+  );
 
   const records = data ? data.records : ([] as CounselingRecordListItem[]);
   const recordCount = records.length;

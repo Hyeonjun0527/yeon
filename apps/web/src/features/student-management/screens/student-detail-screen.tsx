@@ -19,6 +19,8 @@ import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { CustomTabContent } from "../components/custom-tab-content";
 import { useSpaceSettingsDrawer } from "../../space-settings";
+import type { Member } from "../types";
+import { useAppRoute } from "@/lib/app-route-context";
 
 const REMOVED_SYSTEM_TAB_KEYS = new Set(["courses", "guardian"]);
 
@@ -29,8 +31,10 @@ interface StudentDetailScreenProps {
 export function StudentDetailScreen({
   paramsPromise,
 }: StudentDetailScreenProps) {
+  const { resolveAppHref } = useAppRoute();
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode, selectedSpaceId, refetchMembers } = useStudentManagement();
+  const { sheetMode, selectedSpaceId, patchMemberInCaches } =
+    useStudentManagement();
   const { openSpaceSettings } = useSpaceSettingsDrawer();
   const [memberCounselingRecordCount, setMemberCounselingRecordCount] =
     React.useState<number | null>(null);
@@ -39,8 +43,8 @@ export function StudentDetailScreen({
   const [addingTab, setAddingTab] = React.useState(false);
   const [quickAddError, setQuickAddError] = React.useState<string | null>(null);
   const backHref = selectedSpaceId
-    ? `/home/student-management?spaceId=${selectedSpaceId}`
-    : "/home/student-management";
+    ? `${resolveAppHref("/home/student-management")}?spaceId=${selectedSpaceId}`
+    : resolveAppHref("/home/student-management");
 
   /* ── API 기반 멤버 조회 ── */
   const { member, activeTab, setActiveTab } = useMemberDetail({
@@ -107,6 +111,12 @@ export function StudentDetailScreen({
   }
   const visibleDynamicTabs = dynamicTabs.filter(
     (tab) => !REMOVED_SYSTEM_TAB_KEYS.has(tab.systemKey ?? ""),
+  );
+  const handleMemberPatched = React.useCallback(
+    (updatedMember: Member) => {
+      patchMemberInCaches(updatedMember.id, updatedMember);
+    },
+    [patchMemberInCaches],
   );
   const tabItems =
     visibleDynamicTabs.length > 0
@@ -227,7 +237,7 @@ export function StudentDetailScreen({
           memberCounselingRecordCount > 0 ? (
             <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
               <a
-                href={`/home?memberId=${member.id}`}
+                href={resolveAppHref(`/home?memberId=${member.id}`)}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -257,7 +267,7 @@ export function StudentDetailScreen({
         {activeTab === "overview" && (
           <TabMemberOverview
             member={member}
-            onMemberUpdated={refetchMembers}
+            onMemberUpdated={handleMemberPatched}
             overviewTabId={overviewTab?.id}
             guardianTabId={legacyGuardianTab?.id}
             memos={memberMemos}

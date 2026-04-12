@@ -72,6 +72,7 @@ export function StudentTutorial() {
         primaryColor: "#818cf8",
         zIndex: 10000,
         overlayColor: "rgba(12, 14, 20, 0.65)",
+        overlayClickAction: "next",
         textColor: "#e5e7eb",
         showProgress: true,
         buttons: ["back", "primary", "skip"],

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Student } from "../types";
 import { Avatar } from "./avatar";
 import { StatusBadge } from "./status-badge";
+import { useAppRoute } from "@/lib/app-route-context";
 
 export interface StudentTableProps {
   students: Student[];
@@ -16,6 +17,8 @@ export function StudentTable({
   selectedIds,
   onToggleSelect,
 }: StudentTableProps) {
+  const { resolveAppHref } = useAppRoute();
+
   return (
     <table className="w-full border-collapse bg-surface rounded overflow-hidden border border-border">
       <thead>
@@ -55,7 +58,7 @@ export function StudentTable({
             </td>
             <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <Link
-                href={`/home/student-management/${student.id}`}
+                href={resolveAppHref(`/home/student-management/${student.id}`)}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <div className="flex items-center gap-[10px]">

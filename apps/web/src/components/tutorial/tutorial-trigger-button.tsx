@@ -6,7 +6,7 @@ import { useTutorial } from "./use-tutorial";
 
 export function TutorialTriggerButton({
   tutorialKey,
-  label = "튜토리얼 보기",
+  label = "튜토리얼",
   className = "",
 }: {
   tutorialKey: "home" | "student" | "check-board";

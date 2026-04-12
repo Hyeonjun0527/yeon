@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Gnav } from "./gnav";
 import { TopNav } from "./top-nav";
 import { ExportProvider } from "../_lib/export-context";
+import { useAppRoute } from "@/lib/app-route-context";
 
 type Section = "records" | "students";
 
@@ -15,7 +16,8 @@ function getSectionFromPathname(pathname: string): Section {
 
 export function HomeNavShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const section = getSectionFromPathname(pathname);
+  const { normalizeAppPathname } = useAppRoute();
+  const section = getSectionFromPathname(normalizeAppPathname(pathname));
 
   return (
     <ExportProvider>

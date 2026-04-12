@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type {
-  CounselingRecordDetail,
-  CounselingRecordListItem,
-} from "@yeon/api-contract/counseling-records";
+import type { CounselingRecordDetail } from "@yeon/api-contract/counseling-records";
 import { bulkCounselingRecordDetailsResponseSchema } from "@yeon/api-contract/counseling-records";
 import {
   Download,
@@ -21,6 +18,7 @@ import {
   createDefaultStudentReportSettings,
   type StudentReportRecordScope,
 } from "../report-builder";
+import { useMemberCounselingRecords } from "../hooks/use-member-counseling-records";
 import type { Member, Memo } from "../types";
 import { fmtDate } from "../utils";
 
@@ -53,21 +51,11 @@ export function TabReport({
 
   const canLoadRecords = !!member.spaceId;
 
-  const recordsQuery = useQuery({
-    queryKey: ["member-report-records", member.spaceId, member.id],
-    enabled: canLoadRecords,
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/v1/spaces/${member.spaceId}/members/${member.id}/counseling-records`,
-      );
-      if (!res.ok) throw new Error("상담 기록을 불러오지 못했습니다.");
-      return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
-    },
-  });
+  const recordsQuery = useMemberCounselingRecords(member.spaceId, member.id);
 
   const allRecords = useMemo(() => {
     if (!recordsQuery.data) {
-      return [] as CounselingRecordListItem[];
+      return [];
     }
 
     return recordsQuery.data.records;

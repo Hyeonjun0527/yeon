@@ -8,7 +8,7 @@ import { CustomTabContent } from "./custom-tab-content";
 
 interface TabMemberOverviewProps {
   member: Member;
-  onMemberUpdated?: () => void;
+  onMemberUpdated?: (member: Member) => void;
   overviewTabId?: string;
   guardianTabId?: string;
   memos?: Memo[];
@@ -334,7 +334,7 @@ export function TabMemberOverview({
       )}
 
       {/* AI 프로필 자동완성 */}
-      <ProfileImportPanel member={member} onSaved={() => onMemberUpdated?.()} />
+      <ProfileImportPanel member={member} onSaved={onMemberUpdated} />
     </div>
   );
 }

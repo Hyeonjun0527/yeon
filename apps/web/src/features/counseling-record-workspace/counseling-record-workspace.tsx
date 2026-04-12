@@ -28,9 +28,11 @@ import {
   UploadPanel,
   StudentTimeline,
 } from "./components";
+import { useLogout } from "@/lib/use-logout";
 
 export function CounselingRecordWorkspace() {
   const statusMeta = useMemo(() => buildStatusMeta(styles), []);
+  const { logout, isLoggingOut } = useLogout();
 
   // ── hooks (의존 순서대로) ──
   const toast = useSaveToast();
@@ -165,23 +167,19 @@ export function CounselingRecordWorkspace() {
               업로드부터 원문 확인까지 한 화면에서 정리합니다.
             </p>
           </div>
-          <form
-            action="/api/auth/logout"
-            method="post"
-            className="flex flex-shrink-0"
+          <button
+            type="button"
+            className="inline-flex flex-shrink-0 items-center gap-[6px] min-h-9 px-3 border rounded-[10px] bg-transparent text-[13px] font-semibold cursor-pointer transition-[background-color,border-color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-[0.62]"
+            style={{
+              borderColor: "var(--border-soft)",
+              color: "var(--text-secondary)",
+            }}
+            onClick={() => void logout()}
+            disabled={isLoggingOut}
           >
-            <button
-              type="submit"
-              className="inline-flex items-center gap-[6px] min-h-9 px-3 border rounded-[10px] bg-transparent text-[13px] font-semibold cursor-pointer transition-[background-color,border-color] duration-[180ms]"
-              style={{
-                borderColor: "var(--border-soft)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <LogOut size={15} strokeWidth={2.1} />
-              로그아웃
-            </button>
-          </form>
+            <LogOut size={15} strokeWidth={2.1} />
+            {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+          </button>
         </header>
 
         {/* 초기 목록 로딩 중에는 빈 화면 유지 (EmptyLanding 깜빡임 방지) */}

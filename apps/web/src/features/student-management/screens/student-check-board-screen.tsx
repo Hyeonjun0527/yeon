@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import { CheckBoardTutorial } from "@/components/tutorial";
+import { useAppRoute } from "@/lib/app-route-context";
 
 import { useStudentManagement } from "../student-management-provider";
 import { StudentCheckBoardPanel } from "../components/student-check-board-panel";
 
 export function StudentCheckBoardScreen() {
+  const { resolveAppHref } = useAppRoute();
   const { selectedSpaceId, members, membersLoading, membersError } =
     useStudentManagement();
 
@@ -28,7 +30,7 @@ export function StudentCheckBoardScreen() {
             출석·과제 체크보드는 특정 스페이스 기준으로만 관리됩니다.
           </p>
           <Link
-            href="/home/student-management"
+            href={resolveAppHref("/home/student-management")}
             data-tutorial="check-board-back-link"
             className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary transition-colors hover:border-border-light hover:text-text"
           >
@@ -44,7 +46,7 @@ export function StudentCheckBoardScreen() {
   return (
     <div className="space-y-5">
       <Link
-        href="/home/student-management"
+        href={resolveAppHref("/home/student-management")}
         className="inline-flex w-fit items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary transition-colors hover:border-border-light hover:text-text"
       >
         <ArrowLeft size={16} />

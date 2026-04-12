@@ -27,7 +27,7 @@ interface ProfileSuggestions {
 
 interface ProfileImportPanelProps {
   member: Member;
-  onSaved?: () => void;
+  onSaved?: (member: Member) => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -208,8 +208,16 @@ export function ProfileImportPanel({
         throw new Error(data.error ?? "저장에 실패했습니다.");
       }
 
+      const memberRes = await fetch(`/api/v1/members/${member.id}`);
+
+      if (!memberRes.ok) {
+        throw new Error("저장된 수강생 정보를 다시 불러오지 못했습니다.");
+      }
+
+      const memberPayload = (await memberRes.json()) as { member: Member };
+
       setPhase("done");
-      onSaved?.();
+      onSaved?.(memberPayload.member);
 
       /* 2초 후 패널 초기화 — ref로 관리하여 언마운트/재호출 시 정리 가능 */
       if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);

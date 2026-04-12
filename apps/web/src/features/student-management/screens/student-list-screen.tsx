@@ -27,6 +27,7 @@ import type { RiskLevel } from "../types";
 import { SheetExportPanel } from "../components/sheet-export-panel";
 import { useSpaceSettingsDrawer } from "../../space-settings";
 import { StudentTutorial } from "@/components/tutorial";
+import { useAppRoute } from "@/lib/app-route-context";
 
 function getMemberContact(member: {
   email?: string | null;
@@ -61,13 +62,15 @@ export function StudentListScreen() {
 
   const { openSpaceSettings } = useSpaceSettingsDrawer();
   const router = useRouter();
+  const { resolveAppHref } = useAppRoute();
 
   const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
   const spaceName = currentSpace?.name ?? null;
   const detailBaseHref = selectedSpaceId
     ? (memberId: string) =>
-        `/home/student-management/${memberId}?spaceId=${selectedSpaceId}`
-    : (memberId: string) => `/home/student-management/${memberId}`;
+        `${resolveAppHref(`/home/student-management/${memberId}`)}?spaceId=${selectedSpaceId}`
+    : (memberId: string) =>
+        resolveAppHref(`/home/student-management/${memberId}`);
 
   const visibleMemberIds = useMemo(
     () => filteredMembers.map((member) => member.id),
@@ -146,7 +149,7 @@ export function StudentListScreen() {
         return;
       }
 
-      if (event.metaKey || event.ctrlKey || selectedCount > 0) {
+      if (event.metaKey || event.ctrlKey) {
         event.preventDefault();
         handleSelectMember(memberId, {
           shouldSelect: !selectedIds.has(memberId),
@@ -174,12 +177,7 @@ export function StudentListScreen() {
 
       event.preventDefault();
 
-      if (
-        selectedCount > 0 ||
-        event.shiftKey ||
-        event.metaKey ||
-        event.ctrlKey
-      ) {
+      if (event.shiftKey || event.metaKey || event.ctrlKey) {
         handleSelectMember(memberId, {
           shiftKey: event.shiftKey,
           shouldSelect: !selectedIds.has(memberId),
@@ -229,8 +227,8 @@ export function StudentListScreen() {
             <Link
               href={
                 selectedSpaceId
-                  ? `/home/student-management/check-board?spaceId=${selectedSpaceId}`
-                  : "/home/student-management/check-board"
+                  ? `${resolveAppHref("/home/student-management/check-board")}?spaceId=${selectedSpaceId}`
+                  : resolveAppHref("/home/student-management/check-board")
               }
               className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text md:px-3.5 md:text-[13px]"
             >
@@ -239,7 +237,7 @@ export function StudentListScreen() {
             </Link>
 
             <Link
-              href="/home/student-management/members/new"
+              href={resolveAppHref("/home/student-management/members/new")}
               data-tutorial="add-member-btn"
               className="col-span-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-95 md:col-span-1"
             >
@@ -631,7 +629,7 @@ export function StudentListScreen() {
                             >
                               <AlertTriangle size={10} />
                               {member.aiRiskLevel
-                                ? `AI ${riskMeta.label}`
+                                ? `위험도 ${riskMeta.label}`
                                 : riskMeta.label}
                             </span>
                           )}
