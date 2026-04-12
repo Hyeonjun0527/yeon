@@ -58,6 +58,12 @@ body {
     sans-serif;
 }
 
+body.landing-login-open [data-landing-spline="true"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 a {
   color: inherit;
   text-decoration: none;

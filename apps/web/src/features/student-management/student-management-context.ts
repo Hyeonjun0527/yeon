@@ -25,6 +25,7 @@ export interface StudentManagementContextValue {
   membersLoading: boolean;
   membersError: string | null;
   refetchMembers: () => void;
+  patchMemberInCaches: (memberId: string, patch: Partial<Member>) => void;
   sheetMode: SheetMode;
   sheetStudentId: string | null;
   openSheet: (mode: "create" | "edit", studentId?: string) => void;

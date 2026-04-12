@@ -31,6 +31,7 @@ import {
 } from "@/features/space-settings";
 import type { LocalImportDraftSummary } from "./_lib/space-sidebar-types";
 import { createPatchedHref } from "@/lib/route-state/search-params";
+import { useAppRoute } from "@/lib/app-route-context";
 
 /* ── OAuth 결과 토스트 ──
  * URL query param으로 OAuth 결과를 전달받아 표시하는 컴포넌트.
@@ -133,24 +134,29 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   } = useStudentManagement();
   const router = useRouter();
   const pathname = usePathname();
+  const { normalizeAppPathname, resolveAppHref } = useAppRoute();
+  const normalizedPathname = normalizeAppPathname(pathname);
 
   const noSpaces = !spacesLoading && spaces.length === 0;
-  const isCheckBoardRoute = pathname === "/home/student-management/check-board";
+  const isCheckBoardRoute =
+    normalizedPathname === "/home/student-management/check-board";
   const currentSpace =
     spaces.find((space) => space.id === selectedSpaceId) ?? null;
   const [mobileSpaceDrawerOpen, setMobileSpaceDrawerOpen] = useState(false);
   const isStudentDetailRoute =
-    /^\/home\/student-management\/[^/]+$/.test(pathname) &&
-    pathname !== "/home/student-management/members/new" &&
-    pathname !== "/home/student-management/check-board";
+    /^\/home\/student-management\/[^/]+$/.test(normalizedPathname) &&
+    normalizedPathname !== "/home/student-management/members/new" &&
+    normalizedPathname !== "/home/student-management/check-board";
 
-  function resetDetailRouteIfNeeded() {
+  function resetDetailRouteIfNeeded(
+    nextSpaceId: string | null = selectedSpaceId,
+  ) {
     if (isStudentDetailRoute) {
       router.replace(
         createPatchedHref(
-          "/home/student-management",
+          resolveAppHref("/home/student-management"),
           new URLSearchParams(window.location.search),
-          { spaceId: selectedSpaceId },
+          { spaceId: nextSpaceId },
         ),
       );
     }
@@ -260,7 +266,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             onClick={() =>
               router.push(
                 createPatchedHref(
-                  "/home/student-management",
+                  resolveAppHref("/home/student-management"),
                   new URLSearchParams(window.location.search),
                   { spaceId: selectedSpaceId },
                 ),
@@ -280,7 +286,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             onClick={() =>
               router.push(
                 createPatchedHref(
-                  "/home/student-management/check-board",
+                  resolveAppHref("/home/student-management/check-board"),
                   new URLSearchParams(window.location.search),
                   { spaceId: selectedSpaceId },
                 ),
@@ -702,7 +708,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             setSpaceActionError(null);
             setSelectedSpaceId(space.id);
             refetchSpaces();
-            resetDetailRouteIfNeeded();
+            resetDetailRouteIfNeeded(space.id);
             closeCreateModal();
           }}
           onImported={() => {

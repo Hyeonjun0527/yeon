@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Student } from "../types";
 import { Avatar } from "./avatar";
 import { StatusBadge } from "./status-badge";
+import { useAppRoute } from "@/lib/app-route-context";
 
 export interface StudentCardProps {
   student: Student;
@@ -16,6 +17,8 @@ export function StudentCard({
   isSelected,
   onToggleSelect,
 }: StudentCardProps) {
+  const { resolveAppHref } = useAppRoute();
+
   return (
     <div
       className="bg-surface-2 border border-border rounded p-5 cursor-pointer transition-all duration-150 relative hover:border-border-light hover:bg-surface-3"
@@ -31,7 +34,7 @@ export function StudentCard({
       />
 
       <Link
-        href={`/home/student-management/${student.id}`}
+        href={resolveAppHref(`/home/student-management/${student.id}`)}
         style={{ display: "block", textDecoration: "none", color: "inherit" }}
       >
         <div className="flex items-center gap-3 mb-3">

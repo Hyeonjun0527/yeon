@@ -56,9 +56,7 @@
     rgba(232, 99, 10, 0.06) 32%,
     transparent 72%
   );
-  filter: blur(22px);
-  opacity: 0.8;
-  animation: heroGlowDrift 10s ease-in-out infinite;
+  opacity: 0.52;
 }
 
 .heroFallbackBeam {
@@ -88,10 +86,7 @@
   height: 12px;
   border-radius: 50%;
   background: rgba(232, 99, 10, 0.95);
-  box-shadow:
-    0 0 0 8px rgba(232, 99, 10, 0.05),
-    0 0 32px rgba(232, 99, 10, 0.32);
-  animation: heroPulseBeat 3.6s ease-in-out infinite;
+  box-shadow: 0 0 0 6px rgba(232, 99, 10, 0.04);
 }
 
 .heroFallbackMesh {
@@ -108,10 +103,8 @@
     ),
     linear-gradient(135deg, rgba(232, 99, 10, 0.14), rgba(232, 99, 10, 0.015));
   box-shadow:
-    0 18px 64px rgba(0, 0, 0, 0.44),
+    0 18px 42px rgba(0, 0, 0, 0.36),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(18px);
-  animation: heroPanelFloat 8.8s ease-in-out infinite;
 }
 
 .heroFallbackMesh::before,
@@ -147,8 +140,7 @@
   top: 14%;
   width: min(39vw, 560px);
   height: min(39vw, 560px);
-  opacity: 0.28;
-  animation: heroOrbitSpin 30s linear infinite;
+  opacity: 0.18;
 }
 
 .heroFallbackOrbitSecondary {
@@ -156,8 +148,7 @@
   top: 22%;
   width: min(24vw, 360px);
   height: min(24vw, 360px);
-  opacity: 0.2;
-  animation: heroOrbitSpinReverse 26s linear infinite;
+  opacity: 0.12;
 }
 
 .heroFallbackDataLane {
@@ -191,8 +182,7 @@
   height: 7px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.18);
-  animation: heroLaneTravel 4.6s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.14);
 }
 
 .heroFallbackDataLane span:nth-child(2) {
@@ -223,9 +213,16 @@
     rgba(8, 8, 8, 0.64)
   );
   box-shadow:
-    0 16px 52px rgba(0, 0, 0, 0.42),
+    0 16px 40px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(18px);
+}
+
+.heroFallbackBeam,
+.heroFallbackPulse,
+.heroFallbackDataLane,
+.heroFallbackOrbitSecondary,
+.heroFallbackMiniStack {
+  display: none;
 }
 
 .heroFallbackMiniStack {
@@ -319,10 +316,16 @@
 }
 
 /* ── primary button shimmer (pseudo-element) ── */
+.btnPrimary {
+  position: relative;
+  isolation: isolate;
+}
+
 .btnPrimary::before {
   content: "";
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.15) 0%,
@@ -350,6 +353,14 @@
       transparent 40%
     ),
     linear-gradient(to right, rgba(5, 5, 5, 0.35) 0%, transparent 30%);
+}
+
+.heroMobileScrim {
+  display: none;
+}
+
+.heroCopyShell {
+  border-radius: 32px;
 }
 
 /* ── philosophy glow (radial gradient) ── */
@@ -394,70 +405,6 @@
   }
   50% {
     translate: -50% 10px;
-  }
-}
-
-@keyframes heroGlowDrift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.82;
-  }
-  50% {
-    transform: translate3d(18px, -14px, 0) scale(1.04);
-    opacity: 1;
-  }
-}
-
-@keyframes heroPanelFloat {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -10px, 0);
-  }
-}
-
-@keyframes heroPulseBeat {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.88;
-  }
-  50% {
-    transform: scale(1.18);
-    opacity: 1;
-  }
-}
-
-@keyframes heroOrbitSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes heroOrbitSpinReverse {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
-  }
-}
-
-@keyframes heroLaneTravel {
-  0%,
-  100% {
-    transform: translateX(-10px);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translateX(14px);
-    opacity: 1;
   }
 }
 
@@ -523,6 +470,44 @@
 }
 
 @media (max-width: 640px) {
+  .heroGradient {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(5, 5, 5, 0.18) 0%,
+        rgba(5, 5, 5, 0.52) 28%,
+        rgba(5, 5, 5, 0.9) 100%
+      ),
+      linear-gradient(180deg, rgba(5, 5, 5, 0.18), rgba(5, 5, 5, 0.7));
+  }
+
+  .heroMobileScrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: block;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(7, 7, 7, 0.26) 0%,
+        rgba(7, 7, 7, 0.6) 24%,
+        rgba(7, 7, 7, 0.86) 58%,
+        rgba(7, 7, 7, 0.96) 100%
+      ),
+      radial-gradient(circle at top, rgba(232, 99, 10, 0.08), transparent 42%);
+  }
+
+  .heroCopyShell {
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 10, 0.82),
+      rgba(10, 10, 10, 0.58)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 26px 58px rgba(0, 0, 0, 0.34);
+  }
+
   .heroFallbackGlow {
     inset: auto auto 8% 50%;
     translate: -50% 0;
@@ -531,14 +516,14 @@
   }
 
   .heroFallbackMesh {
-    inset: 16% auto auto 50%;
-    width: calc(100vw - 40px);
-    height: 46vh;
+    inset: 18% auto auto 50%;
+    width: calc(100vw - 56px);
+    height: 28vh;
+    opacity: 0.42;
   }
 
   .heroFallbackColumn {
-    bottom: 11%;
-    width: calc(100vw - 40px);
+    display: none;
   }
 
   .heroFallbackBeam,
@@ -549,6 +534,11 @@
 
   .heroFallbackCard {
     padding: 18px 18px 16px;
+  }
+
+  .philosophyGlow,
+  .ctaGlow {
+    display: none;
   }
 }
 

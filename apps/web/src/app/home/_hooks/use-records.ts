@@ -10,7 +10,6 @@ import type {
 import { analysisResultSchema } from "@yeon/api-contract/counseling-records";
 import type {
   RecordItem,
-  InternalPhase,
   HomeViewState,
   AiMessage,
   AnalysisResult,
@@ -110,15 +109,20 @@ function detailToRecordPatch(
     analysisProgress: detail.analysisProgress,
   };
 }
-export function useRecords() {
+
+// ---------------------------------------------------------------------------
+// selectedRecordId를 외부에서 받는 순수 데이터 훅
+// 선택 상태는 useWorkspaceSelection이 소유한다.
+// ---------------------------------------------------------------------------
+
+export function useRecords(selectedRecordId: string | null) {
   const queryClient = useQueryClient();
 
   const [localOverrides, setLocalOverrides] = useState<
     Map<string, Partial<RecordItem>>
   >(new Map());
   const [tempRecords, setTempRecords] = useState<RecordItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<InternalPhase>("idle");
+  const [isRecording, setIsRecording] = useState(false);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [pollBoostUntil, setPollBoostUntil] = useState<number>(0);
 
@@ -161,7 +165,15 @@ export function useRecords() {
     return [...preserved, ...serverMerged];
   }, [serverData, localOverrides, tempRecords]);
 
-  const selected = records.find((r) => r.id === selectedId) ?? null;
+  // selected: 외부에서 받은 selectedRecordId로 파생
+  const selected = useMemo(
+    () => records.find((r) => r.id === selectedRecordId) ?? null,
+    [records, selectedRecordId],
+  );
+
+  // records를 ref로 유지 — ensureDetail이 항상 최신 목록을 읽되 deps에는 넣지 않는다
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
 
   // 서버에서 processing → ready 전환 감지 (이전 데이터와 비교)
   const prevServerDataRef = useRef<{
@@ -181,7 +193,6 @@ export function useRecords() {
     });
 
     for (const item of readyTransitioned) {
-      // 상세 정보 미리 로드 (query cache에 저장)
       queryClient.prefetchQuery({
         queryKey: ["counseling-record", item.id],
         queryFn: async () => {
@@ -193,12 +204,6 @@ export function useRecords() {
       });
     }
   }, [serverData, queryClient]);
-
-  useEffect(() => {
-    if (phase === "processing" && selected?.status !== "processing") {
-      setPhase("idle");
-    }
-  }, [phase, selected?.status]);
 
   const processingStep = useMemo(() => {
     if (selected?.status !== "processing") {
@@ -258,35 +263,12 @@ export function useRecords() {
     [queryClient],
   );
 
-  const addProcessingRecord = useCallback((record: RecordItem) => {
-    setTempRecords((prev) => {
-      if (prev.some((r) => r.id === record.id)) return prev;
-      return [record, ...prev];
-    });
-    setSelectedId(record.id);
-    setPhase("processing");
-  }, []);
-
-  const addReadyRecord = useCallback(
-    (record: RecordItem) => {
-      setTempRecords((prev) => {
-        if (prev.some((r) => r.id === record.id)) return prev;
-        return [record, ...prev];
-      });
-      setSelectedId(record.id);
-      setPhase("idle");
-      // 서버 목록 갱신
-      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-    },
-    [queryClient],
-  );
-
-  const selectRecord = useCallback(
+  // ── ensureDetail: selectRecord의 데이터 전용 후속 (선택 상태 변경 없음) ──
+  const ensureDetail = useCallback(
     (id: string) => {
-      const rec = records.find((r) => r.id === id);
+      const currentRecords = recordsRef.current;
+      const rec = currentRecords.find((r) => r.id === id);
       if (!rec) return;
-      setSelectedId(id);
-      setPhase(rec.status === "processing" ? "processing" : "idle");
 
       if (
         rec.status === "ready" &&
@@ -297,7 +279,27 @@ export function useRecords() {
         fetchDetail(id);
       }
     },
-    [records, fetchDetail],
+    [fetchDetail],
+  );
+
+  const addProcessingRecord = useCallback((record: RecordItem) => {
+    setTempRecords((prev) => {
+      if (prev.some((r) => r.id === record.id)) return prev;
+      return [record, ...prev];
+    });
+    // 선택은 호출자가 selection.selectRecord(record.id)로 처리
+  }, []);
+
+  const addReadyRecord = useCallback(
+    (record: RecordItem) => {
+      setTempRecords((prev) => {
+        if (prev.some((r) => r.id === record.id)) return prev;
+        return [record, ...prev];
+      });
+      queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+      // 선택은 호출자가 selection.selectRecord(record.id)로 처리
+    },
+    [queryClient],
   );
 
   const replaceRecord = useCallback(
@@ -305,8 +307,8 @@ export function useRecords() {
       setTempRecords((prev) =>
         prev.map((r) => (r.id === tempId ? realRecord : r)),
       );
-      setSelectedId((prev) => (prev === tempId ? realRecord.id : prev));
       queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
+      // 선택 ID 교체는 호출자가 selection.replaceSelectedRecordId(tempId, realRecord.id)로 처리
     },
     [queryClient],
   );
@@ -320,8 +322,7 @@ export function useRecords() {
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-      setSelectedId((prev) => (prev === id ? null : prev));
-      setPhase((prev) => (prev === "processing" ? "idle" : prev));
+      // 선택 해제는 호출자가 selection.clearRecordIfSelected(id)로 처리
     },
     [queryClient],
   );
@@ -350,7 +351,6 @@ export function useRecords() {
       });
       return next;
     });
-    setPhase((prev) => (prev === "processing" ? "idle" : prev));
   }, []);
 
   const updateMessages = useCallback(
@@ -404,9 +404,8 @@ export function useRecords() {
         });
         return next;
       });
-      setSelectedId(id);
-      setPhase("idle");
       boostPolling();
+      // 선택은 호출자가 이미 해당 record를 보고 있을 때만 호출
     },
     [boostPolling],
   );
@@ -445,39 +444,34 @@ export function useRecords() {
         record: detail,
       });
       queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-      setSelectedId(detail.id);
-      setPhase(detail.status === "processing" ? "processing" : "idle");
       if (detail.status === "processing") {
         boostPolling();
       }
+      // 선택 변경은 호출자가 필요하면 selection.selectRecord(detail.id)로 처리
     },
     [boostPolling, queryClient],
   );
 
-  // viewState — 단일 진실의 원천
-  // isPending: 서버 데이터가 한 번도 도착하지 않은 상태 (첫 렌더 포함)
-  // isLoading(=isPending&&isFetching)만 쓰면 마운트 첫 렌더에서 isFetching=false 구간이 생겨 "empty" 깜빡임 발생
+  // viewState — isRecording은 명시 상태, processing은 selected에서 파생
   const viewState = useMemo((): HomeViewState => {
-    if (phase === "recording") return { kind: "recording" };
-    if (phase === "processing")
-      return { kind: "processing", step: processingStep };
+    if (isRecording) return { kind: "recording" };
     if (isPending) return { kind: "loading" };
     if (records.length === 0) return { kind: "empty" };
+    if (selected?.status === "processing")
+      return { kind: "processing", step: processingStep };
     return { kind: "ready", records };
-  }, [phase, processingStep, isPending, records]);
+  }, [isRecording, processingStep, isPending, records, selected?.status]);
 
-  // 외부용 recording 시작 메서드
   const startRecording = useCallback(() => {
-    setPhase("recording");
+    setIsRecording(true);
   }, []);
 
   const cancelRecording = useCallback(() => {
-    setPhase("idle");
+    setIsRecording(false);
   }, []);
 
   return {
     records,
-    selectedId,
     selected,
     viewState,
     processingStep,
@@ -487,7 +481,7 @@ export function useRecords() {
     replaceRecord,
     markUploadError,
     removeRecord,
-    selectRecord,
+    ensureDetail,
     updateMessages,
     clearMessages,
     updateAnalysisResult,

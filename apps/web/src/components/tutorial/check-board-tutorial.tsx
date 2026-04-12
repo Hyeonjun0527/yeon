@@ -54,16 +54,38 @@ const BOARD_STEPS = [
   },
 ];
 
+const MOBILE_BOARD_STEPS = [
+  BOARD_STEPS[0],
+  BOARD_STEPS[1],
+  {
+    ...BOARD_STEPS[2],
+    target: '[data-tutorial="check-board-member-board-mobile"]',
+  },
+];
+
+const DESKTOP_BOARD_STEPS = [
+  BOARD_STEPS[0],
+  BOARD_STEPS[1],
+  {
+    ...BOARD_STEPS[2],
+    target: '[data-tutorial="check-board-member-board-desktop"]',
+  },
+];
+
 export function CheckBoardTutorial() {
   const { run, finish } = useTutorial("check-board");
   const steps = useMemo(() => {
     if (typeof document === "undefined") {
-      return BOARD_STEPS;
+      return DESKTOP_BOARD_STEPS;
     }
 
-    return document.querySelector('[data-tutorial="check-board-summary"]')
-      ? BOARD_STEPS
-      : NO_SPACE_STEPS;
+    if (!document.querySelector('[data-tutorial="check-board-summary"]')) {
+      return NO_SPACE_STEPS;
+    }
+
+    return window.matchMedia("(max-width: 639px)").matches
+      ? MOBILE_BOARD_STEPS
+      : DESKTOP_BOARD_STEPS;
   }, [run]);
 
   const handleEvent = (data: EventData) => {
@@ -84,6 +106,7 @@ export function CheckBoardTutorial() {
         primaryColor: "#818cf8",
         zIndex: 10000,
         overlayColor: "rgba(12, 14, 20, 0.65)",
+        overlayClickAction: "next",
         textColor: "#e5e7eb",
         showProgress: true,
         buttons: ["back", "primary", "skip"],

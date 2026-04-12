@@ -1,22 +1,14 @@
 "use client";
 
-import {
-  Component,
-  Suspense,
-  lazy,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
-import type { ReactNode } from "react";
+import { Component, memo, useState, useCallback, useEffect } from "react";
+import type { ComponentType, ReactNode } from "react";
 import styles from "./landing-home.module.css";
-
-const Spline = lazy(() => import("@splinetool/react-spline"));
 
 const SPLINE_SCENE =
   "https://prod.spline.design/3K3aYKR6mrKFknHz/scene.splinecode";
 
 const SPLINE_ERROR_PATTERN = /reading 'position'/;
+const MOBILE_SPLINE_MEDIA_QUERY = "(max-width: 767px)";
 
 function SplineFallbackScene() {
   return (
@@ -89,10 +81,99 @@ class SplineErrorBoundary extends Component<
 
 function SplineCanvas() {
   const [error, setError] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(
+    null,
+  );
+  const [shouldLoadSpline, setShouldLoadSpline] = useState(false);
+  const [SplineComponent, setSplineComponent] = useState<ComponentType<{
+    scene: string;
+    onError?: () => void;
+  }> | null>(null);
 
   const handleError = useCallback(() => {
     setError(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_SPLINE_MEDIA_QUERY);
+    const syncViewport = () => {
+      setIsMobileViewport(mediaQuery.matches);
+    };
+
+    syncViewport();
+
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isMobileViewport !== false) {
+      return;
+    }
+
+    const browserWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions,
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    const enableSpline = () => {
+      setShouldLoadSpline(true);
+    };
+
+    if (browserWindow.requestIdleCallback) {
+      const idleId = browserWindow.requestIdleCallback(enableSpline, {
+        timeout: 1500,
+      });
+
+      return () => {
+        browserWindow.cancelIdleCallback?.(idleId);
+      };
+    }
+
+    const timeoutId = globalThis.setTimeout(enableSpline, 1200);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (isMobileViewport !== false || !shouldLoadSpline) {
+      return;
+    }
+
+    let active = true;
+
+    void import("@splinetool/react-spline")
+      .then((module) => {
+        if (!active) {
+          return;
+        }
+
+        setSplineComponent(() => module.default);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setError(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMobileViewport, shouldLoadSpline]);
 
   useEffect(() => {
     function suppress(e: ErrorEvent) {
@@ -108,17 +189,30 @@ function SplineCanvas() {
     return <SplineFallbackScene />;
   }
 
-  return <Spline scene={SPLINE_SCENE} onError={handleError} />;
+  if (isMobileViewport !== false) {
+    return <SplineFallbackScene />;
+  }
+
+  if (!shouldLoadSpline) {
+    return <SplineFallbackScene />;
+  }
+
+  if (!SplineComponent) {
+    return <SplineFallbackScene />;
+  }
+
+  return <SplineComponent scene={SPLINE_SCENE} onError={handleError} />;
 }
 
-export function SplineHero() {
+export const SplineHero = memo(function SplineHero() {
   return (
-    <div className={`${styles.splineContainer} absolute inset-0 w-full h-full`}>
+    <div
+      className={`${styles.splineContainer} absolute inset-0 w-full h-full`}
+      data-landing-spline="true"
+    >
       <SplineErrorBoundary>
-        <Suspense fallback={<SplineFallbackScene />}>
-          <SplineCanvas />
-        </Suspense>
+        <SplineCanvas />
       </SplineErrorBoundary>
     </div>
   );
-}
+});

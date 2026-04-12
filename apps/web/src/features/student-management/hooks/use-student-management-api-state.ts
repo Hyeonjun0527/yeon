@@ -6,10 +6,24 @@ import { usePathname, useRouter } from "next/navigation";
 
 import type { Member, Space } from "../types";
 import { createPatchedHref } from "@/lib/route-state/search-params";
+import { useAppRoute } from "@/lib/app-route-context";
+
+function isStudentDetailPath(pathname: string) {
+  const prefix = "/home/student-management/";
+
+  if (!pathname.startsWith(prefix)) {
+    return false;
+  }
+
+  const rest = pathname.slice(prefix.length);
+
+  return !!rest && !rest.includes("/") && rest !== "check-board";
+}
 
 export function useStudentManagementApiState() {
   const router = useRouter();
   const pathname = usePathname();
+  const { normalizeAppPathname } = useAppRoute();
   const queryClient = useQueryClient();
   const getCurrentSearchParams = useCallback(() => {
     if (typeof window === "undefined") return new URLSearchParams();
@@ -44,6 +58,17 @@ export function useStudentManagementApiState() {
     null,
   );
   const spaceIdFromQuery = getCurrentSearchParams().get("spaceId");
+  const normalizedPathname = normalizeAppPathname(pathname);
+  const shouldDeferDefaultSpaceSelection =
+    isStudentDetailPath(normalizedPathname) && !spaceIdFromQuery;
+
+  useEffect(() => {
+    if (!shouldDeferDefaultSpaceSelection) {
+      return;
+    }
+
+    setUserSelectedSpaceId(null);
+  }, [shouldDeferDefaultSpaceSelection]);
 
   useEffect(() => {
     if (spaces.length === 0) return;
@@ -51,7 +76,9 @@ export function useStudentManagementApiState() {
     const matchedFromQuery = spaceIdFromQuery
       ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
       : null;
-    const nextSpaceId = matchedFromQuery?.id ?? spaces[0]?.id ?? null;
+    const nextSpaceId =
+      matchedFromQuery?.id ??
+      (shouldDeferDefaultSpaceSelection ? null : (spaces[0]?.id ?? null));
 
     setUserSelectedSpaceId((prev) =>
       prev === nextSpaceId ? prev : nextSpaceId,
@@ -64,9 +91,18 @@ export function useStudentManagementApiState() {
         }),
       );
     }
-  }, [getCurrentSearchParams, pathname, router, spaceIdFromQuery, spaces]);
+  }, [
+    getCurrentSearchParams,
+    pathname,
+    router,
+    shouldDeferDefaultSpaceSelection,
+    spaceIdFromQuery,
+    spaces,
+  ]);
 
-  const selectedSpaceId = userSelectedSpaceId ?? spaces[0]?.id ?? null;
+  const selectedSpaceId = shouldDeferDefaultSpaceSelection
+    ? null
+    : (userSelectedSpaceId ?? spaces[0]?.id ?? null);
   const setSelectedSpaceId = useCallback(
     (id: string | null) => {
       setUserSelectedSpaceId(id);
@@ -113,6 +149,36 @@ export function useStudentManagementApiState() {
     });
   }, [queryClient, selectedSpaceId]);
 
+  const patchMemberInCaches = useCallback(
+    (memberId: string, patch: Partial<Member>) => {
+      queryClient.setQueriesData<{ members: Member[] }>(
+        { queryKey: ["members"] },
+        (current) => {
+          if (!current) return current;
+
+          return {
+            ...current,
+            members: current.members.map((member) =>
+              member.id === memberId ? { ...member, ...patch } : member,
+            ),
+          };
+        },
+      );
+
+      queryClient.setQueryData<{ member: Member } | undefined>(
+        ["member", memberId],
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            member: { ...current.member, ...patch },
+          };
+        },
+      );
+    },
+    [queryClient],
+  );
+
   return {
     spaces,
     spacesLoading,
@@ -124,5 +190,6 @@ export function useStudentManagementApiState() {
     membersLoading,
     membersError,
     refetchMembers,
+    patchMemberInCaches,
   };
 }

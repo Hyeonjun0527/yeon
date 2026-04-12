@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { RecordItem } from "../_lib/types";
 import type { Space } from "../_hooks/use-current-space";
 import type { MemberWithStatus } from "../_hooks/use-space-members";
 import { useClickOutside } from "../_hooks";
 import { CreateSpaceModal } from "./create-space-modal";
+import { useAppRoute } from "@/lib/app-route-context";
 
 export interface SidebarProps {
   records: RecordItem[];
@@ -63,6 +64,178 @@ function fmtMonthDay(iso: string): string {
   return `${m}-${day}`;
 }
 
+// ---------------------------------------------------------------------------
+// MemberListItem — React.memo로 변경되지 않은 항목의 re-render를 차단
+// 141명 기준 클릭 시 141번 → 2~3번(이전 선택 + 새 선택 + 확장 변경)으로 감소
+// ---------------------------------------------------------------------------
+
+interface MemberListItemProps {
+  member: MemberWithStatus;
+  memberRecords: RecordItem[];
+  isMultiSelected: boolean;
+  isActive: boolean;
+  isExpanded: boolean;
+  selectedRecordId: string | null;
+  recordMultiSelectedSet: ReadonlySet<string>;
+  /** ref 기반 안정 핸들러 — 참조가 변하지 않음 */
+  actions: MemberItemActions;
+}
+
+interface MemberItemActions {
+  onMemberClick: (
+    e: React.MouseEvent,
+    id: string,
+    index: number,
+    name: string,
+  ) => void;
+  onMemberMouseDown: (e: React.MouseEvent, id: string) => void;
+  onMemberMouseEnter: (e: React.MouseEvent, id: string, index: number) => void;
+  onMemberContextMenu: (
+    e: React.MouseEvent,
+    id: string,
+    name: string,
+    index: number,
+  ) => void;
+  onRecordClick: (e: React.MouseEvent, id: string, index: number) => void;
+  onRecordMouseDown: (e: React.MouseEvent, id: string) => void;
+  onRecordMouseEnter: (e: React.MouseEvent, id: string, index: number) => void;
+  onRecordContextMenu: (
+    e: React.MouseEvent,
+    id: string,
+    title: string,
+    index: number,
+  ) => void;
+}
+
+const MemberListItem = memo(
+  function MemberListItem({
+    member,
+    memberRecords,
+    isMultiSelected,
+    isActive,
+    isExpanded,
+    selectedRecordId,
+    recordMultiSelectedSet,
+    actions,
+  }: MemberListItemProps) {
+    return (
+      <div>
+        <button
+          className={`select-none w-full flex items-center gap-2 px-2 py-[7px] rounded-md text-left transition-colors cursor-pointer font-[inherit] border-none ${
+            isMultiSelected
+              ? "bg-accent-dim border border-accent-border"
+              : isActive
+                ? "bg-surface-3 border border-border-light"
+                : "bg-transparent hover:bg-surface-3"
+          }`}
+          onMouseDown={(e) => actions.onMemberMouseDown(e, member.id)}
+          onMouseEnter={(e) =>
+            actions.onMemberMouseEnter(
+              e,
+              member.id,
+              0 /* index resolved in parent */,
+            )
+          }
+          onClick={(e) => actions.onMemberClick(e, member.id, 0, member.name)}
+          onContextMenu={(e) =>
+            actions.onMemberContextMenu(e, member.id, member.name, 0)
+          }
+        >
+          {member.indicator === "recent" && (
+            <span className="w-1.5 h-1.5 rounded-full bg-green flex-shrink-0" />
+          )}
+          {member.indicator === "warning" && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
+          )}
+          {member.indicator === "none" && (
+            <span className="w-1.5 h-1.5 rounded-full bg-surface-4 border border-border flex-shrink-0" />
+          )}
+
+          <span className="flex-1 text-sm truncate text-text">
+            {member.name}
+          </span>
+
+          <span
+            className={`text-[10px] flex-shrink-0 tabular-nums ${
+              member.indicator === "recent"
+                ? "text-green"
+                : member.indicator === "warning"
+                  ? "text-amber"
+                  : "text-text-dim"
+            }`}
+          >
+            {fmtDaysSince(member.daysSinceLast)}
+          </span>
+
+          {memberRecords.length > 0 && (
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              className={`flex-shrink-0 text-text-dim transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+            >
+              <path
+                d="M3 2l4 3-4 3"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+
+        {isExpanded && memberRecords.length > 0 && (
+          <div className="ml-4 border-l border-border pl-2 mb-1">
+            {memberRecords.map((rec) => (
+              <button
+                key={rec.id}
+                className={`select-none w-full text-left px-2 py-[5px] rounded text-xs truncate transition-colors cursor-pointer font-[inherit] border-none ${
+                  recordMultiSelectedSet.has(rec.id)
+                    ? "bg-accent-dim text-text border border-accent-border"
+                    : rec.id === selectedRecordId
+                      ? "bg-surface-3 text-accent"
+                      : "bg-transparent text-text-dim hover:text-text hover:bg-surface-3"
+                }`}
+                onMouseDown={(e) => actions.onRecordMouseDown(e, rec.id)}
+                onMouseEnter={(e) => actions.onRecordMouseEnter(e, rec.id, 0)}
+                onDragStart={(e) => e.preventDefault()}
+                onClick={(e) => actions.onRecordClick(e, rec.id, 0)}
+                onContextMenu={(e) =>
+                  actions.onRecordContextMenu(e, rec.id, rec.title, 0)
+                }
+              >
+                {rec.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  },
+  (prev, next) =>
+    // member 객체는 records 폴링마다 새 참조 → 필드 레벨 비교 필수
+    prev.member.id === next.member.id &&
+    prev.member.indicator === next.member.indicator &&
+    prev.member.daysSinceLast === next.member.daysSinceLast &&
+    prev.member.counselingCount === next.member.counselingCount &&
+    prev.member.name === next.member.name &&
+    prev.isMultiSelected === next.isMultiSelected &&
+    prev.isActive === next.isActive &&
+    prev.isExpanded === next.isExpanded &&
+    prev.selectedRecordId === next.selectedRecordId &&
+    // memberRecords는 records 폴링마다 새 배열 → length + 경계 ID로 비교
+    (prev.memberRecords === next.memberRecords ||
+      (prev.memberRecords.length === next.memberRecords.length &&
+        (prev.memberRecords.length === 0 ||
+          (prev.memberRecords[0].id === next.memberRecords[0].id &&
+            prev.memberRecords.at(-1)!.id ===
+              next.memberRecords.at(-1)!.id)))) &&
+    prev.recordMultiSelectedSet === next.recordMultiSelectedSet &&
+    prev.actions === next.actions,
+);
+
 export function Sidebar({
   records,
   selectedId,
@@ -85,6 +258,7 @@ export function Sidebar({
   onExportMember,
 }: SidebarProps) {
   const router = useRouter();
+  const { resolveAppHref } = useAppRoute();
   const [showMenu, setShowMenu] = useState(false);
   const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -160,6 +334,142 @@ export function Sidebar({
   );
 
   const selectedIdSet = useMemo(() => new Set(selection.ids), [selection.ids]);
+
+  // ── 멤버별 records 캐시 (members/records 변경 시만 재계산) ─────
+  const memberRecordsMap = useMemo(() => {
+    const map = new Map<string, RecordItem[]>();
+    for (const member of members) {
+      map.set(
+        member.id,
+        records.filter((r) => r.memberId === member.id),
+      );
+    }
+    return map;
+  }, [members, records]);
+
+  // record multi-select set (kind가 record일 때만 유의미)
+  const recordMultiSelectedSet = useMemo(
+    () =>
+      selection.kind === "record"
+        ? selectedIdSet
+        : (new Set<string>() as ReadonlySet<string>),
+    [selection.kind, selectedIdSet],
+  );
+
+  // ── ref 기반 안정 핸들러 (MemberListItem에 전달) ──────────────
+  const sidebarActionsRef = useRef({
+    handleSelectableClick: (() => {}) as typeof handleSelectableClick,
+    beginDragSelection: (() => {}) as typeof beginDragSelection,
+    extendDragSelection: (() => {}) as typeof extendDragSelection,
+    openContextMenu: (() => {}) as typeof openContextMenu,
+    onSelectMember,
+    onSelect,
+    setExpandedMemberId,
+    memberOrderIds,
+    visibleRecordOrderIds,
+    visibleRecordOrder,
+    visibleRecordIndexById,
+    members,
+  });
+  // render마다 최신값으로 갱신 — ref이므로 자식 re-render를 유발하지 않음
+  sidebarActionsRef.current = {
+    handleSelectableClick,
+    beginDragSelection,
+    extendDragSelection,
+    openContextMenu,
+    onSelectMember,
+    onSelect,
+    setExpandedMemberId,
+    memberOrderIds,
+    visibleRecordOrderIds,
+    visibleRecordOrder,
+    visibleRecordIndexById,
+    members,
+  };
+
+  // 안정 actions 객체 — useCallback으로 참조 고정, 내부에서 ref.current 사용
+  const memberItemActions = useMemo<MemberItemActions>(
+    () => ({
+      onMemberClick: (e, id, _index, _name) => {
+        const a = sidebarActionsRef.current;
+        const index = a.members.findIndex((m) => m.id === id);
+        a.handleSelectableClick({
+          event: e,
+          kind: "member",
+          id,
+          index,
+          orderedIds: a.memberOrderIds,
+          onDefault: () => {
+            a.onSelectMember(id);
+            a.setExpandedMemberId(id);
+          },
+        });
+      },
+      onMemberMouseDown: (e, id) => {
+        const a = sidebarActionsRef.current;
+        a.beginDragSelection({
+          event: e,
+          kind: "member",
+          id,
+          orderedIds: a.memberOrderIds,
+        });
+      },
+      onMemberMouseEnter: (e, id, _index) => {
+        const a = sidebarActionsRef.current;
+        const index = a.members.findIndex((m) => m.id === id);
+        a.extendDragSelection({
+          event: e,
+          kind: "member",
+          id,
+          index,
+          orderedIds: a.memberOrderIds,
+        });
+      },
+      onMemberContextMenu: (e, id, label, _index) => {
+        const a = sidebarActionsRef.current;
+        const index = a.members.findIndex((m) => m.id === id);
+        a.openContextMenu(e, { kind: "member", id, label, index });
+      },
+      onRecordClick: (e, id, _index) => {
+        const a = sidebarActionsRef.current;
+        const index = a.visibleRecordIndexById.get(id) ?? 0;
+        a.handleSelectableClick({
+          event: e,
+          kind: "record",
+          id,
+          index,
+          orderedIds: a.visibleRecordOrder.map((r) => r.id),
+          onDefault: () => a.onSelect(id),
+        });
+      },
+      onRecordMouseDown: (e, id) => {
+        const a = sidebarActionsRef.current;
+        a.beginDragSelection({
+          event: e,
+          kind: "record",
+          id,
+          orderedIds: a.visibleRecordOrderIds,
+        });
+      },
+      onRecordMouseEnter: (e, id, _index) => {
+        const a = sidebarActionsRef.current;
+        const index = a.visibleRecordIndexById.get(id) ?? 0;
+        a.extendDragSelection({
+          event: e,
+          kind: "record",
+          id,
+          index,
+          orderedIds: a.visibleRecordOrderIds,
+        });
+      },
+      onRecordContextMenu: (e, id, label, _index) => {
+        const a = sidebarActionsRef.current;
+        const index = a.visibleRecordIndexById.get(id) ?? 0;
+        a.openContextMenu(e, { kind: "record", id, label, index });
+      },
+    }),
+    [], // deps 없음 — ref 기반이므로 항상 최신값 사용, 참조 영구 고정
+  );
 
   useEffect(() => {
     if (selection.kind === null) {
@@ -390,11 +700,14 @@ export function Sidebar({
       return;
     }
 
-    if (event.shiftKey || event.metaKey || event.ctrlKey) {
-      event.preventDefault();
-      clearBrowserTextSelection();
+    if (!event.shiftKey) {
+      dragSelectionRef.current = null;
+      suppressDefaultActionRef.current = false;
       return;
     }
+
+    event.preventDefault();
+    clearBrowserTextSelection();
 
     dragSelectionRef.current = {
       kind,
@@ -580,7 +893,7 @@ export function Sidebar({
         key: "goto-student-management",
         label: "수강생 관리로 이동",
         action: () => {
-          router.push("/home/student-management");
+          router.push(resolveAppHref("/home/student-management"));
           setContextMenu(null);
         },
       });
@@ -600,7 +913,9 @@ export function Sidebar({
         key: "open-member-management",
         label: "수강생 관리에서 열기",
         action: () => {
-          router.push(`/home/student-management/${contextMenu.primaryId}`);
+          router.push(
+            resolveAppHref(`/home/student-management/${contextMenu.primaryId}`),
+          );
           setContextMenu(null);
         },
       });
@@ -696,9 +1011,12 @@ export function Sidebar({
                   <button
                     key={space.id}
                     className={`w-full px-3 py-[7px] text-left text-sm transition-colors cursor-pointer font-[inherit] border-none ${
-                      selection.kind === "space" && selectedIdSet.has(space.id)
-                        ? "bg-accent-dim"
-                        : "bg-transparent hover:bg-surface-4"
+                      space.id === currentSpace?.id
+                        ? "bg-surface-4"
+                        : selection.kind === "space" &&
+                            selectedIdSet.has(space.id)
+                          ? "bg-accent-dim"
+                          : "bg-transparent hover:bg-surface-4"
                     } ${
                       space.id === currentSpace?.id
                         ? "text-accent"
@@ -716,6 +1034,7 @@ export function Sidebar({
                         orderedIds: spaces.map((item) => item.id),
                         onDefault: () => {
                           onSpaceChange(space.id);
+                          clearSelection();
                           setShowSpaceDropdown(false);
                         },
                       })
@@ -786,174 +1105,21 @@ export function Sidebar({
                 : "스페이스를 선택하세요"}
             </div>
           ) : (
-            members.map((member) => {
-              const mRecords = getMemberRecords(member.id);
-              const isExpanded = expandedMemberId === member.id;
-
-              return (
-                <div key={member.id}>
-                  <button
-                    className={`select-none w-full flex items-center gap-2 px-2 py-[7px] rounded-md text-left transition-colors cursor-pointer font-[inherit] border-none ${
-                      selection.kind === "member" &&
-                      selectedIdSet.has(member.id)
-                        ? "bg-accent-dim border border-accent-border"
-                        : member.id === selectedMemberId
-                          ? "bg-surface-3 border border-border-light"
-                          : "bg-transparent hover:bg-surface-3"
-                    }`}
-                    onMouseDown={(event) =>
-                      beginDragSelection({
-                        event,
-                        kind: "member",
-                        id: member.id,
-                        orderedIds: memberOrderIds,
-                      })
-                    }
-                    onMouseEnter={(event) =>
-                      extendDragSelection({
-                        event,
-                        kind: "member",
-                        id: member.id,
-                        index: members.findIndex(
-                          (item) => item.id === member.id,
-                        ),
-                        orderedIds: memberOrderIds,
-                      })
-                    }
-                    onClick={(event) =>
-                      handleSelectableClick({
-                        event,
-                        kind: "member",
-                        id: member.id,
-                        index: members.findIndex(
-                          (item) => item.id === member.id,
-                        ),
-                        orderedIds: members.map((item) => item.id),
-                        onDefault: () => {
-                          onSelectMember(member.id);
-                          setExpandedMemberId(member.id);
-                        },
-                      })
-                    }
-                    onContextMenu={(event) =>
-                      openContextMenu(event, {
-                        kind: "member",
-                        id: member.id,
-                        label: member.name,
-                        index: members.findIndex(
-                          (item) => item.id === member.id,
-                        ),
-                      })
-                    }
-                  >
-                    {/* 상태 인디케이터 */}
-                    {member.indicator === "recent" && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-green flex-shrink-0" />
-                    )}
-                    {member.indicator === "warning" && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                    )}
-                    {member.indicator === "none" && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-surface-4 border border-border flex-shrink-0" />
-                    )}
-
-                    <span className="flex-1 text-sm truncate text-text">
-                      {member.name}
-                    </span>
-
-                    <span
-                      className={`text-[10px] flex-shrink-0 tabular-nums ${
-                        member.indicator === "recent"
-                          ? "text-green"
-                          : member.indicator === "warning"
-                            ? "text-amber"
-                            : "text-text-dim"
-                      }`}
-                    >
-                      {fmtDaysSince(member.daysSinceLast)}
-                    </span>
-
-                    {mRecords.length > 0 && (
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 10 10"
-                        fill="none"
-                        className={`flex-shrink-0 text-text-dim transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
-                      >
-                        <path
-                          d="M3 2l4 3-4 3"
-                          stroke="currentColor"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-
-                  {isExpanded && mRecords.length > 0 && (
-                    <div className="ml-4 border-l border-border pl-2 mb-1">
-                      {mRecords.map((rec) => (
-                        <button
-                          key={rec.id}
-                          className={`select-none w-full text-left px-2 py-[5px] rounded text-xs truncate transition-colors cursor-pointer font-[inherit] border-none ${
-                            selection.kind === "record" &&
-                            selectedIdSet.has(rec.id)
-                              ? "bg-accent-dim text-text border border-accent-border"
-                              : rec.id === selectedId
-                                ? "bg-surface-3 text-accent"
-                                : "bg-transparent text-text-dim hover:text-text hover:bg-surface-3"
-                          }`}
-                          onMouseDown={(event) =>
-                            beginDragSelection({
-                              event,
-                              kind: "record",
-                              id: rec.id,
-                              orderedIds: visibleRecordOrderIds,
-                            })
-                          }
-                          onMouseEnter={(event) =>
-                            extendDragSelection({
-                              event,
-                              kind: "record",
-                              id: rec.id,
-                              index: visibleRecordIndexById.get(rec.id) ?? 0,
-                              orderedIds: visibleRecordOrderIds,
-                            })
-                          }
-                          onDragStart={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={(event) =>
-                            handleSelectableClick({
-                              event,
-                              kind: "record",
-                              id: rec.id,
-                              index: visibleRecordIndexById.get(rec.id) ?? 0,
-                              orderedIds: visibleRecordOrder.map(
-                                (item) => item.id,
-                              ),
-                              onDefault: () => onSelect(rec.id),
-                            })
-                          }
-                          onContextMenu={(event) =>
-                            openContextMenu(event, {
-                              kind: "record",
-                              id: rec.id,
-                              label: rec.title,
-                              index: visibleRecordIndexById.get(rec.id) ?? 0,
-                            })
-                          }
-                        >
-                          {rec.title}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            members.map((member) => (
+              <MemberListItem
+                key={member.id}
+                member={member}
+                memberRecords={memberRecordsMap.get(member.id)!}
+                isMultiSelected={
+                  selection.kind === "member" && selectedIdSet.has(member.id)
+                }
+                isActive={member.id === selectedMemberId}
+                isExpanded={expandedMemberId === member.id}
+                selectedRecordId={selectedId}
+                recordMultiSelectedSet={recordMultiSelectedSet}
+                actions={memberItemActions}
+              />
+            ))
           )}
         </div>
 

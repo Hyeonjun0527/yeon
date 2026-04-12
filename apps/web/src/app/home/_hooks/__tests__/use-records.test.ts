@@ -100,7 +100,7 @@ describe("초기 상태", () => {
   it("서버에 레코드가 없으면 phase가 'empty'다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -117,7 +117,7 @@ describe("초기 상태", () => {
       "/api/v1/counseling-records": { records: [makeServerRecord()] },
     });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -130,14 +130,13 @@ describe("초기 상태", () => {
     expect(result.current.records[0].title).toBe("3월 멘토링");
   });
 
-  it("selectedId와 selected가 null로 초기화된다", () => {
+  it("selected가 null로 초기화된다", () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
-    expect(result.current.selectedId).toBeNull();
     expect(result.current.selected).toBeNull();
   });
 });
@@ -145,10 +144,10 @@ describe("초기 상태", () => {
 /* ── addProcessingRecord ── */
 
 describe("addProcessingRecord", () => {
-  it("임시 레코드를 목록에 추가하고 phase를 processing으로 전환한다", async () => {
+  it("임시 레코드를 목록에 추가한다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -161,15 +160,39 @@ describe("addProcessingRecord", () => {
       result.current.addProcessingRecord(tempRec);
     });
 
-    expect(result.current.viewState.kind).toBe("processing");
-    expect(result.current.selectedId).toBe("temp-001");
     expect(result.current.records.some((r) => r.id === "temp-001")).toBe(true);
+  });
+
+  it("selectedRecordId가 processing 레코드를 가리키면 viewState가 processing이 된다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result, rerender } = renderHook(
+      ({ selectedId }: { selectedId: string | null }) => useRecords(selectedId),
+      {
+        wrapper: createWrapper(),
+        initialProps: { selectedId: null as string | null },
+      },
+    );
+
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
+
+    const tempRec = makeTempRecord();
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+
+    rerender({ selectedId: "temp-001" });
+
+    expect(result.current.viewState.kind).toBe("processing");
+    expect(result.current.selected?.id).toBe("temp-001");
   });
 
   it("같은 ID를 두 번 추가해도 중복되지 않는다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -193,10 +216,10 @@ describe("addProcessingRecord", () => {
 /* ── replaceRecord ── */
 
 describe("replaceRecord", () => {
-  it("임시 레코드를 실제 레코드로 교체하고 selectedId를 갱신한다", async () => {
+  it("임시 레코드를 실제 레코드로 교체한다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -214,18 +237,18 @@ describe("replaceRecord", () => {
       result.current.replaceRecord("temp-xyz", realRec);
     });
 
-    expect(result.current.selectedId).toBe("real-001");
     expect(result.current.records.some((r) => r.id === "temp-xyz")).toBe(false);
+    expect(result.current.records.some((r) => r.id === "real-001")).toBe(true);
   });
 });
 
 /* ── markUploadError ── */
 
 describe("markUploadError", () => {
-  it("임시 레코드를 error 상태로 표시하고 viewState를 ready로 전환한다", async () => {
+  it("임시 레코드를 error 상태로 표시한다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -237,13 +260,14 @@ describe("markUploadError", () => {
     act(() => {
       result.current.addProcessingRecord(tempRec);
     });
-    expect(result.current.viewState.kind).toBe("processing");
 
     act(() => {
       result.current.markUploadError("temp-fail", "네트워크 오류");
     });
 
-    expect(result.current.viewState.kind).toBe("ready");
+    const rec = result.current.records.find((r) => r.id === "temp-fail");
+    expect(rec?.status).toBe("error");
+    expect(rec?.errorMessage).toBe("네트워크 오류");
   });
 });
 
@@ -257,7 +281,7 @@ describe("updateMessages", () => {
       },
     });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -281,7 +305,7 @@ describe("updateMessages", () => {
       },
     });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -311,7 +335,7 @@ describe("updateMemberId", () => {
       },
     });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -332,7 +356,7 @@ describe("updateMemberId", () => {
       },
     });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -350,10 +374,10 @@ describe("updateMemberId", () => {
 /* ── removeRecord ── */
 
 describe("removeRecord", () => {
-  it("레코드를 제거하고 selectedId를 초기화한다", async () => {
+  it("레코드를 제거한다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 
@@ -365,20 +389,18 @@ describe("removeRecord", () => {
     act(() => {
       result.current.addProcessingRecord(tempRec);
     });
-    expect(result.current.selectedId).toBe("temp-del");
 
     act(() => {
       result.current.removeRecord("temp-del");
     });
 
-    expect(result.current.selectedId).toBeNull();
     expect(result.current.records.some((r) => r.id === "temp-del")).toBe(false);
   });
 
   it("마지막 레코드 제거 후 viewState가 'empty'가 된다", async () => {
     mockFetch({ "/api/v1/counseling-records": { records: [] } });
 
-    const { result } = renderHook(() => useRecords(), {
+    const { result } = renderHook(() => useRecords(null), {
       wrapper: createWrapper(),
     });
 

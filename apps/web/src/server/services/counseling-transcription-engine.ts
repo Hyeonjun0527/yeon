@@ -215,6 +215,27 @@ async function runFfmpeg(args: string[]) {
   }
 }
 
+async function probeDurationMs(filePath: string): Promise<number | null> {
+  try {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "csv=p=0",
+      filePath,
+    ]);
+
+    const seconds = parseFloat(stdout.trim());
+    return Number.isFinite(seconds) && seconds > 0
+      ? Math.round(seconds * 1000)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 async function buildTranscriptionSources(params: {
   recordId: string;
   storagePath: string;
@@ -222,9 +243,7 @@ async function buildTranscriptionSources(params: {
   originalName: string;
   byteSize: number;
   durationMs: number | null;
-  chunkDurationSeconds: number;
 }) {
-  const chunkDurationSeconds = params.chunkDurationSeconds;
   const sourceDirectory = path.join(
     /* turbopackIgnore: true */ getLocalWorkDir(),
     "_transcription-source",
@@ -242,14 +261,22 @@ async function buildTranscriptionSources(params: {
     destinationPath: sourcePath,
   });
 
+  // durationMs를 모르면 ffprobe로 측정 — 이 값으로 strategy를 결정해야 하므로 chunking 전에 확정
+  const resolvedDurationMs =
+    params.durationMs ?? (await probeDurationMs(sourcePath));
+  const strategy = getPreferredTranscriptionStrategy(resolvedDurationMs);
+  const chunkDurationSeconds = strategy.chunkDurationSeconds;
+
   if (
     !shouldChunkTranscription(
       params.byteSize,
-      params.durationMs,
+      resolvedDurationMs,
       chunkDurationSeconds,
     )
   ) {
     return {
+      resolvedDurationMs,
+      strategy,
       sources: [
         {
           absolutePath: sourcePath,
@@ -310,6 +337,8 @@ async function buildTranscriptionSources(params: {
   }
 
   return {
+    resolvedDurationMs,
+    strategy,
     sources: chunkFiles.map((fileName, index) => ({
       absolutePath: path.join(chunkDirectory, fileName),
       originalName: `${path.basename(params.originalName, path.extname(params.originalName))}-part-${String(index + 1).padStart(2, "0")}.mp3`,
@@ -613,19 +642,18 @@ export async function transcribeStoredAudio(params: {
     );
   }
 
-  const strategy = getPreferredTranscriptionStrategy(params.durationMs);
-  const { sources, cleanup } = await buildTranscriptionSources({
-    recordId: params.recordId,
-    storagePath: params.storagePath,
-    mimeType: params.mimeType,
-    originalName: params.originalName,
-    byteSize: params.byteSize,
-    durationMs: params.durationMs,
-    chunkDurationSeconds: strategy.chunkDurationSeconds,
-  });
+  const { resolvedDurationMs, strategy, sources, cleanup } =
+    await buildTranscriptionSources({
+      recordId: params.recordId,
+      storagePath: params.storagePath,
+      mimeType: params.mimeType,
+      originalName: params.originalName,
+      byteSize: params.byteSize,
+      durationMs: params.durationMs,
+    });
   const transcriptParts: string[] = [];
   const mergedSegments: PersistedTranscriptSegment[] = [];
-  let mergedDurationMs = params.durationMs;
+  let mergedDurationMs = resolvedDurationMs ?? params.durationMs;
   let language: string | null = null;
   let segmentIndexOffset = 0;
   let resolvedModel: string | null = null;

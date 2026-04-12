@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { StudentSpaceCreateStep } from "@/features/student-management/components/space-create-modal";
 import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
@@ -16,7 +16,7 @@ interface UseSpaceSidebarActionsParams {
   selectedSpaceId: string | null;
   setSelectedSpaceId: (id: string | null) => void;
   refetchSpaces: () => void;
-  resetDetailRouteIfNeeded: () => void;
+  resetDetailRouteIfNeeded: (nextSpaceId?: string | null) => void;
   setSpaceSelection: React.Dispatch<React.SetStateAction<SpaceSelectionState>>;
   closeContextMenu: () => void;
 }
@@ -31,10 +31,11 @@ export function useSpaceSidebarActions({
 }: UseSpaceSidebarActionsParams) {
   const router = useRouter();
   const pathname = usePathname();
-  const getCurrentSearchParams = useCallback(() => {
-    if (typeof window === "undefined") return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
-  }, []);
+  const searchParams = useSearchParams();
+  const getCurrentSearchParams = useCallback(
+    () => new URLSearchParams(searchParams.toString()),
+    [searchParams],
+  );
   const [spaceActionError, setSpaceActionError] = useState<string | null>(null);
   const [deletingSpaceId, setDeletingSpaceId] = useState<string | null>(null);
   const [renamingSpaceId, setRenamingSpaceId] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export function useSpaceSidebarActions({
 
       if (selectedSpaceId === spaceId) {
         setSelectedSpaceId(null);
-        resetDetailRouteIfNeeded();
+        resetDetailRouteIfNeeded(null);
       }
     },
     [

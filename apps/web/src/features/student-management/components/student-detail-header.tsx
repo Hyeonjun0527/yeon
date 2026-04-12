@@ -6,6 +6,7 @@ import { useStudentManagement } from "../student-management-provider";
 import type { Student } from "../types";
 import { Avatar } from "./avatar";
 import { StatusBadge } from "./status-badge";
+import { useAppRoute } from "@/lib/app-route-context";
 
 interface StudentDetailHeaderProps {
   student: Student;
@@ -13,9 +14,10 @@ interface StudentDetailHeaderProps {
 
 export function StudentDetailHeader({ student }: StudentDetailHeaderProps) {
   const { openSheet, selectedSpaceId } = useStudentManagement();
+  const { resolveAppHref } = useAppRoute();
   const backHref = selectedSpaceId
-    ? `/home/student-management?spaceId=${selectedSpaceId}`
-    : "/home/student-management";
+    ? `${resolveAppHref("/home/student-management")}?spaceId=${selectedSpaceId}`
+    : resolveAppHref("/home/student-management");
 
   return (
     <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
   Mic,
@@ -13,7 +13,10 @@ import {
 } from "lucide-react";
 import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
-import { LoginModal } from "./login-modal";
+import {
+  LandingLoginModalController,
+  openLandingLoginModal,
+} from "./login-modal";
 import styles from "./landing-home.module.css";
 
 /* ── CSS variable definitions for dark landing theme ── */
@@ -35,9 +38,24 @@ const LANDING_VARS = {
 /* ── Data ── */
 
 const STATS = [
-  { label: "원문 전체 열람", value: 100, suffix: "%" },
-  { label: "요약 기본 구조", value: 4, suffix: "개" },
-  { label: "한 화면 작업 영역", value: 3, suffix: "영역" },
+  {
+    label: "원문 끝까지 확인",
+    value: 100,
+    suffix: "%",
+    description: "요약만 보지 않고 원문 전체를 그대로 확인합니다.",
+  },
+  {
+    label: "바로 읽히는 요약",
+    value: 4,
+    suffix: "개",
+    description: "핵심 내용, 문제 포인트, 요청, 다음 액션만 바로 봅니다.",
+  },
+  {
+    label: "끊기지 않는 작업 흐름",
+    value: 3,
+    suffix: "영역",
+    description: "원문, 요약, AI 채팅을 한 화면에서 바로 이어 봅니다.",
+  },
 ] as const;
 
 const FEATURES = [
@@ -146,23 +164,11 @@ export function LandingHome({
   initialLoginModalOpen = false,
 }: LandingHomeProps) {
   const heroRef = useRef(null);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(
-    initialLoginModalOpen,
-  );
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-
-  function openLoginModal() {
-    setIsLoginModalOpen(true);
-  }
-
-  function closeLoginModal() {
-    setIsLoginModalOpen(false);
-  }
 
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -170,9 +176,8 @@ export function LandingHome({
 
   return (
     <>
-      <LoginModal
-        open={isLoginModalOpen}
-        onClose={closeLoginModal}
+      <LandingLoginModalController
+        initialOpen={initialLoginModalOpen}
         nextPath={nextPath}
       />
       {/* Landing shell — CSS vars defined here, dot-grid ::before in CSS module */}
@@ -183,20 +188,21 @@ export function LandingHome({
         {/* ── Hero ── */}
         <section
           ref={heroRef}
-          className="relative min-h-screen flex items-end justify-start overflow-hidden"
+          className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end"
         >
-          <motion.div style={{ y: heroY }} className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-0">
             <SplineHero />
-          </motion.div>
+          </div>
 
           <div className={styles.heroGradient} />
+          <div className={styles.heroMobileScrim} />
 
           <motion.div
-            className="relative z-[3] max-w-[820px] px-12 pb-[100px] grid gap-6 md:px-6 md:pb-20"
+            className={`${styles.heroCopyShell} relative z-[3] mt-12 grid w-full max-w-[820px] gap-4 px-5 pb-8 pt-6 md:mt-0 md:gap-5 md:bg-transparent md:px-12 md:pb-[100px] md:pt-0`}
             style={{ opacity: heroOpacity }}
           >
             <motion.p
-              className="m-0 text-[13px] font-semibold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
+              className="m-0 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] font-mono md:text-[13px] md:tracking-[0.2em]"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -205,7 +211,7 @@ export function LandingHome({
             </motion.p>
 
             <motion.h1
-              className="m-0 text-[clamp(44px,7.5vw,84px)] font-black leading-[1.02] tracking-[-0.045em] text-[var(--text-primary)]"
+              className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -214,50 +220,66 @@ export function LandingHome({
                 ease: [0.16, 1, 0.3, 1],
               }}
             >
-              좋은 상담은
-              <br />
-              기억에만
-              <br />
-              <span className="text-[var(--accent)] relative">
-                남기기 아깝습니다
+              <span className="md:hidden">
+                <span className="block">상담기록을</span>
+                <span className="relative block text-[var(--accent)]">
+                  YEON으로
+                </span>
+                <span className="block">정리하세요</span>
+              </span>
+              <span className="hidden md:inline">
+                좋은 상담은
+                <br />
+                기억에만
+                <br />
+                <span className="text-[var(--accent)] relative">
+                  남기기 아깝습니다
+                </span>
               </span>
             </motion.h1>
 
             <motion.p
-              className="m-0 text-[clamp(16px,2vw,20px)] leading-[1.75] text-[var(--text-secondary)] max-w-[520px]"
+              className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.7 }}
             >
-              켜두기만 하세요. 상담이 끝나면 기록이 완성되어 있습니다.
-              <br />
-              녹음 버튼 하나면 전사부터 요약, 후속 조치까지 자동으로 정리됩니다.
+              <span className="md:hidden">
+                <span className="block">원문,</span>
+                <span className="block">요약, 액션을</span>
+                <span className="block">한 화면에서</span>
+              </span>
+              <span className="hidden md:inline">
+                전사부터 요약, 다음 액션까지.
+                <br className="hidden md:block" />
+                녹음 하나로 이어지는 상담 기록 워크스페이스입니다.
+              </span>
             </motion.p>
 
             <motion.div
-              className="flex gap-4 flex-wrap pt-2"
+              className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap md:pt-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1.0 }}
             >
               <Link
-                className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
+                className={`${styles.btnPrimary} inline-flex min-h-[58px] w-full items-center justify-center gap-2.5 overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[var(--accent)] px-6 py-4 text-base font-bold text-white shadow-[0_18px_40px_rgba(232,99,10,0.28)] transition-[background-color,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[var(--accent-hover)] hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)] sm:w-auto sm:px-9 md:min-h-[56px] md:rounded-[14px] md:border-0 md:shadow-none`}
                 href="/mockdata/app"
               >
                 데모 보기
                 <ArrowRight size={18} strokeWidth={2.5} />
               </Link>
               <button
-                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
+                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2.5 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.08)] px-6 py-4 text-base font-semibold text-[var(--text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:bg-[rgba(255,255,255,0.12)] sm:w-auto sm:px-9 md:rounded-[14px] md:border-[var(--dark-border-hover)] md:bg-[rgba(255,255,255,0.03)] md:text-[var(--text-secondary)]"
                 type="button"
-                onClick={openLoginModal}
+                onClick={openLandingLoginModal}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
                 로그인하고 시작하기
               </button>
               <button
-                className="inline-flex items-center gap-2.5 px-5 py-4 bg-transparent text-[var(--text-muted)] font-medium text-sm border-0 cursor-pointer transition-colors duration-300 hover:text-[var(--text-primary)]"
+                className="hidden min-h-[48px] items-center justify-center gap-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors duration-300 hover:text-[var(--text-primary)] sm:justify-start md:inline-flex md:text-sm"
                 type="button"
                 onClick={() => scrollToSection("features")}
               >
@@ -265,17 +287,17 @@ export function LandingHome({
               </button>
             </motion.div>
             <motion.p
-              className="m-0 text-[13px] leading-[1.6] text-[var(--text-muted)]"
+              className="m-0 hidden max-w-[320px] text-[12px] leading-[1.55] text-[rgba(255,255,255,0.64)] md:block md:text-[13px] md:leading-[1.6] md:text-[var(--text-muted)]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1.1 }}
             >
-              데모 보기에서는 평가용 샘플 데이터가 바로 열립니다.
+              데모에서는 구조화된 상담 기록 화면을 바로 확인할 수 있습니다.
             </motion.p>
           </motion.div>
 
           <motion.button
-            className={`${styles.scrollIndicator} absolute bottom-8 left-1/2 -translate-x-1/2 z-[4] bg-[rgba(255,255,255,0.04)] backdrop-blur-sm border border-[var(--dark-border)] rounded-full w-13 h-13 flex items-center justify-center text-[var(--text-muted)] cursor-pointer transition-all duration-300 hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[rgba(232,99,10,0.08)]`}
+            className={`${styles.scrollIndicator} absolute bottom-8 left-1/2 z-[4] hidden h-13 w-13 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--dark-border)] bg-[rgba(255,255,255,0.04)] text-[var(--text-muted)] transition-all duration-300 hover:border-[var(--accent)] hover:bg-[rgba(232,99,10,0.08)] hover:text-[var(--accent)] md:flex`}
             type="button"
             onClick={() => scrollToSection("stats")}
             aria-label="아래로 스크롤"
@@ -288,30 +310,43 @@ export function LandingHome({
         </section>
 
         {/* ── Stats ── */}
-        <RevealSection className="relative z-[1] py-24 px-12 bg-[var(--dark-surface)] border-t border-[var(--dark-border)] border-b md:px-6">
+        <RevealSection className="relative z-[1] border-b border-t border-[var(--dark-border)] bg-[var(--dark-surface)] px-5 py-10 md:px-12 md:py-24">
           <div
             id="stats"
-            className="max-w-[1100px] mx-auto grid grid-cols-3 gap-12 md:grid-cols-1"
+            className="mx-auto grid max-w-[1100px] grid-cols-1 gap-3 md:grid-cols-3 md:gap-12"
           >
             {STATS.map((stat) => (
               <motion.div
                 key={stat.label}
-                className="text-center flex flex-col gap-2 items-center"
+                className="grid gap-3 rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-5 py-5 text-left shadow-[0_14px_32px_rgba(0,0,0,0.12)] md:flex md:flex-col md:items-center md:gap-2 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-center md:shadow-none"
                 variants={fadeUp}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               >
-                <Counter end={stat.value} suffix={stat.suffix} />
-                <span className="text-[14px] font-medium text-[var(--text-muted)] tracking-[0.04em] uppercase">
-                  {stat.label}
-                </span>
-                <div className="w-16 h-[3px] bg-[var(--dark-border)] rounded-sm mt-2 overflow-hidden">
-                  <motion.div
-                    className="w-full h-full bg-[var(--accent)] rounded-sm origin-left"
-                    initial={{ scaleX: 0 }}
-                    whileInView={{ scaleX: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
-                  />
+                <Counter
+                  end={stat.value}
+                  suffix={stat.suffix}
+                  className="text-[clamp(42px,13vw,68px)]"
+                />
+                <div className="grid gap-3 md:flex-none md:items-center">
+                  <span className="text-[17px] font-semibold leading-[1.3] text-[var(--text-primary)] md:text-[14px] md:font-medium md:tracking-[0.04em] md:text-[var(--text-secondary)] md:uppercase">
+                    {stat.label}
+                  </span>
+                  <p className="m-0 max-w-[28ch] text-[13px] leading-[1.65] text-[rgba(255,255,255,0.62)] md:max-w-none md:hidden">
+                    {stat.description}
+                  </p>
+                  <div className="h-[3px] w-20 overflow-hidden rounded-sm bg-[rgba(255,255,255,0.08)] md:mt-2 md:w-16 md:bg-[var(--dark-border)]">
+                    <motion.div
+                      className="h-full w-full origin-left rounded-sm bg-[var(--accent)]"
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
+                      viewport={{ once: true }}
+                      transition={{
+                        duration: 1.2,
+                        delay: 0.3,
+                        ease: "easeOut",
+                      }}
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -319,8 +354,8 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Mission ── */}
-        <RevealSection className="relative z-[1] py-40 px-12 flex justify-center text-center bg-[var(--dark-bg)] md:px-6 md:py-[100px]">
-          <div className="max-w-[720px] grid gap-7">
+        <RevealSection className="relative z-[1] hidden justify-center bg-[var(--dark-bg)] px-5 py-14 text-left md:flex md:px-12 md:py-40 md:text-center">
+          <div className="grid max-w-[720px] gap-5 md:gap-7">
             <motion.p
               className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
               variants={fadeUp}
@@ -329,7 +364,7 @@ export function LandingHome({
               왜 지금 필요한가
             </motion.p>
             <motion.h2
-              className="m-0 text-[clamp(34px,5.5vw,60px)] font-black leading-[1.1] tracking-[-0.035em]"
+              className="m-0 max-w-[12ch] text-[clamp(30px,10vw,60px)] font-black leading-[1.08] tracking-[-0.045em] md:max-w-none md:text-[clamp(34px,5.5vw,60px)] md:tracking-[-0.035em]"
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
@@ -338,7 +373,7 @@ export function LandingHome({
               기록이 다음 상담이 됩니다
             </motion.h2>
             <motion.p
-              className="m-0 text-[18px] leading-[1.85] text-[var(--text-secondary)]"
+              className="m-0 max-w-[34ch] text-[15px] leading-[1.78] text-[rgba(255,255,255,0.74)] md:max-w-none md:text-[18px] md:leading-[1.85] md:text-[var(--text-secondary)]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
@@ -351,26 +386,29 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Features ── */}
-        <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
-          <div id="features" className="max-w-[1100px] mx-auto grid gap-[72px]">
+        <RevealSection className="relative z-[1] bg-[var(--dark-surface)] px-5 py-14 pb-16 md:px-12 md:py-[120px] md:pb-[140px]">
+          <div
+            id="features"
+            className="mx-auto grid max-w-[1100px] gap-8 md:gap-[72px]"
+          >
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
               <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
                 핵심 기능
               </p>
-              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
+              <h2 className="m-0 max-w-[11ch] text-[clamp(28px,9vw,48px)] font-black leading-[1.08] tracking-[-0.04em] md:max-w-none md:text-[clamp(28px,4vw,48px)] md:leading-[1.15] md:tracking-[-0.025em]">
                 원문, 요약, 액션을
                 <br />한 화면에서
               </h2>
             </motion.div>
 
             <motion.div
-              className="grid grid-cols-2 gap-5 md:grid-cols-1"
+              className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5"
               variants={staggerContainer}
             >
               {FEATURES.map((feat) => (
                 <motion.div
                   key={feat.title}
-                  className={`${styles.featureCard} p-10 bg-[var(--dark-elevated)] border border-[var(--dark-border)] rounded-3xl grid gap-4 cursor-default transition-[border-color,box-shadow] duration-[350ms] ease-in-out hover:border-[var(--dark-border-hover)] hover:shadow-[0_24px_56px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] md:p-8`}
+                  className={`${styles.featureCard} grid gap-4 rounded-[28px] border border-[var(--dark-border)] bg-[var(--dark-elevated)] p-5 transition-[border-color,box-shadow] duration-[350ms] ease-in-out hover:border-[var(--dark-border-hover)] hover:shadow-[0_24px_56px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] md:gap-4 md:rounded-3xl md:p-8`}
                   data-accent={feat.accent}
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -380,12 +418,14 @@ export function LandingHome({
                   }}
                 >
                   <div
-                    className={`${styles.featureIconWrap} w-14 h-14 flex items-center justify-center rounded-2xl`}
+                    className={`${styles.featureIconWrap} flex h-14 w-14 items-center justify-center rounded-2xl`}
                   >
                     <feat.icon size={24} strokeWidth={2} />
                   </div>
-                  <h3 className="m-0 text-[21px] font-bold">{feat.title}</h3>
-                  <p className="m-0 text-[15px] leading-[1.75] text-[var(--text-secondary)]">
+                  <h3 className="m-0 max-w-none text-[22px] font-bold leading-[1.15] tracking-[-0.035em] md:text-[21px] md:tracking-normal">
+                    {feat.title}
+                  </h3>
+                  <p className="m-0 text-[15px] leading-[1.68] text-[rgba(255,255,255,0.74)] md:leading-[1.75] md:text-[var(--text-secondary)]">
                     {feat.description}
                   </p>
                 </motion.div>
@@ -395,9 +435,9 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Philosophy (full-bleed quote) ── */}
-        <RevealSection className="relative z-[1] py-[180px] px-12 flex items-center justify-center text-center bg-[var(--dark-bg)] overflow-hidden md:px-6 md:py-[100px]">
+        <RevealSection className="relative z-[1] hidden items-center justify-center overflow-hidden bg-[var(--dark-bg)] px-5 py-14 text-left md:flex md:px-12 md:py-[180px] md:text-center">
           <div className={styles.philosophyGlow} />
-          <div className="relative max-w-[800px] grid gap-9">
+          <div className="relative grid max-w-[800px] gap-6 md:gap-9">
             <motion.p
               className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono"
               variants={fadeUp}
@@ -406,7 +446,7 @@ export function LandingHome({
               원칙
             </motion.p>
             <motion.blockquote
-              className="m-0 text-[clamp(30px,5.5vw,56px)] font-black leading-[1.2] tracking-[-0.035em] text-[var(--text-primary)]"
+              className="m-0 max-w-[11ch] text-[clamp(28px,10vw,56px)] font-black leading-[1.12] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(30px,5.5vw,56px)] md:leading-[1.2] md:tracking-[-0.035em]"
               variants={fadeUp}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
@@ -415,7 +455,7 @@ export function LandingHome({
               AI를 믿을 수 없습니다&rdquo;
             </motion.blockquote>
             <motion.p
-              className="m-0 text-[17px] leading-[1.85] text-[var(--text-muted)]"
+              className="m-0 max-w-[34ch] text-[15px] leading-[1.78] text-[rgba(255,255,255,0.68)] md:max-w-none md:text-[17px] md:leading-[1.85] md:text-[var(--text-muted)]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
@@ -427,13 +467,16 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Flow Steps ── */}
-        <RevealSection className="relative z-[1] py-[120px] px-12 pb-[140px] bg-[var(--dark-surface)] md:px-6">
-          <div id="flow" className="max-w-[800px] mx-auto grid gap-[72px]">
+        <RevealSection className="relative z-[1] hidden bg-[var(--dark-surface)] px-5 py-14 pb-16 md:block md:px-12 md:py-[120px] md:pb-[140px]">
+          <div
+            id="flow"
+            className="mx-auto grid max-w-[800px] gap-8 md:gap-[72px]"
+          >
             <motion.div variants={fadeUp} transition={{ duration: 0.6 }}>
               <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
                 사용 흐름
               </p>
-              <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
+              <h2 className="m-0 max-w-[12ch] text-[clamp(28px,9vw,48px)] font-black leading-[1.08] tracking-[-0.045em] md:max-w-none md:text-[clamp(28px,4vw,48px)] md:leading-[1.15] md:tracking-[-0.025em]">
                 시작부터 저장까지 단순하게
               </h2>
             </motion.div>
@@ -442,7 +485,7 @@ export function LandingHome({
               {FLOW_STEPS.map((step, i) => (
                 <motion.div
                   key={step.number}
-                  className="flex gap-7 py-9 border-b border-[var(--dark-border)] items-start first:border-t first:border-[var(--dark-border)] md:gap-5 md:py-7"
+                  className="flex items-start gap-4 border-b border-[var(--dark-border)] py-6 first:border-t first:border-[var(--dark-border)] md:gap-5 md:py-7"
                   initial={{ opacity: 0, x: -30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, amount: 0.3 }}
@@ -452,12 +495,14 @@ export function LandingHome({
                     ease: [0.16, 1, 0.3, 1],
                   }}
                 >
-                  <span className="text-[44px] font-black text-[var(--accent)] tracking-[-0.04em] leading-none shrink-0 w-[68px] tabular-nums font-mono md:text-[36px] md:w-[52px]">
+                  <span className="w-[44px] shrink-0 font-mono text-[30px] font-black leading-none tracking-[-0.04em] text-[var(--accent)] tabular-nums md:w-[52px] md:text-[36px]">
                     {step.number}
                   </span>
-                  <div className="grid gap-1.5 pt-2">
-                    <h3 className="m-0 text-[21px] font-bold">{step.title}</h3>
-                    <p className="m-0 text-[15px] text-[var(--text-secondary)] leading-[1.65]">
+                  <div className="grid gap-1.5 pt-1 md:pt-2">
+                    <h3 className="m-0 text-[18px] font-bold leading-[1.25] md:text-[21px]">
+                      {step.title}
+                    </h3>
+                    <p className="m-0 text-[14px] leading-[1.65] text-[rgba(255,255,255,0.74)] md:text-[15px] md:text-[var(--text-secondary)]">
                       {step.description}
                     </p>
                   </div>
@@ -468,11 +513,11 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── CTA ── */}
-        <RevealSection className="relative z-[1] py-40 px-12 flex justify-center text-center bg-[var(--dark-bg)] overflow-hidden md:px-6 md:py-[100px]">
+        <RevealSection className="relative z-[1] flex justify-center overflow-hidden bg-[var(--dark-bg)] px-5 py-14 text-left md:px-12 md:py-40 md:text-center">
           <div className={styles.ctaGlow} />
-          <div className="relative max-w-[600px] grid gap-7 justify-items-center">
+          <div className="relative grid max-w-[600px] gap-5 justify-items-start rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-5 py-6 shadow-[0_18px_48px_rgba(0,0,0,0.18)] md:justify-items-center md:border-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none md:gap-7">
             <motion.h2
-              className="m-0 text-[clamp(34px,5.5vw,60px)] font-black leading-[1.1] tracking-[-0.035em]"
+              className="m-0 max-w-[11ch] text-[clamp(30px,10vw,60px)] font-black leading-[1.05] tracking-[-0.05em] md:max-w-none md:text-[clamp(34px,5.5vw,60px)] md:leading-[1.1] md:tracking-[-0.035em]"
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
@@ -481,28 +526,28 @@ export function LandingHome({
               <span className="text-[var(--accent)]">YEON</span>으로 정리하세요
             </motion.h2>
             <motion.p
-              className="m-0 text-[18px] text-[var(--text-secondary)] leading-[1.75]"
+              className="m-0 max-w-[32ch] text-[15px] leading-[1.72] text-[rgba(255,255,255,0.78)] md:max-w-none md:text-[18px] md:text-[var(--text-secondary)]"
               variants={fadeUp}
               transition={{ duration: 0.6 }}
             >
               녹음, 원문, 요약, AI 질의를 하나의 흐름으로 연결합니다.
             </motion.p>
             <motion.div
-              className="flex flex-wrap items-center justify-center gap-4"
+              className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap md:w-auto md:items-center md:justify-center md:gap-4"
               variants={fadeUp}
               transition={{ duration: 0.5 }}
             >
               <Link
-                className={`${styles.btnPrimary} inline-flex items-center gap-2.5 px-9 py-4 bg-[var(--accent)] text-white font-bold text-base border-0 rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)]`}
+                className={`${styles.btnPrimary} inline-flex min-h-[56px] w-full items-center justify-center gap-2.5 overflow-hidden rounded-[18px] border-0 bg-[var(--accent)] px-6 py-4 text-base font-bold text-white transition-[background-color,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[var(--accent-hover)] hover:shadow-[0_8px_24px_var(--accent-glow),0_0_0_1px_rgba(232,99,10,0.2)] sm:w-auto sm:px-9 md:rounded-[14px]`}
                 href="/mockdata/app"
               >
                 데모 보기
                 <ArrowRight size={18} strokeWidth={2.5} />
               </Link>
               <button
-                className="inline-flex items-center gap-2.5 px-9 py-4 bg-[rgba(255,255,255,0.03)] backdrop-blur-sm text-[var(--text-secondary)] font-semibold text-base border border-[var(--dark-border)] rounded-[14px] cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5"
+                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2.5 rounded-[18px] border border-[var(--dark-border-hover)] bg-[rgba(255,255,255,0.04)] px-6 py-4 text-base font-semibold text-[var(--text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[var(--dark-border-hover)] hover:bg-[rgba(255,255,255,0.08)] sm:w-auto sm:px-9 md:rounded-[14px] md:bg-[rgba(255,255,255,0.03)] md:text-[var(--text-secondary)]"
                 type="button"
-                onClick={openLoginModal}
+                onClick={openLandingLoginModal}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
@@ -513,15 +558,15 @@ export function LandingHome({
         </RevealSection>
 
         {/* ── Footer ── */}
-        <footer className="relative z-[1] py-9 px-12 bg-[var(--dark-bg)] border-t border-[var(--dark-border)] md:p-6">
-          <div className="max-w-[1100px] mx-auto flex justify-between items-center md:flex-col md:gap-3 md:text-center">
-            <span className="text-[22px] font-black tracking-[-0.03em]">
+        <footer className="relative z-[1] border-t border-[var(--dark-border)] bg-[var(--dark-bg)] px-5 py-8 md:px-12 md:py-9">
+          <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-4 text-left md:flex-row md:items-center md:justify-between md:gap-3 md:text-center">
+            <span className="text-[20px] font-black tracking-[-0.03em] md:text-[22px]">
               YEON
             </span>
-            <span className="text-[13px] text-[var(--text-muted)]">
+            <span className="text-[12px] leading-[1.6] text-[var(--text-muted)] md:text-[13px]">
               &copy; 2026 YEON. All rights reserved.
             </span>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
               <a
                 href="/privacy"
                 className="text-[13px] text-[var(--text-muted)] no-underline transition-colors duration-150 hover:text-[var(--text-primary)]"
