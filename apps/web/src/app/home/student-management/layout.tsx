@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { Drawer as VaulDrawer } from "vaul";
 import {
   Users,
   Plus,
@@ -12,6 +13,10 @@ import {
   AlertCircle,
   Pencil,
   FileClock,
+  ClipboardCheck,
+  ChevronsUpDown,
+  Ellipsis,
+  X,
 } from "lucide-react";
 import { useSpaceSidebarActions } from "./_hooks/use-space-sidebar-actions";
 import { useSpaceSidebarSelection } from "./_hooks/use-space-sidebar-selection";
@@ -22,8 +27,10 @@ import { useClickOutside } from "@/app/home/_hooks";
 import {
   SpaceSettingsDrawerProvider,
   SpaceSettingsDrawerHost,
+  useSpaceSettingsDrawer,
 } from "@/features/space-settings";
 import type { LocalImportDraftSummary } from "./_lib/space-sidebar-types";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 /* ── OAuth 결과 토스트 ──
  * URL query param으로 OAuth 결과를 전달받아 표시하는 컴포넌트.
@@ -128,13 +135,24 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const noSpaces = !spacesLoading && spaces.length === 0;
+  const isCheckBoardRoute = pathname === "/home/student-management/check-board";
+  const currentSpace =
+    spaces.find((space) => space.id === selectedSpaceId) ?? null;
+  const [mobileSpaceDrawerOpen, setMobileSpaceDrawerOpen] = useState(false);
   const isStudentDetailRoute =
     /^\/home\/student-management\/[^/]+$/.test(pathname) &&
-    pathname !== "/home/student-management/members/new";
+    pathname !== "/home/student-management/members/new" &&
+    pathname !== "/home/student-management/check-board";
 
   function resetDetailRouteIfNeeded() {
     if (isStudentDetailRoute) {
-      router.replace("/home/student-management");
+      router.replace(
+        createPatchedHref(
+          "/home/student-management",
+          new URLSearchParams(window.location.search),
+          { spaceId: selectedSpaceId },
+        ),
+      );
     }
   }
 
@@ -156,6 +174,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
     createModalState,
     closeCreateModal,
     openCreateModal,
+    updateCreateModalRouteState,
     spaceActionError,
     setSpaceActionError,
     deletingSpaceId,
@@ -201,6 +220,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   });
   const localDrafts = localDraftsData?.drafts ?? [];
   const localDraftCount = localDrafts.length;
+  const { openSpaceSettings } = useSpaceSettingsDrawer();
   const localDraftsError =
     localDraftsQueryError instanceof Error
       ? localDraftsQueryError.message
@@ -208,9 +228,92 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         ? "임시 가져오기 초안을 불러오지 못했습니다."
         : null;
 
+  useEffect(() => {
+    setMobileSpaceDrawerOpen(false);
+  }, [pathname, selectedSpaceId]);
+
+  const [mobileActionTarget, setMobileActionTarget] = useState<{
+    spaceId: string;
+    spaceName: string;
+  } | null>(null);
+
+  const openMobileSpaceActions = (target: {
+    spaceId: string;
+    spaceName: string;
+  }) => {
+    setMobileSpaceDrawerOpen(false);
+    window.setTimeout(() => {
+      setMobileActionTarget(target);
+    }, 140);
+  };
+
   return (
     <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
-      <nav className="scrollbar-subtle w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex flex-col gap-1 flex-shrink-0 overflow-y-auto md:w-[240px] max-md:w-full max-md:flex-row max-md:py-3 max-md:px-4 max-md:gap-1 max-md:border-r-0 max-md:border-b max-md:overflow-x-auto max-md:overflow-y-hidden">
+      <div className="border-b border-border bg-surface px-3 py-3 md:hidden">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface-2 p-1">
+          <button
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
+              !isCheckBoardRoute
+                ? "bg-accent text-white"
+                : "text-text-secondary hover:bg-surface-3 hover:text-text"
+            }`}
+            onClick={() =>
+              router.push(
+                createPatchedHref(
+                  "/home/student-management",
+                  new URLSearchParams(window.location.search),
+                  { spaceId: selectedSpaceId },
+                ),
+              )
+            }
+            type="button"
+          >
+            <Users size={14} />
+            학생관리
+          </button>
+          <button
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
+              isCheckBoardRoute
+                ? "bg-accent text-white"
+                : "text-text-secondary hover:bg-surface-3 hover:text-text"
+            }`}
+            onClick={() =>
+              router.push(
+                createPatchedHref(
+                  "/home/student-management/check-board",
+                  new URLSearchParams(window.location.search),
+                  { spaceId: selectedSpaceId },
+                ),
+              )
+            }
+            type="button"
+          >
+            <ClipboardCheck size={14} />
+            출석보드
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-left transition-colors hover:border-border-light hover:bg-surface-3"
+          onClick={() => setMobileSpaceDrawerOpen(true)}
+        >
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              현재 스페이스
+            </div>
+            <div className="mt-1 truncate text-sm font-semibold text-text">
+              {currentSpace?.name ?? "전체 수강생"}
+            </div>
+          </div>
+          <div className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-text-secondary">
+            <ChevronsUpDown size={14} />
+            변경
+          </div>
+        </button>
+      </div>
+
+      <nav className="scrollbar-subtle hidden w-[240px] bg-surface border-r border-border pt-5 px-3 pb-5 flex-col gap-1 flex-shrink-0 overflow-y-auto md:flex md:w-[240px]">
         <div className="flex items-center gap-2.5 px-2.5 pb-4 text-text max-md:hidden">
           <GraduationCap size={20} style={{ color: "var(--accent)" }} />
           <span
@@ -227,8 +330,8 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
 
         {/* 전체 수강생 */}
         <button
-          className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
-            selectedSpaceId === null
+          className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms]${
+            selectedSpaceId === null && !isCheckBoardRoute
               ? " bg-accent-dim text-accent font-semibold"
               : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
           }`}
@@ -241,10 +344,10 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         </button>
 
         {/* 스페이스 목록 */}
-        <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-4 pb-1.5 max-md:hidden">
+        <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-4 pb-1.5">
           스페이스
         </div>
-        <div className="flex flex-col gap-0.5 max-md:flex-row max-md:gap-1">
+        <div className="flex flex-col gap-0.5">
           {spaceSelection.ids.length > 1 ? (
             <div className="mb-1 rounded-[8px] border border-accent-border bg-accent-dim px-2.5 py-2 text-[12px] font-medium text-accent max-md:min-w-[220px]">
               스페이스 {spaceSelection.ids.length}개 선택됨
@@ -373,12 +476,224 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </nav>
-      <main className="scrollbar-subtle flex-1 overflow-y-auto p-8 max-md:px-4 max-md:py-5">
+      <main className="scrollbar-subtle flex-1 overflow-y-auto p-8 max-md:px-3 max-md:py-4">
         {children}
       </main>
+      {mobileSpaceDrawerOpen ? (
+        <div className="fixed inset-0 z-[340] bg-[rgba(0,0,0,0.62)] p-3 md:hidden">
+          <div className="ml-auto flex h-full w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center justify-between border-b border-border px-4 py-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.14em] text-text-dim">
+                  space selector
+                </div>
+                <div className="mt-1 text-base font-semibold text-text">
+                  스페이스 선택
+                </div>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-text-secondary"
+                onClick={() => setMobileSpaceDrawerOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              <div className="space-y-1.5">
+                <button
+                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-colors ${
+                    selectedSpaceId === null && !isCheckBoardRoute
+                      ? "bg-accent-dim text-accent"
+                      : "bg-surface-2 text-text-secondary"
+                  }`}
+                  onClick={() => {
+                    handleSelectAllStudents();
+                    setMobileSpaceDrawerOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Users size={15} />
+                  전체 수강생
+                </button>
+
+                {spaces.map((space, index) => {
+                  const isSpaceSelected = spaceSelection.ids.includes(space.id);
+                  const isActiveSpace = selectedSpaceId === space.id;
+
+                  return (
+                    <div
+                      key={space.id}
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
+                        isSpaceSelected
+                          ? isActiveSpace
+                            ? "bg-accent-dim text-accent"
+                            : "bg-accent-dim text-text"
+                          : "bg-surface-2 text-text-secondary"
+                      }`}
+                    >
+                      <button
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left text-[13px] font-medium"
+                        onClick={(event) => {
+                          handleSpaceClick(event, space.id, index);
+                          setMobileSpaceDrawerOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+                        <span className="min-w-0 flex-1 truncate">
+                          {space.name}
+                        </span>
+                        {isActiveSpace ? (
+                          <span className="text-[11px] text-text-dim">
+                            {members.length}
+                          </span>
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        className="relative z-10 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openMobileSpaceActions({
+                            spaceId: space.id,
+                            spaceName: space.name,
+                          });
+                        }}
+                        aria-label={`${space.name} 액션 열기`}
+                      >
+                        <Ellipsis size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {spaceActionError ? (
+                <div className="mt-3 rounded-xl border border-red/20 bg-red/10 px-3 py-2 text-[12px] text-red">
+                  {spaceActionError}
+                </div>
+              ) : null}
+
+              <div className="mt-4 space-y-2 border-t border-border pt-4">
+                {localDraftCount > 0 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-accent-border bg-accent-dim/50 px-3 py-3 text-left"
+                    onClick={() => {
+                      openCreateModal("import");
+                      setMobileSpaceDrawerOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="rounded-lg bg-surface px-2 py-2 text-accent">
+                        <FileClock size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold text-text">
+                          가져오기 작업 보기
+                        </div>
+                        <div className="mt-1 text-[11px] text-text-dim">
+                          {localDraftCount}개 작업
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ) : null}
+
+                <button
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-transparent px-3 py-3 text-[13px] font-medium text-text-dim"
+                  onClick={() => {
+                    openCreateModal("choose");
+                    setMobileSpaceDrawerOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Plus size={14} />
+                  스페이스 만들기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <VaulDrawer.Root
+        open={!!mobileActionTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMobileActionTarget(null);
+          }
+        }}
+      >
+        <VaulDrawer.Portal>
+          <VaulDrawer.Overlay className="fixed inset-0 z-[350] bg-black/60 md:hidden" />
+          <VaulDrawer.Content className="fixed inset-x-0 bottom-0 z-[360] rounded-t-[28px] border border-white/10 bg-[#12131a] px-4 pb-[max(20px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.72)] outline-none md:hidden">
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/15" />
+            <div className="mb-4 rounded-2xl border border-white/8 bg-[#181a22] px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-text-dim">
+                space actions
+              </div>
+              <div className="mt-1 text-lg font-semibold text-text">
+                {mobileActionTarget?.spaceName ?? "스페이스 액션"}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-2xl border border-white/8 bg-[#20232d] px-4 py-3 text-left text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:bg-[#262a36]"
+                onClick={() => {
+                  if (!mobileActionTarget) return;
+                  openSpaceSettings({ spaceId: mobileActionTarget.spaceId });
+                  setMobileActionTarget(null);
+                  setMobileSpaceDrawerOpen(false);
+                }}
+              >
+                <Users size={16} />
+                스페이스 설정
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-2xl border border-white/8 bg-[#20232d] px-4 py-3 text-left text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:bg-[#262a36]"
+                onClick={() => {
+                  if (!mobileActionTarget) return;
+                  openRenameDialog(mobileActionTarget);
+                  setMobileActionTarget(null);
+                  setMobileSpaceDrawerOpen(false);
+                }}
+              >
+                <Pencil size={16} />
+                이름 변경
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-2xl border border-red/40 bg-[#3a1218] px-4 py-3 text-left text-sm font-semibold text-[#ffb4bf] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:bg-[#47161d]"
+                onClick={() => {
+                  if (!mobileActionTarget) return;
+                  openDeleteDialog(mobileActionTarget);
+                  setMobileActionTarget(null);
+                  setMobileSpaceDrawerOpen(false);
+                }}
+              >
+                <span>🗑</span>
+                스페이스 삭제
+              </button>
+            </div>
+          </VaulDrawer.Content>
+        </VaulDrawer.Portal>
+      </VaulDrawer.Root>
       {createModalState.open ? (
         <StudentSpaceCreateModal
           initialStep={createModalState.initialStep}
+          initialLocalDraftId={createModalState.initialLocalDraftId}
+          onRouteStateChange={({ step, draftId }) => {
+            updateCreateModalRouteState({
+              mode: step === "import" ? "import" : step,
+              step,
+              draftId,
+            });
+          }}
           onDraftDiscarded={() => {
             void refetchLocalDrafts();
           }}
@@ -589,7 +904,9 @@ export default function StudentManagementLayout({
   return (
     <StudentManagementProvider>
       <SpaceSettingsDrawerProvider>
-        <SidebarContent>{children}</SidebarContent>
+        <Suspense fallback={null}>
+          <SidebarContent>{children}</SidebarContent>
+        </Suspense>
         <SpaceSettingsDrawerHost />
       </SpaceSettingsDrawerProvider>
       <Suspense fallback={null}>

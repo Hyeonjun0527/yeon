@@ -12,12 +12,13 @@ import { detectFileKind } from "../file-kind";
 import {
   diffText,
   getCompletedAnalysisState,
-  getDraftRecoveryNotice,
   getQueuedAnalysisState,
   nextId,
-  readImportSSE,
+  runImportAnalysisRequest,
   summaryText,
 } from "./import-helpers";
+import { resetImportState } from "./import-state-reset";
+import { useImportDraftRecovery } from "./use-import-draft-recovery";
 
 const LOCAL_IMPORT_DRAFT_STORAGE_KEY = "yeon:local-import:last-draft-id";
 const IMPORT_DRAFT_RETENTION_TEXT =
@@ -63,7 +64,6 @@ export function useLocalImport(
 
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
-  const [draftId, setDraftId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [processingStage, setProcessingStage] = useState<
     import("@/lib/import-analysis-progress").ImportAnalysisStage | null
@@ -80,8 +80,6 @@ export function useLocalImport(
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
-  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -101,18 +99,6 @@ export function useLocalImport(
     setChatMessages((prev) => [...prev, { role, text, id: nextId() }]);
   }, []);
 
-  const clearStoredDraftId = useCallback(() => {
-    setDraftId(null);
-    setRecoveryNotice(null);
-    setRestoredFromDraft(false);
-    localStorage.removeItem(LOCAL_IMPORT_DRAFT_STORAGE_KEY);
-  }, []);
-
-  const persistDraftId = useCallback((nextDraftId: string) => {
-    setDraftId(nextDraftId);
-    localStorage.setItem(LOCAL_IMPORT_DRAFT_STORAGE_KEY, nextDraftId);
-  }, []);
-
   const applyDraftSnapshot = useCallback(
     (snapshot: LocalImportDraftSnapshot) => {
       if (objectUrlRef.current) {
@@ -120,7 +106,6 @@ export function useLocalImport(
         objectUrlRef.current = null;
       }
       rawFileRef.current = null;
-      persistDraftId(snapshot.id);
       setSelectedFile(snapshot.selectedFile);
       setLocalPreviewUrl(null);
       setEditablePreview(snapshot.preview);
@@ -131,58 +116,40 @@ export function useLocalImport(
       setProcessingStage(snapshot.processingStage);
       setProcessingProgress(snapshot.processingProgress);
       setProcessingMessage(snapshot.processingMessage);
-      setRecoveryNotice(getDraftRecoveryNotice(snapshot.status));
       setStreamingText(
         snapshot.status === "analyzing" ? snapshot.processingMessage : null,
       );
-      setRestoredFromDraft(true);
     },
-    [persistDraftId],
+    [],
   );
 
-  const restoreDraft = useCallback(
-    async (targetDraftId: string) => {
-      try {
-        const res = await fetch(
-          `/api/v1/integrations/local/drafts/${targetDraftId}`,
-        );
-        if (!res.ok) {
-          throw new Error(
-            await res
-              .text()
-              .catch(() => "가져오기 초안을 불러오지 못했습니다."),
-          );
-        }
-
-        const snapshot = (await res.json()) as LocalImportDraftSnapshot;
-        applyDraftSnapshot(snapshot);
-      } catch {
-        clearStoredDraftId();
-      }
-    },
-    [applyDraftSnapshot, clearStoredDraftId],
-  );
-
-  useEffect(() => {
-    const preferredDraftId = initialDraftId?.trim();
-    const savedDraftId = localStorage.getItem(LOCAL_IMPORT_DRAFT_STORAGE_KEY);
-    const targetDraftId = preferredDraftId || savedDraftId;
-    if (!targetDraftId) return;
-    if (preferredDraftId) {
-      persistDraftId(preferredDraftId);
+  const loadDraft = useCallback(async (targetDraftId: string) => {
+    const res = await fetch(
+      `/api/v1/integrations/local/drafts/${targetDraftId}`,
+    );
+    if (!res.ok) {
+      throw new Error(
+        await res.text().catch(() => "가져오기 초안을 불러오지 못했습니다."),
+      );
     }
-    void restoreDraft(targetDraftId);
-  }, [initialDraftId, persistDraftId, restoreDraft]);
 
-  useEffect(() => {
-    if (!draftId || !restoredFromDraft || !analyzing) return;
+    return (await res.json()) as LocalImportDraftSnapshot;
+  }, []);
 
-    const timer = setInterval(() => {
-      void restoreDraft(draftId);
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [analyzing, draftId, restoredFromDraft, restoreDraft]);
+  const {
+    draftId,
+    recoveryNotice,
+    clearStoredDraftId,
+    clearRecoveryNotice,
+    markFreshDraft,
+    restoreDraft,
+  } = useImportDraftRecovery({
+    storageKey: LOCAL_IMPORT_DRAFT_STORAGE_KEY,
+    analyzing,
+    initialDraftId,
+    loadDraft,
+    applySnapshot: applyDraftSnapshot,
+  });
 
   const selectLocalFile = useCallback(
     (file: File) => {
@@ -213,16 +180,20 @@ export function useLocalImport(
 
       setSelectedFile(driveFile);
       setLocalPreviewUrl(url);
-      setRecoveryNotice(null);
-      setAnalyzing(false);
-      setProcessingStage(null);
-      setProcessingProgress(0);
-      setProcessingMessage(null);
-      setStreamingText(null);
-      setEditablePreview(null);
-      setImportResult(null);
-      setError(null);
-      setChatMessages([]);
+      resetImportState(
+        {
+          setAnalyzing,
+          setStreamingText,
+          setEditablePreview,
+          setImportResult,
+          setError,
+          setChatMessages,
+          setProcessingStage,
+          setProcessingProgress,
+          setProcessingMessage,
+        },
+        { clearProcessingState: true },
+      );
     },
     [clearStoredDraftId],
   );
@@ -251,49 +222,34 @@ export function useLocalImport(
         formData.append("draftId", draftId);
       }
 
-      const res = await fetch("/api/v1/integrations/local/analyze", {
-        method: "POST",
-        headers: { Accept: "text/event-stream" },
-        body: formData,
+      const preview = await runImportAnalysisRequest({
+        request: () =>
+          fetch("/api/v1/integrations/local/analyze", {
+            method: "POST",
+            headers: { Accept: "text/event-stream" },
+            body: formData,
+            signal: controller.signal,
+          }),
         signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        throw new Error(
-          await res.text().catch(() => "파일 분석에 실패했습니다."),
-        );
-      }
-
-      const nextDraftId = res.headers.get("x-import-draft-id");
-      if (nextDraftId) {
-        persistDraftId(nextDraftId);
-        setRecoveryNotice(null);
-        setRestoredFromDraft(false);
-      }
-
-      const result = await readImportSSE(
-        res,
-        ({ text, stage, progress }) => {
+        fallbackErrorMessage: "파일 분석에 실패했습니다.",
+        onDraftId: markFreshDraft,
+        onProgress: ({ text, stage, progress }) => {
           setStreamingText(text);
           if (stage) setProcessingStage(stage);
           if (typeof progress === "number") setProcessingProgress(progress);
           setProcessingMessage(text);
         },
-        controller.signal,
-      );
-      if (result.error) throw new Error(result.error);
+      });
 
-      if (result.preview) {
-        const completedState = getCompletedAnalysisState();
-        setProcessingStage(completedState.stage);
-        setProcessingProgress(completedState.progress);
-        setProcessingMessage(completedState.message);
-        setEditablePreview(structuredClone(result.preview));
-        pushMessage(
-          "ai",
-          `파일 분석이 완료됐습니다! ${summaryText(result.preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
-        );
-      }
+      const completedState = getCompletedAnalysisState();
+      setProcessingStage(completedState.stage);
+      setProcessingProgress(completedState.progress);
+      setProcessingMessage(completedState.message);
+      setEditablePreview(structuredClone(preview));
+      pushMessage(
+        "ai",
+        `파일 분석이 완료됐습니다! ${summaryText(preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
+      );
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setError(
@@ -306,12 +262,12 @@ export function useLocalImport(
         analyzeAbortRef.current = null;
       }
     }
-  }, [draftId, persistDraftId, pushMessage]);
+  }, [draftId, markFreshDraft, pushMessage]);
 
   const updatePreview = useCallback(
     (updated: ImportPreview) => {
       setEditablePreview(updated);
-      setRecoveryNotice(null);
+      clearRecoveryNotice();
 
       if (!draftId) return;
 
@@ -329,7 +285,7 @@ export function useLocalImport(
         });
       }, 400);
     },
-    [draftId],
+    [clearRecoveryNotice, draftId],
   );
 
   const confirmImport = useCallback(async () => {
@@ -379,14 +335,22 @@ export function useLocalImport(
       objectUrlRef.current = null;
     }
     rawFileRef.current = null;
-    setSelectedFile(null);
-    setLocalPreviewUrl(null);
-    setAnalyzing(false);
-    setStreamingText(null);
-    setEditablePreview(null);
-    setImportResult(null);
-    setError(null);
-    setChatMessages([]);
+    resetImportState(
+      {
+        setSelectedFile,
+        setLocalPreviewUrl,
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+      },
+      {
+        clearSelectedFile: true,
+        clearLocalPreviewUrl: true,
+      },
+    );
   }, [clearStoredDraftId]);
 
   const discardDraft = useCallback(async () => {
@@ -399,14 +363,22 @@ export function useLocalImport(
       objectUrlRef.current = null;
     }
     rawFileRef.current = null;
-    setSelectedFile(null);
-    setLocalPreviewUrl(null);
-    setAnalyzing(false);
-    setStreamingText(null);
-    setEditablePreview(null);
-    setImportResult(null);
-    setError(null);
-    setChatMessages([]);
+    resetImportState(
+      {
+        setSelectedFile,
+        setLocalPreviewUrl,
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+      },
+      {
+        clearSelectedFile: true,
+        clearLocalPreviewUrl: true,
+      },
+    );
 
     if (!currentDraftId) return;
 
@@ -447,46 +419,31 @@ export function useLocalImport(
         formData.append("instruction", instruction);
         formData.append("previousResult", JSON.stringify(prevPreview));
 
-        const res = await fetch("/api/v1/integrations/local/analyze", {
-          method: "POST",
-          headers: { Accept: "text/event-stream" },
-          body: formData,
+        const preview = await runImportAnalysisRequest({
+          request: () =>
+            fetch("/api/v1/integrations/local/analyze", {
+              method: "POST",
+              headers: { Accept: "text/event-stream" },
+              body: formData,
+              signal: controller.signal,
+            }),
           signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          throw new Error(
-            await res.text().catch(() => "파일 재분석에 실패했습니다."),
-          );
-        }
-
-        const nextDraftId = res.headers.get("x-import-draft-id");
-        if (nextDraftId) {
-          persistDraftId(nextDraftId);
-          setRecoveryNotice(null);
-          setRestoredFromDraft(false);
-        }
-
-        const result = await readImportSSE(
-          res,
-          ({ text, stage, progress }) => {
+          fallbackErrorMessage: "파일 재분석에 실패했습니다.",
+          onDraftId: markFreshDraft,
+          onProgress: ({ text, stage, progress }) => {
             setStreamingText(text);
             if (stage) setProcessingStage(stage);
             if (typeof progress === "number") setProcessingProgress(progress);
             setProcessingMessage(text);
           },
-          controller.signal,
-        );
-        if (result.error) throw new Error(result.error);
+        });
 
-        if (result.preview) {
-          const completedState = getCompletedAnalysisState();
-          setProcessingStage(completedState.stage);
-          setProcessingProgress(completedState.progress);
-          setProcessingMessage(completedState.message);
-          setEditablePreview(structuredClone(result.preview));
-          pushMessage("ai", diffText(prevPreview, result.preview));
-        }
+        const completedState = getCompletedAnalysisState();
+        setProcessingStage(completedState.stage);
+        setProcessingProgress(completedState.progress);
+        setProcessingMessage(completedState.message);
+        setEditablePreview(structuredClone(preview));
+        pushMessage("ai", diffText(prevPreview, preview));
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         const msg =
@@ -501,7 +458,7 @@ export function useLocalImport(
         }
       }
     },
-    [draftId, editablePreview, persistDraftId, pushMessage],
+    [draftId, editablePreview, markFreshDraft, pushMessage],
   );
 
   const fileProxyUrl =

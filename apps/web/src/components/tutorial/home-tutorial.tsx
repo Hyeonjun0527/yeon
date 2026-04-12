@@ -15,7 +15,7 @@ const STEPS = [
     title: "녹음으로 시작하기",
     content:
       "버튼을 누르면 바로 녹음이 시작돼요. 멘토링·1:1 상담을 그대로 녹음하세요.",
-    disableBeacon: true,
+    skipBeacon: true,
     placement: "top" as const,
   },
   {

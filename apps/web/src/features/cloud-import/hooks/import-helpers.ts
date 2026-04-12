@@ -160,3 +160,39 @@ export async function readImportSSE(
 
   return { error: "스트림이 예상치 않게 종료됐습니다." };
 }
+
+export async function runImportAnalysisRequest(params: {
+  request: () => Promise<Response>;
+  signal?: AbortSignal;
+  fallbackErrorMessage: string;
+  onDraftId?: (draftId: string) => void;
+  onProgress: (event: {
+    text: string;
+    stage?: ImportAnalysisStage;
+    progress?: number;
+  }) => void;
+}): Promise<ImportPreview> {
+  const res = await params.request();
+
+  if (!res.ok) {
+    const message = await res.text().catch(() => params.fallbackErrorMessage);
+    throw new Error(message.trim() || params.fallbackErrorMessage);
+  }
+
+  const nextDraftId = res.headers.get("x-import-draft-id");
+  if (nextDraftId) {
+    params.onDraftId?.(nextDraftId);
+  }
+
+  const result = await readImportSSE(res, params.onProgress, params.signal);
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  if (!result.preview) {
+    throw new Error(params.fallbackErrorMessage);
+  }
+
+  return result.preview;
+}

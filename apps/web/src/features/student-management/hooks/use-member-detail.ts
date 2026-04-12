@@ -1,19 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import { useStudentManagement } from "../student-management-provider";
 import type { Member } from "../types";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 interface UseMemberDetailParams {
   memberId: string;
 }
 
 export function useMemberDetail({ memberId }: UseMemberDetailParams) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const getCurrentSearchParams = useCallback(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const { members, selectedSpaceId, setSelectedSpaceId } =
     useStudentManagement();
-  const [activeTab, setActiveTab] = useState<string>("overview");
   const hasAlignedFetchedMemberSpaceRef = useRef(false);
+  const activeTab = getCurrentSearchParams().get("tab") ?? "overview";
 
   const contextMember: Member | undefined = members.find(
     (m) => m.id === memberId,
@@ -43,6 +51,15 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
     (memberData?.member && selectedSpaceId === memberData.member.spaceId
       ? memberData.member
       : undefined);
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), { tab }),
+      );
+    },
+    [getCurrentSearchParams, pathname, router],
+  );
 
   return {
     member,

@@ -127,8 +127,10 @@ export function SpaceSettingsDrawerHost() {
         />
       )}
       <div
-        className={`fixed right-0 top-0 h-full w-full max-w-[800px] z-[310] bg-surface border-l border-border shadow-[0_24px_64px_rgba(0,0,0,0.5)] flex flex-col transition-transform duration-200 ${
-          open ? "translate-x-0" : "translate-x-full"
+        className={`fixed left-1/2 top-1/2 z-[310] flex h-[min(88vh,960px)] w-[min(1120px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_24px_64px_rgba(0,0,0,0.5)] transition-all duration-200 ${
+          open
+            ? "pointer-events-auto opacity-100 scale-100"
+            : "pointer-events-none opacity-0 scale-[0.98]"
         }`}
       >
         {open && spaceId && (

@@ -120,6 +120,20 @@
       "when": 1776003600000,
       "tag": "0016_counseling_chat_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776007200000,
+      "tag": "0017_rare_komodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776010800000,
+      "tag": "0018_public_check_tables_repair",
+      "breakpoints": true
     }
   ]
 }

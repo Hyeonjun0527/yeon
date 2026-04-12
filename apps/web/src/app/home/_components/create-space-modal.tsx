@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, FolderPlus, FileUp, LayoutTemplate, Eye } from "lucide-react";
+import {
+  X,
+  FolderPlus,
+  FileUp,
+  LayoutTemplate,
+  Eye,
+  ArrowLeft,
+} from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
 import { SpaceTemplatePreviewModal } from "@/features/space-settings/components/space-template-preview-modal";
@@ -126,19 +133,35 @@ export function CreateSpaceModal({
         }}
       >
         <div className="h-full w-full bg-surface border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-            <button
-              className="text-xs text-text-dim hover:text-text border-none bg-transparent cursor-pointer px-0 py-0"
-              onClick={() => setStep({ kind: "choose" })}
-            >
-              ← 뒤로
-            </button>
-            <button
-              className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent border-none text-text-dim hover:text-text hover:bg-surface-3 cursor-pointer"
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
+          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 flex-shrink-0">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                AI 가져오기
+              </p>
+              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
+                파일에서 스페이스 만들기
+              </h2>
+              <p className="mt-1 text-[12px] text-text-secondary">
+                저장된 작업을 이어보거나 새 파일에서 바로 시작할 수 있습니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-3 px-3 py-2 text-[13px] text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text"
+                onClick={() => setStep({ kind: "choose" })}
+              >
+                <ArrowLeft size={14} />
+                뒤로
+              </button>
+              <button
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-text-dim hover:text-text hover:bg-surface-3 cursor-pointer"
+                onClick={onClose}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
             <CloudImportInline

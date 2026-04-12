@@ -38,4 +38,5 @@ export type LocalImportDraftSummary = {
 export type CreateModalState = {
   open: boolean;
   initialStep: StudentSpaceCreateStep;
+  initialLocalDraftId: string | null;
 };
