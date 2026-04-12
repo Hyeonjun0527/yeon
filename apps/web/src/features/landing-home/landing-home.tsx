@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Mic,
@@ -10,10 +11,7 @@ import {
 } from "lucide-react";
 import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
-import {
-  LandingLoginModalController,
-  openLandingLoginModal,
-} from "./login-modal";
+import { LoginModal } from "./login-modal";
 import styles from "./landing-home.module.css";
 
 /* ── CSS variable definitions for dark landing theme ── */
@@ -140,14 +138,27 @@ export function LandingHome({
   nextPath,
   initialLoginModalOpen = false,
 }: LandingHomeProps) {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(
+    initialLoginModalOpen,
+  );
+
+  const handleLoginModalOpen = useCallback(() => {
+    setIsLoginModalOpen(true);
+  }, []);
+
+  const handleLoginModalClose = useCallback(() => {
+    setIsLoginModalOpen(false);
+  }, []);
+
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   }
 
   return (
     <>
-      <LandingLoginModalController
-        initialOpen={initialLoginModalOpen}
+      <LoginModal
+        open={isLoginModalOpen}
+        onClose={handleLoginModalClose}
         nextPath={nextPath}
       />
       {/* Landing shell — CSS vars defined here, dot-grid ::before in CSS module */}
@@ -158,7 +169,7 @@ export function LandingHome({
         {/* ── Hero ── */}
         <section className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end">
           <div className="pointer-events-none absolute inset-0 z-0">
-            <SplineHero />
+            <SplineHero paused={isLoginModalOpen} />
           </div>
 
           <div className={styles.heroGradient} />
@@ -207,7 +218,7 @@ export function LandingHome({
               <button
                 className="pointer-events-auto relative z-[6] inline-flex min-h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] border border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.16)] px-6 py-4 text-base font-bold text-white shadow-[0_16px_34px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.28)] hover:bg-[rgba(255,255,255,0.22)] hover:shadow-[0_22px_42px_rgba(0,0,0,0.24)] sm:w-auto sm:px-9 md:rounded-[14px]"
                 type="button"
-                onClick={openLandingLoginModal}
+                onClick={handleLoginModalOpen}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
@@ -453,7 +464,7 @@ export function LandingHome({
               <button
                 className="inline-flex min-h-[56px] w-full items-center justify-center gap-2.5 rounded-[18px] border border-[rgba(255,255,255,0.16)] bg-[rgba(255,255,255,0.14)] px-6 py-4 text-base font-bold text-white shadow-[0_14px_28px_rgba(0,0,0,0.16)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.26)] hover:bg-[rgba(255,255,255,0.2)] hover:shadow-[0_20px_36px_rgba(0,0,0,0.22)] sm:w-auto sm:px-9 md:rounded-[14px]"
                 type="button"
-                onClick={openLandingLoginModal}
+                onClick={handleLoginModalOpen}
                 aria-haspopup="dialog"
                 aria-controls="landing-login-modal"
               >
