@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { diffText } from "./import-helpers";
+import { diffText, runImportAnalysisRequest } from "./import-helpers";
 import type { ImportPreview } from "../types";
 
 function makePreview(overrides?: Partial<ImportPreview>): ImportPreview {
@@ -23,6 +23,27 @@ function makePreview(overrides?: Partial<ImportPreview>): ImportPreview {
     ],
     ...overrides,
   };
+}
+
+function makeSseResponse(events: unknown[], headers?: HeadersInit) {
+  const encoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        for (const event of events) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+          );
+        }
+        controller.close();
+      },
+    }),
+    {
+      status: 200,
+      headers,
+    },
+  );
 }
 
 describe("diffText", () => {
@@ -56,5 +77,46 @@ describe("diffText", () => {
     });
 
     expect(diffText(prev, next)).toContain("데이터 내용을 업데이트했습니다");
+  });
+});
+
+describe("runImportAnalysisRequest", () => {
+  it("draft id 헤더와 progress/done 이벤트를 함께 처리한다", async () => {
+    const preview = makePreview();
+    const progressSpy: Array<string> = [];
+    const draftSpy: Array<string> = [];
+
+    const result = await runImportAnalysisRequest({
+      request: async () =>
+        makeSseResponse(
+          [
+            {
+              type: "progress",
+              text: "분석 중",
+              stage: "ai_mapping",
+              progress: 50,
+            },
+            { type: "done", preview },
+          ],
+          { "x-import-draft-id": "draft-1" },
+        ),
+      fallbackErrorMessage: "파일 분석에 실패했습니다.",
+      onDraftId: (draftId) => draftSpy.push(draftId),
+      onProgress: ({ text }) => progressSpy.push(text),
+    });
+
+    expect(result).toEqual(preview);
+    expect(draftSpy).toEqual(["draft-1"]);
+    expect(progressSpy).toEqual(["분석 중"]);
+  });
+
+  it("응답이 실패하면 fallback 메시지로 에러를 던진다", async () => {
+    await expect(
+      runImportAnalysisRequest({
+        request: async () => new Response(null, { status: 500 }),
+        fallbackErrorMessage: "파일 분석에 실패했습니다.",
+        onProgress: () => {},
+      }),
+    ).rejects.toThrow("파일 분석에 실패했습니다.");
   });
 });

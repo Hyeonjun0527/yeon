@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, FileUp, FolderPlus, Sparkles, X } from "lucide-react";
 
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
@@ -16,6 +16,10 @@ interface StudentSpaceCreateModalProps {
   onDraftDiscarded?: () => void;
   initialStep?: StudentSpaceCreateStep;
   initialLocalDraftId?: string | null;
+  onRouteStateChange?: (state: {
+    step: StudentSpaceCreateStep;
+    draftId: string | null;
+  }) => void;
 }
 
 export function StudentSpaceCreateModal({
@@ -25,11 +29,20 @@ export function StudentSpaceCreateModal({
   onDraftDiscarded,
   initialStep = "choose",
   initialLocalDraftId = null,
+  onRouteStateChange,
 }: StudentSpaceCreateModalProps) {
   const [step, setStep] = useState<StudentSpaceCreateStep>(initialStep);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStep(initialStep);
+  }, [initialStep]);
+
+  useEffect(() => {
+    onRouteStateChange?.({ step, draftId: initialLocalDraftId ?? null });
+  }, [initialLocalDraftId, onRouteStateChange, step]);
 
   async function handleCreateBlankSpace() {
     const trimmedName = name.trim();
@@ -78,17 +91,16 @@ export function StudentSpaceCreateModal({
         }}
       >
         <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-            <div>
+          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
                 AI 가져오기
               </p>
               <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
-                파일을 분석해서 스페이스를 만듭니다
+                스페이스 초안 만들기
               </h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                Google Drive, OneDrive, 내 컴퓨터에서 파일을 가져와 AI가 초안을
-                만들고, 검토 후 스페이스를 생성합니다.
+              <p className="mt-1 text-[12px] text-text-secondary">
+                저장된 작업을 이어보거나 새 파일에서 시작하세요.
               </p>
             </div>
 
@@ -112,15 +124,13 @@ export function StudentSpaceCreateModal({
             </div>
           </div>
 
-          <div className="border-b border-border bg-surface-2/70 px-5 py-3 text-[12px] leading-relaxed text-text-dim">
-            추천 형식은 엑셀/CSV입니다. 가져온 내용은 바로 생성하지 않고, 초안을
-            먼저 검토한 뒤 확정합니다.
-          </div>
-
           <div className="min-h-0 flex-1 overflow-hidden">
             <CloudImportInline
               expanded
               initialLocalDraftId={initialLocalDraftId}
+              onDraftIdChange={(draftId) => {
+                onRouteStateChange?.({ step: "import", draftId });
+              }}
               onDraftDiscarded={onDraftDiscarded}
               onClose={onClose}
               onImportComplete={onImported}

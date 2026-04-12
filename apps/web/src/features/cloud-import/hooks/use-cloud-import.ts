@@ -9,57 +9,22 @@ import type {
   ImportPreview,
   ImportResult,
 } from "../types";
-import { detectFileKind } from "../file-kind";
 import {
   diffText,
   getCompletedAnalysisState,
-  getDraftRecoveryNotice,
   getQueuedAnalysisState,
   nextId,
-  readImportSSE,
+  runImportAnalysisRequest,
   summaryText,
 } from "./import-helpers";
+import { normalizeCloudDriveFiles } from "./cloud-file-normalizers";
+import { resetImportState } from "./import-state-reset";
+import { useImportDraftRecovery } from "./use-import-draft-recovery";
 
 const API_BASE: Record<CloudProvider, string> = {
   onedrive: "/api/v1/integrations/onedrive",
   googledrive: "/api/v1/integrations/googledrive",
 };
-
-function normalizeOneDriveFile(f: {
-  id: string;
-  name: string;
-  size: number;
-  lastModifiedAt: string;
-  mimeType?: string;
-}): DriveFile {
-  const isFolder = !f.mimeType;
-  const kind = isFolder ? "folder" : detectFileKind(f.name, f.mimeType);
-  return {
-    ...f,
-    isFolder,
-    isSpreadsheet: kind === "spreadsheet",
-    isImage: kind === "image",
-    fileKind: kind,
-  };
-}
-
-function normalizeGoogleDriveFile(f: {
-  id: string;
-  name: string;
-  size: number;
-  lastModifiedAt: string;
-  mimeType: string;
-}): DriveFile {
-  const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-  const kind = isFolder ? "folder" : detectFileKind(f.name, f.mimeType);
-  return {
-    ...f,
-    isFolder,
-    isSpreadsheet: kind === "spreadsheet",
-    isImage: kind === "image",
-    fileKind: kind,
-  };
-}
 
 const ROOT_FOLDER: FolderEntry = { id: undefined, name: "루트" };
 
@@ -153,12 +118,9 @@ export function useCloudImport(
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
   const [folderStack, setFolderStack] = useState<FolderEntry[]>([ROOT_FOLDER]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
   const folderCacheRef = useRef<Map<string, DriveFile[]>>(
     readFolderCache(provider),
   );
@@ -186,24 +148,8 @@ export function useCloudImport(
     setChatMessages((prev) => [...prev, { role, text, id: nextId() }]);
   }, []);
 
-  const clearStoredDraftId = useCallback(() => {
-    setDraftId(null);
-    setRecoveryNotice(null);
-    setRestoredFromDraft(false);
-    localStorage.removeItem(draftStorageKey(provider));
-  }, [provider]);
-
-  const persistDraftId = useCallback(
-    (nextDraftId: string) => {
-      setDraftId(nextDraftId);
-      localStorage.setItem(draftStorageKey(provider), nextDraftId);
-    },
-    [provider],
-  );
-
   const applyDraftSnapshot = useCallback(
     (snapshot: CloudImportDraftSnapshot) => {
-      setDraftId(snapshot.id);
       setSelectedFile(snapshot.selectedFile);
       setEditablePreview(snapshot.preview);
       setImportResult(snapshot.importResult);
@@ -212,57 +158,42 @@ export function useCloudImport(
       setProcessingStage(snapshot.processingStage);
       setProcessingProgress(snapshot.processingProgress);
       setProcessingMessage(snapshot.processingMessage);
-      setRecoveryNotice(getDraftRecoveryNotice(snapshot.status));
       setStreamingText(
         snapshot.status === "analyzing" ? snapshot.processingMessage : null,
       );
-      setRestoredFromDraft(true);
     },
     [],
   );
 
-  const restoreDraft = useCallback(
+  const loadDraft = useCallback(
     async (targetDraftId: string) => {
-      try {
-        const res = await fetch(
-          `/api/v1/integrations/local/drafts/${targetDraftId}`,
+      const res = await fetch(
+        `/api/v1/integrations/local/drafts/${targetDraftId}`,
+      );
+      if (!res.ok) {
+        throw new Error(
+          await res.text().catch(() => "가져오기 초안을 불러오지 못했습니다."),
         );
-        if (!res.ok) {
-          throw new Error(
-            await res
-              .text()
-              .catch(() => "가져오기 초안을 불러오지 못했습니다."),
-          );
-        }
-
-        const snapshot = (await res.json()) as CloudImportDraftSnapshot;
-        if (snapshot.provider !== provider) {
-          clearStoredDraftId();
-          return;
-        }
-        applyDraftSnapshot(snapshot);
-      } catch {
-        clearStoredDraftId();
       }
+
+      const snapshot = (await res.json()) as CloudImportDraftSnapshot;
+      return snapshot.provider === provider ? snapshot : null;
     },
-    [applyDraftSnapshot, clearStoredDraftId, provider],
+    [provider],
   );
 
-  useEffect(() => {
-    const savedDraftId = localStorage.getItem(draftStorageKey(provider));
-    if (!savedDraftId) return;
-    void restoreDraft(savedDraftId);
-  }, [provider, restoreDraft]);
-
-  useEffect(() => {
-    if (!draftId || !restoredFromDraft || !analyzing) return;
-
-    const timer = setInterval(() => {
-      void restoreDraft(draftId);
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [analyzing, draftId, restoredFromDraft, restoreDraft]);
+  const {
+    draftId,
+    recoveryNotice,
+    clearStoredDraftId,
+    clearRecoveryNotice,
+    markFreshDraft,
+  } = useImportDraftRecovery({
+    storageKey: draftStorageKey(provider),
+    analyzing,
+    loadDraft,
+    applySnapshot: applyDraftSnapshot,
+  });
 
   const currentFolderId = folderStack[folderStack.length - 1]?.id;
 
@@ -308,14 +239,16 @@ export function useCloudImport(
 
         if (seq !== loadSeqRef.current) return;
 
-        const normalized =
-          provider === "onedrive"
-            ? (data.files as Parameters<typeof normalizeOneDriveFile>[0][]).map(
-                normalizeOneDriveFile,
-              )
-            : (
-                data.files as Parameters<typeof normalizeGoogleDriveFile>[0][]
-              ).map(normalizeGoogleDriveFile);
+        const normalized = normalizeCloudDriveFiles(
+          provider,
+          data.files as Array<{
+            id: string;
+            name: string;
+            size: number;
+            lastModifiedAt: string;
+            mimeType?: string;
+          }>,
+        );
 
         folderCacheRef.current.set(cacheKey, normalized);
         writeFolderCache(provider, folderCacheRef.current);
@@ -382,12 +315,14 @@ export function useCloudImport(
         clearStoredDraftId();
       }
       setSelectedFile(file);
-      setEditablePreview(null);
-      setImportResult(null);
-      setError(null);
-      setChatMessages([]);
-      setAnalyzing(false);
-      setStreamingText(null);
+      resetImportState({
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+      });
     },
     [clearStoredDraftId, selectedFile?.id],
   );
@@ -405,56 +340,44 @@ export function useCloudImport(
       setProcessingProgress(queuedState.progress);
       setProcessingMessage(queuedState.message);
       setStreamingText(null);
-      const res = await fetch(`${base}/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        body: JSON.stringify({
-          draftId: draftId ?? undefined,
-          fileId: selectedFile.id,
-          fileName: selectedFile.name,
-          mimeType: selectedFile.mimeType,
-          size: selectedFile.size,
-          lastModifiedAt: selectedFile.lastModifiedAt,
-        }),
+      const preview = await runImportAnalysisRequest({
+        request: () =>
+          fetch(`${base}/analyze`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "text/event-stream",
+            },
+            body: JSON.stringify({
+              draftId: draftId ?? undefined,
+              fileId: selectedFile.id,
+              fileName: selectedFile.name,
+              mimeType: selectedFile.mimeType,
+              size: selectedFile.size,
+              lastModifiedAt: selectedFile.lastModifiedAt,
+            }),
+            signal: controller.signal,
+          }),
         signal: controller.signal,
-      });
-      if (!res.ok)
-        throw new Error(
-          await res.text().catch(() => "파일 분석에 실패했습니다."),
-        );
-
-      const nextDraftId = res.headers.get("x-import-draft-id");
-      if (nextDraftId) {
-        persistDraftId(nextDraftId);
-        setRecoveryNotice(null);
-        setRestoredFromDraft(false);
-      }
-
-      const result = await readImportSSE(
-        res,
-        (event) => {
+        fallbackErrorMessage: "파일 분석에 실패했습니다.",
+        onDraftId: markFreshDraft,
+        onProgress: (event) => {
           setStreamingText(event.text);
           setProcessingStage(event.stage ?? null);
           setProcessingProgress(event.progress ?? 0);
           setProcessingMessage(event.text);
         },
-        controller.signal,
+      });
+
+      const completedState = getCompletedAnalysisState();
+      setProcessingStage(completedState.stage);
+      setProcessingProgress(completedState.progress);
+      setProcessingMessage(completedState.message);
+      setEditablePreview(structuredClone(preview));
+      pushMessage(
+        "ai",
+        `파일 분석이 완료됐습니다! ${summaryText(preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
       );
-      if (result.error) throw new Error(result.error);
-      if (result.preview) {
-        const completedState = getCompletedAnalysisState();
-        setProcessingStage(completedState.stage);
-        setProcessingProgress(completedState.progress);
-        setProcessingMessage(completedState.message);
-        setEditablePreview(structuredClone(result.preview));
-        pushMessage(
-          "ai",
-          `파일 분석이 완료됐습니다! ${summaryText(result.preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
-        );
-      }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setError(
@@ -467,13 +390,13 @@ export function useCloudImport(
         analyzeAbortRef.current = null;
       }
     }
-  }, [base, draftId, persistDraftId, selectedFile, pushMessage]);
+  }, [base, draftId, markFreshDraft, selectedFile, pushMessage]);
 
   const updatePreview = useCallback(
     (updated: ImportPreview) => {
       setEditablePreview(updated);
 
-      setRecoveryNotice(null);
+      clearRecoveryNotice();
 
       if (!draftId) return;
 
@@ -491,7 +414,7 @@ export function useCloudImport(
         });
       }, 400);
     },
-    [draftId],
+    [clearRecoveryNotice, draftId],
   );
 
   const confirmImport = useCallback(async () => {
@@ -526,13 +449,18 @@ export function useCloudImport(
 
   const deselectFile = useCallback(() => {
     clearStoredDraftId();
-    setSelectedFile(null);
-    setEditablePreview(null);
-    setImportResult(null);
-    setError(null);
-    setAnalyzing(false);
-    setStreamingText(null);
-    setChatMessages([]);
+    resetImportState(
+      {
+        setSelectedFile,
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+      },
+      { clearSelectedFile: true },
+    );
   }, [clearStoredDraftId]);
 
   const discardDraft = useCallback(async () => {
@@ -540,13 +468,18 @@ export function useCloudImport(
     const currentDraftId = draftId;
 
     clearStoredDraftId();
-    setSelectedFile(null);
-    setEditablePreview(null);
-    setImportResult(null);
-    setError(null);
-    setAnalyzing(false);
-    setStreamingText(null);
-    setChatMessages([]);
+    resetImportState(
+      {
+        setSelectedFile,
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+      },
+      { clearSelectedFile: true },
+    );
 
     if (!currentDraftId) return;
 
@@ -573,55 +506,43 @@ export function useCloudImport(
         setProcessingProgress(queuedState.progress);
         setProcessingMessage(queuedState.message);
         setStreamingText(null);
-        const res = await fetch(`${base}/analyze`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify({
-            draftId: draftId ?? undefined,
-            fileId: selectedFile.id,
-            fileName: selectedFile.name,
-            mimeType: selectedFile.mimeType,
-            size: selectedFile.size,
-            lastModifiedAt: selectedFile.lastModifiedAt,
-            instruction,
-            previousResult: prevPreview,
-          }),
+        const preview = await runImportAnalysisRequest({
+          request: () =>
+            fetch(`${base}/analyze`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "text/event-stream",
+              },
+              body: JSON.stringify({
+                draftId: draftId ?? undefined,
+                fileId: selectedFile.id,
+                fileName: selectedFile.name,
+                mimeType: selectedFile.mimeType,
+                size: selectedFile.size,
+                lastModifiedAt: selectedFile.lastModifiedAt,
+                instruction,
+                previousResult: prevPreview,
+              }),
+              signal: controller.signal,
+            }),
           signal: controller.signal,
-        });
-        if (!res.ok)
-          throw new Error(
-            await res.text().catch(() => "파일 재분석에 실패했습니다."),
-          );
-
-        const nextDraftId = res.headers.get("x-import-draft-id");
-        if (nextDraftId) {
-          persistDraftId(nextDraftId);
-          setRecoveryNotice(null);
-          setRestoredFromDraft(false);
-        }
-
-        const result = await readImportSSE(
-          res,
-          ({ text, stage, progress }) => {
+          fallbackErrorMessage: "파일 재분석에 실패했습니다.",
+          onDraftId: markFreshDraft,
+          onProgress: ({ text, stage, progress }) => {
             setStreamingText(text);
             if (stage) setProcessingStage(stage);
             if (typeof progress === "number") setProcessingProgress(progress);
             setProcessingMessage(text);
           },
-          controller.signal,
-        );
-        if (result.error) throw new Error(result.error);
-        if (result.preview) {
-          const completedState = getCompletedAnalysisState();
-          setProcessingStage(completedState.stage);
-          setProcessingProgress(completedState.progress);
-          setProcessingMessage(completedState.message);
-          setEditablePreview(structuredClone(result.preview));
-          pushMessage("ai", diffText(prevPreview, result.preview));
-        }
+        });
+
+        const completedState = getCompletedAnalysisState();
+        setProcessingStage(completedState.stage);
+        setProcessingProgress(completedState.progress);
+        setProcessingMessage(completedState.message);
+        setEditablePreview(structuredClone(preview));
+        pushMessage("ai", diffText(prevPreview, preview));
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         const msg =
@@ -636,21 +557,31 @@ export function useCloudImport(
         }
       }
     },
-    [base, draftId, persistDraftId, selectedFile, editablePreview, pushMessage],
+    [base, draftId, markFreshDraft, selectedFile, editablePreview, pushMessage],
   );
 
   const resetState = useCallback(() => {
     clearStoredDraftId();
     setFiles([]);
-    setSelectedFile(null);
-    setEditablePreview(null);
-    setImportResult(null);
-    setError(null);
-    setProcessingStage(null);
-    setProcessingProgress(0);
-    setProcessingMessage(null);
     setFolderStack([ROOT_FOLDER]);
-    setChatMessages([]);
+    resetImportState(
+      {
+        setSelectedFile,
+        setAnalyzing,
+        setStreamingText,
+        setEditablePreview,
+        setImportResult,
+        setError,
+        setChatMessages,
+        setProcessingStage,
+        setProcessingProgress,
+        setProcessingMessage,
+      },
+      {
+        clearSelectedFile: true,
+        clearProcessingState: true,
+      },
+    );
     folderCacheRef.current.clear();
     localStorage.removeItem(storageCacheKey(provider));
   }, [clearStoredDraftId, provider]);

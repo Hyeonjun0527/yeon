@@ -111,6 +111,7 @@ interface CloudImportInlineProps {
   onDraftDiscarded?: () => void;
   expanded?: boolean;
   initialLocalDraftId?: string | null;
+  onDraftIdChange?: (draftId: string | null) => void;
 }
 
 function getExpandedBottomPanelHeight(hasEditablePreview: boolean) {
@@ -133,6 +134,7 @@ export function CloudImportInline({
   onDraftDiscarded,
   expanded = false,
   initialLocalDraftId = null,
+  onDraftIdChange,
 }: CloudImportInlineProps) {
   const [activeProvider, setActiveProvider] =
     useState<CloudProvider>("onedrive");
@@ -272,6 +274,10 @@ export function CloudImportInline({
         : null;
 
   useEffect(() => {
+    onDraftIdChange?.(localImport.currentDraftId);
+  }, [localImport.currentDraftId, onDraftIdChange]);
+
+  useEffect(() => {
     activeHook.checkStatus();
   }, [activeProvider]);
 
@@ -373,6 +379,7 @@ export function CloudImportInline({
 
   const isLocalMode = localImport.selectedFile !== null;
   const hasSelectedFile = activeHook.selectedFile !== null;
+  const isWorkspaceMode = isLocalMode || hasSelectedFile;
   const localBottomPanelHeight = getExpandedBottomPanelHeight(
     Boolean(localImport.editablePreview),
   );
@@ -449,53 +456,15 @@ export function CloudImportInline({
         onChange={handleFileInputChange}
       />
 
-      {/* 헤더: 프리뷰 모드에서는 숨김 */}
-      {!isLocalMode && !hasSelectedFile && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="flex items-center gap-1 px-2 py-1 rounded-[5px] border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer whitespace-nowrap flex-shrink-0 transition-[background,color] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
-              onClick={onClose}
-            >
-              <ArrowLeft size={13} />
-              뒤로가기
-            </button>
-            <h3 className="text-[15px] font-semibold text-text">
-              파일 가져오기
-            </h3>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              className="flex items-center gap-[5px] px-2.5 py-[5px] rounded-[6px] border border-border bg-transparent text-text-secondary text-xs font-medium cursor-pointer transition-[background,color,border-color] duration-[120ms] hover:bg-accent-dim hover:text-accent hover:border-accent-border"
-              onClick={() => fileInputRef.current?.click()}
-              type="button"
-              title="내 컴퓨터에서 파일 선택"
-            >
-              <Upload size={15} />
-              <span>내 컴퓨터</span>
-            </button>
-            <button
-              className="flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
-              onClick={onClose}
-              type="button"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!isLocalMode && !hasSelectedFile && (
-        <div className="border-b border-border bg-surface-2/40 px-5 py-3">
+      {!isWorkspaceMode && (
+        <div className="border-b border-border bg-surface-2/40 px-5 py-4">
           <div className="mb-2 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="m-0 text-[12px] font-semibold text-text">
+              <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-dim">
                 저장된 가져오기 작업
               </p>
-              <p className="m-0 mt-1 text-[11px] leading-relaxed text-text-dim">
-                작업이 여러 개여도 여기서 원하는 초안을 골라 이어서 볼 수
-                있습니다.
+              <p className="m-0 mt-1 text-[12px] leading-relaxed text-text-secondary">
+                최근 초안을 이어서 열거나 새 파일을 가져오세요.
               </p>
             </div>
             <button
@@ -522,7 +491,7 @@ export function CloudImportInline({
               {localDrafts.map((draft) => (
                 <div
                   key={draft.id}
-                  className="rounded-lg border border-border bg-surface px-3 py-3"
+                  className="rounded-xl border border-border bg-surface px-3 py-3"
                 >
                   <div className="flex items-start gap-2.5">
                     <div className="mt-0.5 rounded-lg bg-accent-dim px-2 py-2 text-accent shrink-0">
@@ -546,7 +515,7 @@ export function CloudImportInline({
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1.5 rounded-[6px] bg-accent px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
                           onClick={() => {
                             void openLocalDraft(draft.id);
                           }}
@@ -571,11 +540,33 @@ export function CloudImportInline({
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
+            <div className="rounded-xl border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
               아직 저장된 가져오기 작업이 없습니다. 새 파일을 선택하거나
               클라우드에서 가져오기를 시작해 보세요.
             </div>
           )}
+
+          <div className="mt-4 rounded-xl border border-border bg-surface px-3 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                  새 파일 가져오기
+                </p>
+                <p className="m-0 mt-1 text-[12px] text-text-secondary">
+                  로컬 업로드 또는 클라우드 드라이브에서 시작합니다.
+                </p>
+              </div>
+              <button
+                className="inline-flex items-center gap-[5px] rounded-lg border border-border bg-transparent px-3 py-2 text-xs font-medium text-text-secondary transition-[background,color,border-color] duration-[120ms] hover:bg-accent-dim hover:text-accent hover:border-accent-border"
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+                title="내 컴퓨터에서 파일 선택"
+              >
+                <Upload size={15} />
+                <span>내 컴퓨터</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
