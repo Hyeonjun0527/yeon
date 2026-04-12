@@ -63,7 +63,7 @@ export interface ClassRoom {
 }
 
 /** 뷰 모드 */
-export type ViewMode = "card" | "table";
+export type ViewMode = "card" | "dense" | "table";
 
 /** 탭 ID */
 export type DetailTab = "overview" | "counseling" | "memos" | "report";

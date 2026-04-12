@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useStudentManagement } from "../student-management-provider";
 import type { Member, RiskLevel, ViewMode } from "../types";
+import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
 
 type MemberSortKey = "name" | "createdAt" | "status";
+const MEMBER_LIST_VIEW_STORAGE_KEY = "yeon_member_list_view_mode";
+
+function isViewMode(value: string | null): value is ViewMode {
+  return value === "card" || value === "dense" || value === "table";
+}
 
 function filterMembers(
   members: Member[],
@@ -51,16 +58,104 @@ function sortMembers(members: Member[], key: MemberSortKey): Member[] {
 }
 
 export function useMemberList() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const getCurrentSearchParams = useCallback(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const { members, membersLoading, membersError, spacesLoading } =
     useStudentManagement();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | "all">("all");
-  const [riskLevelFilter, setRiskLevelFilter] = useState<RiskLevel | "all">(
-    "all",
+  const [fallbackViewMode, setFallbackViewMode] = useState<ViewMode>("card");
+
+  useEffect(() => {
+    const savedViewMode = window.localStorage.getItem(
+      MEMBER_LIST_VIEW_STORAGE_KEY,
+    );
+
+    if (!isViewMode(savedViewMode)) {
+      return;
+    }
+
+    setFallbackViewMode(savedViewMode === "table" ? "card" : savedViewMode);
+  }, []);
+
+  const currentSearchParams = getCurrentSearchParams();
+  const search = currentSearchParams.get("q") ?? "";
+  const statusFilter = currentSearchParams.get("status") ?? "all";
+  const riskParam = currentSearchParams.get("risk");
+  const riskLevelFilter: RiskLevel | "all" = isOneOf(riskParam, [
+    "high",
+    "medium",
+    "low",
+  ] as const)
+    ? riskParam
+    : "all";
+  const viewParam = currentSearchParams.get("view");
+  const viewMode = isViewMode(viewParam)
+    ? viewParam === "table"
+      ? "card"
+      : viewParam
+    : fallbackViewMode;
+  const sortParam = currentSearchParams.get("sort");
+  const sortKey: MemberSortKey = isOneOf(sortParam, [
+    "name",
+    "createdAt",
+    "status",
+  ] as const)
+    ? sortParam
+    : "createdAt";
+
+  const updateRouteState = useCallback(
+    (patch: Record<string, string | null>) => {
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), patch),
+      );
+    },
+    [getCurrentSearchParams, pathname, router],
   );
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
-  const [sortKey, setSortKey] = useState<MemberSortKey>("createdAt");
+
+  const setSearch = useCallback(
+    (value: string) => {
+      updateRouteState({ q: value || null });
+    },
+    [updateRouteState],
+  );
+
+  const setStatusFilter = useCallback(
+    (value: string | "all") => {
+      updateRouteState({ status: value === "all" ? null : value });
+    },
+    [updateRouteState],
+  );
+
+  const setRiskLevelFilter = useCallback(
+    (value: RiskLevel | "all") => {
+      updateRouteState({ risk: value === "all" ? null : value });
+    },
+    [updateRouteState],
+  );
+
+  const setViewMode = useCallback(
+    (value: ViewMode) => {
+      window.localStorage.setItem(MEMBER_LIST_VIEW_STORAGE_KEY, value);
+      setFallbackViewMode(value);
+      updateRouteState({ view: value === "card" ? null : value });
+    },
+    [updateRouteState],
+  );
+
+  const setSortKey = useCallback(
+    (value: MemberSortKey) => {
+      updateRouteState({ sort: value === "createdAt" ? null : value });
+    },
+    [updateRouteState],
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(MEMBER_LIST_VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const filteredMembers = useMemo(() => {
     const filtered = filterMembers(members, {

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { EventData } from "react-joyride";
+
 import { useTutorial } from "./use-tutorial";
 
 const Joyride = dynamic(
@@ -10,48 +11,59 @@ const Joyride = dynamic(
   { ssr: false },
 );
 
-const MEMBER_CARD_STEP = {
-  target: '[data-tutorial="member-card"]',
-  title: "수강생 상세 보기",
-  content: "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
-  placement: "bottom" as const,
-};
-
-const EMPTY_STATE_STEP = {
-  target: '[data-tutorial="member-empty-state"]',
-  title: "수강생 등록 시작하기",
-  content:
-    "아직 수강생이 없다면 이 안내 영역을 보고 상단의 수강생 추가나 외부 파일 가져오기로 시작할 수 있어요.",
-  placement: "bottom" as const,
-};
-
-const BASE_STEPS = [
+const NO_SPACE_STEPS = [
   {
-    target: '[data-tutorial="space-title"]',
-    title: "스페이스란?",
+    target: '[data-tutorial="check-board-no-space"]',
+    title: "스페이스 선택이 먼저예요",
     content:
-      "기수나 프로그램 단위로 수강생을 묶는 그룹이에요. 왼쪽 사이드바에서 직접 만들어 관리하세요.",
+      "출석보드는 특정 스페이스 기준으로 운영돼요. 먼저 스페이스를 선택한 뒤 다시 들어오면 학생 상태와 공개 체크인 세션을 관리할 수 있어요.",
     skipBeacon: true,
     placement: "bottom" as const,
   },
   {
-    target: '[data-tutorial="add-member-btn"]',
-    title: "수강생 등록하기",
-    content: "이름·연락처·상태를 입력해 수강생을 추가해요.",
+    target: '[data-tutorial="check-board-back-link"]',
+    title: "학생관리로 돌아가기",
+    content:
+      "여기서 학생관리 화면으로 돌아가 스페이스를 선택하거나 수강생을 확인한 뒤 출석보드로 다시 오세요.",
     placement: "bottom" as const,
   },
 ];
 
-export function StudentTutorial() {
-  const { run, finish } = useTutorial("student");
+const BOARD_STEPS = [
+  {
+    target: '[data-tutorial="check-board-summary"]',
+    title: "보드 전체 현황 보기",
+    content:
+      "전체 학생 수, 셀프체크 준비 수, 출석 수, 과제 완료 수를 한 번에 확인할 수 있어요.",
+    skipBeacon: true,
+    placement: "bottom" as const,
+  },
+  {
+    target: '[data-tutorial="check-board-session-panel"]',
+    title: "공개 체크인 세션 운영",
+    content:
+      "여기서 QR·위치 인증 방식을 선택하고 공개 체크인 세션을 만들어 운영할 수 있어요.",
+    placement: "bottom" as const,
+  },
+  {
+    target: '[data-tutorial="check-board-member-board"]',
+    title: "학생별 상태 바로 수정",
+    content:
+      "학생별 출석 상태, 과제 상태, 과제 링크를 확인하고 바로 저장할 수 있어요. 모바일과 데스크톱 모두 같은 영역을 기준으로 안내합니다.",
+    placement: "top" as const,
+  },
+];
+
+export function CheckBoardTutorial() {
+  const { run, finish } = useTutorial("check-board");
   const steps = useMemo(() => {
     if (typeof document === "undefined") {
-      return [...BASE_STEPS, MEMBER_CARD_STEP];
+      return BOARD_STEPS;
     }
 
-    return document.querySelector(MEMBER_CARD_STEP.target)
-      ? [...BASE_STEPS, MEMBER_CARD_STEP]
-      : [...BASE_STEPS, EMPTY_STATE_STEP];
+    return document.querySelector('[data-tutorial="check-board-summary"]')
+      ? BOARD_STEPS
+      : NO_SPACE_STEPS;
   }, [run]);
 
   const handleEvent = (data: EventData) => {
