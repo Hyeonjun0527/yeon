@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 import { useTutorial } from "./use-tutorial";
 
@@ -9,7 +10,7 @@ const Joyride = dynamic(
   { ssr: false },
 );
 
-const STEPS = [
+const BASE_STEPS = [
   {
     target: '[data-tutorial="new-record-btn"]',
     title: "녹음으로 시작하기",
@@ -41,6 +42,13 @@ const STEPS = [
 
 export function HomeTutorial() {
   const { run, finish } = useTutorial("home");
+  const steps = useMemo(() => {
+    if (typeof document === "undefined") {
+      return BASE_STEPS;
+    }
+
+    return BASE_STEPS.filter((step) => document.querySelector(step.target));
+  }, [run]);
 
   const handleEvent = (data: EventData) => {
     const { status } = data;
@@ -51,7 +59,7 @@ export function HomeTutorial() {
 
   return (
     <Joyride
-      steps={STEPS}
+      steps={steps}
       run={run}
       continuous
       scrollToFirstStep
@@ -60,6 +68,7 @@ export function HomeTutorial() {
         primaryColor: "#818cf8",
         zIndex: 10000,
         overlayColor: "rgba(12, 14, 20, 0.65)",
+        overlayClickAction: "next",
         textColor: "#e5e7eb",
         showProgress: true,
         buttons: ["back", "primary", "skip"],

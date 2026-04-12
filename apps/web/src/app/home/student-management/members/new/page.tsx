@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
+import { useAppRoute } from "@/lib/app-route-context";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "수강중" },
@@ -18,6 +19,7 @@ const RISK_OPTIONS = [
 
 export default function MemberNewPage() {
   const router = useRouter();
+  const { resolveAppHref } = useAppRoute();
   const { selectedSpaceId, refetchMembers } = useStudentManagement();
 
   const [name, setName] = useState("");
@@ -61,7 +63,7 @@ export default function MemberNewPage() {
       }
 
       refetchMembers();
-      router.push("/home/student-management");
+      router.push(resolveAppHref("/home/student-management"));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "수강생을 추가하지 못했습니다.",
@@ -75,7 +77,7 @@ export default function MemberNewPage() {
     <div className="max-w-lg mx-auto py-8 px-4">
       <div className="mb-6">
         <a
-          href="/home/student-management"
+          href={resolveAppHref("/home/student-management")}
           className="text-sm text-text-dim hover:text-text-secondary transition-colors no-underline inline-flex items-center gap-1.5 mb-4"
         >
           ← 수강생 목록으로
@@ -223,7 +225,9 @@ export default function MemberNewPage() {
           <button
             type="button"
             className="px-4 py-2.5 bg-surface-2 border border-border text-text-secondary text-sm font-medium rounded-lg cursor-pointer hover:border-border-light transition-colors"
-            onClick={() => router.push("/home/student-management")}
+            onClick={() =>
+              router.push(resolveAppHref("/home/student-management"))
+            }
           >
             취소
           </button>

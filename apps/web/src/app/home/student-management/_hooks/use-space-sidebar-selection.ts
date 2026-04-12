@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import {
   createRangeSelection,
@@ -21,7 +21,7 @@ interface UseSpaceSidebarSelectionParams {
   spaces: SpaceListItem[];
   selectedSpaceId: string | null;
   setSelectedSpaceId: (id: string | null) => void;
-  resetDetailRouteIfNeeded: () => void;
+  resetDetailRouteIfNeeded: (nextSpaceId?: string | null) => void;
 }
 
 export function useSpaceSidebarSelection({
@@ -35,6 +35,11 @@ export function useSpaceSidebarSelection({
     anchorId: selectedSpaceId,
   });
   const [contextMenu, setContextMenu] = useState<SpaceContextMenuState>(null);
+
+  // startTransition: 스페이스 전환 시 StudentListScreen(141명) re-render를
+  // 인터럽트 가능하게 만든다. 빠른 연속 클릭 시 이전 렌더를 버리고
+  // 마지막 클릭만 반영한다.
+  const [isSpaceTransitioning, startSpaceTransition] = useTransition();
 
   useEffect(() => {
     setSpaceSelection((prev) =>
@@ -53,8 +58,10 @@ export function useSpaceSidebarSelection({
 
   const handleSelectAllStudents = useCallback(() => {
     clearSpaceSelection();
-    setSelectedSpaceId(null);
-    resetDetailRouteIfNeeded();
+    startSpaceTransition(() => {
+      setSelectedSpaceId(null);
+      resetDetailRouteIfNeeded(null);
+    });
   }, [clearSpaceSelection, resetDetailRouteIfNeeded, setSelectedSpaceId]);
 
   const handleSpaceClick = useCallback(
@@ -70,9 +77,13 @@ export function useSpaceSidebarSelection({
         return;
       }
 
+      // 사이드바 하이라이트: 즉시 반영 (urgent)
       setSpaceSelection({ ids: [spaceId], anchorId: spaceId });
-      setSelectedSpaceId(spaceId);
-      resetDetailRouteIfNeeded();
+      // 수강생 목록 + 라우트: 같은 transition으로 묶어서 flicker 방지
+      startSpaceTransition(() => {
+        setSelectedSpaceId(spaceId);
+        resetDetailRouteIfNeeded(spaceId);
+      });
     },
     [
       resetDetailRouteIfNeeded,
@@ -112,6 +123,7 @@ export function useSpaceSidebarSelection({
     clearSpaceSelection,
     contextMenu,
     setContextMenu,
+    isSpaceTransitioning,
     handleSelectAllStudents,
     handleSpaceClick,
     handleSpaceContextMenu,

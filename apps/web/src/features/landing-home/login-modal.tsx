@@ -1,14 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+
+const LANDING_LOGIN_MODAL_OPEN_EVENT = "yeon:landing-login-modal:open";
 
 type LoginModalProps = {
   open: boolean;
   onClose: () => void;
   nextPath: string;
 };
+
+type LandingLoginModalControllerProps = {
+  initialOpen?: boolean;
+  nextPath: string;
+};
+
+export function openLandingLoginModal() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(LANDING_LOGIN_MODAL_OPEN_EVENT));
+}
+
+export function LandingLoginModalController({
+  initialOpen = false,
+  nextPath,
+}: LandingLoginModalControllerProps) {
+  const [open, setOpen] = useState(initialOpen);
+
+  const handleOpen = useCallback(() => {
+    setOpen(true);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(LANDING_LOGIN_MODAL_OPEN_EVENT, handleOpen);
+
+    return () => {
+      window.removeEventListener(LANDING_LOGIN_MODAL_OPEN_EVENT, handleOpen);
+    };
+  }, [handleOpen]);
+
+  return <LoginModal open={open} onClose={handleClose} nextPath={nextPath} />;
+}
 
 function KakaoTalkIcon() {
   return (
@@ -62,11 +103,13 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
   useEffect(() => {
     if (!open) {
       document.body.style.overflow = "";
+      document.body.classList.remove("landing-login-open");
       setPendingProvider(null);
       return;
     }
 
     document.body.style.overflow = "hidden";
+    document.body.classList.add("landing-login-open");
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -78,6 +121,7 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
 
     return () => {
       document.body.style.overflow = "";
+      document.body.classList.remove("landing-login-open");
       window.removeEventListener("keydown", handleEscape);
     };
   }, [open, onClose]);
@@ -90,14 +134,19 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
     window.location.assign(href);
   }
 
-  return (
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-20 flex items-center justify-center p-6 bg-[rgba(12,14,18,0.36)] backdrop-blur-[6px] md:p-4"
+          className="fixed inset-0 z-20 flex items-center justify-center bg-[rgba(8,10,14,0.82)] p-6 md:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.14, ease: "easeOut" }}
           onClick={onClose}
         >
           <motion.div
@@ -105,11 +154,11 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="landing-login-title"
-            className="w-[min(100%,560px)] p-9 rounded-[32px] border border-[rgba(17,19,24,0.08)] bg-gradient-to-b from-[#fffdf9] to-[#faf7f1] text-[#111318] shadow-[0_28px_80px_rgba(15,18,24,0.18)] md:p-[22px]"
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            className="w-[min(100%,560px)] rounded-[32px] border border-[rgba(17,19,24,0.08)] bg-gradient-to-b from-[#fffdf9] to-[#faf7f1] p-9 text-[#111318] shadow-[0_28px_80px_rgba(15,18,24,0.18)] md:p-[22px]"
+            initial={{ opacity: 0, y: 12, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: 8, scale: 0.99 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
             onClick={(event) => event.stopPropagation()}
           >
             {/* Header */}
@@ -171,6 +220,7 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

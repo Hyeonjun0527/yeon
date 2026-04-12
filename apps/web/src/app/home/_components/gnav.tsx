@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { SettingsIcon, LogOutIcon, RecordIcon, StudentsIcon } from "./icons";
 import { useClickOutside } from "../_hooks";
+import { useLogout } from "@/lib/use-logout";
+import { useAppRoute } from "@/lib/app-route-context";
 
 type GnavProps = {
   activeMenu: "records" | "students";
@@ -11,6 +13,8 @@ type GnavProps = {
 
 export function Gnav({ activeMenu }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const { logout, isLoggingOut } = useLogout();
+  const { resolveAppHref } = useAppRoute();
   const menuRef = useClickOutside<HTMLDivElement>(
     () => setShowMenu(false),
     showMenu,
@@ -28,7 +32,7 @@ export function Gnav({ activeMenu }: GnavProps) {
       </div>
       <div className="mt-2">
         <Link
-          href="/home"
+          href={resolveAppHref("/home")}
           className={`w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer transition-all duration-150 no-underline ${
             activeMenu === "records"
               ? "bg-accent-dim text-accent"
@@ -40,7 +44,7 @@ export function Gnav({ activeMenu }: GnavProps) {
         </Link>
       </div>
       <Link
-        href="/home/student-management"
+        href={resolveAppHref("/home/student-management")}
         className={`w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer transition-all duration-150 no-underline ${
           activeMenu === "students"
             ? "bg-accent-dim text-accent"
@@ -75,18 +79,18 @@ export function Gnav({ activeMenu }: GnavProps) {
               <SettingsIcon size={14} />
               설정
             </button>
-            <form action="/api/auth/logout" method="post" className="m-0">
-              <button
-                type="submit"
-                className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-red text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4"
-                onClick={() => {
-                  setShowMenu(false);
-                }}
-              >
-                <LogOutIcon size={14} />
-                로그아웃
-              </button>
-            </form>
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-red text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setShowMenu(false);
+                void logout();
+              }}
+              disabled={isLoggingOut}
+            >
+              <LogOutIcon size={14} />
+              {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+            </button>
           </div>
         )}
       </div>

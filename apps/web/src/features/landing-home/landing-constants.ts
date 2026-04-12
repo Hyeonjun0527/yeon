@@ -1,9 +1,9 @@
 import { Mic, FileText, MessageSquare, FolderOpen } from "lucide-react";
 
 export const STATS = [
-  { label: "원문 전체 열람", value: 100, suffix: "%" },
-  { label: "요약 기본 구조", value: 4, suffix: "개" },
-  { label: "한 화면 작업 영역", value: 3, suffix: "영역" },
+  { label: "원문 끝까지 확인", value: 100, suffix: "%" },
+  { label: "바로 읽히는 요약", value: 4, suffix: "개" },
+  { label: "끊기지 않는 작업 흐름", value: 3, suffix: "영역" },
 ] as const;
 
 export const FEATURES = [

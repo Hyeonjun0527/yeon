@@ -7,9 +7,15 @@ type CounterProps = {
   end: number;
   suffix?: string;
   duration?: number;
+  className?: string;
 };
 
-export function Counter({ end, suffix = "", duration = 2000 }: CounterProps) {
+export function Counter({
+  end,
+  suffix = "",
+  duration = 2000,
+  className = "",
+}: CounterProps) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.5 });
@@ -34,7 +40,7 @@ export function Counter({ end, suffix = "", duration = 2000 }: CounterProps) {
   return (
     <motion.span
       ref={ref}
-      className="text-[clamp(44px,6vw,68px)] font-black tracking-[-0.04em] text-[var(--accent)] tabular-nums leading-none"
+      className={`text-[clamp(36px,11vw,68px)] font-black tracking-[-0.04em] text-[var(--accent)] tabular-nums leading-none md:text-[clamp(44px,6vw,68px)] ${className}`.trim()}
       initial={{ opacity: 0, scale: 0.5 }}
       animate={isInView ? { opacity: 1, scale: 1 } : {}}
       transition={{ duration: 0.5, ease: "easeOut" }}

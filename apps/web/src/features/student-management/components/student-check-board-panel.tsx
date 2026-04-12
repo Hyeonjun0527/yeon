@@ -531,7 +531,7 @@ export function StudentCheckBoardPanel({
           {!loading && !error ? (
             <div
               className="space-y-3 sm:hidden"
-              data-tutorial="check-board-member-board"
+              data-tutorial="check-board-member-board-mobile"
             >
               {members.map((member) => {
                 const row = rowMap.get(member.id);
@@ -645,7 +645,7 @@ export function StudentCheckBoardPanel({
           {!loading && !error ? (
             <div
               className="hidden overflow-x-auto rounded-2xl border border-border sm:block"
-              data-tutorial="check-board-member-board"
+              data-tutorial="check-board-member-board-desktop"
             >
               <table className="min-w-full divide-y divide-border text-sm">
                 <thead className="bg-surface text-left text-text-secondary">

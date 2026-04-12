@@ -94,9 +94,31 @@ export function useMemberMemos({ spaceId, memberId }: UseMemberMemosParams) {
         throw new Error(data?.message || "메모를 저장하지 못했습니다.");
       }
 
+      const payload = (await res.json()) as { log?: ActivityLog };
+
       setNewMemoText("");
-      await queryClient.invalidateQueries({
-        queryKey: ["member-memos", spaceId, memberId],
+
+      if (!payload.log) {
+        await queryClient.invalidateQueries({
+          queryKey: ["member-memos", spaceId, memberId],
+        });
+        return;
+      }
+
+      queryClient.setQueryData<
+        { logs: ActivityLog[]; totalCount: number } | undefined
+      >(["member-memos", spaceId, memberId], (current) => {
+        if (!current) {
+          return {
+            logs: [payload.log!],
+            totalCount: 1,
+          };
+        }
+
+        return {
+          logs: [payload.log!, ...current.logs],
+          totalCount: current.totalCount + 1,
+        };
       });
     } catch (caughtError) {
       setSaveError(

@@ -11,3 +11,5 @@ export type { Space } from "./use-current-space";
 export type { MemberWithStatus } from "./use-space-members";
 
 export { useRecordRetry } from "./use-record-retry";
+export { useWorkspaceSelection } from "./use-workspace-selection";
+export { useRecordEntry } from "./use-record-entry";
