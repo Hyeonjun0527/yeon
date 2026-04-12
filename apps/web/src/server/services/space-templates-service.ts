@@ -465,52 +465,24 @@ async function createCustomTabWithFields(
 /* ── 서비스 함수 ── */
 
 /**
- * 시스템 템플릿 4개를 seed (이미 있으면 skip)
+ * 기존 시스템 템플릿을 정리한다.
  */
 export async function seedSystemTemplates(): Promise<void> {
   const db = getDb();
 
-  const existing = await db
-    .select()
-    .from(spaceTemplates)
-    .where(eq(spaceTemplates.isSystem, true));
-
-  if (existing.length >= SYSTEM_TEMPLATES.length) return;
-
-  const existingNames = new Set(existing.map((t) => t.name));
-  const now = new Date();
-
-  const toInsert = SYSTEM_TEMPLATES.filter(
-    (t) => !existingNames.has(t.name),
-  ).map((t) => ({
-    id: randomUUID(),
-    createdByUserId: null,
-    name: t.name,
-    description: t.description,
-    isSystem: true,
-    tabsConfig: t.tabsConfig as unknown,
-    createdAt: now,
-    updatedAt: now,
-  }));
-
-  if (toInsert.length > 0) {
-    await db.insert(spaceTemplates).values(toInsert);
+  if (SYSTEM_TEMPLATES.length === 0) {
+    return;
   }
+
+  await db.delete(spaceTemplates).where(eq(spaceTemplates.isSystem, true));
 }
 
 /**
  * 템플릿 목록 조회
- * - 시스템 템플릿 먼저, 그 다음 사용자 템플릿
+ * - 사용자 템플릿만 반환
  */
 export async function listTemplates(userId?: string): Promise<SpaceTemplate[]> {
   const db = getDb();
-
-  const systemOnes = await db
-    .select()
-    .from(spaceTemplates)
-    .where(eq(spaceTemplates.isSystem, true))
-    .orderBy(asc(spaceTemplates.createdAt));
-
   const userOnes = userId
     ? await db
         .select()
@@ -524,7 +496,7 @@ export async function listTemplates(userId?: string): Promise<SpaceTemplate[]> {
         .orderBy(asc(spaceTemplates.createdAt))
     : [];
 
-  return [...systemOnes, ...userOnes];
+  return userOnes;
 }
 
 /**

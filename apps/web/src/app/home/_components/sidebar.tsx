@@ -1001,7 +1001,7 @@ export function Sidebar({
           </button>
 
           {showSpaceDropdown && (
-            <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-surface-3 border border-border-light rounded-md py-1 z-50 shadow-[0_8px_24px_rgba(0,0,0,0.35)] max-h-48 overflow-y-auto">
+            <div className="scrollbar-subtle absolute top-[calc(100%+4px)] left-0 right-0 bg-surface-3 border border-border-light rounded-md py-1 z-50 shadow-[0_8px_24px_rgba(0,0,0,0.35)] max-h-48 overflow-y-auto">
               {spaces.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-text-dim">
                   스페이스 없음

@@ -1,6 +1,7 @@
 export { TopNav } from "./top-nav";
 export { Gnav } from "./gnav";
 export { EmptyState } from "./empty-state";
+export { HomeSpaceGate } from "./home-space-gate";
 export { RecordingState } from "./recording-state";
 export { Sidebar } from "./sidebar";
 export { CenterPanel } from "./center-panel";

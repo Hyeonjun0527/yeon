@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useStudentManagement } from "../student-management-provider";
 import type { Member, RiskLevel, ViewMode } from "../types";
 import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
@@ -60,10 +60,7 @@ function sortMembers(members: Member[], key: MemberSortKey): Member[] {
 export function useMemberList() {
   const router = useRouter();
   const pathname = usePathname();
-  const getCurrentSearchParams = useCallback(() => {
-    if (typeof window === "undefined") return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
-  }, []);
+  const currentSearchParams = useSearchParams();
   const { members, membersLoading, membersError, spacesLoading } =
     useStudentManagement();
 
@@ -81,7 +78,6 @@ export function useMemberList() {
     setFallbackViewMode(savedViewMode === "table" ? "card" : savedViewMode);
   }, []);
 
-  const currentSearchParams = getCurrentSearchParams();
   const search = currentSearchParams.get("q") ?? "";
   const statusFilter = currentSearchParams.get("status") ?? "all";
   const riskParam = currentSearchParams.get("risk");
@@ -109,11 +105,9 @@ export function useMemberList() {
 
   const updateRouteState = useCallback(
     (patch: Record<string, string | null>) => {
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), patch),
-      );
+      router.replace(createPatchedHref(pathname, currentSearchParams, patch));
     },
-    [getCurrentSearchParams, pathname, router],
+    [currentSearchParams, pathname, router],
   );
 
   const setSearch = useCallback(

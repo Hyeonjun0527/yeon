@@ -51,7 +51,7 @@ export function useRecordingMachine() {
   }, []);
 
   async function startRecording(
-    onAudioReady: (file: File) => void,
+    onAudioReady: (file: File) => Promise<void> | void,
     onOpenUploadPanel: () => void,
   ) {
     if (typeof window === "undefined") {
@@ -143,8 +143,16 @@ export function useRecordingMachine() {
           type: activeType,
         });
 
-        onAudioReady(file);
-        setIsFinalizingRecording(false);
+        try {
+          await onAudioReady(file);
+        } catch (error) {
+          console.error(error);
+          setRecordingError(
+            "녹음 파일을 저장 준비 상태로 넘기지 못했습니다. 다시 시도해 주세요.",
+          );
+        } finally {
+          setIsFinalizingRecording(false);
+        }
       };
 
       recorder.start(1000);

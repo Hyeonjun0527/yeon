@@ -52,6 +52,17 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
 
   const hasAudioReady = Boolean(selectedAudioFile) && recordingPhase === "idle";
 
+  function getDefaultSessionTitle(file: File) {
+    const trimmedName = file.name.replace(/\.[^/.]+$/, "").trim();
+
+    if (trimmedName) {
+      return trimmedName;
+    }
+
+    const now = new Date();
+    return `녹음 ${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+
   // preview URL revoke
   useEffect(() => {
     const urlToRevoke = selectedAudioPreviewUrl;
@@ -80,7 +91,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
         message: `음성 파일은 ${Math.floor(MAX_AUDIO_UPLOAD_BYTES / 1024 / 1024)}MB 이하만 업로드할 수 있습니다.`,
         tone: "error",
       });
-      return;
+      return undefined;
     }
 
     if (!isAcceptedAudioFile(file)) {
@@ -89,7 +100,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
         message: AUDIO_UPLOAD_ERROR_MESSAGE,
         tone: "error",
       });
-      return;
+      return undefined;
     }
 
     const durationMs = await readAudioDurationMs(file);
@@ -111,8 +122,129 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
     });
     setFormState((current) => ({
       ...current,
-      sessionTitle: current.sessionTitle || file.name.replace(/\.[^/.]+$/, ""),
+      sessionTitle: current.sessionTitle || getDefaultSessionTitle(file),
     }));
+
+    return durationMs;
+  }
+
+  async function uploadAudioRecord(params: {
+    file: File;
+    studentName: string;
+    sessionTitle: string;
+    counselingType: string;
+    durationMs: number | null;
+  }) {
+    const { file, studentName, sessionTitle, counselingType, durationMs } =
+      params;
+
+    const formData = new FormData();
+    formData.set("audio", file);
+    formData.set("studentName", studentName);
+    formData.set("sessionTitle", sessionTitle);
+    formData.set("counselingType", counselingType);
+
+    if (durationMs) {
+      formData.set("audioDurationMs", String(durationMs));
+    }
+
+    const data = await fetchApi(
+      "/api/v1/counseling-records",
+      {
+        method: "POST",
+        headers: {
+          "X-Client-Request-Id": buildClientRequestId(),
+        },
+        body: formData,
+      },
+      counselingRecordDetailResponseSchema.parse,
+    );
+
+    onRecordCreated(data.record);
+
+    setUploadState({
+      isUploading: false,
+      message: null,
+      tone: "idle",
+    });
+    setSaveToast(
+      "기록이 저장되었습니다. 이제 백그라운드에서 전사와 분석을 진행합니다.",
+    );
+    setRecentlySavedId(data.record.id);
+    setSelectedAudioFile(null);
+    setSelectedAudioDurationMs(null);
+    setSelectedAudioPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
+      }
+
+      return null;
+    });
+    setFormState({
+      studentName: "",
+      sessionTitle: "",
+      counselingType: COUNSELING_TYPE_OPTIONS[0],
+    });
+    setIsAdditionalInfoOpen(false);
+    setIsUploadPanelOpen(false);
+  }
+
+  async function createRecordFromAudioFile(
+    file: File,
+    options?: {
+      studentName?: string;
+      sessionTitle?: string;
+      counselingType?: string;
+    },
+  ) {
+    const safeStudentName =
+      options?.studentName?.trim() || formState.studentName.trim();
+    const safeSessionTitle =
+      options?.sessionTitle?.trim() ||
+      formState.sessionTitle.trim() ||
+      getDefaultSessionTitle(file);
+    const safeCounselingType =
+      options?.counselingType?.trim() || formState.counselingType.trim();
+
+    const durationMs = await applySelectedAudioFile(file);
+
+    if (durationMs === undefined) {
+      return;
+    }
+
+    setUploadState({
+      isUploading: true,
+      message: "녹음을 저장하고 백그라운드 전사·분석 작업을 등록합니다.",
+      tone: "idle",
+    });
+
+    try {
+      await uploadAudioRecord({
+        file,
+        studentName: safeStudentName,
+        sessionTitle: safeSessionTitle,
+        counselingType: safeCounselingType,
+        durationMs,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "상담 음성 업로드를 처리하지 못했습니다.";
+
+      setFormState((current) => ({
+        ...current,
+        studentName: current.studentName || safeStudentName,
+        sessionTitle: current.sessionTitle || safeSessionTitle,
+        counselingType: current.counselingType || safeCounselingType,
+      }));
+      setUploadState({
+        isUploading: false,
+        message,
+        tone: "error",
+      });
+      throw error;
+    }
   }
 
   async function handleAudioFileChange(
@@ -164,56 +296,14 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
       tone: "idle",
     });
 
-    const formData = new FormData();
-    formData.set("audio", selectedAudioFile);
-    formData.set("studentName", formState.studentName.trim());
-    formData.set("sessionTitle", formState.sessionTitle.trim());
-    formData.set("counselingType", formState.counselingType.trim());
-
-    if (selectedAudioDurationMs) {
-      formData.set("audioDurationMs", String(selectedAudioDurationMs));
-    }
-
     try {
-      const data = await fetchApi(
-        "/api/v1/counseling-records",
-        {
-          method: "POST",
-          headers: {
-            "X-Client-Request-Id": buildClientRequestId(),
-          },
-          body: formData,
-        },
-        counselingRecordDetailResponseSchema.parse,
-      );
-
-      onRecordCreated(data.record);
-
-      setUploadState({
-        isUploading: false,
-        message: null,
-        tone: "idle",
+      await uploadAudioRecord({
+        file: selectedAudioFile,
+        studentName: formState.studentName.trim(),
+        sessionTitle: formState.sessionTitle.trim(),
+        counselingType: formState.counselingType.trim(),
+        durationMs: selectedAudioDurationMs,
       });
-      setSaveToast(
-        "기록이 저장되었습니다. 이제 백그라운드에서 전사와 분석을 진행합니다.",
-      );
-      setRecentlySavedId(data.record.id);
-      setSelectedAudioFile(null);
-      setSelectedAudioDurationMs(null);
-      setSelectedAudioPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-
-        return null;
-      });
-      setFormState({
-        studentName: "",
-        sessionTitle: "",
-        counselingType: COUNSELING_TYPE_OPTIONS[0],
-      });
-      setIsAdditionalInfoOpen(false);
-      setIsUploadPanelOpen(false);
     } catch (error) {
       const message =
         error instanceof Error
@@ -243,6 +333,7 @@ export function useUploadForm(callbacks: UseUploadFormCallbacks) {
     hasAudioReady,
     updateFormState,
     applySelectedAudioFile,
+    createRecordFromAudioFile,
     handleAudioFileChange,
     handleUploadSubmit,
   };

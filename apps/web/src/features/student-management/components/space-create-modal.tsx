@@ -91,31 +91,24 @@ export function StudentSpaceCreateModal({
         }}
       >
         <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+          <div className="flex items-start justify-between gap-4 border-b border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0))] px-5 py-5">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+              <span className="inline-flex items-center rounded-full border border-accent-border bg-accent-dim/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.06em] text-accent">
                 AI 가져오기
-              </p>
-              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
-                스페이스 초안 만들기
+              </span>
+              <h2 className="mt-3 text-[21px] font-semibold tracking-[-0.03em] text-text">
+                AI로 스페이스 초안 만들기
               </h2>
-              <p className="mt-1 text-[12px] text-text-secondary">
-                저장된 작업을 이어보거나 새 파일에서 시작하세요.
+              <p className="mt-1.5 max-w-[560px] text-[13px] leading-relaxed text-text-secondary">
+                저장된 초안을 이어보거나 새 파일을 불러와 스페이스 구조를 바로
+                검토할 수 있습니다.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-3 px-3 py-2 text-[13px] text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text"
-                onClick={() => setStep("choose")}
-              >
-                <ArrowLeft size={14} />
-                뒤로
-              </button>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-transparent text-text-dim transition-colors hover:border-border hover:bg-surface-3 hover:text-text"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-2/80 text-text-dim transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
                 onClick={onClose}
                 aria-label="닫기"
               >

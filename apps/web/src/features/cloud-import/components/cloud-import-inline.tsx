@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ChevronRight,
   CloudCog,
+  Download,
   File,
   FileClock,
   FileSpreadsheet,
@@ -84,6 +85,31 @@ function getDraftStatusLabel(status: LocalImportDraftListItem["status"]) {
   }
 }
 
+function getDraftStatusBadgeClass(status: LocalImportDraftListItem["status"]) {
+  switch (status) {
+    case "analyzed":
+      return "border-accent-border bg-accent-dim/70 text-accent";
+    case "analyzing":
+      return "border-[rgba(125,211,252,0.24)] bg-[rgba(56,189,248,0.1)] text-[rgb(125,211,252)]";
+    case "edited":
+      return "border-[rgba(196,181,253,0.24)] bg-[rgba(139,92,246,0.1)] text-[rgb(216,180,254)]";
+    case "error":
+      return "border-red/30 bg-red/10 text-red";
+    default:
+      return "border-border bg-surface-2/80 text-text-secondary";
+  }
+}
+
+function getDraftFileExtensionLabel(fileName: string) {
+  const extensionIndex = fileName.lastIndexOf(".");
+
+  if (extensionIndex < 0 || extensionIndex === fileName.length - 1) {
+    return "FILE";
+  }
+
+  return fileName.slice(extensionIndex + 1).toUpperCase();
+}
+
 function getDraftRowSummary(draft: LocalImportDraftListItem) {
   if (draft.error) {
     return draft.status === "error"
@@ -139,6 +165,7 @@ export function CloudImportInline({
   const [activeProvider, setActiveProvider] =
     useState<CloudProvider>("onedrive");
   const [isDragging, setIsDragging] = useState(false);
+  const [showSavedDraftsModal, setShowSavedDraftsModal] = useState(false);
   const [desktopSplitRatio, setDesktopSplitRatio] = useState(
     IMPORT_WORKSPACE_DEFAULT_RATIO,
   );
@@ -314,6 +341,7 @@ export function CloudImportInline({
   const openLocalDraft = useCallback(
     async (draftId: string) => {
       await localImport.restoreDraftById(draftId);
+      setShowSavedDraftsModal(false);
       void refetchLocalDrafts();
     },
     [localImport, refetchLocalDrafts],
@@ -457,117 +485,195 @@ export function CloudImportInline({
       />
 
       {!isWorkspaceMode && (
-        <div className="border-b border-border bg-surface-2/40 px-5 py-4">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-dim">
-                저장된 가져오기 작업
-              </p>
-              <p className="m-0 mt-1 text-[12px] leading-relaxed text-text-secondary">
-                최근 초안을 이어서 열거나 새 파일을 가져오세요.
-              </p>
+        <>
+          <div className="border-b border-border bg-surface-2/30 px-5 py-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="min-w-0">
+                  <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                    새 파일 가져오기
+                  </p>
+                  <p className="m-0 mt-1 text-[12px] text-text-secondary">
+                    로컬 업로드 또는 클라우드 드라이브에서 바로 시작합니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-transparent px-2.5 text-[11px] font-medium text-text-dim transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+                  onClick={() => {
+                    setShowSavedDraftsModal(true);
+                    void refetchLocalDrafts();
+                  }}
+                >
+                  <FileClock size={12} />
+                  저장 작업
+                  {localDrafts.length > 0 ? (
+                    <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text-secondary">
+                      {localDrafts.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+
+              <div className="grid gap-2.5 rounded-2xl border border-accent-border/50 bg-[linear-gradient(180deg,rgba(232,99,10,0.1),rgba(232,99,10,0.04))] p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-4">
+                <div className="min-w-0">
+                  <div className="text-[14px] font-semibold tracking-[-0.01em] text-text">
+                    내 컴퓨터에서 바로 스페이스 초안 만들기
+                  </div>
+                  <p className="mt-1 text-[12px] leading-6 text-text-secondary">
+                    엑셀, CSV, PDF, 이미지 파일을 업로드해 학생 데이터를 바로
+                    분석할 수 있습니다.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent-border bg-accent px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(232,99,10,0.22)] transition-[transform,box-shadow,background-color] duration-150 hover:bg-[var(--accent-hover)] hover:shadow-[0_14px_28px_rgba(232,99,10,0.28)]"
+                    onClick={() => fileInputRef.current?.click()}
+                    type="button"
+                    title="내 컴퓨터에서 파일 선택"
+                  >
+                    <Upload size={16} />
+                    <span>내 컴퓨터에서 파일 선택</span>
+                  </button>
+                  <a
+                    href="/api/test/space-import-sample"
+                    download
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-light bg-surface px-4 py-2.5 text-[13px] font-semibold text-text transition-colors hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+                  >
+                    <Download size={16} />
+                    테스트 데이터 다운로드
+                  </a>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-[6px] border border-border bg-transparent px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text"
-              onClick={() => {
-                void refetchLocalDrafts();
+          </div>
+
+          {showSavedDraftsModal && (
+            <div
+              className="absolute inset-0 z-40 flex items-start justify-center bg-[rgba(0,0,0,0.56)] p-4 md:p-6"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setShowSavedDraftsModal(false);
+                }
               }}
             >
-              새로고침
-            </button>
-          </div>
-
-          {localDraftsLoading ? (
-            <div className="rounded-lg border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
-              가져오기 작업을 불러오는 중...
-            </div>
-          ) : localDraftsError ? (
-            <div className="rounded-lg border border-red/20 bg-red/10 px-3 py-3 text-[12px] text-red">
-              {localDraftsError}
-            </div>
-          ) : localDrafts.length > 0 ? (
-            <div className="grid gap-2">
-              {localDrafts.map((draft) => (
-                <div
-                  key={draft.id}
-                  className="rounded-xl border border-border bg-surface px-3 py-3"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 rounded-lg bg-accent-dim px-2 py-2 text-accent shrink-0">
-                      <FileClock size={14} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center justify-between gap-2">
-                        <p className="m-0 min-w-0 flex-1 truncate text-[13px] font-semibold text-text">
-                          {draft.selectedFile.name}
-                        </p>
-                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
-                          {getDraftStatusLabel(draft.status)}
-                        </span>
-                      </div>
-                      <p className="m-0 mt-1 text-[11px] leading-relaxed text-text-dim line-clamp-2">
-                        {getDraftRowSummary(draft)}
-                      </p>
-                      <p className="m-0 mt-2 text-[11px] text-text-dim">
-                        최근 저장 {formatUpdatedAt(draft.updatedAt)}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-                          onClick={() => {
-                            void openLocalDraft(draft.id);
-                          }}
-                        >
-                          <RotateCcw size={12} />
-                          이어서 보기
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 rounded-[6px] border border-border bg-transparent px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text"
-                          onClick={() => {
-                            void discardDraftFromList(draft.id);
-                          }}
-                        >
-                          <Trash2 size={12} />
-                          삭제
-                        </button>
-                      </div>
-                    </div>
+              <div className="flex max-h-full w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+                <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                      저장된 가져오기 작업
+                    </p>
+                    <p className="m-0 mt-1 text-[12px] leading-relaxed text-text-secondary">
+                      최근 초안을 다시 열거나 필요 없는 작업을 정리할 수
+                      있습니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-[6px] border border-border bg-transparent px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text"
+                      onClick={() => {
+                        void refetchLocalDrafts();
+                      }}
+                    >
+                      새로고침
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-transparent text-text-dim transition-colors hover:border-border hover:bg-surface-3 hover:text-text"
+                      onClick={() => setShowSavedDraftsModal(false)}
+                      aria-label="저장된 가져오기 작업 닫기"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
-              아직 저장된 가져오기 작업이 없습니다. 새 파일을 선택하거나
-              클라우드에서 가져오기를 시작해 보세요.
+
+                <div className="min-h-0 overflow-y-auto px-5 py-4">
+                  {localDraftsLoading ? (
+                    <div className="rounded-lg border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
+                      가져오기 작업을 불러오는 중...
+                    </div>
+                  ) : localDraftsError ? (
+                    <div className="rounded-lg border border-red/20 bg-red/10 px-3 py-3 text-[12px] text-red">
+                      {localDraftsError}
+                    </div>
+                  ) : localDrafts.length > 0 ? (
+                    <div className="grid gap-3">
+                      {localDrafts.map((draft) => (
+                        <div
+                          key={draft.id}
+                          className="relative overflow-hidden rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                        >
+                          <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(232,99,10,0.35),transparent)]" />
+                          <div className="flex items-start gap-3.5">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-border bg-accent-dim/70 text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                              <FileClock size={18} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 flex-wrap items-start justify-between gap-2.5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <p className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold tracking-[-0.01em] text-text">
+                                      {draft.selectedFile.name}
+                                    </p>
+                                    <span className="hidden shrink-0 rounded-full border border-border bg-surface-2/80 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-text-dim sm:inline-flex">
+                                      {getDraftFileExtensionLabel(
+                                        draft.selectedFile.name,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <p className="m-0 mt-1 text-[11px] text-text-dim">
+                                    최근 저장 {formatUpdatedAt(draft.updatedAt)}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`inline-flex min-h-7 shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.04em] ${getDraftStatusBadgeClass(draft.status)}`}
+                                >
+                                  {getDraftStatusLabel(draft.status)}
+                                </span>
+                              </div>
+                              <p className="m-0 mt-3 text-[12px] leading-relaxed text-text-secondary line-clamp-2">
+                                {getDraftRowSummary(draft)}
+                              </p>
+                              <div className="mt-4 flex flex-wrap gap-2.5">
+                                <button
+                                  type="button"
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_10px_24px_rgba(232,99,10,0.22)] transition-[opacity,box-shadow,background-color] duration-150 hover:bg-[var(--accent-hover)] hover:opacity-100 hover:shadow-[0_14px_28px_rgba(232,99,10,0.28)]"
+                                  onClick={() => {
+                                    void openLocalDraft(draft.id);
+                                  }}
+                                >
+                                  <RotateCcw size={12} />
+                                  이어서 보기
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-surface-2/70 px-3.5 py-2 text-[12px] font-medium text-text-secondary transition-[background-color,border-color,color] duration-150 hover:border-border-light hover:bg-surface-3 hover:text-text"
+                                  onClick={() => {
+                                    void discardDraftFromList(draft.id);
+                                  }}
+                                >
+                                  <Trash2 size={12} />
+                                  삭제
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border bg-surface px-3 py-3 text-[12px] text-text-dim">
+                      아직 저장된 가져오기 작업이 없습니다. 새 파일을 선택하거나
+                      클라우드에서 가져오기를 시작해 보세요.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-
-          <div className="mt-4 rounded-xl border border-border bg-surface px-3 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-dim">
-                  새 파일 가져오기
-                </p>
-                <p className="m-0 mt-1 text-[12px] text-text-secondary">
-                  로컬 업로드 또는 클라우드 드라이브에서 시작합니다.
-                </p>
-              </div>
-              <button
-                className="inline-flex items-center gap-[5px] rounded-lg border border-border bg-transparent px-3 py-2 text-xs font-medium text-text-secondary transition-[background,color,border-color] duration-[120ms] hover:bg-accent-dim hover:text-accent hover:border-accent-border"
-                onClick={() => fileInputRef.current?.click()}
-                type="button"
-                title="내 컴퓨터에서 파일 선택"
-              >
-                <Upload size={15} />
-                <span>내 컴퓨터</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       {/* 로컬 프리뷰 모드 */}

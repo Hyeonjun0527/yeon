@@ -33,7 +33,7 @@
   background:
     radial-gradient(
       circle at 18% 72%,
-      rgba(232, 99, 10, 0.14),
+      rgba(129, 140, 248, 0.18),
       transparent 28%
     ),
     radial-gradient(
@@ -52,8 +52,8 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(232, 99, 10, 0.16) 0%,
-    rgba(232, 99, 10, 0.06) 32%,
+    rgba(129, 140, 248, 0.18) 0%,
+    rgba(129, 140, 248, 0.08) 32%,
     transparent 72%
   );
   opacity: 0.52;
@@ -68,8 +68,8 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(232, 99, 10, 0.05) 18%,
-    rgba(232, 99, 10, 0.36) 52%,
+    rgba(129, 140, 248, 0.08) 18%,
+    rgba(129, 140, 248, 0.34) 52%,
     rgba(255, 255, 255, 0.1) 74%,
     transparent 100%
   );
@@ -85,8 +85,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(232, 99, 10, 0.95);
-  box-shadow: 0 0 0 6px rgba(232, 99, 10, 0.04);
+  background: rgba(129, 140, 248, 0.94);
+  box-shadow: 0 0 0 6px rgba(129, 140, 248, 0.08);
 }
 
 .heroFallbackMesh {
@@ -101,7 +101,11 @@
       rgba(255, 255, 255, 0.08),
       rgba(255, 255, 255, 0.02)
     ),
-    linear-gradient(135deg, rgba(232, 99, 10, 0.14), rgba(232, 99, 10, 0.015));
+    linear-gradient(
+      135deg,
+      rgba(129, 140, 248, 0.16),
+      rgba(129, 140, 248, 0.03)
+    );
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.36),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -125,7 +129,7 @@
 
 .heroFallbackMesh::after {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(232, 99, 10, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.1);
 }
 
 .heroFallbackOrbit,
@@ -169,7 +173,7 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(232, 99, 10, 0.32),
+    rgba(129, 140, 248, 0.34),
     rgba(255, 255, 255, 0.08) 72%,
     transparent
   );
@@ -262,7 +266,7 @@
 .heroFallbackEyebrow {
   display: inline-flex;
   margin-bottom: 8px;
-  color: rgba(232, 99, 10, 0.92);
+  color: rgba(129, 140, 248, 0.92);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.22em;
@@ -349,10 +353,16 @@
     linear-gradient(
       to top,
       var(--dark-bg) 0%,
-      rgba(5, 5, 5, 0.5) 15%,
-      transparent 40%
+      rgba(5, 5, 5, 0.58) 15%,
+      transparent 42%
     ),
-    linear-gradient(to right, rgba(5, 5, 5, 0.35) 0%, transparent 30%);
+    linear-gradient(
+      to right,
+      rgba(5, 5, 5, 0.82) 0%,
+      rgba(5, 5, 5, 0.62) 24%,
+      rgba(5, 5, 5, 0.22) 52%,
+      transparent 74%
+    );
 }
 
 .heroMobileScrim {
@@ -361,6 +371,15 @@
 
 .heroCopyShell {
   border-radius: 32px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.72),
+    rgba(8, 8, 10, 0.42)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(10px);
 }
 
 /* ── philosophy glow (radial gradient) ── */
@@ -373,8 +392,8 @@
   translate: -50% -50%;
   background: radial-gradient(
     circle,
-    rgba(232, 99, 10, 0.06) 0%,
-    rgba(232, 99, 10, 0.02) 40%,
+    rgba(129, 140, 248, 0.08) 0%,
+    rgba(129, 140, 248, 0.03) 40%,
     transparent 70%
   );
   pointer-events: none;
@@ -391,7 +410,7 @@
   translate: -50% 30%;
   background: radial-gradient(
     ellipse,
-    rgba(232, 99, 10, 0.08) 0%,
+    rgba(129, 140, 248, 0.1) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -495,7 +514,7 @@
         rgba(7, 7, 7, 0.86) 58%,
         rgba(7, 7, 7, 0.96) 100%
       ),
-      radial-gradient(circle at top, rgba(232, 99, 10, 0.08), transparent 42%);
+      radial-gradient(circle at top, rgba(129, 140, 248, 0.1), transparent 42%);
   }
 
   .heroCopyShell {
@@ -543,9 +562,9 @@
 }
 
 /* ── feature card: data-accent icon colors (attribute selector) ── */
-.featureCard[data-accent="orange"] .featureIconWrap {
-  background: rgba(232, 99, 10, 0.12);
-  color: #e8630a;
+.featureCard[data-accent="accent"] .featureIconWrap {
+  background: rgba(129, 140, 248, 0.14);
+  color: #818cf8;
 }
 
 .featureCard[data-accent="blue"] .featureIconWrap {
