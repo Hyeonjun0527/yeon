@@ -1,55 +1,15 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-
-const LANDING_LOGIN_MODAL_OPEN_EVENT = "yeon:landing-login-modal:open";
 
 type LoginModalProps = {
   open: boolean;
   onClose: () => void;
   nextPath: string;
 };
-
-type LandingLoginModalControllerProps = {
-  initialOpen?: boolean;
-  nextPath: string;
-};
-
-export function openLandingLoginModal() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.dispatchEvent(new CustomEvent(LANDING_LOGIN_MODAL_OPEN_EVENT));
-}
-
-export function LandingLoginModalController({
-  initialOpen = false,
-  nextPath,
-}: LandingLoginModalControllerProps) {
-  const [open, setOpen] = useState(initialOpen);
-
-  const handleOpen = useCallback(() => {
-    setOpen(true);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setOpen(false);
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener(LANDING_LOGIN_MODAL_OPEN_EVENT, handleOpen);
-
-    return () => {
-      window.removeEventListener(LANDING_LOGIN_MODAL_OPEN_EVENT, handleOpen);
-    };
-  }, [handleOpen]);
-
-  return <LoginModal open={open} onClose={handleClose} nextPath={nextPath} />;
-}
 
 function KakaoTalkIcon() {
   return (
