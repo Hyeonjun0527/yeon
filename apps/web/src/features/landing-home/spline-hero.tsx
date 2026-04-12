@@ -79,7 +79,7 @@ class SplineErrorBoundary extends Component<
   }
 }
 
-function SplineCanvas() {
+function SplineCanvas({ paused }: { paused: boolean }) {
   const [error, setError] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(
     null,
@@ -148,7 +148,7 @@ function SplineCanvas() {
   }, [isMobileViewport]);
 
   useEffect(() => {
-    if (isMobileViewport !== false || !shouldLoadSpline) {
+    if (paused || isMobileViewport !== false || !shouldLoadSpline) {
       return;
     }
 
@@ -173,7 +173,7 @@ function SplineCanvas() {
     return () => {
       active = false;
     };
-  }, [isMobileViewport, shouldLoadSpline]);
+  }, [isMobileViewport, paused, shouldLoadSpline]);
 
   useEffect(() => {
     function suppress(e: ErrorEvent) {
@@ -186,6 +186,10 @@ function SplineCanvas() {
   }, []);
 
   if (error) {
+    return <SplineFallbackScene />;
+  }
+
+  if (paused) {
     return <SplineFallbackScene />;
   }
 
@@ -204,14 +208,20 @@ function SplineCanvas() {
   return <SplineComponent scene={SPLINE_SCENE} onError={handleError} />;
 }
 
-export const SplineHero = memo(function SplineHero() {
+type SplineHeroProps = {
+  paused?: boolean;
+};
+
+export const SplineHero = memo(function SplineHero({
+  paused = false,
+}: SplineHeroProps) {
   return (
     <div
       className={`${styles.splineContainer} pointer-events-none absolute inset-0 w-full h-full`}
       data-landing-spline="true"
     >
       <SplineErrorBoundary>
-        <SplineCanvas />
+        <SplineCanvas paused={paused} />
       </SplineErrorBoundary>
     </div>
   );
