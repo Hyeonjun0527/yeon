@@ -12,7 +12,7 @@ export const FEATURES = [
     title: "고품질 STT 원문",
     description:
       "긴 상담 녹음도 흐름이 끊기지 않게 텍스트로 펼쳐 보여줍니다. 요약 전에 원문을 먼저 확인할 수 있습니다.",
-    accent: "orange" as const,
+    accent: "accent" as const,
   },
   {
     icon: FileText,
