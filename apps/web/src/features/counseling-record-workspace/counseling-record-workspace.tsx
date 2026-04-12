@@ -101,6 +101,8 @@ export function CounselingRecordWorkspace() {
 
   // ── 파생 값 ──
   const { selectedRecord } = recordList;
+  const defaultRecordingStudentName =
+    recordList.selectedStudentName ?? selectedRecord?.studentName ?? "";
 
   const quickPrompts = useMemo(
     () => (selectedRecord ? buildQuickPrompts(selectedRecord) : []),
@@ -113,12 +115,17 @@ export function CounselingRecordWorkspace() {
 
   // ── 녹음 콜백 (startRecording에 onAudioReady, onOpenUploadPanel 전달) ──
   const handleStartRecording = useCallback(() => {
-    recording.startRecording(uploadForm.applySelectedAudioFile, () =>
-      uploadForm.setIsUploadPanelOpen(true),
+    void recording.startRecording(
+      (file) =>
+        uploadForm.createRecordFromAudioFile(file, {
+          studentName: defaultRecordingStudentName,
+        }),
+      () => uploadForm.setIsUploadPanelOpen(true),
     );
   }, [
+    defaultRecordingStudentName,
     recording.startRecording,
-    uploadForm.applySelectedAudioFile,
+    uploadForm.createRecordFromAudioFile,
     uploadForm.setIsUploadPanelOpen,
   ]);
 

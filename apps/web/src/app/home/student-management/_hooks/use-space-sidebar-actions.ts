@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import type { StudentSpaceCreateStep } from "@/features/student-management/components/space-create-modal";
 import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
@@ -31,10 +31,59 @@ export function useSpaceSidebarActions({
 }: UseSpaceSidebarActionsParams) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const getCurrentSearchParams = useCallback(
-    () => new URLSearchParams(searchParams.toString()),
-    [searchParams],
+  const [currentSearch, setCurrentSearch] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncSearchFromLocation = () => {
+      setCurrentSearch(window.location.search);
+    };
+
+    syncSearchFromLocation();
+    window.addEventListener("popstate", syncSearchFromLocation);
+
+    return () => {
+      window.removeEventListener("popstate", syncSearchFromLocation);
+    };
+  }, [pathname]);
+
+  // useSearchParams 제거: SearchParamsContext 구독이 router.replace/replaceState마다
+  // 전체 트리 re-render를 유발한다. window.location.search로 대체.
+  const getCurrentSearchParams = useCallback(() => {
+    return new URLSearchParams(currentSearch);
+  }, [currentSearch]);
+
+  const replaceCreateModalRoute = useCallback(
+    (patch: {
+      modal?: string | null;
+      mode?: StudentSpaceCreateStep | null;
+      step?: StudentSpaceCreateStep | null;
+      draftId?: string | null;
+    }) => {
+      const nextHref = createPatchedHref(pathname, getCurrentSearchParams(), {
+        modal: patch.modal,
+        mode: patch.mode,
+        step: patch.step,
+        draftId: patch.draftId,
+      });
+
+      const nextSearch = nextHref.includes("?")
+        ? nextHref.slice(nextHref.indexOf("?"))
+        : "";
+
+      const currentHref = `${pathname}${currentSearch}`;
+
+      if (nextHref === currentHref) {
+        return;
+      }
+
+      setCurrentSearch(nextSearch);
+      router.replace(nextHref);
+    },
+    [currentSearch, getCurrentSearchParams, pathname, router],
   );
   const [spaceActionError, setSpaceActionError] = useState<string | null>(null);
   const [deletingSpaceId, setDeletingSpaceId] = useState<string | null>(null);
@@ -72,28 +121,24 @@ export function useSpaceSidebarActions({
     ) => {
       setSpaceActionError(null);
       setSpaceSelection({ ids: [], anchorId: null });
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), {
-          modal: "create-space",
-          mode: initialStep,
-          step: initialStep,
-          draftId: initialLocalDraftId ?? null,
-        }),
-      );
+      replaceCreateModalRoute({
+        modal: "create-space",
+        mode: initialStep,
+        step: initialStep,
+        draftId: initialLocalDraftId ?? null,
+      });
     },
-    [getCurrentSearchParams, pathname, router, setSpaceSelection],
+    [replaceCreateModalRoute, setSpaceSelection],
   );
 
   const closeCreateModal = useCallback(() => {
-    router.replace(
-      createPatchedHref(pathname, getCurrentSearchParams(), {
-        modal: null,
-        mode: null,
-        step: null,
-        draftId: null,
-      }),
-    );
-  }, [getCurrentSearchParams, pathname, router]);
+    replaceCreateModalRoute({
+      modal: null,
+      mode: null,
+      step: null,
+      draftId: null,
+    });
+  }, [replaceCreateModalRoute]);
 
   const updateCreateModalRouteState = useCallback(
     (patch: {
@@ -101,16 +146,14 @@ export function useSpaceSidebarActions({
       mode?: StudentSpaceCreateStep | null;
       draftId?: string | null;
     }) => {
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), {
-          modal: "create-space",
-          step: patch.step,
-          mode: patch.mode,
-          draftId: patch.draftId,
-        }),
-      );
+      replaceCreateModalRoute({
+        modal: "create-space",
+        step: patch.step,
+        mode: patch.mode,
+        draftId: patch.draftId,
+      });
     },
-    [getCurrentSearchParams, pathname, router],
+    [replaceCreateModalRoute],
   );
 
   const readSpaceActionErrorMessage = useCallback(async (res: Response) => {

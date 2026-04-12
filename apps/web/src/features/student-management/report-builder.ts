@@ -224,7 +224,7 @@ export function buildStudentReportDocument({
       { label: "생성 시각", value: fmtDateTime(generatedAt) },
       { label: "수강생", value: member.name },
       { label: "상태", value: member.status },
-      { label: "검토 상담", value: `${selectedRecords.length}건` },
+      { label: "리포트 반영 상담", value: `${selectedRecords.length}건` },
       { label: "운영 메모", value: `${memoCount}건` },
       {
         label: "최근 상담일",
@@ -242,10 +242,10 @@ export function createDefaultStudentReportSettings(
   return {
     title: `${memberName} 상담 리포트`,
     focusNote: "",
-    recordScope: 5,
-    includeKeywords: true,
+    recordScope: 3,
+    includeKeywords: false,
     includeIssues: true,
     includeActions: true,
-    includeRecordPreviews: true,
+    includeRecordPreviews: false,
   };
 }

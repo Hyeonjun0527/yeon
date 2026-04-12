@@ -207,7 +207,7 @@ function SplineCanvas() {
 export const SplineHero = memo(function SplineHero() {
   return (
     <div
-      className={`${styles.splineContainer} absolute inset-0 w-full h-full`}
+      className={`${styles.splineContainer} pointer-events-none absolute inset-0 w-full h-full`}
       data-landing-spline="true"
     >
       <SplineErrorBoundary>

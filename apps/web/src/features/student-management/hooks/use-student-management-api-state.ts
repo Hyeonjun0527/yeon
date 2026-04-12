@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import type { Member, Space } from "../types";
 import { createPatchedHref } from "@/lib/route-state/search-params";
@@ -21,7 +21,6 @@ function isStudentDetailPath(pathname: string) {
 }
 
 export function useStudentManagementApiState() {
-  const router = useRouter();
   const pathname = usePathname();
   const { normalizeAppPathname } = useAppRoute();
   const queryClient = useQueryClient();
@@ -54,63 +53,81 @@ export function useStudentManagementApiState() {
         ? "스페이스 목록을 불러오지 못했습니다."
         : null;
 
-  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<string | null>(
-    null,
-  );
+  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<
+    string | null | undefined
+  >(undefined);
   const spaceIdFromQuery = getCurrentSearchParams().get("spaceId");
   const normalizedPathname = normalizeAppPathname(pathname);
   const shouldDeferDefaultSpaceSelection =
     isStudentDetailPath(normalizedPathname) && !spaceIdFromQuery;
+  const matchedSpaceFromQuery = useMemo(
+    () =>
+      spaceIdFromQuery
+        ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
+        : null,
+    [spaceIdFromQuery, spaces],
+  );
+  const hasExplicitUserSelection = userSelectedSpaceId !== undefined;
 
   useEffect(() => {
     if (!shouldDeferDefaultSpaceSelection) {
       return;
     }
 
-    setUserSelectedSpaceId(null);
+    setUserSelectedSpaceId(undefined);
   }, [shouldDeferDefaultSpaceSelection]);
 
   useEffect(() => {
     if (spaces.length === 0) return;
 
-    const matchedFromQuery = spaceIdFromQuery
-      ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
-      : null;
-    const nextSpaceId =
-      matchedFromQuery?.id ??
-      (shouldDeferDefaultSpaceSelection ? null : (spaces[0]?.id ?? null));
-
-    setUserSelectedSpaceId((prev) =>
-      prev === nextSpaceId ? prev : nextSpaceId,
-    );
-
-    if (!matchedFromQuery && nextSpaceId) {
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), {
-          spaceId: nextSpaceId,
-        }),
-      );
+    if (shouldDeferDefaultSpaceSelection) {
+      return;
     }
+
+    if (matchedSpaceFromQuery || hasExplicitUserSelection) {
+      return;
+    }
+
+    const nextSpaceId = spaces[0]?.id ?? null;
+    if (!nextSpaceId) {
+      return;
+    }
+
+    window.history.replaceState(
+      null,
+      "",
+      createPatchedHref(pathname, getCurrentSearchParams(), {
+        spaceId: nextSpaceId,
+      }),
+    );
   }, [
     getCurrentSearchParams,
+    hasExplicitUserSelection,
+    matchedSpaceFromQuery,
     pathname,
-    router,
     shouldDeferDefaultSpaceSelection,
-    spaceIdFromQuery,
     spaces,
   ]);
 
   const selectedSpaceId = shouldDeferDefaultSpaceSelection
     ? null
-    : (userSelectedSpaceId ?? spaces[0]?.id ?? null);
+    : (matchedSpaceFromQuery?.id ??
+      (hasExplicitUserSelection
+        ? userSelectedSpaceId
+        : (spaces[0]?.id ?? null)));
   const setSelectedSpaceId = useCallback(
     (id: string | null) => {
       setUserSelectedSpaceId(id);
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), { spaceId: id }),
-      );
+      // router.replace 대신 replaceState 사용:
+      // router.replace는 SearchParamsContext를 즉시 갱신해서
+      // startTransition을 무시하고 전체 트리 re-render(204ms)를 유발한다.
+      // replaceState는 URL만 바꾸고 React 트리를 건드리지 않는다.
+      const url = createPatchedHref(pathname, getCurrentSearchParams(), {
+        spaceId: id,
+      });
+      window.history.replaceState(null, "", url);
     },
-    [getCurrentSearchParams, pathname, router],
+    [getCurrentSearchParams, pathname],
   );
 
   const {

@@ -74,33 +74,8 @@ beforeEach(() => {
 /* ── seedSystemTemplates ── */
 
 describe("seedSystemTemplates", () => {
-  it("시스템 템플릿이 이미 4개 이상이면 INSERT를 건너뛴다", async () => {
-    const existingTemplates = [
-      makeTemplate({ name: "기본" }),
-      makeTemplate({ name: "부트캠프", id: "tpl-2" }),
-      makeTemplate({ name: "디자인스쿨", id: "tpl-3" }),
-      makeTemplate({ name: "어학원", id: "tpl-4" }),
-    ];
-    responses.push(existingTemplates); // select → 4개 이미 존재
-
-    // 오류 없이 완료되어야 하며, insert 호출 없이 종료
-    await expect(seedSystemTemplates()).resolves.toBeUndefined();
-  });
-
-  it("시스템 템플릿이 없으면 누락된 항목을 INSERT한다", async () => {
-    responses.push([]); // select → 없음
-    responses.push(undefined); // insert (반환값 없음)
-
-    await expect(seedSystemTemplates()).resolves.toBeUndefined();
-  });
-
-  it("일부 템플릿이 없으면 해당 항목만 INSERT한다", async () => {
-    responses.push([
-      makeTemplate({ name: "기본" }),
-      makeTemplate({ name: "부트캠프", id: "tpl-2" }),
-    ]); // 4개 중 2개만 있음
-    responses.push(undefined); // insert (나머지 2개)
-
+  it("기존 시스템 템플릿을 정리한다", async () => {
+    responses.push(undefined);
     await expect(seedSystemTemplates()).resolves.toBeUndefined();
   });
 });
@@ -108,20 +83,12 @@ describe("seedSystemTemplates", () => {
 /* ── listTemplates ── */
 
 describe("listTemplates", () => {
-  it("시스템 템플릿 목록을 반환한다 (userId 없음)", async () => {
-    const systemTemplates = [
-      makeTemplate({ name: "기본", id: "tpl-1" }),
-      makeTemplate({ name: "부트캠프", id: "tpl-2" }),
-    ];
-    responses.push(systemTemplates); // 시스템 템플릿 조회
-
+  it("userId가 없으면 빈 목록을 반환한다", async () => {
     const result = await listTemplates();
-    expect(result).toHaveLength(2);
-    expect(result.every((t) => t.isSystem)).toBe(true);
+    expect(result).toHaveLength(0);
   });
 
-  it("시스템 템플릿 먼저, 그 다음 사용자 템플릿을 반환한다", async () => {
-    const systemTemplates = [makeTemplate({ name: "기본" })];
+  it("사용자 템플릿만 반환한다", async () => {
     const userTemplates = [
       makeTemplate({
         name: "내 템플릿",
@@ -130,23 +97,19 @@ describe("listTemplates", () => {
         createdByUserId: "user-1",
       }),
     ];
-    responses.push(systemTemplates); // 시스템 조회
     responses.push(userTemplates); // 사용자 조회
 
     const result = await listTemplates("user-1");
-    expect(result).toHaveLength(2);
-    expect(result[0].isSystem).toBe(true);
-    expect(result[1].isSystem).toBe(false);
-    expect(result[1].name).toBe("내 템플릿");
+    expect(result).toHaveLength(1);
+    expect(result[0].isSystem).toBe(false);
+    expect(result[0].name).toBe("내 템플릿");
   });
 
-  it("사용자 템플릿이 없으면 시스템 템플릿만 반환한다", async () => {
-    responses.push([makeTemplate()]); // 시스템
+  it("사용자 템플릿이 없으면 빈 목록을 반환한다", async () => {
     responses.push([]); // 사용자 (없음)
 
     const result = await listTemplates("user-1");
-    expect(result).toHaveLength(1);
-    expect(result[0].isSystem).toBe(true);
+    expect(result).toHaveLength(0);
   });
 });
 
