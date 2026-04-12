@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 import { useTutorial } from "./use-tutorial";
 
@@ -9,13 +10,28 @@ const Joyride = dynamic(
   { ssr: false },
 );
 
-const STEPS = [
+const MEMBER_CARD_STEP = {
+  target: '[data-tutorial="member-card"]',
+  title: "수강생 상세 보기",
+  content: "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
+  placement: "bottom" as const,
+};
+
+const EMPTY_STATE_STEP = {
+  target: '[data-tutorial="member-empty-state"]',
+  title: "수강생 등록 시작하기",
+  content:
+    "아직 수강생이 없다면 이 안내 영역을 보고 상단의 수강생 추가나 외부 파일 가져오기로 시작할 수 있어요.",
+  placement: "bottom" as const,
+};
+
+const BASE_STEPS = [
   {
     target: '[data-tutorial="space-title"]',
     title: "스페이스란?",
     content:
       "기수나 프로그램 단위로 수강생을 묶는 그룹이에요. 왼쪽 사이드바에서 직접 만들어 관리하세요.",
-    disableBeacon: true,
+    skipBeacon: true,
     placement: "bottom" as const,
   },
   {
@@ -24,16 +40,19 @@ const STEPS = [
     content: "이름·연락처·상태를 입력해 수강생을 추가해요.",
     placement: "bottom" as const,
   },
-  {
-    target: '[data-tutorial="member-card"]',
-    title: "수강생 상세 보기",
-    content: "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
-    placement: "bottom" as const,
-  },
 ];
 
 export function StudentTutorial() {
   const { run, finish } = useTutorial("student");
+  const steps = useMemo(() => {
+    if (typeof document === "undefined") {
+      return [...BASE_STEPS, MEMBER_CARD_STEP];
+    }
+
+    return document.querySelector(MEMBER_CARD_STEP.target)
+      ? [...BASE_STEPS, MEMBER_CARD_STEP]
+      : [...BASE_STEPS, EMPTY_STATE_STEP];
+  }, [run]);
 
   const handleEvent = (data: EventData) => {
     const { status } = data;
@@ -44,7 +63,7 @@ export function StudentTutorial() {
 
   return (
     <Joyride
-      steps={STEPS}
+      steps={steps}
       run={run}
       continuous
       scrollToFirstStep

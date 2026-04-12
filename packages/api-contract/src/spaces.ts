@@ -83,6 +83,7 @@ export const createMemberFieldBodySchema = z.object({
 
 export const updateMemberFieldBodySchema = z.object({
   name: z.string().min(1).max(80).optional(),
+  fieldType: memberFieldTypeSchema.optional(),
   options: z.array(memberFieldSelectOptionSchema).nullish(),
   isRequired: z.boolean().optional(),
   displayOrder: z.number().int().min(0).optional(),

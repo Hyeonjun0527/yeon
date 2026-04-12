@@ -99,6 +99,27 @@ export async function deleteSpaceField(spaceId: string, fieldId: string) {
   });
 }
 
+export async function updateSpaceField(
+  spaceId: string,
+  fieldId: string,
+  input: {
+    name?: string;
+    fieldType?: FieldType;
+    isRequired?: boolean;
+    options?: { value: string; color: string }[] | null;
+    displayOrder?: number;
+    tabId?: string;
+  },
+) {
+  return apiFetch<{ field: SpaceField }>(
+    `/api/v1/spaces/${spaceId}/member-fields/${fieldId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export async function reorderSpaceFields(
   spaceId: string,
   tabId: string,

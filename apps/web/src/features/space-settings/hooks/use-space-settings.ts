@@ -18,6 +18,7 @@ import {
   reorderSpaceTabs,
   resetSpaceTabs,
   snapshotSpaceTemplate,
+  updateSpaceField,
   updateSpaceTemplate,
 } from "../space-settings-api";
 import { moveItem, resolveInitialSelectedTabId } from "../space-settings-utils";
@@ -255,6 +256,43 @@ export function useSpaceSettings(
     [spaceId, fields],
   );
 
+  const updateField = useCallback(
+    async (
+      fieldId: string,
+      input: {
+        name?: string;
+        fieldType?: FieldType;
+        isRequired?: boolean;
+        options?: { value: string; color: string }[] | null;
+        displayOrder?: number;
+        tabId?: string;
+      },
+    ) => {
+      if (!spaceId) return null;
+      setError(null);
+      const previous = fields;
+      setFields((current) =>
+        current.map((field) =>
+          field.id === fieldId ? { ...field, ...input } : field,
+        ),
+      );
+      try {
+        const data = await updateSpaceField(spaceId, fieldId, input);
+        setFields((current) =>
+          current.map((field) => (field.id === fieldId ? data.field : field)),
+        );
+        return data.field;
+      } catch (e) {
+        setFields(previous);
+        setError(
+          e instanceof Error ? e.message : "필드를 수정하지 못했습니다.",
+        );
+        return null;
+      }
+    },
+    [spaceId, fields],
+  );
+
   const reorderFields = useCallback(
     async (tabId: string, fromIdx: number, toIdx: number) => {
       if (!spaceId) return;
@@ -389,6 +427,7 @@ export function useSpaceSettings(
     reorderTabs,
     resetToDefaults,
     createField,
+    updateField,
     deleteField,
     reorderFields,
     updateTemplate,

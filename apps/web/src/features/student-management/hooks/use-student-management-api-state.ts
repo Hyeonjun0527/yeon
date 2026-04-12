@@ -2,11 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 
 import type { Member, Space } from "../types";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 export function useStudentManagementApiState() {
+  const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
+  const getCurrentSearchParams = useCallback(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
 
   const {
     data: spacesData,
@@ -35,20 +43,39 @@ export function useStudentManagementApiState() {
   const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<string | null>(
     null,
   );
+  const spaceIdFromQuery = getCurrentSearchParams().get("spaceId");
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const spaceIdFromQuery = searchParams.get("spaceId");
-    if (!spaceIdFromQuery) return;
+    if (spaces.length === 0) return;
+
+    const matchedFromQuery = spaceIdFromQuery
+      ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
+      : null;
+    const nextSpaceId = matchedFromQuery?.id ?? spaces[0]?.id ?? null;
+
     setUserSelectedSpaceId((prev) =>
-      prev === spaceIdFromQuery ? prev : spaceIdFromQuery,
+      prev === nextSpaceId ? prev : nextSpaceId,
     );
-  }, []);
+
+    if (!matchedFromQuery && nextSpaceId) {
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), {
+          spaceId: nextSpaceId,
+        }),
+      );
+    }
+  }, [getCurrentSearchParams, pathname, router, spaceIdFromQuery, spaces]);
 
   const selectedSpaceId = userSelectedSpaceId ?? spaces[0]?.id ?? null;
-  const setSelectedSpaceId = useCallback((id: string | null) => {
-    setUserSelectedSpaceId(id);
-  }, []);
+  const setSelectedSpaceId = useCallback(
+    (id: string | null) => {
+      setUserSelectedSpaceId(id);
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), { spaceId: id }),
+      );
+    },
+    [getCurrentSearchParams, pathname, router],
+  );
 
   const {
     data: membersData,

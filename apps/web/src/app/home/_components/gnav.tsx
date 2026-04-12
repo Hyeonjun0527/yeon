@@ -17,7 +17,7 @@ export function Gnav({ activeMenu }: GnavProps) {
   );
 
   return (
-    <div className="w-14 border-r border-border flex flex-col items-center py-4 gap-1 bg-bg">
+    <div className="hidden w-14 border-r border-border bg-bg py-4 md:flex md:flex-col md:items-center md:gap-1">
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer text-text-dim mb-1"
         title="홈"

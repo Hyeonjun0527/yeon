@@ -8,32 +8,122 @@ import {
   useMemo,
   useState,
   startTransition,
+  useCallback,
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { RecordFilter, SidebarViewMode } from "../types";
 import { fetchApi, upsertRecordList } from "../utils";
 import { PROCESSING_REFRESH_INTERVAL_MS } from "../constants";
+import {
+  createPatchedHref,
+  isOneOf,
+  parseCsvParam,
+  serializeCsvParam,
+} from "@/lib/route-state/search-params";
 
 export function useRecordList() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [records, setRecords] = useState<CounselingRecordListItem[]>([]);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
-  const [sidebarViewMode, setSidebarViewMode] =
-    useState<SidebarViewMode>("all");
-  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(
-    new Set(),
-  );
-  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(
-    null,
-  );
+  const [selectedRecordIdState, setSelectedRecordIdState] = useState<
+    string | null
+  >(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const routeRecordId = searchParams.get("recordId");
+  const searchTerm = searchParams.get("q") ?? "";
+  const rawRecordFilter = searchParams.get("filter");
+  const recordFilter: RecordFilter = isOneOf(rawRecordFilter, [
+    "all",
+    "ready",
+    "processing",
+    "error",
+  ] as const)
+    ? rawRecordFilter
+    : "all";
+  const rawSidebarViewMode = searchParams.get("view");
+  const sidebarViewMode: SidebarViewMode = isOneOf(rawSidebarViewMode, [
+    "all",
+    "student",
+  ] as const)
+    ? rawSidebarViewMode
+    : "all";
+  const expandedStudents = useMemo(
+    () => new Set(parseCsvParam(searchParams.get("expanded"))),
+    [searchParams],
+  );
+  const selectedStudentName = searchParams.get("studentName");
+
+  const replaceRouteState = useCallback(
+    (patch: Record<string, string | null>) => {
+      router.replace(createPatchedHref(pathname, searchParams, patch));
+    },
+    [pathname, router, searchParams],
+  );
+
+  const setSelectedRecordId = useCallback(
+    (value: string | null | ((current: string | null) => string | null)) => {
+      setSelectedRecordIdState((current) => {
+        const next = typeof value === "function" ? value(current) : value;
+        replaceRouteState({ recordId: next, studentName: null });
+        return next;
+      });
+    },
+    [replaceRouteState],
+  );
+
+  const setSearchTerm = useCallback(
+    (value: string) => {
+      replaceRouteState({ q: value || null });
+    },
+    [replaceRouteState],
+  );
+
+  const setRecordFilter = useCallback(
+    (value: RecordFilter) => {
+      replaceRouteState({ filter: value === "all" ? null : value });
+    },
+    [replaceRouteState],
+  );
+
+  const setSidebarViewMode = useCallback(
+    (value: SidebarViewMode) => {
+      replaceRouteState({ view: value === "all" ? null : value });
+    },
+    [replaceRouteState],
+  );
+
+  const setExpandedStudents = useCallback(
+    (value: Set<string> | ((current: Set<string>) => Set<string>)) => {
+      const next =
+        typeof value === "function" ? value(expandedStudents) : value;
+      replaceRouteState({ expanded: serializeCsvParam(next) });
+    },
+    [expandedStudents, replaceRouteState],
+  );
+
+  const setSelectedStudentName = useCallback(
+    (value: string | null) => {
+      replaceRouteState({ studentName: value, recordId: null });
+    },
+    [replaceRouteState],
+  );
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const normalizedSearchTerm = deferredSearchTerm.trim().toLowerCase();
 
   // 초기 목록 로드
+  useEffect(() => {
+    if (!routeRecordId) return;
+
+    setSelectedRecordIdState((current) =>
+      current === routeRecordId ? current : routeRecordId,
+    );
+  }, [routeRecordId]);
+
   useEffect(() => {
     let ignore = false;
 
@@ -56,8 +146,9 @@ export function useRecordList() {
 
         startTransition(() => {
           setRecords(data.records);
-          setSelectedRecordId(
-            (current) => current ?? data.records[0]?.id ?? null,
+          setSelectedRecordIdState(
+            (current) =>
+              routeRecordId ?? current ?? data.records[0]?.id ?? null,
           );
         });
       } catch (error) {
@@ -82,7 +173,7 @@ export function useRecordList() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [routeRecordId]);
 
   useEffect(() => {
     if (
@@ -151,7 +242,7 @@ export function useRecordList() {
     }
 
     const selectedRecordIsVisible = filteredRecords.some(
-      (record) => record.id === selectedRecordId,
+      (record) => record.id === selectedRecordIdState,
     );
 
     if (selectedRecordIsVisible) {
@@ -161,12 +252,36 @@ export function useRecordList() {
     startTransition(() => {
       setSelectedRecordId(filteredRecords[0].id);
     });
-  }, [filteredRecords, selectedRecordId]);
+  }, [filteredRecords, selectedRecordIdState, setSelectedRecordId]);
 
   const selectedRecord =
-    filteredRecords.find((record) => record.id === selectedRecordId) ??
-    records.find((record) => record.id === selectedRecordId) ??
+    filteredRecords.find((record) => record.id === selectedRecordIdState) ??
+    records.find((record) => record.id === selectedRecordIdState) ??
     null;
+
+  useEffect(() => {
+    if (
+      routeRecordId === selectedRecordIdState &&
+      searchParams.get("studentName") === selectedStudentName
+    ) {
+      return;
+    }
+
+    if (!selectedRecordIdState && !selectedStudentName) {
+      return;
+    }
+
+    replaceRouteState({
+      recordId: selectedStudentName ? null : selectedRecordIdState,
+      studentName: selectedStudentName,
+    });
+  }, [
+    replaceRouteState,
+    routeRecordId,
+    searchParams,
+    selectedRecordIdState,
+    selectedStudentName,
+  ]);
 
   // 78차: 학생별 그룹
   const studentGroups = (() => {
@@ -215,7 +330,7 @@ export function useRecordList() {
   return {
     records,
     setRecords,
-    selectedRecordId,
+    selectedRecordId: selectedRecordIdState,
     setSelectedRecordId,
     searchTerm,
     setSearchTerm,

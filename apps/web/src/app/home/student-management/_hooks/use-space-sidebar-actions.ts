@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import type { StudentSpaceCreateStep } from "@/features/student-management/components/space-create-modal";
+import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
 
 import type {
   CreateModalState,
@@ -27,10 +29,12 @@ export function useSpaceSidebarActions({
   setSpaceSelection,
   closeContextMenu,
 }: UseSpaceSidebarActionsParams) {
-  const [createModalState, setCreateModalState] = useState<CreateModalState>({
-    open: false,
-    initialStep: "choose",
-  });
+  const router = useRouter();
+  const pathname = usePathname();
+  const getCurrentSearchParams = useCallback(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const [spaceActionError, setSpaceActionError] = useState<string | null>(null);
   const [deletingSpaceId, setDeletingSpaceId] = useState<string | null>(null);
   const [renamingSpaceId, setRenamingSpaceId] = useState<string | null>(null);
@@ -42,18 +46,71 @@ export function useSpaceSidebarActions({
     null,
   );
 
+  const createModalState = useMemo<CreateModalState>(() => {
+    const searchParams = getCurrentSearchParams();
+    const modal = searchParams.get("modal");
+    const mode = searchParams.get("mode");
+    const step = searchParams.get("step");
+    const initialStep = isOneOf(step, ["choose", "blank", "import"] as const)
+      ? step
+      : isOneOf(mode, ["choose", "blank", "import"] as const)
+        ? mode
+        : "choose";
+
+    return {
+      open: modal === "create-space",
+      initialStep,
+      initialLocalDraftId: searchParams.get("draftId"),
+    };
+  }, [getCurrentSearchParams]);
+
   const openCreateModal = useCallback(
-    (initialStep: StudentSpaceCreateStep) => {
+    (
+      initialStep: StudentSpaceCreateStep,
+      initialLocalDraftId?: string | null,
+    ) => {
       setSpaceActionError(null);
       setSpaceSelection({ ids: [], anchorId: null });
-      setCreateModalState({ open: true, initialStep });
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), {
+          modal: "create-space",
+          mode: initialStep,
+          step: initialStep,
+          draftId: initialLocalDraftId ?? null,
+        }),
+      );
     },
-    [setSpaceSelection],
+    [getCurrentSearchParams, pathname, router, setSpaceSelection],
   );
 
   const closeCreateModal = useCallback(() => {
-    setCreateModalState({ open: false, initialStep: "choose" });
-  }, []);
+    router.replace(
+      createPatchedHref(pathname, getCurrentSearchParams(), {
+        modal: null,
+        mode: null,
+        step: null,
+        draftId: null,
+      }),
+    );
+  }, [getCurrentSearchParams, pathname, router]);
+
+  const updateCreateModalRouteState = useCallback(
+    (patch: {
+      step?: StudentSpaceCreateStep | null;
+      mode?: StudentSpaceCreateStep | null;
+      draftId?: string | null;
+    }) => {
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), {
+          modal: "create-space",
+          step: patch.step,
+          mode: patch.mode,
+          draftId: patch.draftId,
+        }),
+      );
+    },
+    [getCurrentSearchParams, pathname, router],
+  );
 
   const readSpaceActionErrorMessage = useCallback(async (res: Response) => {
     const contentType = res.headers.get("content-type") ?? "";
@@ -195,6 +252,7 @@ export function useSpaceSidebarActions({
     createModalState,
     closeCreateModal,
     openCreateModal,
+    updateCreateModalRouteState,
     spaceActionError,
     setSpaceActionError,
     deletingSpaceId,
