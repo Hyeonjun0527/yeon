@@ -6,4 +6,5 @@ export * from "./health";
 export * from "./instructor-dashboard";
 export * from "./instructor-workspace";
 export * from "./spaces";
+export * from "./student-board";
 export * from "./users";
