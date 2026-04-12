@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
+
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 const STORAGE_KEY = "yeon_current_space_id";
 
@@ -15,6 +18,12 @@ export interface Space {
 }
 
 export function useCurrentSpace() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const getCurrentSearchParams = useCallback(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const queryClient = useQueryClient();
   const [currentSpaceId, setCurrentSpaceIdState] = useState<string | null>(
     null,
@@ -31,23 +40,44 @@ export function useCurrentSpace() {
   });
 
   const spaces = data ? data.spaces : [];
+  const spaceIdFromQuery = getCurrentSearchParams().get("spaceId");
 
-  // 초기 로드 시 localStorage에서 복원
   useEffect(() => {
-    if (spaces.length === 0 || currentSpaceId !== null) return;
+    if (spaces.length === 0) return;
+
+    const matchedFromQuery = spaceIdFromQuery
+      ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
+      : null;
     const saved =
       typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    const match = saved ? spaces.find((s) => s.id === saved) : null;
-    const initial = match ?? spaces[0] ?? null;
-    if (initial) {
-      setCurrentSpaceIdState(initial.id);
-    }
-  }, [spaces, currentSpaceId]);
+    const matchedFromStorage = saved
+      ? (spaces.find((space) => space.id === saved) ?? null)
+      : null;
+    const initial = matchedFromQuery ?? matchedFromStorage ?? spaces[0] ?? null;
 
-  const setCurrentSpaceId = useCallback((id: string) => {
-    setCurrentSpaceIdState(id);
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
-  }, []);
+    setCurrentSpaceIdState((prev) =>
+      prev === initial?.id ? prev : (initial?.id ?? null),
+    );
+
+    if (!matchedFromQuery && initial?.id) {
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), {
+          spaceId: initial.id,
+        }),
+      );
+    }
+  }, [getCurrentSearchParams, pathname, router, spaceIdFromQuery, spaces]);
+
+  const setCurrentSpaceId = useCallback(
+    (id: string) => {
+      setCurrentSpaceIdState(id);
+      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), { spaceId: id }),
+      );
+    },
+    [getCurrentSearchParams, pathname, router],
+  );
 
   const addSpace = useCallback(
     (space: Space) => {
@@ -57,8 +87,13 @@ export function useCurrentSpace() {
       setCurrentSpaceIdState(space.id);
       if (typeof window !== "undefined")
         localStorage.setItem(STORAGE_KEY, space.id);
+      router.replace(
+        createPatchedHref(pathname, getCurrentSearchParams(), {
+          spaceId: space.id,
+        }),
+      );
     },
-    [queryClient],
+    [getCurrentSearchParams, pathname, queryClient, router],
   );
 
   const removeSpace = useCallback(
@@ -92,10 +127,16 @@ export function useCurrentSpace() {
           }
         }
 
+        router.replace(
+          createPatchedHref(pathname, getCurrentSearchParams(), {
+            spaceId: next,
+          }),
+        );
+
         return next;
       });
     },
-    [queryClient],
+    [getCurrentSearchParams, pathname, queryClient, router],
   );
 
   const currentSpace = spaces.find((s) => s.id === currentSpaceId) ?? null;

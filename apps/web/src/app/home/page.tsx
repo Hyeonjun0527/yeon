@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import {
   useRecords,
   useRecording,
@@ -29,8 +30,11 @@ import {
   NewRecordEntryModal,
 } from "./_components";
 import { HomeTutorial } from "@/components/tutorial";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
-export default function MockV2Workspace() {
+function MockV2WorkspaceInner() {
+  const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const records = useRecords();
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -53,9 +57,22 @@ export default function MockV2Workspace() {
     addSpace,
     removeSpace,
   } = useCurrentSpace();
+  const currentSearchParams = () =>
+    typeof window === "undefined"
+      ? new URLSearchParams()
+      : new URLSearchParams(window.location.search);
+  const routeRecordId = currentSearchParams().get("recordId");
+  const routeMemberId = currentSearchParams().get("memberId");
   const { members, loading: membersLoading } = useSpaceMembers(
     currentSpaceId,
     records.records,
+  );
+
+  const updateRouteState = useCallback(
+    (patch: Record<string, string | null>) => {
+      router.replace(createPatchedHref(pathname, currentSearchParams(), patch));
+    },
+    [pathname, router],
   );
 
   const recording = useRecording({
@@ -110,13 +127,26 @@ export default function MockV2Workspace() {
       setSelectedMemberId(null);
       records.selectRecord(id);
       audio.reset();
+      updateRouteState({
+        recordId: id,
+        memberId: null,
+        spaceId: currentSpaceId,
+      });
     },
-    [records, audio],
+    [audio, currentSpaceId, records, updateRouteState],
   );
 
-  const handleSelectMember = useCallback((id: string) => {
-    setSelectedMemberId(id);
-  }, []);
+  const handleSelectMember = useCallback(
+    (id: string) => {
+      setSelectedMemberId(id);
+      updateRouteState({
+        memberId: id,
+        recordId: null,
+        spaceId: currentSpaceId,
+      });
+    },
+    [currentSpaceId, updateRouteState],
+  );
 
   const handleStartRecording = useCallback(
     (returnMemberId: string | null = null) => {
@@ -277,6 +307,74 @@ export default function MockV2Workspace() {
     !showMemberPanel &&
     (records.viewState.kind === "processing" ||
       records.viewState.kind === "ready");
+
+  useEffect(() => {
+    if (routeMemberId !== null) {
+      setSelectedMemberId((prev) =>
+        prev === routeMemberId ? prev : routeMemberId,
+      );
+      return;
+    }
+
+    if (selectedMemberId !== null) {
+      setSelectedMemberId(null);
+    }
+  }, [routeMemberId, selectedMemberId]);
+
+  useEffect(() => {
+    if (!routeRecordId) {
+      return;
+    }
+
+    if (records.selectedId === routeRecordId) {
+      return;
+    }
+
+    if (records.records.some((record) => record.id === routeRecordId)) {
+      records.selectRecord(routeRecordId);
+      audio.reset();
+    }
+  }, [
+    audio,
+    records.records,
+    records.selectRecord,
+    records.selectedId,
+    routeRecordId,
+  ]);
+
+  useEffect(() => {
+    const desiredMemberId = selectedMember ? selectedMemberId : null;
+    const desiredRecordId = desiredMemberId ? null : records.selectedId;
+    const params = currentSearchParams();
+
+    if (
+      routeRecordId === desiredRecordId &&
+      routeMemberId === desiredMemberId &&
+      params.get("spaceId") === currentSpaceId
+    ) {
+      return;
+    }
+
+    if (!desiredRecordId && !desiredMemberId && !currentSpaceId) {
+      return;
+    }
+
+    router.replace(
+      createPatchedHref(pathname, params, {
+        spaceId: currentSpaceId,
+        recordId: desiredRecordId,
+        memberId: desiredMemberId,
+      }),
+    );
+  }, [
+    currentSpaceId,
+    pathname,
+    records.selectedId,
+    routeMemberId,
+    routeRecordId,
+    router,
+    selectedMemberId,
+  ]);
 
   useEffect(() => {
     if (showMemberPanel && selectedMember) {
@@ -495,5 +593,13 @@ export default function MockV2Workspace() {
 
       <HomeTutorial />
     </div>
+  );
+}
+
+export default function MockV2Workspace() {
+  return (
+    <Suspense fallback={null}>
+      <MockV2WorkspaceInner />
+    </Suspense>
   );
 }

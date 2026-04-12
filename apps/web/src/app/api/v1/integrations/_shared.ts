@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -109,6 +110,24 @@ interface HandleProviderFileProxyRouteParams {
   resolveContentType?: (mimeType: string) => string;
 }
 
+interface HandleOAuthStartRouteParams {
+  userId: string;
+  providerKey: CloudProvider;
+  getOAuthUrl: (state: string) => string;
+  failureMessage: string;
+}
+
+interface ResolveOAuthCallbackContextParams {
+  request: NextRequest;
+  providerKey: CloudProvider;
+}
+
+type OAuthCallbackErrorCode =
+  | "missing_params"
+  | "invalid_state"
+  | "exchange_failed"
+  | "save_failed";
+
 function buildRefineContext(
   body: CloudAnalyzeRequest,
 ): RefineContext | undefined {
@@ -118,6 +137,102 @@ function buildRefineContext(
         previousResult: body.previousResult as ImportPreview,
       }
     : undefined;
+}
+
+function buildOAuthCookieName(
+  providerKey: CloudProvider,
+  field: "state" | "user",
+) {
+  return `${providerKey}_oauth_${field}`;
+}
+
+function buildOAuthRedirectTarget() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return `${baseUrl}/home/student-management`;
+}
+
+export function handleOAuthStartRoute({
+  userId,
+  providerKey,
+  getOAuthUrl,
+  failureMessage,
+}: HandleOAuthStartRouteParams) {
+  try {
+    const state = randomUUID();
+    const redirectUrl = getOAuthUrl(state);
+
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set(buildOAuthCookieName(providerKey, "state"), state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+    response.cookies.set(buildOAuthCookieName(providerKey, "user"), userId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      return jsonError(error.message, error.status);
+    }
+    console.error(error);
+    return jsonError(failureMessage, 500);
+  }
+}
+
+export function createOAuthCallbackErrorResponse(
+  providerKey: CloudProvider,
+  errorCode: OAuthCallbackErrorCode,
+) {
+  return NextResponse.redirect(
+    `${buildOAuthRedirectTarget()}?${providerKey}_error=${errorCode}`,
+  );
+}
+
+export function createOAuthCallbackSuccessResponse(providerKey: CloudProvider) {
+  const response = NextResponse.redirect(
+    `${buildOAuthRedirectTarget()}?${providerKey}_connected=true`,
+  );
+  response.cookies.delete(buildOAuthCookieName(providerKey, "state"));
+  response.cookies.delete(buildOAuthCookieName(providerKey, "user"));
+  return response;
+}
+
+export function resolveOAuthCallbackContext({
+  request,
+  providerKey,
+}: ResolveOAuthCallbackContextParams):
+  | { code: string; userId: string }
+  | { response: Response } {
+  const code = request.nextUrl.searchParams.get("code");
+  const state = request.nextUrl.searchParams.get("state");
+  const savedState = request.cookies.get(
+    buildOAuthCookieName(providerKey, "state"),
+  )?.value;
+  const userId = request.cookies.get(
+    buildOAuthCookieName(providerKey, "user"),
+  )?.value;
+
+  if (!code || !state || !savedState || !userId) {
+    return {
+      response: createOAuthCallbackErrorResponse(providerKey, "missing_params"),
+    };
+  }
+
+  if (state !== savedState) {
+    return {
+      response: createOAuthCallbackErrorResponse(providerKey, "invalid_state"),
+    };
+  }
+
+  return { code, userId };
 }
 
 async function parseJsonBody<T>(
