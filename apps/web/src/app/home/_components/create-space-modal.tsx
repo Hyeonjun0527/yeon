@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  X,
-  FolderPlus,
-  FileUp,
-  LayoutTemplate,
-  Eye,
-  ArrowLeft,
-} from "lucide-react";
+import { X, FolderPlus, FileUp, LayoutTemplate, Eye } from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
 import { SpaceTemplatePreviewModal } from "@/features/space-settings/components/space-template-preview-modal";
@@ -35,13 +28,15 @@ interface TemplateOption {
 interface CreateSpaceModalProps {
   onClose: () => void;
   onCreated: (space: Space) => void;
+  initialStep?: Step["kind"];
 }
 
 export function CreateSpaceModal({
   onClose,
   onCreated,
+  initialStep = "choose",
 }: CreateSpaceModalProps) {
-  const [step, setStep] = useState<Step>({ kind: "choose" });
+  const [step, setStep] = useState<Step>({ kind: initialStep });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -146,14 +141,6 @@ export function CreateSpaceModal({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-3 px-3 py-2 text-[13px] text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text"
-                onClick={() => setStep({ kind: "choose" })}
-              >
-                <ArrowLeft size={14} />
-                뒤로
-              </button>
               <button
                 className="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-text-dim hover:text-text hover:bg-surface-3 cursor-pointer"
                 onClick={onClose}

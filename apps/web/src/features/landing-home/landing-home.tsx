@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Mic,
   FileText,
@@ -120,13 +119,6 @@ const fadeUp = {
   visible: { opacity: 1, y: 0 },
 };
 
-const staggerContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
-};
-
-/* ── Section Wrapper ── */
-
 function RevealSection({
   children,
   className = "",
@@ -134,20 +126,7 @@ function RevealSection({
   children: React.ReactNode;
   className?: string;
 }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
-
-  return (
-    <motion.section
-      ref={ref}
-      className={className}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      variants={staggerContainer}
-    >
-      {children}
-    </motion.section>
-  );
+  return <section className={className}>{children}</section>;
 }
 
 /* ── Main Component ── */
@@ -161,13 +140,6 @@ export function LandingHome({
   nextPath,
   initialLoginModalOpen = false,
 }: LandingHomeProps) {
-  const heroRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   }
@@ -184,10 +156,7 @@ export function LandingHome({
         style={LANDING_VARS}
       >
         {/* ── Hero ── */}
-        <section
-          ref={heroRef}
-          className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end"
-        >
+        <section className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end">
           <div className="pointer-events-none absolute inset-0 z-0">
             <SplineHero />
           </div>
@@ -195,29 +164,14 @@ export function LandingHome({
           <div className={styles.heroGradient} />
           <div className={styles.heroMobileScrim} />
 
-          <motion.div
+          <div
             className={`${styles.heroCopyShell} relative z-[3] mt-12 grid w-full max-w-[820px] gap-4 px-5 pb-8 pt-6 md:mt-0 md:gap-5 md:bg-transparent md:px-12 md:pb-[100px] md:pt-0`}
-            style={{ opacity: heroOpacity }}
           >
-            <motion.p
-              className="m-0 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] font-mono md:text-[13px] md:tracking-[0.2em]"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] font-mono md:text-[13px] md:tracking-[0.2em]">
               YEON
-            </motion.p>
+            </p>
 
-            <motion.h1
-              className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.8,
-                delay: 0.4,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-            >
+            <h1 className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]">
               <span className="md:hidden">
                 <span className="block">상담기록을</span>
                 <span className="relative block text-[var(--accent)]">
@@ -234,14 +188,9 @@ export function LandingHome({
                   남기기 아깝습니다
                 </span>
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.7 }}
-            >
+            <p className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]">
               <span className="md:hidden">
                 <span className="block">원문,</span>
                 <span className="block">요약, 액션을</span>
@@ -252,14 +201,9 @@ export function LandingHome({
                 <br className="hidden md:block" />
                 녹음 하나로 이어지는 상담 기록 워크스페이스입니다.
               </span>
-            </motion.p>
+            </p>
 
-            <motion.div
-              className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap md:pt-2"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 1.0 }}
-            >
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap md:pt-2">
               <button
                 className="pointer-events-auto relative z-[6] inline-flex min-h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] border border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.16)] px-6 py-4 text-base font-bold text-white shadow-[0_16px_34px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.28)] hover:bg-[rgba(255,255,255,0.22)] hover:shadow-[0_22px_42px_rgba(0,0,0,0.24)] sm:w-auto sm:px-9 md:rounded-[14px]"
                 type="button"
@@ -269,8 +213,8 @@ export function LandingHome({
               >
                 로그인하고 시작하기
               </button>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
           <motion.button
             className={`${styles.scrollIndicator} absolute bottom-8 left-1/2 z-[4] hidden h-13 w-13 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--dark-border)] bg-[rgba(255,255,255,0.04)] text-[var(--text-muted)] transition-all duration-300 hover:border-[var(--accent)] hover:bg-[rgba(129,140,248,0.1)] hover:text-[var(--accent)] md:flex`}
@@ -377,10 +321,7 @@ export function LandingHome({
               </h2>
             </motion.div>
 
-            <motion.div
-              className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5"
-              variants={staggerContainer}
-            >
+            <motion.div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               {FEATURES.map((feat) => (
                 <motion.div
                   key={feat.title}
@@ -388,10 +329,6 @@ export function LandingHome({
                   data-accent={feat.accent}
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  whileHover={{
-                    y: -8,
-                    transition: { duration: 0.25 },
-                  }}
                 >
                   <div
                     className={`${styles.featureIconWrap} flex h-14 w-14 items-center justify-center rounded-2xl`}

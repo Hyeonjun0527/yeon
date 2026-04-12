@@ -145,18 +145,6 @@ export function TabMemberOverview({
   const counselingCount = member.counselingRecordCount ?? 0;
   const lastCounselingAt = member.lastCounselingAt ?? null;
 
-  const fields = [
-    !!member.name,
-    !!member.email,
-    !!member.phone,
-    !!member.status,
-    !!(member.aiRiskLevel ?? member.initialRiskLevel),
-    counselingCount > 0,
-  ];
-  const filledCount = fields.filter(Boolean).length;
-  const totalCount = fields.length;
-  const pct = Math.round((filledCount / totalCount) * 100);
-
   const resolvedRiskLevel = member.aiRiskLevel ?? member.initialRiskLevel;
   const statusMeta = STATUS_LABEL[member.status] ?? {
     label: member.status,
@@ -172,39 +160,6 @@ export function TabMemberOverview({
 
   return (
     <div className="pt-1">
-      {/* 완성도 헤더 */}
-      <div className="mb-5 p-4 bg-surface-2 border border-border rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[12px] font-semibold text-text-secondary tracking-tight">
-            프로필 완성도
-          </span>
-          <span
-            className="text-[13px] font-semibold font-mono"
-            style={{
-              color:
-                pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171",
-            }}
-          >
-            {filledCount}/{totalCount} · {pct}%
-          </span>
-        </div>
-        <div className="h-[3px] bg-surface-4 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{
-              width: `${pct}%`,
-              background:
-                pct >= 80 ? "var(--accent)" : pct >= 50 ? "#fbbf24" : "#f87171",
-            }}
-          />
-        </div>
-        {pct < 100 && (
-          <p className="text-[11px] text-text-dim mt-2">
-            {totalCount - filledCount}개 항목이 미입력 상태입니다.
-          </p>
-        )}
-      </div>
-
       {/* 연락처 & 기본 정보 */}
       <Section title="연락처">
         <DataRow label="이름" value={member.name} filled={!!member.name} />

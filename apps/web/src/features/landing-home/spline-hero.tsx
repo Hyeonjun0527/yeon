@@ -14,6 +14,16 @@ function SplineFallbackScene() {
   return (
     <div className={styles.heroFallback} aria-hidden="true">
       <div className={styles.heroFallbackGlow} />
+      <div className={styles.heroFallbackBeam} />
+      <div className={styles.heroFallbackPulse} />
+      <div className={styles.heroFallbackMesh} />
+      <div className={styles.heroFallbackOrbit} />
+      <div className={styles.heroFallbackOrbitSecondary} />
+      <div className={styles.heroFallbackDataLane}>
+        <span />
+        <span />
+        <span />
+      </div>
       <div className={styles.heroFallbackColumn}>
         <div className={styles.heroFallbackCard}>
           <span className={styles.heroFallbackEyebrow}>LIVE RECORD</span>
@@ -21,6 +31,30 @@ function SplineFallbackScene() {
           <p>
             원문부터 요약, 다음 액션까지 한 흐름으로 이어지는 상담 워크스페이스.
           </p>
+        </div>
+        <div className={styles.heroFallbackMiniStack}>
+          <div className={styles.heroFallbackMiniCard}>
+            <span>RECORD</span>
+            <strong>원문 누락 없이 남기기</strong>
+          </div>
+          <div className={styles.heroFallbackMiniCard}>
+            <span>FOLLOW-UP</span>
+            <strong>후속 조치까지 바로 연결</strong>
+          </div>
+        </div>
+        <div className={styles.heroFallbackSignalRow}>
+          <div className={styles.heroFallbackSignal}>
+            <span>전사</span>
+            <strong>긴 상담도 안정적으로</strong>
+          </div>
+          <div className={styles.heroFallbackSignal}>
+            <span>요약</span>
+            <strong>실무형 구조로 정리</strong>
+          </div>
+          <div className={styles.heroFallbackSignal}>
+            <span>후속조치</span>
+            <strong>다음 상담 준비까지</strong>
+          </div>
         </div>
       </div>
     </div>

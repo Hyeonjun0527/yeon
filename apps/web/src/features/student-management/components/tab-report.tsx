@@ -4,13 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { CounselingRecordDetail } from "@yeon/api-contract/counseling-records";
 import { bulkCounselingRecordDetailsResponseSchema } from "@yeon/api-contract/counseling-records";
-import {
-  Download,
-  FileText,
-  Loader2,
-  RefreshCcw,
-  Settings2,
-} from "lucide-react";
+import { Download, FileText, Loader2, RefreshCcw } from "lucide-react";
 
 import { exportStudentReportDocx } from "../report-docx";
 import {
@@ -33,9 +27,9 @@ const RECORD_SCOPE_OPTIONS: Array<{
   value: StudentReportRecordScope;
   label: string;
 }> = [
-  { value: 3, label: "최근 3건" },
-  { value: 5, label: "최근 5건" },
-  { value: "all", label: "전체" },
+  { value: 3, label: "최근 상담 3건" },
+  { value: 5, label: "최근 상담 5건" },
+  { value: "all", label: "전체 상담 기록" },
 ];
 
 export function TabReport({
@@ -144,53 +138,55 @@ export function TabReport({
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <section className="rounded-xl border border-border bg-surface-2 p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Settings2 size={15} className="text-text-dim" />
-          <h3 className="m-0 text-[14px] font-semibold text-text">
-            리포트 구성 설정
-          </h3>
+    <div className="grid gap-4">
+      <section className="rounded-2xl border border-border bg-surface-2/80 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-dim">
+              리포트
+            </p>
+            <h3 className="m-0 mt-2 text-[20px] font-semibold tracking-[-0.03em] text-text">
+              {member.name} 상담 리포트
+            </h3>
+            <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-text-secondary">
+              복잡한 설정보다 최근 상담 흐름과 다음 액션을 바로 정리해 내려받는
+              방식으로 단순화했습니다.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void recordsQuery.refetch();
+                void detailsQuery.refetch();
+              }}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-[12px] text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+            >
+              <RefreshCcw size={13} />
+              새로고침
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDownloadDocx()}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)]"
+            >
+              <Download size={13} />
+              Word 다운로드
+            </button>
+          </div>
         </div>
 
-        <div className="grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
-              리포트 제목
-            </span>
-            <input
-              value={settings.title}
-              onChange={(event) =>
-                setSettings((current) => ({
-                  ...current,
-                  title: event.target.value,
-                }))
-              }
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none focus:border-accent-border"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
-              작성 메모
-            </span>
-            <textarea
-              value={settings.focusNote}
-              onChange={(event) =>
-                setSettings((current) => ({
-                  ...current,
-                  focusNote: event.target.value,
-                }))
-              }
-              placeholder="예: 학부모 공유용으로 불안 요소보다 개선 흐름을 더 강조해줘"
-              className="min-h-[96px] w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text outline-none focus:border-accent-border resize-y"
-            />
-          </label>
-
-          <div className="grid gap-2">
-            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
-              반영 범위
-            </span>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="rounded-xl border border-border bg-surface px-4 py-4">
+            <div className="mb-3 grid gap-1">
+              <span className="text-[12px] font-medium text-text-secondary">
+                리포트에 포함할 상담 기록
+              </span>
+              <p className="m-0 text-[12px] leading-5 text-text-dim">
+                최신 상담일 순으로 선택해 리포트에 반영합니다.
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {RECORD_SCOPE_OPTIONS.map((option) => (
                 <button
@@ -202,185 +198,110 @@ export function TabReport({
                       recordScope: option.value,
                     }))
                   }
-                  className={`rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                  className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
                     settings.recordScope === option.value
                       ? "border-accent-border bg-accent-dim text-accent"
-                      : "border-border bg-surface text-text-secondary"
+                      : "border-border bg-surface-2 text-text-secondary hover:border-border-light hover:text-text"
                   }`}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
+
+            <label className="mt-4 grid gap-2">
+              <span className="text-[12px] font-medium text-text-secondary">
+                강조 메모
+              </span>
+              <textarea
+                value={settings.focusNote}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    focusNote: event.target.value,
+                  }))
+                }
+                placeholder="예: 보호자 공유용으로 개선 흐름을 짧게 정리"
+                className="min-h-[92px] w-full resize-y rounded-xl border border-border bg-surface-2 px-3.5 py-3 text-[13px] text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent-border"
+              />
+            </label>
           </div>
 
-          <div className="grid gap-2">
-            <span className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.06em]">
-              포함 콘텐츠
-            </span>
-            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
-              <input
-                type="checkbox"
-                checked={settings.includeKeywords}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    includeKeywords: event.target.checked,
-                  }))
-                }
-              />
-              핵심 키워드
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
-              <input
-                type="checkbox"
-                checked={settings.includeIssues}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    includeIssues: event.target.checked,
-                  }))
-                }
-              />
-              주요 이슈
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
-              <input
-                type="checkbox"
-                checked={settings.includeActions}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    includeActions: event.target.checked,
-                  }))
-                }
-              />
-              후속 액션
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-text-secondary">
-              <input
-                type="checkbox"
-                checked={settings.includeRecordPreviews}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    includeRecordPreviews: event.target.checked,
-                  }))
-                }
-              />
-              상담 기록 요약
-            </label>
+          <div className="rounded-xl border border-border bg-surface px-4 py-4">
+            <div className="grid gap-3">
+              <div>
+                <p className="m-0 text-[11px] text-text-dim">검토 상담</p>
+                <p className="m-0 mt-1 text-[20px] font-semibold text-text">
+                  {selectedRecords.length}건
+                </p>
+              </div>
+              <div>
+                <p className="m-0 text-[11px] text-text-dim">AI 분석 반영</p>
+                <p className="m-0 mt-1 text-[20px] font-semibold text-text">
+                  {analysisReadyCount}건
+                </p>
+              </div>
+              <div>
+                <p className="m-0 text-[11px] text-text-dim">최근 상담일</p>
+                <p className="m-0 mt-1 text-[14px] font-semibold text-text">
+                  {latestRecord ? fmtDate(latestRecord.createdAt) : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="m-0 text-[11px] text-text-dim">운영 메모</p>
+                <p className="m-0 mt-1 text-[14px] font-semibold text-text">
+                  {memosLoading ? "불러오는 중..." : `${totalMemoCount}건`}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-border bg-surface-2 p-4">
-            <div className="text-[11px] text-text-dim mb-1">
-              연결된 상담 기록
-            </div>
-            <div className="text-[24px] font-semibold text-text">
-              {allRecords.length}
-            </div>
+      <section className="rounded-2xl border border-border bg-surface-2/80">
+        {!canLoadRecords ? (
+          <div className="px-5 py-12 text-center text-[13px] text-text-dim">
+            레거시 수강생 상세에서는 아직 상담 기록 기반 리포트를 만들 수
+            없습니다.
           </div>
-          <div className="rounded-xl border border-border bg-surface-2 p-4">
-            <div className="text-[11px] text-text-dim mb-1">AI 분석 반영</div>
-            <div className="text-[24px] font-semibold text-text">
-              {analysisReadyCount}
-            </div>
+        ) : recordsLoading ? (
+          <div className="flex items-center justify-center gap-2 px-5 py-12 text-[13px] text-text-dim">
+            <Loader2 size={15} className="animate-spin" /> 상담 기록 불러오는
+            중...
           </div>
-          <div className="rounded-xl border border-border bg-surface-2 p-4">
-            <div className="text-[11px] text-text-dim mb-1">최근 상담일</div>
-            <div className="text-[18px] font-semibold text-text">
-              {latestRecord ? fmtDate(latestRecord.createdAt) : "-"}
-            </div>
+        ) : recordsErrorMessage ? (
+          <div className="px-5 py-6 text-[13px] text-red-300">
+            {recordsErrorMessage}
           </div>
-          <div className="rounded-xl border border-border bg-surface-2 p-4">
-            <div className="text-[11px] text-text-dim mb-1">운영 메모</div>
-            <div className="text-[24px] font-semibold text-text">
-              {memosLoading ? "..." : totalMemoCount}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-surface-2 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="m-0 text-[15px] font-semibold text-text">
-                리포트 프리뷰
-              </h3>
-              <p className="m-0 mt-1 text-[12px] text-text-dim">
-                어떤 콘텐츠를 넣을지 먼저 조정하고, 그대로 워드 문서로
-                내려받습니다.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void recordsQuery.refetch();
-                  void detailsQuery.refetch();
-                }}
-                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-[12px] text-text-secondary"
-              >
-                <RefreshCcw size={13} />
-                새로고침
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDownloadDocx()}
-                className="inline-flex items-center gap-1 rounded-lg bg-accent px-3 py-2 text-[12px] font-semibold text-white"
-              >
-                <Download size={13} />
-                Word 다운로드
-              </button>
-            </div>
-          </div>
-
-          {!canLoadRecords ? (
-            <div className="rounded-lg border border-border bg-surface px-4 py-10 text-center text-[13px] text-text-dim">
-              레거시 수강생 상세에서는 아직 상담 기록 기반 리포트를 만들 수
-              없습니다.
-            </div>
-          ) : recordsLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-10 text-[13px] text-text-dim">
-              <Loader2 size={15} className="animate-spin" /> 상담 기록 불러오는
-              중...
-            </div>
-          ) : recordsErrorMessage ? (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-6 text-[13px] text-red-300">
-              {recordsErrorMessage}
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              <div className="rounded-lg border border-border bg-surface px-4 py-4">
-                <div className="flex items-center gap-2 text-text-secondary">
-                  <FileText size={14} />
-                  <span className="text-[14px] font-semibold text-text">
-                    {reportDocument.title}
-                  </span>
-                </div>
-                <p className="mt-3 text-[13px] leading-6 text-text-secondary">
-                  {reportDocument.summary}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {reportDocument.meta.map((item) => (
-                    <span
-                      key={item.label}
-                      className="rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-dim"
-                    >
-                      {item.label}: {item.value}
-                    </span>
-                  ))}
-                </div>
+        ) : (
+          <>
+            <div className="border-b border-border px-5 py-5">
+              <div className="flex items-center gap-2 text-text-secondary">
+                <FileText size={15} />
+                <span className="text-[15px] font-semibold text-text">
+                  {reportDocument.title}
+                </span>
               </div>
+              <p className="m-0 mt-3 text-[13px] leading-6 text-text-secondary">
+                {reportDocument.summary}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full border border-border bg-surface px-3 py-1 text-[12px] text-text-dim">
+                  검토 상담 {selectedRecords.length}건
+                </span>
+                <span className="rounded-full border border-border bg-surface px-3 py-1 text-[12px] text-text-dim">
+                  최근 상담일{" "}
+                  {latestRecord ? fmtDate(latestRecord.createdAt) : "-"}
+                </span>
+                <span className="rounded-full border border-border bg-surface px-3 py-1 text-[12px] text-text-dim">
+                  운영 메모 {totalMemoCount}건
+                </span>
+              </div>
+            </div>
 
+            <div className="divide-y divide-border">
               {reportDocument.sections.map((section) => (
-                <div
-                  key={section.id}
-                  className="rounded-lg border border-border bg-surface px-4 py-4"
-                >
+                <div key={section.id} className="px-5 py-4">
                   <h4 className="m-0 text-[14px] font-semibold text-text">
                     {section.title}
                   </h4>
@@ -392,12 +313,14 @@ export function TabReport({
                 </div>
               ))}
             </div>
-          )}
+          </>
+        )}
 
-          {saveToast && (
-            <p className="mt-3 text-[12px] text-text-dim">{saveToast}</p>
-          )}
-        </div>
+        {saveToast && (
+          <p className="border-t border-border px-5 py-3 text-[12px] text-text-dim">
+            {saveToast}
+          </p>
+        )}
       </section>
     </div>
   );

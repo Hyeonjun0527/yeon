@@ -31,13 +31,8 @@ interface SelectionDeps {
 }
 
 // ── URL 헬퍼 (모듈 스코프, hook 외부) ─────────────────────────────
-function buildUrl(
-  spaceId: string | null,
-  memberId: string | null,
-  recordId: string | null,
-): string {
+function buildUrl(memberId: string | null, recordId: string | null): string {
   const params = new URLSearchParams();
-  if (spaceId) params.set("spaceId", spaceId);
   if (memberId) params.set("memberId", memberId);
   if (recordId) params.set("recordId", recordId);
   const query = params.toString();
@@ -59,23 +54,33 @@ export function useWorkspaceSelection(deps: SelectionDeps) {
   // ── URL 동기 헬퍼 (완전 안정 참조) ──────────────────────────────
   const replaceUrl = useCallback(
     (memberId: string | null, recordId: string | null) => {
-      window.history.replaceState(
-        null,
-        "",
-        buildUrl(currentSpaceIdRef.current, memberId, recordId),
-      );
+      const nextUrl = buildUrl(memberId, recordId);
+
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (currentUrl === nextUrl) {
+        return;
+      }
+
+      window.history.replaceState(null, "", nextUrl);
     },
     [],
   );
 
-  // ── spaceId 변경 → URL 반영 ───────────────────────────────────
+  // ── 선택 상태(memberId/recordId)만 URL 반영 ───────────────────
+  // spaceId를 클릭할 때마다 search param을 갱신하면 App Router commit이 커져
+  // dropdown 선택 한 번에 상위 route tree가 다시 커밋된다.
+  // 현재 스페이스는 localStorage + 로컬 state로 유지하고, URL은 실제 상세 선택만 표현한다.
   const prevSyncKeyRef = useRef("");
   useEffect(() => {
-    const key = `${deps.currentSpaceId}|${selectedMemberId}|${selectedRecordId}`;
+    const key = `${selectedMemberId}|${selectedRecordId}`;
     if (key === prevSyncKeyRef.current) return;
     prevSyncKeyRef.current = key;
     replaceUrl(selectedMemberId, selectedRecordId);
-  }, [deps.currentSpaceId, replaceUrl, selectedMemberId, selectedRecordId]);
+  }, [replaceUrl, selectedMemberId, selectedRecordId]);
 
   // ── URL 초기화 (page.tsx에서 records 로드 후 호출) ──────────────
   const urlInitializedRef = useRef(false);

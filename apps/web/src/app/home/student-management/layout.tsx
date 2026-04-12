@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer as VaulDrawer } from "vaul";
@@ -227,6 +227,22 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   const localDrafts = localDraftsData?.drafts ?? [];
   const localDraftCount = localDrafts.length;
   const { openSpaceSettings } = useSpaceSettingsDrawer();
+  const handleCreateModalRouteStateChange = useCallback(
+    ({
+      step,
+      draftId,
+    }: {
+      step: "choose" | "blank" | "import";
+      draftId: string | null;
+    }) => {
+      updateCreateModalRouteState({
+        mode: step === "import" ? "import" : step,
+        step,
+        draftId,
+      });
+    },
+    [updateCreateModalRouteState],
+  );
   const localDraftsError =
     localDraftsQueryError instanceof Error
       ? localDraftsQueryError.message
@@ -359,6 +375,16 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               스페이스 {spaceSelection.ids.length}개 선택됨
             </div>
           ) : null}
+          <button
+            className="flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent w-full text-left text-text-dim transition-[border-color,color,background] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+            onClick={() => openCreateModal("choose")}
+            type="button"
+          >
+            <Plus size={14} />
+            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              스페이스 만들기
+            </span>
+          </button>
           {spacesLoading && (
             <div
               style={{
@@ -469,17 +495,6 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               {localDraftsError}
             </div>
           ) : null}
-          <button
-            className="flex items-center gap-1.5 py-2 px-2.5 mt-1 rounded-[6px] text-text-dim text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent transition-[border-color,color,background] duration-150 w-full hover:border-accent-border hover:text-accent hover:bg-accent-dim"
-            onClick={() => openCreateModal("choose")}
-            type="button"
-          >
-            <Plus size={14} />
-            스페이스 만들기
-          </button>
-          <p className="px-1 text-[11px] leading-relaxed text-text-dim">
-            빈 스페이스를 만들거나, 엑셀/CSV를 가져와 바로 시작할 수 있습니다.
-          </p>
         </div>
       </nav>
       <main className="scrollbar-subtle flex-1 overflow-y-auto p-8 max-md:px-3 max-md:py-4">
@@ -508,6 +523,17 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
 
             <div className="flex-1 overflow-y-auto px-3 py-3">
               <div className="space-y-1.5">
+                <button
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-transparent px-3 py-3 text-[13px] font-medium text-text-dim transition-[border-color,color,background] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+                  onClick={() => {
+                    openCreateModal("choose");
+                    setMobileSpaceDrawerOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Plus size={14} />
+                  스페이스 만들기
+                </button>
                 <button
                   className={`flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-colors ${
                     selectedSpaceId === null && !isCheckBoardRoute
@@ -607,18 +633,6 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
                     </div>
                   </button>
                 ) : null}
-
-                <button
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-transparent px-3 py-3 text-[13px] font-medium text-text-dim"
-                  onClick={() => {
-                    openCreateModal("choose");
-                    setMobileSpaceDrawerOpen(false);
-                  }}
-                  type="button"
-                >
-                  <Plus size={14} />
-                  스페이스 만들기
-                </button>
               </div>
             </div>
           </div>
@@ -693,13 +707,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         <StudentSpaceCreateModal
           initialStep={createModalState.initialStep}
           initialLocalDraftId={createModalState.initialLocalDraftId}
-          onRouteStateChange={({ step, draftId }) => {
-            updateCreateModalRouteState({
-              mode: step === "import" ? "import" : step,
-              step,
-              draftId,
-            });
-          }}
+          onRouteStateChange={handleCreateModalRouteStateChange}
           onDraftDiscarded={() => {
             void refetchLocalDrafts();
           }}

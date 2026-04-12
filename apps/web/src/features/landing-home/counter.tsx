@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { useMemo } from "react";
 
 type CounterProps = {
   end: number;
@@ -10,43 +9,15 @@ type CounterProps = {
   className?: string;
 };
 
-export function Counter({
-  end,
-  suffix = "",
-  duration = 2000,
-  className = "",
-}: CounterProps) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.5 });
-  const started = useRef(false);
-
-  useEffect(() => {
-    if (!isInView || started.current) return;
-    started.current = true;
-    const start = performance.now();
-
-    function tick(now: number) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.round(eased * end));
-      if (progress < 1) requestAnimationFrame(tick);
-    }
-
-    requestAnimationFrame(tick);
-  }, [isInView, end, duration]);
+export function Counter({ end, suffix = "", className = "" }: CounterProps) {
+  const displayValue = useMemo(() => end.toLocaleString(), [end]);
 
   return (
-    <motion.span
-      ref={ref}
+    <span
       className={`text-[clamp(36px,11vw,68px)] font-black tracking-[-0.04em] text-[var(--accent)] tabular-nums leading-none md:text-[clamp(44px,6vw,68px)] ${className}`.trim()}
-      initial={{ opacity: 0, scale: 0.5 }}
-      animate={isInView ? { opacity: 1, scale: 1 } : {}}
-      transition={{ duration: 0.5, ease: "easeOut" }}
     >
-      {count.toLocaleString()}
+      {displayValue}
       {suffix}
-    </motion.span>
+    </span>
   );
 }
