@@ -158,6 +158,15 @@ export async function updateField(
     if (!name) throw new ServiceError(400, "필드 이름은 필수입니다.");
     patch.name = name;
   }
+  if (data.fieldType !== undefined) {
+    validateFieldType(data.fieldType);
+    patch.fieldType = data.fieldType;
+    const needsOptions =
+      data.fieldType === "select" || data.fieldType === "multi_select";
+    if (!needsOptions) {
+      patch.options = null;
+    }
+  }
   if (data.options !== undefined) patch.options = data.options;
   if (data.isRequired !== undefined) patch.isRequired = data.isRequired;
   if (data.displayOrder !== undefined) patch.displayOrder = data.displayOrder;

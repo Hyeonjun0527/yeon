@@ -50,6 +50,7 @@ export function SpaceSettingsContent({
     reorderTabs,
     resetToDefaults,
     createField,
+    updateField,
     deleteField,
     reorderFields,
     updateTemplate,
@@ -544,10 +545,13 @@ export function SpaceSettingsContent({
                   <div className="py-2 divide-y divide-border">
                     {fields.map((field, idx) => (
                       <FieldRow
+                        fieldId={field.id}
                         key={field.id}
                         name={field.name}
                         fieldType={field.fieldType}
                         isRequired={field.isRequired}
+                        options={field.options}
+                        onUpdate={(input) => updateField(field.id, input)}
                         canMoveUp={idx > 0}
                         canMoveDown={idx < fields.length - 1}
                         onDelete={() => deleteField(field.id)}
@@ -909,9 +913,17 @@ function TabRow({
 // ── FieldRow ─────────────────────────────────────────────────────────
 
 interface FieldRowProps {
+  fieldId: string;
   name: string;
   fieldType: FieldType;
   isRequired: boolean;
+  options?: { value: string; color: string }[] | null;
+  onUpdate: (input: {
+    name?: string;
+    fieldType?: FieldType;
+    isRequired?: boolean;
+    options?: { value: string; color: string }[] | null;
+  }) => Promise<unknown> | unknown;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onDelete: () => void;
@@ -919,16 +931,95 @@ interface FieldRowProps {
   onMoveDown: () => void;
 }
 
+function toOptionValuesText(
+  options: { value: string; color: string }[] | null | undefined,
+) {
+  if (!options) {
+    return "";
+  }
+
+  return options.map((option) => option.value).join(", ");
+}
+
+function toNormalizedOptions(
+  text: string,
+  isOptionField: boolean,
+): { value: string; color: string }[] | null {
+  if (!isOptionField) {
+    return null;
+  }
+
+  return text
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => ({ value, color: "#6366f1" }));
+}
+
 function FieldRow({
+  fieldId,
   name,
   fieldType,
   isRequired,
+  options,
+  onUpdate,
   canMoveUp,
   canMoveDown,
   onDelete,
   onMoveUp,
   onMoveDown,
 }: FieldRowProps) {
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(name);
+  const [editFieldType, setEditFieldType] = useState(fieldType);
+  const [editRequired, setEditRequired] = useState(isRequired);
+  const [editOptionsText, setEditOptionsText] = useState(
+    toOptionValuesText(options),
+  );
+  const isOptionField =
+    editFieldType === "select" || editFieldType === "multi_select";
+
+  useEffect(() => {
+    setEditName(name);
+    setEditFieldType(fieldType);
+    setEditRequired(isRequired);
+    setEditOptionsText(toOptionValuesText(options));
+  }, [fieldId, fieldType, isRequired, name, options]);
+
+  async function commitEdit() {
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditName(name);
+      setEditFieldType(fieldType);
+      setEditRequired(isRequired);
+      setEditOptionsText(toOptionValuesText(options));
+      setEditing(false);
+      return;
+    }
+
+    const nextOptions = toNormalizedOptions(editOptionsText, isOptionField);
+
+    const currentOptions = toNormalizedOptions(
+      toOptionValuesText(options),
+      isOptionField,
+    );
+
+    if (
+      trimmed !== name ||
+      editRequired !== isRequired ||
+      editFieldType !== fieldType ||
+      JSON.stringify(nextOptions) !== JSON.stringify(currentOptions)
+    ) {
+      await onUpdate({
+        name: trimmed,
+        fieldType: editFieldType,
+        isRequired: editRequired,
+        options: nextOptions,
+      });
+    }
+    setEditing(false);
+  }
+
   return (
     <div className="group flex items-center gap-2 px-6 py-[10px]">
       <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -964,28 +1055,105 @@ function FieldRow({
         </button>
       </div>
       <div className="flex-1 min-w-0">
-        <span className="text-[13px] text-text">{name}</span>
-        {isRequired && (
-          <span className="ml-1 text-[10px] text-red-400">*필수</span>
+        {editing ? (
+          <div className="space-y-2">
+            <input
+              autoFocus
+              className="w-full rounded-md border border-accent bg-surface-2 px-2 py-1 text-[13px] text-text outline-none"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={() => {
+                void commitEdit();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void commitEdit();
+                }
+                if (e.key === "Escape") {
+                  setEditName(name);
+                  setEditFieldType(fieldType);
+                  setEditRequired(isRequired);
+                  setEditOptionsText(toOptionValuesText(options));
+                  setEditing(false);
+                }
+              }}
+              maxLength={80}
+            />
+            <select
+              className="w-full rounded-md border border-border bg-surface-2 px-2 py-1 text-[12px] text-text outline-none"
+              value={editFieldType}
+              onChange={(e) => setEditFieldType(e.target.value as FieldType)}
+            >
+              {ALL_FIELD_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {FIELD_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+            {isOptionField ? (
+              <textarea
+                className="w-full rounded-md border border-border bg-surface-2 px-2 py-1 text-[12px] text-text outline-none"
+                rows={3}
+                value={editOptionsText}
+                onChange={(e) => setEditOptionsText(e.target.value)}
+                placeholder="옵션을 쉼표로 구분해 입력하세요"
+              />
+            ) : null}
+            <label className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <input
+                type="checkbox"
+                checked={editRequired}
+                onChange={(e) => setEditRequired(e.target.checked)}
+              />
+              필수 항목
+            </label>
+          </div>
+        ) : (
+          <>
+            <span className="text-[13px] text-text">{name}</span>
+            {isRequired && (
+              <span className="ml-1 text-[10px] text-red-400">*필수</span>
+            )}
+          </>
         )}
       </div>
       <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-3 text-text-dim border border-border flex-shrink-0">
         {FIELD_TYPE_LABELS[fieldType]}
       </span>
-      <button
-        className="w-6 h-6 flex items-center justify-center text-text-dim hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0 flex-shrink-0"
-        onClick={onDelete}
-        title="항목 삭제"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path
-            d="M1 1l8 8M9 1L1 9"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
+      <div className="flex items-center gap-1">
+        {!editing ? (
+          <button
+            className="w-6 h-6 flex items-center justify-center text-text-dim hover:text-accent opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0 flex-shrink-0"
+            onClick={() => setEditing(true)}
+            title="항목 수정"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M7 1.5l1.5 1.5L3.5 8H2V6.5L7 1.5z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        ) : null}
+        <button
+          className="w-6 h-6 flex items-center justify-center text-text-dim hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0 flex-shrink-0"
+          onClick={onDelete}
+          title="항목 삭제"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path
+              d="M1 1l8 8M9 1L1 9"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

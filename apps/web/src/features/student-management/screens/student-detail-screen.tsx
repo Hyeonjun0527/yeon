@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
+import { createSpaceTab } from "../../space-settings/space-settings-api";
 import { useStudentManagement } from "../student-management-provider";
 import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
@@ -33,6 +34,10 @@ export function StudentDetailScreen({
   const { openSpaceSettings } = useSpaceSettingsDrawer();
   const [memberCounselingRecordCount, setMemberCounselingRecordCount] =
     React.useState<number | null>(null);
+  const [quickAddTabOpen, setQuickAddTabOpen] = React.useState(false);
+  const [newTabName, setNewTabName] = React.useState("");
+  const [addingTab, setAddingTab] = React.useState(false);
+  const [quickAddError, setQuickAddError] = React.useState<string | null>(null);
   const backHref = selectedSpaceId
     ? `/home/student-management?spaceId=${selectedSpaceId}`
     : "/home/student-management";
@@ -61,7 +66,34 @@ export function StudentDetailScreen({
 
   function handleRequestAddTab() {
     if (!selectedSpaceId) return;
-    openSpaceSettings({ spaceId: selectedSpaceId, onAfterClose: refetchTabs });
+    setQuickAddError(null);
+    setNewTabName("");
+    setQuickAddTabOpen(true);
+  }
+
+  async function handleQuickAddTab() {
+    if (!selectedSpaceId) return;
+    const trimmed = newTabName.trim();
+    if (!trimmed) {
+      setQuickAddError("새 탭 이름을 입력해 주세요.");
+      return;
+    }
+
+    setAddingTab(true);
+    setQuickAddError(null);
+    try {
+      const result = await createSpaceTab(selectedSpaceId, trimmed);
+      await refetchTabs();
+      setActiveTab(result.tab.systemKey ?? result.tab.id);
+      setQuickAddTabOpen(false);
+      setNewTabName("");
+    } catch (error) {
+      setQuickAddError(
+        error instanceof Error ? error.message : "탭을 추가하지 못했습니다.",
+      );
+    } finally {
+      setAddingTab(false);
+    }
   }
 
   function handleManageFields() {
@@ -273,6 +305,70 @@ export function StudentDetailScreen({
             tabId={activeCustomTab.id}
           />
         )}
+
+        {quickAddTabOpen ? (
+          <div
+            className="fixed inset-0 z-[320] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setQuickAddTabOpen(false);
+              }
+            }}
+          >
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-[0_24px_64px_rgba(0,0,0,0.5)]">
+              <div className="border-b border-border px-5 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                  quick add
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-text">
+                  새 탭 추가
+                </h3>
+                <p className="mt-1 text-sm text-text-secondary">
+                  전체 수강생에 공통으로 보일 탭을 빠르게 추가합니다.
+                </p>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                <div className="space-y-2">
+                  <label className="block text-[12px] font-medium text-text-secondary">
+                    탭 이름
+                  </label>
+                  <input
+                    className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent-border"
+                    placeholder="예: 출결, 포트폴리오, 상담노트"
+                    value={newTabName}
+                    onChange={(event) => setNewTabName(event.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                {quickAddError ? (
+                  <div className="rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] text-red">
+                    {quickAddError}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text"
+                    onClick={() => setQuickAddTabOpen(false)}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void handleQuickAddTab()}
+                    disabled={addingTab || !newTabName.trim()}
+                  >
+                    {addingTab ? "추가 중..." : "탭 추가"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {sheetMode !== null && <div suppressHydrationWarning />}
       </div>
