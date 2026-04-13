@@ -114,4 +114,27 @@ describe("public-check-location-search-service", () => {
       message: "KAKAO_REST_API_KEY가 설정되지 않았습니다.",
     });
   });
+
+  it("OPEN_MAP_AND_LOCAL 서비스가 비활성화돼 있으면 설정 안내 오류를 던진다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async () => {
+        return new Response(
+          JSON.stringify({
+            errorType: "NotAuthorizedError",
+            message: "App(YEON) disabled OPEN_MAP_AND_LOCAL service.",
+          }),
+          { status: 401 },
+        );
+      }),
+    );
+
+    await expect(
+      searchPublicCheckLocations("건원대로 34번길 51"),
+    ).rejects.toMatchObject({
+      status: 500,
+      message:
+        "Kakao Developers에서 OPEN_MAP_AND_LOCAL 서비스를 활성화해야 위치 검색을 사용할 수 있습니다.",
+    });
+  });
 });

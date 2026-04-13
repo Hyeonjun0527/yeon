@@ -46,6 +46,11 @@ const addressSearchResponseSchema = z.object({
   ),
 });
 
+const kakaoErrorResponseSchema = z.object({
+  errorType: z.string().optional(),
+  message: z.string().optional(),
+});
+
 function getRequiredKakaoRestApiKey() {
   const value = process.env.KAKAO_REST_API_KEY?.trim();
 
@@ -111,10 +116,34 @@ async function fetchKakaoLocationJson<TSchema>(options: {
   }
 
   if (!response.ok) {
+    const kakaoError = kakaoErrorResponseSchema.safeParse(parsedBody);
+
     console.error(`${options.contextLabel}: 카카오 위치 검색 응답 오류`, {
       status: response.status,
       body: parsedBody ?? rawBody,
     });
+
+    if (
+      kakaoError.success &&
+      kakaoError.data.errorType === "NotAuthorizedError" &&
+      kakaoError.data.message?.includes("OPEN_MAP_AND_LOCAL")
+    ) {
+      throw new ServiceError(
+        500,
+        "Kakao Developers에서 OPEN_MAP_AND_LOCAL 서비스를 활성화해야 위치 검색을 사용할 수 있습니다.",
+      );
+    }
+
+    if (
+      kakaoError.success &&
+      kakaoError.data.errorType === "NotAuthorizedError"
+    ) {
+      throw new ServiceError(
+        500,
+        "KAKAO_REST_API_KEY 설정 또는 Kakao 앱 권한을 확인해 주세요.",
+      );
+    }
+
     throw new ServiceError(502, "카카오 위치 검색 요청이 실패했습니다.");
   }
 
