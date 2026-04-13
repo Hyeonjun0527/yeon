@@ -1,1 +1,1 @@
-DROP INDEX "users_email_key";
+DROP INDEX IF EXISTS "users_email_key";
