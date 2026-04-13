@@ -155,6 +155,13 @@
       "when": 1776085200000,
       "tag": "0021_student_board_history",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1776088800000,
+      "tag": "0022_home_insight_banner_dismissals",
+      "breakpoints": true
     }
   ]
 }
