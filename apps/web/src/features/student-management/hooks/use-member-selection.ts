@@ -56,6 +56,19 @@ export function useMemberSelection(visibleMemberIds: string[]) {
     setSelectionAnchorId(null);
   }, []);
 
+  const replaceSelection = useCallback(
+    (nextSelectedIds: Iterable<string>, anchorId?: string | null) => {
+      const normalizedSelectedIds = new Set(nextSelectedIds);
+      setSelectedIds(normalizedSelectedIds);
+      setSelectionAnchorId(
+        anchorId === undefined
+          ? (Array.from(normalizedSelectedIds)[0] ?? null)
+          : anchorId,
+      );
+    },
+    [],
+  );
+
   const selectedCount = selectedIds.size;
   const allVisibleSelected = useMemo(
     () =>
@@ -79,6 +92,7 @@ export function useMemberSelection(visibleMemberIds: string[]) {
     allVisibleSelected,
     selectionAnchorId,
     handleSelectMember,
+    replaceSelection,
     clearSelection,
     toggleSelectAllVisible,
   };
