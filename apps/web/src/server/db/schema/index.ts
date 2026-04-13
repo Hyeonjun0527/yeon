@@ -8,6 +8,7 @@ export { memberTabDefinitions } from "./member-tabs";
 export { members } from "./members";
 export { publicCheckSessions } from "./public-check-sessions";
 export { publicCheckSubmissions } from "./public-check-submissions";
+export { spaceMemberBoardHistory } from "./space-member-board-history";
 export { sheetIntegrations } from "./sheet-integrations";
 export { sheetIntegrationMemberSnapshots } from "./sheet-integration-member-snapshots";
 export { spaceMemberBoards } from "./space-member-boards";
