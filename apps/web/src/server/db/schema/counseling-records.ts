@@ -26,6 +26,9 @@ export const counselingRecords = pgTable(
     counselingType: varchar("counseling_type", { length: 40 }).notNull(),
     counselorName: varchar("counselor_name", { length: 80 }),
     status: varchar("status", { length: 20 }).notNull(),
+    recordSource: varchar("record_source", { length: 30 })
+      .notNull()
+      .default("audio_upload"),
     audioOriginalName: varchar("audio_original_name", {
       length: 255,
     }).notNull(),

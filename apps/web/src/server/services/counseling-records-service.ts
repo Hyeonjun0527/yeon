@@ -28,6 +28,7 @@ import {
   resolveSpeakerNames,
 } from "./counseling-ai-service";
 import {
+  COUNSELING_RECORD_SOURCE,
   type CounselingRecordDetailSource,
   type CounselingRecordListQueryOptions,
   type CounselingRecordListRow,
@@ -40,7 +41,9 @@ import {
   findRecordsBySpaceId,
   findRecordsByUserId,
   findUnlinkedRecords,
-  isPlaceholderAudioStoragePath,
+  hasPlayableAudio,
+  isDemoPlaceholderRecord,
+  isTextMemoRecord,
   linkRecordToMember,
   mapRecordDetail,
   mapRecordListItem,
@@ -89,7 +92,12 @@ type CreateCounselingRecordInput = {
 
 type SchedulableReadRecord = Pick<
   CounselingRecordListRow,
-  "id" | "status" | "audioStoragePath" | "analysisStatus" | "createdByUserId"
+  | "id"
+  | "status"
+  | "recordSource"
+  | "audioStoragePath"
+  | "analysisStatus"
+  | "createdByUserId"
 >;
 
 function isChunkSnapshot(
@@ -170,7 +178,7 @@ function scheduleCounselingRecordTranscription(params: {
   const job = (async () => {
     const record = await findOwnedRecord(params.userId, params.recordId);
 
-    if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+    if (!hasPlayableAudio(record)) {
       return;
     }
 
@@ -229,13 +237,13 @@ function scheduleCounselingRecordAnalysis(params: {
 function ensureCounselingRecordTranscriptionScheduled(
   record: Pick<
     CounselingRecordListRow,
-    "id" | "status" | "audioStoragePath" | "createdByUserId"
+    "id" | "status" | "recordSource" | "audioStoragePath" | "createdByUserId"
   >,
   options?: {
     clientRequestId?: string | null;
   },
 ) {
-  if (record.status !== "processing") {
+  if (record.status !== "processing" || !hasPlayableAudio(record)) {
     return false;
   }
 
@@ -303,17 +311,15 @@ async function queueAnalysisAfterTranscriptMutation(params: {
 
 // ── 내부 헬퍼 ──
 
-/** placeholder 기록을 제외한 실제 음성 기록만 반환 */
-function filterRealRecords<T extends { audioStoragePath: string }>(
-  records: T[],
-): T[] {
-  return records.filter(
-    (r) => !isPlaceholderAudioStoragePath(r.audioStoragePath),
-  );
+/** demo placeholder 기록만 제외하고 실제 상담 기록 + 텍스트 메모를 반환 */
+function filterVisibleRecords<
+  T extends { recordSource?: string | null; audioStoragePath: string },
+>(records: T[]): T[] {
+  return records.filter((record) => !isDemoPlaceholderRecord(record));
 }
 
-function assertPlayableRecord(record: CounselingRecordRow) {
-  if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+function assertViewableRecord(record: CounselingRecordRow) {
+  if (isDemoPlaceholderRecord(record)) {
     throw new ServiceError(
       404,
       "이 상담 기록은 실제 원본 음성이 없는 데모 데이터라 더 이상 열 수 없습니다.",
@@ -324,9 +330,9 @@ function assertPlayableRecord(record: CounselingRecordRow) {
 }
 
 function mapReadyRecordListItems(records: CounselingRecordListRow[]) {
-  const realRecords = filterRealRecords(records);
-  ensureRecordProcessingScheduledForList(realRecords);
-  return realRecords.map(mapRecordListItem);
+  const visibleRecords = filterVisibleRecords(records);
+  ensureRecordProcessingScheduledForList(visibleRecords);
+  return visibleRecords.map(mapRecordListItem);
 }
 
 function mapRequestedRecordDetails(params: {
@@ -340,10 +346,7 @@ function mapRequestedRecordDetails(params: {
   return params.recordIds.flatMap((recordId) => {
     const source = detailSourceById.get(recordId);
 
-    if (
-      !source ||
-      isPlaceholderAudioStoragePath(source.record.audioStoragePath)
-    ) {
+    if (!source || isDemoPlaceholderRecord(source.record)) {
       return [];
     }
 
@@ -721,7 +724,7 @@ export async function getCounselingRecordDetail(
   recordId: string,
 ) {
   const source = await findOwnedRecordDetailSource(userId, recordId);
-  const record = assertPlayableRecord(source.record);
+  const record = assertViewableRecord(source.record);
 
   ensureRecordProcessingScheduled(record);
 
@@ -827,6 +830,7 @@ export async function createCounselingRecordAndQueueTranscription(
       studentName: resolvedStudentName,
       sessionTitle,
       counselingType,
+      recordSource: COUNSELING_RECORD_SOURCE.AUDIO_UPLOAD,
       counselorName:
         sanitizeOptionalValue(input.currentUser.displayName, 80) ??
         sanitizeOptionalValue(input.currentUser.email, 80),
@@ -882,6 +886,7 @@ export async function createTextMemoRecord(input: {
 }): Promise<CounselingRecordDetail> {
   const db = getDb();
   const recordId = randomUUID();
+  const segmentId = randomUUID();
   let linkedMemberId: string | null = null;
   let linkedSpaceId: string | null = null;
   let resolvedStudentName = sanitizeOptionalValue(input.studentName, 80) ?? "";
@@ -906,33 +911,47 @@ export async function createTextMemoRecord(input: {
     sanitizeOptionalValue(input.counselingType, 40) ?? "텍스트 메모";
   const now = new Date();
 
-  await db.insert(counselingRecords).values({
-    id: recordId,
-    createdByUserId: input.currentUser.id,
-    memberId: linkedMemberId,
-    spaceId: linkedSpaceId,
-    studentName: resolvedStudentName,
-    sessionTitle,
-    counselingType,
-    counselorName:
-      sanitizeOptionalValue(input.currentUser.displayName, 80) ??
-      sanitizeOptionalValue(input.currentUser.email, 80),
-    status: "ready",
-    audioOriginalName: "text_memo",
-    audioMimeType: "text/plain",
-    audioByteSize: 0,
-    audioDurationMs: null,
-    audioStoragePath: `text_memo://${recordId}`,
-    audioSha256: "",
-    transcriptText: content,
-    transcriptSegmentCount: 0,
-    language: "ko",
-    processingStage: "completed",
-    processingProgress: 100,
-    processingMessage: "텍스트 메모는 즉시 준비됩니다.",
-    analysisStatus: "idle",
-    analysisProgress: 0,
-    updatedAt: now,
+  await db.transaction(async (tx) => {
+    await tx.insert(counselingRecords).values({
+      id: recordId,
+      createdByUserId: input.currentUser.id,
+      memberId: linkedMemberId,
+      spaceId: linkedSpaceId,
+      studentName: resolvedStudentName,
+      sessionTitle,
+      counselingType,
+      recordSource: COUNSELING_RECORD_SOURCE.TEXT_MEMO,
+      counselorName:
+        sanitizeOptionalValue(input.currentUser.displayName, 80) ??
+        sanitizeOptionalValue(input.currentUser.email, 80),
+      status: "ready",
+      audioOriginalName: "텍스트 메모",
+      audioMimeType: "text/plain",
+      audioByteSize: 0,
+      audioDurationMs: null,
+      audioStoragePath: `text_memo://${recordId}`,
+      audioSha256: "",
+      transcriptText: content,
+      transcriptSegmentCount: 1,
+      language: "ko",
+      processingStage: "completed",
+      processingProgress: 100,
+      processingMessage: "텍스트 메모 원문이 즉시 준비되었습니다.",
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      updatedAt: now,
+    });
+
+    await tx.insert(counselingTranscriptSegments).values({
+      id: segmentId,
+      recordId,
+      segmentIndex: 0,
+      startMs: null,
+      endMs: null,
+      speakerLabel: "메모",
+      speakerTone: "unknown",
+      text: content,
+    });
   });
 
   return getCounselingRecordDetail(input.currentUser.id, recordId);
@@ -946,7 +965,14 @@ export async function retryCounselingRecordTranscription(
   const db = getDb();
   const existingRecord = await findOwnedRecord(currentUser.id, recordId);
 
-  if (isPlaceholderAudioStoragePath(existingRecord.audioStoragePath)) {
+  if (isTextMemoRecord(existingRecord)) {
+    throw new ServiceError(
+      400,
+      "텍스트 메모는 재전사할 수 없습니다. 원문 내용을 직접 수정해 주세요.",
+    );
+  }
+
+  if (isDemoPlaceholderRecord(existingRecord)) {
     throw new ServiceError(
       400,
       "데모 placeholder 기록은 재전사할 수 없습니다. 새 음성 기록을 업로드해 주세요.",
@@ -996,7 +1022,11 @@ export async function getCounselingRecordAudio(
 ) {
   const record = await findOwnedRecord(userId, recordId);
 
-  if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+  if (isTextMemoRecord(record)) {
+    throw new ServiceError(404, "텍스트 메모에는 재생할 원본 음성이 없습니다.");
+  }
+
+  if (isDemoPlaceholderRecord(record)) {
     throw new ServiceError(
       404,
       "이 상담 기록은 실제 원본 음성이 없는 데모 데이터라 재생할 수 없습니다.",
@@ -1127,7 +1157,7 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
 
   await db.delete(counselingRecords).where(eq(counselingRecords.id, record.id));
 
-  if (!isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+  if (hasPlayableAudio(record)) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
