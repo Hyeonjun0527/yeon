@@ -461,9 +461,11 @@ function MockV2WorkspaceInner() {
                 <InsightBanner
                   members={members}
                   onHighlightWarning={() => {
-                    const target =
-                      members.find((m) => m.indicator === "warning") ??
-                      members.find((m) => m.indicator === "none");
+                    const target = members.find((m) => m.indicator === "warning");
+                    if (target) selection.handleSelectMember(target.id);
+                  }}
+                  onHighlightNone={() => {
+                    const target = members.find((m) => m.indicator === "none");
                     if (target) selection.handleSelectMember(target.id);
                   }}
                 />
