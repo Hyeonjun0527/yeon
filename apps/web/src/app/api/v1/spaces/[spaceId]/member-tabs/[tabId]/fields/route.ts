@@ -8,9 +8,11 @@ import {
 } from "@/app/api/v1/counseling-records/_shared";
 import {
   createField,
+  createDefaultOverviewFields,
   getFieldsForTab,
 } from "@/server/services/member-fields-service";
 import { getFieldValuesForDefinitions } from "@/server/services/member-field-values-service";
+import { getOverviewTab } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
@@ -26,6 +28,11 @@ export async function GET(
   const memberId = request.nextUrl.searchParams.get("memberId");
 
   try {
+    const overviewTab = await getOverviewTab(spaceId);
+    if (overviewTab?.id === tabId) {
+      await createDefaultOverviewFields(spaceId, tabId, currentUser.id);
+    }
+
     const fields = await getFieldsForTab(tabId, spaceId);
 
     if (!memberId) {
@@ -68,6 +75,11 @@ export async function POST(
     return jsonError("요청 데이터가 올바르지 않습니다.", 400);
 
   try {
+    const overviewTab = await getOverviewTab(spaceId);
+    if (overviewTab?.id === tabId) {
+      await createDefaultOverviewFields(spaceId, tabId, currentUser.id);
+    }
+
     const field = await createField(
       spaceId,
       tabId,

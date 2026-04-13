@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { Member, Space } from "../types";
 import { createPatchedHref } from "@/lib/route-state/search-params";
@@ -20,14 +20,28 @@ function isStudentDetailPath(pathname: string) {
   return !!rest && !rest.includes("/") && rest !== "check-board";
 }
 
+function getStudentDetailMemberId(pathname: string) {
+  const prefix = "/home/student-management/";
+
+  if (!pathname.startsWith(prefix)) {
+    return null;
+  }
+
+  const rest = pathname.slice(prefix.length);
+
+  if (!rest || rest.includes("/") || rest === "check-board") {
+    return null;
+  }
+
+  return rest;
+}
+
 export function useStudentManagementApiState() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { normalizeAppPathname } = useAppRoute();
   const queryClient = useQueryClient();
-  const getCurrentSearchParams = useCallback(() => {
-    if (typeof window === "undefined") return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
-  }, []);
 
   const {
     data: spacesData,
@@ -53,13 +67,49 @@ export function useStudentManagementApiState() {
         ? "스페이스 목록을 불러오지 못했습니다."
         : null;
 
-  const [userSelectedSpaceId, setUserSelectedSpaceId] = useState<
-    string | null | undefined
-  >(undefined);
-  const spaceIdFromQuery = getCurrentSearchParams().get("spaceId");
   const normalizedPathname = normalizeAppPathname(pathname);
+  const currentSearchParams = useMemo(
+    () => new URLSearchParams(searchParams.toString()),
+    [searchParams],
+  );
+  const spaceIdFromQuery = currentSearchParams.get("spaceId");
+  const detailMemberId = getStudentDetailMemberId(normalizedPathname);
+  const cachedDetailMemberSpaceId = useMemo(() => {
+    if (!detailMemberId) {
+      return null;
+    }
+
+    const cachedMember = queryClient.getQueryData<{ member: Member }>([
+      "member",
+      detailMemberId,
+    ]);
+
+    if (cachedMember?.member.spaceId) {
+      return cachedMember.member.spaceId;
+    }
+
+    const cachedMemberLists = queryClient.getQueriesData<{ members: Member[] }>(
+      {
+        queryKey: ["members"],
+      },
+    );
+
+    for (const [, payload] of cachedMemberLists) {
+      const matchedMember = payload?.members.find(
+        (member) => member.id === detailMemberId,
+      );
+
+      if (matchedMember?.spaceId) {
+        return matchedMember.spaceId;
+      }
+    }
+
+    return null;
+  }, [detailMemberId, queryClient]);
   const shouldDeferDefaultSpaceSelection =
-    isStudentDetailPath(normalizedPathname) && !spaceIdFromQuery;
+    isStudentDetailPath(normalizedPathname) &&
+    !spaceIdFromQuery &&
+    !cachedDetailMemberSpaceId;
   const matchedSpaceFromQuery = useMemo(
     () =>
       spaceIdFromQuery
@@ -67,15 +117,23 @@ export function useStudentManagementApiState() {
         : null,
     [spaceIdFromQuery, spaces],
   );
-  const hasExplicitUserSelection = userSelectedSpaceId !== undefined;
 
-  useEffect(() => {
-    if (!shouldDeferDefaultSpaceSelection) {
-      return;
-    }
+  const matchedCachedDetailSpace = useMemo(
+    () =>
+      cachedDetailMemberSpaceId
+        ? (spaces.find((space) => space.id === cachedDetailMemberSpaceId) ??
+          null)
+        : null,
+    [cachedDetailMemberSpaceId, spaces],
+  );
 
-    setUserSelectedSpaceId(undefined);
-  }, [shouldDeferDefaultSpaceSelection]);
+  const replaceSearchState = useCallback(
+    (patch: Record<string, string | null>) => {
+      const nextUrl = createPatchedHref(pathname, currentSearchParams, patch);
+      router.replace(nextUrl);
+    },
+    [currentSearchParams, pathname, router],
+  );
 
   useEffect(() => {
     if (spaces.length === 0) return;
@@ -84,7 +142,7 @@ export function useStudentManagementApiState() {
       return;
     }
 
-    if (matchedSpaceFromQuery || hasExplicitUserSelection) {
+    if (matchedSpaceFromQuery || matchedCachedDetailSpace || spaceIdFromQuery) {
       return;
     }
 
@@ -93,18 +151,12 @@ export function useStudentManagementApiState() {
       return;
     }
 
-    window.history.replaceState(
-      null,
-      "",
-      createPatchedHref(pathname, getCurrentSearchParams(), {
-        spaceId: nextSpaceId,
-      }),
-    );
+    replaceSearchState({ spaceId: nextSpaceId });
   }, [
-    getCurrentSearchParams,
-    hasExplicitUserSelection,
+    matchedCachedDetailSpace,
     matchedSpaceFromQuery,
-    pathname,
+    replaceSearchState,
+    spaceIdFromQuery,
     shouldDeferDefaultSpaceSelection,
     spaces,
   ]);
@@ -112,22 +164,13 @@ export function useStudentManagementApiState() {
   const selectedSpaceId = shouldDeferDefaultSpaceSelection
     ? null
     : (matchedSpaceFromQuery?.id ??
-      (hasExplicitUserSelection
-        ? userSelectedSpaceId
-        : (spaces[0]?.id ?? null)));
+      matchedCachedDetailSpace?.id ??
+      (spaceIdFromQuery ? null : (spaces[0]?.id ?? null)));
   const setSelectedSpaceId = useCallback(
     (id: string | null) => {
-      setUserSelectedSpaceId(id);
-      // router.replace 대신 replaceState 사용:
-      // router.replace는 SearchParamsContext를 즉시 갱신해서
-      // startTransition을 무시하고 전체 트리 re-render(204ms)를 유발한다.
-      // replaceState는 URL만 바꾸고 React 트리를 건드리지 않는다.
-      const url = createPatchedHref(pathname, getCurrentSearchParams(), {
-        spaceId: id,
-      });
-      window.history.replaceState(null, "", url);
+      replaceSearchState({ spaceId: id });
     },
-    [getCurrentSearchParams, pathname],
+    [replaceSearchState],
   );
 
   const {
@@ -161,10 +204,8 @@ export function useStudentManagementApiState() {
   }, [queryClient]);
 
   const refetchMembers = useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: ["members", selectedSpaceId],
-    });
-  }, [queryClient, selectedSpaceId]);
+    void queryClient.invalidateQueries({ queryKey: ["members"] });
+  }, [queryClient]);
 
   const patchMemberInCaches = useCallback(
     (memberId: string, patch: Partial<Member>) => {

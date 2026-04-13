@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Gnav } from "./gnav";
 import { TopNav } from "./top-nav";
+import { HomeSidebarLayoutProvider } from "./home-sidebar-layout-context";
 import { ExportProvider } from "../_lib/export-context";
 import { useAppRoute } from "@/lib/app-route-context";
 
@@ -21,11 +22,13 @@ export function HomeNavShell({ children }: { children: ReactNode }) {
 
   return (
     <ExportProvider>
-      <TopNav section={section} />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Gnav activeMenu={section} />
-        {children}
-      </div>
+      <HomeSidebarLayoutProvider>
+        <TopNav section={section} />
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <Gnav activeMenu={section} />
+          {children}
+        </div>
+      </HomeSidebarLayoutProvider>
     </ExportProvider>
   );
 }

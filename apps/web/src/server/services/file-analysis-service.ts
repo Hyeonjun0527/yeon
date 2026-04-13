@@ -104,6 +104,33 @@ function parseImportPreview(raw: string): ImportPreview {
   return result.data;
 }
 
+function parseRefineResult(raw: string): ImportAnalysisResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ServiceError(500, "AI 응답 JSON 파싱 실패");
+  }
+
+  const assistantMessage =
+    typeof (parsed as { message?: unknown })?.message === "string"
+      ? (parsed as { message: string }).message.trim() || null
+      : null;
+  const coerced = coerceImportPreviewPayload(parsed);
+  const result = ImportPreviewSchema.safeParse(coerced);
+  if (!result.success) {
+    throw new ServiceError(
+      500,
+      `AI 응답 구조 검증 실패: ${result.error.message}`,
+    );
+  }
+
+  return {
+    preview: result.data,
+    assistantMessage,
+  };
+}
+
 /* ── Types ── */
 
 export interface FieldSchemaHint {
@@ -122,6 +149,11 @@ export interface ImportPreview {
       customFields?: Record<string, string | null | undefined> | null;
     }>;
   }>;
+}
+
+export interface ImportAnalysisResult {
+  preview: ImportPreview;
+  assistantMessage?: string | null;
 }
 
 export interface RefineContext {
@@ -595,7 +627,7 @@ async function analyzeStructuredSheets(
   reportProgress?: (
     progress: ImportAnalysisProgressState,
   ) => Promise<void> | void,
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   await reportProgress?.({
     stage: "parsing_file",
     progress: 38,
@@ -642,7 +674,10 @@ async function analyzeStructuredSheets(
   const normalizedPreview = normalizeImportPreview({ cohorts });
 
   if (!refine) {
-    return normalizedPreview;
+    return {
+      preview: normalizedPreview,
+      assistantMessage: null,
+    };
   }
 
   return refineStructuredPreviewWithAI(
@@ -662,7 +697,7 @@ async function refineStructuredPreviewWithAI(
   reportProgress?: (
     progress: ImportAnalysisProgressState,
   ) => Promise<void> | void,
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   await reportProgress?.({
     stage: "applying_refinement",
     progress: 84,
@@ -693,14 +728,16 @@ async function refineStructuredPreviewWithAI(
       messages: [
         {
           role: "system",
-          content: `너는 이미 구조화된 수강생 가져오기 미리보기를 후처리하는 편집기다.
-JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
-- source of truth는 현재 미리보기 JSON이다. 사용자의 수정 요청을 이 JSON에 반영한 결과만 반환해라.
+          content: `너는 이미 구조화된 수강생 가져오기 미리보기를 후처리하는 편집기이자 정책 안내 도우미다.
+JSON 형식으로만 반환: { "message": "사용자에게 보여줄 한국어 답변", "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
+- source of truth는 현재 미리보기 JSON이다. 사용자의 수정 요청을 이 JSON에 반영한 결과와 함께 답변 메시지를 반환해라.
 - 요청과 무관한 수강생/코호트는 임의로 추가, 삭제, 재정렬하지 마라.
-- 컬럼 제거 요청이면 해당 필드를 모든 수강생에서 제거해라. 고정 필드(email/phone/status) 제거 요청이면 값을 null로 비워라.
+- 컬럼 제거 요청이면 해당 필드를 모든 수강생에서 제거해라. 고정 필드(email/phone/status) 제거 요청이면 값을 null로 비우고, 답변 메시지에 "고정 컬럼 구조는 유지되고 값만 비워진다"고 설명해라.
+- 이름 필드는 수강생 식별에 필요하므로 제거할 수 없다. 사용자가 이름 컬럼 제거 가능 여부를 물으면 불가능하다고 명확히 답하고 cohorts는 그대로 유지해라.
 - 컬럼명 변경 요청이면 값은 유지하고 새 이름으로 옮겨라. 고정 필드를 임의 이름으로 바꾸라는 요청이면 해당 값을 customFields의 새 키로 옮기고 원래 고정 필드는 null로 둬라.
 - 값이 비어 있는 customFields 키는 남기지 마라.
-- 요청을 반영할 근거가 부족하면 입력 JSON을 최대한 그대로 반환해라.${fieldHintSection}`,
+- 사용자가 질문만 했고 수정 반영이 필요 없다면 cohorts는 그대로 유지하고, message에 정책/가능 여부/권장 방식을 한국어로 답해라.
+- 요청을 반영할 근거가 부족하면 입력 JSON을 최대한 그대로 유지하고, message에 왜 그대로 두었는지 설명해라.${fieldHintSection}`,
         },
         {
           role: "user",
@@ -728,7 +765,11 @@ JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students":
     progress: 92,
     message: "수정된 미리보기를 정리하고 있습니다.",
   });
-  return normalizeImportPreview(parseImportPreview(raw));
+  const result = parseRefineResult(raw);
+  return {
+    preview: normalizeImportPreview(result.preview),
+    assistantMessage: result.assistantMessage,
+  };
 }
 
 function getRelevantColumnIndexes(
@@ -1045,7 +1086,7 @@ async function _analyzeLargeFile(
   sheets: SheetRows[],
   refine?: RefineContext,
   fieldHints?: FieldSchemaHint[],
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   // Phase 1: 샘플로 컬럼 식별 + 추출 가능성 판단
   const sampleText = buildSampleText(sheets);
   const mapping = await identifyColumnsWithAI(sampleText);
@@ -1140,11 +1181,17 @@ async function _analyzeLargeFile(
         refine,
         fieldHints,
       );
-      return normalizeImportPreview(cleanupResult);
+      return {
+        preview: normalizeImportPreview(cleanupResult.preview),
+        assistantMessage: cleanupResult.assistantMessage,
+      };
     }
   }
 
-  return normalizeImportPreview(preview);
+  return {
+    preview: normalizeImportPreview(preview),
+    assistantMessage: null,
+  };
 }
 
 /* ── AI 텍스트 분석 ── */
@@ -1156,7 +1203,7 @@ export async function analyzeFileWithAI(
   reportProgress?: (
     progress: ImportAnalysisProgressState,
   ) => Promise<void> | void,
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   await reportProgress?.({
     stage: refine ? "applying_refinement" : "ai_mapping",
     progress: refine ? 84 : 74,
@@ -1181,12 +1228,12 @@ ${fieldHints.map((f) => `- ${f.name} (타입: ${f.fieldType})`).join("\n")}
       : "";
 
   const systemPrompt = `아래 스프레드시트 데이터에서 코호트/기수 정보와 수강생 목록을 추출해라.
-JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated", "customFields": {} }] }] }
+JSON 형식으로 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated", "customFields": {} }] }] }
 - status 기본값은 "active"
 - 이메일, 전화번호 없으면 null
 - 하나의 코호트면 배열에 하나만 넣어라
 - 코호트명은 장문 홍보식 이름보다 compact 이름을 우선한다. 예: '1기', '2기', 필요하면 '1기(백엔드)'
-- 근거 없는 창작 이름은 금지한다${refine ? "\n- 이전 분석 결과를 참고하고 사용자 보완 요청을 반영해 개선된 결과를 반환해라" : ""}${fieldHintSection}`;
+- 근거 없는 창작 이름은 금지한다${refine ? "\n- 이전 분석 결과를 참고하고 사용자 보완 요청을 반영해 개선된 결과를 반환해라\n- 사용자가 질문만 했다면 cohorts는 그대로 유지하고 message에 정책/판단 근거를 한국어로 설명해라\n- 이름 필드는 제거할 수 없고, email/phone/status는 값만 비우는 방식이라고 안내해라" : ""}${fieldHintSection}`;
 
   const userContent = refine
     ? `${content}\n\n---\n이전 분석 결과:\n${JSON.stringify(refine.previousResult, null, 2)}\n\n사용자 보완 요청: ${refine.instruction}`
@@ -1226,7 +1273,18 @@ JSON 형식으로 반환: { "cohorts": [{ "name": "코호트명", "students": [{
     message: "미리보기를 정리하고 있습니다.",
   });
 
-  return normalizeImportPreview(parseImportPreview(raw));
+  if (refine) {
+    const result = parseRefineResult(raw);
+    return {
+      preview: normalizeImportPreview(result.preview),
+      assistantMessage: result.assistantMessage,
+    };
+  }
+
+  return {
+    preview: normalizeImportPreview(parseImportPreview(raw)),
+    assistantMessage: null,
+  };
 }
 
 /* ── AI 이미지 분석 (Vision) ── */
@@ -1240,7 +1298,7 @@ export async function analyzeImageWithAI(
   reportProgress?: (
     progress: ImportAnalysisProgressState,
   ) => Promise<void> | void,
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   await reportProgress?.({
     stage: refine ? "applying_refinement" : "ai_mapping",
     progress: refine ? 84 : 74,
@@ -1272,14 +1330,14 @@ export async function analyzeImageWithAI(
 모든 customFields 값은 반드시 문자열 또는 null로 반환해라. 숫자를 그대로 number로 내보내지 마라.`;
 
   const basePrompt = `너는 스크린샷/이미지 형태의 표에서 수강생 데이터를 복원하는 추출기다.
-JSON 형식으로만 반환: { "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
+JSON 형식으로만 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
 - source of truth는 원본 이미지와 OCR 텍스트다.
 - 이전 분석 결과는 힌트일 뿐이며, 누락된 이름/열이 보이면 원본을 다시 읽어 보강해라.
 - 이름, 등록일, 기수, 성별, 전공, github id, 면접점수처럼 표에 보이는 열을 누락하지 말아라.
 - customFields 값은 반드시 문자열 또는 null이어야 한다.
 - 이미지에 표가 보이면 행/열 기준으로 최대한 전체 행을 빠짐없이 복원해라.
 - 확신 없는 값은 null로 두되, 보이는 열 자체를 통째로 누락시키지 마라.
-- status 기본값은 "active"${imgFieldHintSection}`;
+- status 기본값은 "active"${refine ? "\n- 사용자가 질문만 했다면 cohorts는 그대로 유지하고 message에 정책/판단 근거를 한국어로 설명해라" : ""}${imgFieldHintSection}`;
 
   const textPrompt = refine
     ? `${basePrompt}
@@ -1335,9 +1393,18 @@ ${ocrText}`;
     message: "OCR 기반 이미지 분석 결과를 정리하고 있습니다.",
   });
 
-  const preview = normalizeImportPreview(parseImportPreview(raw));
+  const result = refine
+    ? parseRefineResult(raw)
+    : {
+        preview: parseImportPreview(raw),
+        assistantMessage: null,
+      };
+  const preview = normalizeImportPreview(result.preview);
   assertImagePreviewConfidence(preview, ocrResult);
-  return preview;
+  return {
+    preview,
+    assistantMessage: result.assistantMessage,
+  };
 }
 
 /* ── PDF → 텍스트 변환 ── */
@@ -1363,7 +1430,7 @@ export async function analyzeBuffer(
   reportProgress?: (
     progress: ImportAnalysisProgressState,
   ) => Promise<void> | void,
-): Promise<ImportPreview> {
+): Promise<ImportAnalysisResult> {
   switch (kind) {
     case "spreadsheet": {
       await reportProgress?.({
@@ -1414,7 +1481,10 @@ export async function analyzeBuffer(
           message: "텍스트를 찾지 못한 PDF 결과를 정리하고 있습니다.",
         });
         // 스캔본 PDF 등 텍스트 없음 → 빈 결과 반환 (Vision은 PDF를 지원하지 않음)
-        return { cohorts: [] };
+        return {
+          preview: { cohorts: [] },
+          assistantMessage: null,
+        };
       }
       return analyzeFileWithAI(text, refine, fieldHints, reportProgress);
     }
@@ -1441,14 +1511,14 @@ export async function analyzeBuffer(
         ocrResult.confidence >= 0.45
       ) {
         try {
-          const preview = await analyzeStructuredSheets(
+          const analysisResult = await analyzeStructuredSheets(
             [{ sheetName: "이미지 OCR", rows: ocrResult.rows }],
             undefined,
             fieldHints,
             reportProgress,
           );
-          assertImagePreviewConfidence(preview, ocrResult);
-          return preview;
+          assertImagePreviewConfidence(analysisResult.preview, ocrResult);
+          return analysisResult;
         } catch {
           // OCR 구조 해석 실패 시 이미지 재해석 경로로 폴백
         }

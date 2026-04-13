@@ -162,6 +162,11 @@ export function useMemberList() {
 
   return {
     filteredMembers,
+    rawMemberCount: members.length,
+    hasActiveFilters:
+      search.trim().length > 0 ||
+      statusFilter !== "all" ||
+      riskLevelFilter !== "all",
     search,
     setSearch,
     statusFilter,

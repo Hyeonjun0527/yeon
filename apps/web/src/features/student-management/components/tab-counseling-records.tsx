@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
-import { Loader2, FileAudio, Link2Off } from "lucide-react";
+import { Loader2, FileAudio, Link2Off, Mic } from "lucide-react";
 import { useMemberCounselingRecords } from "../hooks/use-member-counseling-records";
 import { fmtDate } from "../utils";
 
@@ -10,6 +10,7 @@ interface TabCounselingRecordsProps {
   spaceId: string;
   memberId: string;
   onRecordCountChange?: (count: number) => void;
+  onRequestRecordEntry?: () => void;
 }
 
 function fmtDuration(ms: number | null) {
@@ -24,6 +25,7 @@ export function TabCounselingRecords({
   spaceId,
   memberId,
   onRecordCountChange,
+  onRequestRecordEntry,
 }: TabCounselingRecordsProps) {
   const { data, isPending, error } = useMemberCounselingRecords(
     spaceId,
@@ -68,15 +70,35 @@ export function TabCounselingRecords({
           연결된 상담 기록이 없습니다.
         </p>
         <p className="text-[13px] text-text-dim max-w-[320px] leading-relaxed">
-          상담 워크스페이스에서 녹음을 완료한 후 &apos;수강생 연결&apos;을 눌러
-          이 수강생에 연결해 주세요.
+          상담관리로 이동해 녹음을 시작하면 이 수강생에 자동으로 연결됩니다.
         </p>
+        {onRequestRecordEntry ? (
+          <button
+            type="button"
+            className="mt-2 inline-flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-[13px] font-semibold text-text transition-[border-color,background-color,color] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+            onClick={onRequestRecordEntry}
+          >
+            <Mic size={15} />
+            녹음하기
+          </button>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {onRequestRecordEntry ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-[13px] font-semibold text-text transition-[border-color,background-color,color] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+            onClick={onRequestRecordEntry}
+          >
+            <Mic size={15} />새 녹음 추가
+          </button>
+        </div>
+      ) : null}
       {records.map((record) => (
         <div
           key={record.id}

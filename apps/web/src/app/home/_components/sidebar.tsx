@@ -7,14 +7,13 @@ import type { Space } from "../_hooks/use-current-space";
 import type { MemberWithStatus } from "../_hooks/use-space-members";
 import { useClickOutside } from "../_hooks";
 import { CreateSpaceModal } from "./create-space-modal";
+import { useHomeSidebarLayout } from "./home-sidebar-layout-context";
 import { useAppRoute } from "@/lib/app-route-context";
 
 export interface SidebarProps {
   records: RecordItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onStartRecording: () => void;
-  onFileUpload: () => void;
   spaces: Space[];
   currentSpace: Space | null;
   onSpaceChange: (id: string) => void;
@@ -23,7 +22,7 @@ export interface SidebarProps {
   membersLoading: boolean;
   selectedMemberId: string | null;
   onSelectMember: (id: string) => void;
-  onOpenQuickMemo: () => void;
+  onOpenNewRecordEntry: () => void;
   onDeleteRecord: (id: string) => Promise<void>;
   onDeleteMember: (id: string) => Promise<void>;
   onDeleteSpace: (id: string) => Promise<void>;
@@ -240,8 +239,6 @@ export function Sidebar({
   records,
   selectedId,
   onSelect,
-  onStartRecording,
-  onFileUpload,
   spaces,
   currentSpace,
   onSpaceChange,
@@ -250,7 +247,7 @@ export function Sidebar({
   membersLoading,
   selectedMemberId,
   onSelectMember,
-  onOpenQuickMemo,
+  onOpenNewRecordEntry,
   onDeleteRecord,
   onDeleteMember,
   onDeleteSpace,
@@ -259,7 +256,7 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const { resolveAppHref } = useAppRoute();
-  const [showMenu, setShowMenu] = useState(false);
+  const { sidebarCollapsed } = useHomeSidebarLayout();
   const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
@@ -283,10 +280,6 @@ export function Sidebar({
   const dragSelectionRef = useRef<DragSelectionState | null>(null);
   const suppressDefaultActionRef = useRef(false);
 
-  const menuRef = useClickOutside<HTMLDivElement>(
-    () => setShowMenu(false),
-    showMenu,
-  );
   const spaceRef = useClickOutside<HTMLDivElement>(
     () => setShowSpaceDropdown(false),
     showSpaceDropdown,
@@ -470,6 +463,15 @@ export function Sidebar({
     }),
     [], // deps 없음 — ref 기반이므로 항상 최신값 사용, 참조 영구 고정
   );
+
+  useEffect(() => {
+    if (!sidebarCollapsed) {
+      return;
+    }
+
+    setShowSpaceDropdown(false);
+    setContextMenu(null);
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (selection.kind === null) {
@@ -847,7 +849,6 @@ export function Sidebar({
       x: event.clientX,
       y: event.clientY,
     });
-    setShowMenu(false);
     setShowSpaceDropdown(false);
   }
 
@@ -967,15 +968,19 @@ export function Sidebar({
     router,
   ]);
 
+  if (sidebarCollapsed) {
+    return null;
+  }
+
   return (
     <div
-      className="w-64 border-r border-border flex flex-col bg-surface overflow-hidden"
+      className="relative flex w-64 shrink-0 flex-col overflow-hidden border-r border-border bg-surface"
       tabIndex={0}
       onKeyDown={handleSidebarKeyDown}
     >
       {/* 스페이스 셀렉터 */}
       <div className="px-3 pt-3 pb-2 border-b border-border">
-        <div className="relative" ref={spaceRef}>
+        <div className="relative min-w-0 flex-1" ref={spaceRef}>
           <button
             className="w-full flex items-center justify-between gap-2 px-3 py-[7px] rounded-md bg-surface-3 border border-border-light text-sm font-medium text-text hover:bg-surface-4 transition-colors cursor-pointer"
             onClick={() => setShowSpaceDropdown((p) => !p)}
@@ -1249,47 +1254,14 @@ export function Sidebar({
       {/* 하단 버튼 */}
       {records.length > 0 ? (
         <div className="px-3 py-3 border-t border-border">
-          <div className="relative" ref={menuRef}>
-            <button
-              className="w-full bg-accent text-white py-[8px] rounded-md text-[12px] font-medium cursor-pointer hover:opacity-90 transition-opacity font-[inherit] border-none"
-              onClick={() => setShowMenu((p) => !p)}
-              data-tutorial="new-record-btn"
-            >
-              + 새 상담 기록
-            </button>
-
-            {showMenu && (
-              <div className="absolute bottom-[calc(100%+4px)] left-0 right-0 bg-surface-3 border border-border-light rounded-md py-1 z-50 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-[7px] bg-transparent border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4 transition-colors"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onStartRecording();
-                  }}
-                >
-                  🎙 바로 녹음
-                </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-[7px] bg-transparent border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4 transition-colors"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onFileUpload();
-                  }}
-                >
-                  📁 파일 업로드
-                </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-[7px] bg-transparent border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4 transition-colors"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onOpenQuickMemo();
-                  }}
-                >
-                  ✏️ 텍스트 메모
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            className="w-full rounded-xl border border-accent-border bg-[linear-gradient(180deg,rgba(129,140,248,0.96),rgba(99,102,241,0.92))] px-3 py-[10px] text-[12px] font-semibold text-white shadow-[0_14px_30px_rgba(99,102,241,0.2)] transition-[transform,box-shadow,opacity] duration-150 hover:-translate-y-px hover:opacity-95 hover:shadow-[0_18px_34px_rgba(99,102,241,0.24)]"
+            onClick={onOpenNewRecordEntry}
+            data-tutorial="new-record-btn"
+          >
+            + 새 상담 기록
+          </button>
         </div>
       ) : null}
     </div>

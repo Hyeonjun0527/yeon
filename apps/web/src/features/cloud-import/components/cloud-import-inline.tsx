@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import type { CloudProvider, DriveFile } from "../types";
+import type { ImportCommitResult } from "../types";
 import { isSelectableKind } from "../file-kind";
 import { useCloudImport } from "../hooks/use-cloud-import";
 import { useLocalImport } from "../hooks/use-local-import";
@@ -133,11 +134,20 @@ function getDraftRowSummary(draft: LocalImportDraftListItem) {
 
 interface CloudImportInlineProps {
   onClose: () => void;
-  onImportComplete: () => void;
+  onImportComplete: (result: ImportCommitResult) => void;
   onDraftDiscarded?: () => void;
   expanded?: boolean;
   initialLocalDraftId?: string | null;
   onDraftIdChange?: (draftId: string | null) => void;
+  hideEntryHeader?: boolean;
+  onEntryControlsChange?: (controls: CloudImportEntryControls | null) => void;
+  onWorkspaceModeChange?: (isWorkspaceMode: boolean) => void;
+}
+
+export interface CloudImportEntryControls {
+  localDraftCount: number;
+  openSavedDrafts: () => void;
+  openFilePicker: () => void;
 }
 
 function getExpandedBottomPanelHeight(hasEditablePreview: boolean) {
@@ -153,6 +163,15 @@ const IMPORT_WORKSPACE_MAX_RATIO = 0.72;
 const IMPORT_WORKSPACE_RESIZER_WIDTH = 12;
 const IMPORT_WORKSPACE_MIN_LEFT_PANE_PX = 480;
 const IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX = 380;
+const IMPORT_WORKSPACE_STACKED_SPLIT_STORAGE_KEY =
+  "yeon:import-workspace:stacked-split-ratio";
+const IMPORT_WORKSPACE_STACKED_DEFAULT_RATIO = 0.54;
+const IMPORT_WORKSPACE_STACKED_MIN_RATIO = 0.34;
+const IMPORT_WORKSPACE_STACKED_MAX_RATIO = 0.72;
+const IMPORT_WORKSPACE_STACKED_RESIZER_HEIGHT = 20;
+const IMPORT_WORKSPACE_MIN_TOP_PANE_PX = 240;
+const IMPORT_WORKSPACE_MIN_BOTTOM_PANE_PX = 280;
+const IMPORT_WORKSPACE_DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
 
 export function CloudImportInline({
   onClose,
@@ -161,6 +180,9 @@ export function CloudImportInline({
   expanded = false,
   initialLocalDraftId = null,
   onDraftIdChange,
+  hideEntryHeader = false,
+  onEntryControlsChange,
+  onWorkspaceModeChange,
 }: CloudImportInlineProps) {
   const [activeProvider, setActiveProvider] =
     useState<CloudProvider>("onedrive");
@@ -169,14 +191,30 @@ export function CloudImportInline({
   const [desktopSplitRatio, setDesktopSplitRatio] = useState(
     IMPORT_WORKSPACE_DEFAULT_RATIO,
   );
+  const [stackedSplitRatio, setStackedSplitRatio] = useState(
+    IMPORT_WORKSPACE_STACKED_DEFAULT_RATIO,
+  );
   const [isDesktopSplitDragging, setIsDesktopSplitDragging] = useState(false);
+  const [isStackedSplitDragging, setIsStackedSplitDragging] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(IMPORT_WORKSPACE_DESKTOP_MEDIA_QUERY).matches,
+  );
   const dragCounterRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewWorkspaceRef = useRef<HTMLDivElement | null>(null);
+  const desktopSplitRatioRef = useRef(IMPORT_WORKSPACE_DEFAULT_RATIO);
+  const stackedSplitRatioRef = useRef(IMPORT_WORKSPACE_STACKED_DEFAULT_RATIO);
   const resizeStateRef = useRef<{
     startClientX: number;
     startRatio: number;
     availableWidth: number;
+  } | null>(null);
+  const stackedResizeStateRef = useRef<{
+    startClientY: number;
+    startRatio: number;
+    availableHeight: number;
   } | null>(null);
 
   const clampDesktopSplitRatio = useCallback((ratio: number) => {
@@ -213,6 +251,58 @@ export function CloudImportInline({
     return Math.min(maxRatio, Math.max(minRatio, ratio));
   }, []);
 
+  const clampStackedSplitRatio = useCallback((ratio: number) => {
+    const containerHeight =
+      previewWorkspaceRef.current?.getBoundingClientRect().height ?? 0;
+    const availableHeight = Math.max(
+      containerHeight - IMPORT_WORKSPACE_STACKED_RESIZER_HEIGHT,
+      1,
+    );
+
+    if (!containerHeight) {
+      return Math.min(
+        IMPORT_WORKSPACE_STACKED_MAX_RATIO,
+        Math.max(IMPORT_WORKSPACE_STACKED_MIN_RATIO, ratio),
+      );
+    }
+
+    const minRatio = Math.max(
+      IMPORT_WORKSPACE_STACKED_MIN_RATIO,
+      IMPORT_WORKSPACE_MIN_TOP_PANE_PX / availableHeight,
+    );
+    const maxRatio = Math.min(
+      IMPORT_WORKSPACE_STACKED_MAX_RATIO,
+      1 - IMPORT_WORKSPACE_MIN_BOTTOM_PANE_PX / availableHeight,
+    );
+
+    if (minRatio >= maxRatio) {
+      return Math.min(
+        IMPORT_WORKSPACE_STACKED_MAX_RATIO,
+        Math.max(IMPORT_WORKSPACE_STACKED_MIN_RATIO, ratio),
+      );
+    }
+
+    return Math.min(maxRatio, Math.max(minRatio, ratio));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(IMPORT_WORKSPACE_DESKTOP_MEDIA_QUERY);
+    const syncViewport = () => {
+      setIsDesktopViewport(mediaQuery.matches);
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncViewport);
+    };
+  }, []);
+
   useEffect(() => {
     const savedRatio = window.localStorage.getItem(
       IMPORT_WORKSPACE_SPLIT_STORAGE_KEY,
@@ -227,11 +317,76 @@ export function CloudImportInline({
   }, [clampDesktopSplitRatio]);
 
   useEffect(() => {
+    const savedRatio = window.localStorage.getItem(
+      IMPORT_WORKSPACE_STACKED_SPLIT_STORAGE_KEY,
+    );
+
+    if (!savedRatio) return;
+
+    const parsed = Number(savedRatio);
+    if (!Number.isFinite(parsed)) return;
+
+    setStackedSplitRatio(clampStackedSplitRatio(parsed));
+  }, [clampStackedSplitRatio]);
+
+  useEffect(() => {
+    desktopSplitRatioRef.current = desktopSplitRatio;
+  }, [desktopSplitRatio]);
+
+  useEffect(() => {
+    stackedSplitRatioRef.current = stackedSplitRatio;
+  }, [stackedSplitRatio]);
+
+  const buildExpandedPreviewShellGridTemplate = useCallback((ratio: number) => {
+    return `minmax(${IMPORT_WORKSPACE_MIN_LEFT_PANE_PX}px, ${ratio}fr) ${IMPORT_WORKSPACE_RESIZER_WIDTH}px minmax(${IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX}px, ${Math.max(0.05, 1 - ratio)}fr)`;
+  }, []);
+
+  const applyExpandedPreviewShellRatio = useCallback(
+    (ratio: number) => {
+      if (!expanded || !previewWorkspaceRef.current) return;
+      previewWorkspaceRef.current.style.gridTemplateColumns =
+        buildExpandedPreviewShellGridTemplate(ratio);
+    },
+    [buildExpandedPreviewShellGridTemplate, expanded],
+  );
+
+  useEffect(() => {
     window.localStorage.setItem(
       IMPORT_WORKSPACE_SPLIT_STORAGE_KEY,
       desktopSplitRatio.toFixed(4),
     );
   }, [desktopSplitRatio]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      IMPORT_WORKSPACE_STACKED_SPLIT_STORAGE_KEY,
+      stackedSplitRatio.toFixed(4),
+    );
+  }, [stackedSplitRatio]);
+
+  useEffect(() => {
+    applyExpandedPreviewShellRatio(desktopSplitRatio);
+  }, [applyExpandedPreviewShellRatio, desktopSplitRatio]);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    const syncRatiosToViewport = () => {
+      setDesktopSplitRatio((currentRatio) =>
+        clampDesktopSplitRatio(currentRatio),
+      );
+      setStackedSplitRatio((currentRatio) =>
+        clampStackedSplitRatio(currentRatio),
+      );
+    };
+
+    syncRatiosToViewport();
+    window.addEventListener("resize", syncRatiosToViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncRatiosToViewport);
+    };
+  }, [clampDesktopSplitRatio, clampStackedSplitRatio, expanded]);
 
   useEffect(() => {
     if (!isDesktopSplitDragging) return;
@@ -243,12 +398,15 @@ export function CloudImportInline({
       const deltaX = event.clientX - resizeState.startClientX;
       const nextRatio =
         resizeState.startRatio + deltaX / resizeState.availableWidth;
-      setDesktopSplitRatio(clampDesktopSplitRatio(nextRatio));
+      const clampedRatio = clampDesktopSplitRatio(nextRatio);
+      desktopSplitRatioRef.current = clampedRatio;
+      applyExpandedPreviewShellRatio(clampedRatio);
     };
 
     const stopDragging = () => {
       resizeStateRef.current = null;
       setIsDesktopSplitDragging(false);
+      setDesktopSplitRatio(desktopSplitRatioRef.current);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
@@ -266,7 +424,48 @@ export function CloudImportInline({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [clampDesktopSplitRatio, isDesktopSplitDragging]);
+  }, [
+    applyExpandedPreviewShellRatio,
+    clampDesktopSplitRatio,
+    isDesktopSplitDragging,
+  ]);
+
+  useEffect(() => {
+    if (!isStackedSplitDragging) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeState = stackedResizeStateRef.current;
+      if (!resizeState) return;
+
+      const deltaY = event.clientY - resizeState.startClientY;
+      const nextRatio =
+        resizeState.startRatio + deltaY / resizeState.availableHeight;
+      const clampedRatio = clampStackedSplitRatio(nextRatio);
+      stackedSplitRatioRef.current = clampedRatio;
+      setStackedSplitRatio(clampedRatio);
+    };
+
+    const stopDragging = () => {
+      stackedResizeStateRef.current = null;
+      setIsStackedSplitDragging(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [clampStackedSplitRatio, isStackedSplitDragging]);
 
   const onedrive = useCloudImport("onedrive", onImportComplete);
   const googledrive = useCloudImport("googledrive", onImportComplete);
@@ -299,6 +498,32 @@ export function CloudImportInline({
       : localDraftsQueryError
         ? "가져오기 작업 목록을 불러오지 못했습니다."
         : null;
+
+  const openSavedDrafts = useCallback(() => {
+    setShowSavedDraftsModal(true);
+    void refetchLocalDrafts();
+  }, [refetchLocalDrafts]);
+
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  useEffect(() => {
+    onEntryControlsChange?.({
+      localDraftCount: localDrafts.length,
+      openSavedDrafts,
+      openFilePicker,
+    });
+
+    return () => {
+      onEntryControlsChange?.(null);
+    };
+  }, [
+    localDrafts.length,
+    onEntryControlsChange,
+    openFilePicker,
+    openSavedDrafts,
+  ]);
 
   useEffect(() => {
     onDraftIdChange?.(localImport.currentDraftId);
@@ -419,9 +644,40 @@ export function CloudImportInline({
     : "flex-col";
   const expandedPreviewShellStyle = expanded
     ? {
-        gridTemplateColumns: `minmax(${IMPORT_WORKSPACE_MIN_LEFT_PANE_PX}px, ${desktopSplitRatio}fr) ${IMPORT_WORKSPACE_RESIZER_WIDTH}px minmax(${IMPORT_WORKSPACE_MIN_RIGHT_PANE_PX}px, ${Math.max(0.05, 1 - desktopSplitRatio)}fr)`,
+        gridTemplateColumns:
+          buildExpandedPreviewShellGridTemplate(desktopSplitRatio),
       }
     : undefined;
+  const isExpandedStackedLayout = expanded && !isDesktopViewport;
+  const previewPaneClassName = `flex min-h-0 min-w-0 flex-col overflow-hidden bg-surface ${
+    isExpandedStackedLayout
+      ? "shrink-0 grow-0 border-b-0"
+      : "flex-1 border-b border-border lg:border-b-0 lg:border-r-0"
+  }`;
+  const previewPaneStyle = isExpandedStackedLayout
+    ? {
+        flexBasis: `${(stackedSplitRatio * 100).toFixed(2)}%`,
+      }
+    : undefined;
+  const localReviewPaneStyle = !expanded
+    ? { height: localBottomPanelHeight }
+    : isExpandedStackedLayout
+      ? {
+          flexBasis: `${((1 - stackedSplitRatio) * 100).toFixed(2)}%`,
+        }
+      : undefined;
+  const cloudReviewPaneStyle = !expanded
+    ? { height: cloudBottomPanelHeight }
+    : isExpandedStackedLayout
+      ? {
+          flexBasis: `${((1 - stackedSplitRatio) * 100).toFixed(2)}%`,
+        }
+      : undefined;
+  const expandedReviewPaneClassName = isExpandedStackedLayout
+    ? "shrink-0 grow-0 min-h-0 px-4 py-4 sm:px-6"
+    : expanded
+      ? "shrink-0 max-h-[min(52vh,520px)] px-6 py-4 max-md:px-4 lg:h-full lg:max-h-none lg:min-h-0"
+      : "flex-[2] px-5 py-4";
 
   const startDesktopSplitResize = (
     event: React.PointerEvent<HTMLDivElement>,
@@ -432,7 +688,7 @@ export function CloudImportInline({
       previewWorkspaceRef.current.getBoundingClientRect().width;
     resizeStateRef.current = {
       startClientX: event.clientX,
-      startRatio: desktopSplitRatio,
+      startRatio: desktopSplitRatioRef.current,
       availableWidth: Math.max(
         workspaceWidth - IMPORT_WORKSPACE_RESIZER_WIDTH,
         1,
@@ -441,9 +697,33 @@ export function CloudImportInline({
     setIsDesktopSplitDragging(true);
   };
 
+  const startStackedSplitResize = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (!expanded || !previewWorkspaceRef.current) return;
+
+    const workspaceHeight =
+      previewWorkspaceRef.current.getBoundingClientRect().height;
+    stackedResizeStateRef.current = {
+      startClientY: event.clientY,
+      startRatio: stackedSplitRatioRef.current,
+      availableHeight: Math.max(
+        workspaceHeight - IMPORT_WORKSPACE_STACKED_RESIZER_HEIGHT,
+        1,
+      ),
+    };
+    setIsStackedSplitDragging(true);
+  };
+
   const nudgeDesktopSplit = (delta: number) => {
     setDesktopSplitRatio((currentRatio) =>
       clampDesktopSplitRatio(currentRatio + delta),
+    );
+  };
+
+  const nudgeStackedSplit = (delta: number) => {
+    setStackedSplitRatio((currentRatio) =>
+      clampStackedSplitRatio(currentRatio + delta),
     );
   };
 
@@ -452,6 +732,16 @@ export function CloudImportInline({
       clampDesktopSplitRatio(IMPORT_WORKSPACE_DEFAULT_RATIO),
     );
   };
+
+  const resetStackedSplit = () => {
+    setStackedSplitRatio(
+      clampStackedSplitRatio(IMPORT_WORKSPACE_STACKED_DEFAULT_RATIO),
+    );
+  };
+
+  useEffect(() => {
+    onWorkspaceModeChange?.(isWorkspaceMode);
+  }, [isWorkspaceMode, onWorkspaceModeChange]);
 
   return (
     <div
@@ -486,67 +776,72 @@ export function CloudImportInline({
 
       {!isWorkspaceMode && (
         <>
-          <div className="border-b border-border bg-surface-2/30 px-5 py-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <div className="min-w-0">
-                  <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
-                    새 파일 가져오기
-                  </p>
-                  <p className="m-0 mt-1 text-[12px] text-text-secondary">
-                    로컬 업로드 또는 클라우드 드라이브에서 바로 시작합니다.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-transparent px-2.5 text-[11px] font-medium text-text-dim transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
-                  onClick={() => {
-                    setShowSavedDraftsModal(true);
-                    void refetchLocalDrafts();
-                  }}
-                >
-                  <FileClock size={12} />
-                  저장 작업
-                  {localDrafts.length > 0 ? (
-                    <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text-secondary">
-                      {localDrafts.length}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-
-              <div className="grid gap-2.5 rounded-2xl border border-accent-border/50 bg-[linear-gradient(180deg,rgba(232,99,10,0.1),rgba(232,99,10,0.04))] p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-4">
-                <div className="min-w-0">
-                  <div className="text-[14px] font-semibold tracking-[-0.01em] text-text">
-                    내 컴퓨터에서 바로 스페이스 초안 만들기
+          {!hideEntryHeader ? (
+            <div className="border-b border-border bg-surface-2/30 px-4 py-4 sm:px-5">
+              <div className="relative overflow-hidden rounded-2xl border border-border-light bg-[linear-gradient(180deg,rgba(255,255,255,0.028),rgba(232,99,10,0.055))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-5 sm:py-5">
+                <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(232,99,10,0.28),transparent)]" />
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                        새 파일 가져오기
+                      </p>
+                      <h2 className="m-0 mt-2 text-[18px] font-semibold tracking-[-0.02em] text-text">
+                        파일 업로드로 스페이스 초안 시작하기
+                      </h2>
+                      <p className="m-0 mt-2 max-w-[760px] text-[13px] leading-6 text-text-secondary">
+                        내 컴퓨터의 엑셀, CSV, PDF, 이미지 파일을 바로 올리거나
+                        아래 클라우드 드라이브에서 이어서 가져올 수 있습니다.
+                        저장한 작업도 같은 흐름에서 다시 열어 검토할 수
+                        있습니다.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 shrink-0 items-center gap-1.5 self-start rounded-full border border-border bg-surface/75 px-3 py-2 text-[11px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface hover:text-text"
+                      onClick={openSavedDrafts}
+                    >
+                      <FileClock size={12} />
+                      저장 작업
+                      {localDrafts.length > 0 ? (
+                        <span className="rounded-full border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-secondary">
+                          {localDrafts.length}
+                        </span>
+                      ) : null}
+                    </button>
                   </div>
-                  <p className="mt-1 text-[12px] leading-6 text-text-secondary">
-                    엑셀, CSV, PDF, 이미지 파일을 업로드해 학생 데이터를 바로
-                    분석할 수 있습니다.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent-border bg-accent px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(232,99,10,0.22)] transition-[transform,box-shadow,background-color] duration-150 hover:bg-[var(--accent-hover)] hover:shadow-[0_14px_28px_rgba(232,99,10,0.28)]"
-                    onClick={() => fileInputRef.current?.click()}
-                    type="button"
-                    title="내 컴퓨터에서 파일 선택"
-                  >
-                    <Upload size={16} />
-                    <span>내 컴퓨터에서 파일 선택</span>
-                  </button>
-                  <a
-                    href="/api/test/space-import-sample"
-                    download
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-light bg-surface px-4 py-2.5 text-[13px] font-semibold text-text transition-colors hover:border-accent-border hover:bg-accent-dim hover:text-accent"
-                  >
-                    <Download size={16} />
-                    테스트 데이터 다운로드
-                  </a>
+
+                  <div className="flex flex-col gap-3 border-t border-border/80 pt-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-dim">
+                      <span className="rounded-full border border-border bg-surface/70 px-2.5 py-1">
+                        로컬 업로드 우선
+                      </span>
+                      <span>지원 형식: 엑셀, CSV, PDF, 이미지</span>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent-border bg-accent px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(232,99,10,0.18)] transition-[background-color,box-shadow] duration-150 hover:bg-[var(--accent-hover)] hover:shadow-[0_14px_28px_rgba(232,99,10,0.22)]"
+                        onClick={openFilePicker}
+                        type="button"
+                        title="내 컴퓨터에서 파일 선택"
+                      >
+                        <Upload size={16} />
+                        <span>내 컴퓨터에서 파일 선택</span>
+                      </button>
+                      <a
+                        href="/api/test/space-import-sample"
+                        download
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-light bg-surface px-4 py-2.5 text-[13px] font-semibold text-text transition-colors hover:border-accent-border hover:bg-surface-3 hover:text-text"
+                      >
+                        <Download size={16} />
+                        테스트 데이터 다운로드
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
           {showSavedDraftsModal && (
             <div
@@ -683,7 +978,7 @@ export function CloudImportInline({
           className={`flex min-h-0 min-w-0 flex-1 overflow-hidden ${expandedPreviewShellClassName}`}
           style={expandedPreviewShellStyle}
         >
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-b border-border bg-surface lg:border-b-0 lg:border-r-0">
+          <div className={previewPaneClassName} style={previewPaneStyle}>
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border flex-shrink-0 bg-surface">
               <button
                 type="button"
@@ -696,13 +991,6 @@ export function CloudImportInline({
               <span className="text-[13px] font-medium text-text overflow-hidden text-ellipsis whitespace-nowrap">
                 {localImport.selectedFile?.name}
               </span>
-              <button
-                type="button"
-                className="ml-auto flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
             </div>
             <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-0">
               <FilePreview
@@ -712,6 +1000,43 @@ export function CloudImportInline({
               />
             </div>
           </div>
+          {isExpandedStackedLayout && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="가져오기 레이아웃 높이 조절"
+              tabIndex={0}
+              className="group flex h-5 shrink-0 cursor-row-resize items-center justify-center bg-transparent"
+              onPointerDown={startStackedSplitResize}
+              onDoubleClick={resetStackedSplit}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  nudgeStackedSplit(-0.02);
+                }
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  nudgeStackedSplit(0.02);
+                }
+                if (event.key === "Home") {
+                  event.preventDefault();
+                  setStackedSplitRatio(
+                    clampStackedSplitRatio(IMPORT_WORKSPACE_STACKED_MIN_RATIO),
+                  );
+                }
+                if (event.key === "End") {
+                  event.preventDefault();
+                  setStackedSplitRatio(
+                    clampStackedSplitRatio(IMPORT_WORKSPACE_STACKED_MAX_RATIO),
+                  );
+                }
+              }}
+            >
+              <span
+                className={`h-1.5 w-14 rounded-full transition-colors ${isStackedSplitDragging ? "bg-accent-border" : "bg-border group-hover:bg-accent-border"}`}
+              />
+            </div>
+          )}
           {expanded && (
             <div
               role="separator"
@@ -748,8 +1073,8 @@ export function CloudImportInline({
             </div>
           )}
           <div
-            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expanded ? "shrink-0 max-h-[min(52vh,520px)] px-6 py-4 max-md:px-4 lg:h-full lg:max-h-none lg:min-h-0" : "flex-[2] px-5 py-4"}`}
-            style={!expanded ? { height: localBottomPanelHeight } : undefined}
+            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expandedReviewPaneClassName}`}
+            style={localReviewPaneStyle}
           >
             <ImportRightPanel hook={localImport} onClose={onClose} />
           </div>
@@ -761,7 +1086,7 @@ export function CloudImportInline({
           className={`flex min-h-0 min-w-0 flex-1 overflow-hidden ${expandedPreviewShellClassName}`}
           style={expandedPreviewShellStyle}
         >
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-b border-border bg-surface lg:border-b-0 lg:border-r-0">
+          <div className={previewPaneClassName} style={previewPaneStyle}>
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border flex-shrink-0 bg-surface">
               <button
                 type="button"
@@ -774,13 +1099,6 @@ export function CloudImportInline({
               <span className="text-[13px] font-medium text-text overflow-hidden text-ellipsis whitespace-nowrap">
                 {activeHook.selectedFile?.name}
               </span>
-              <button
-                type="button"
-                className="ml-auto flex items-center justify-center w-7 h-7 rounded-[6px] border-0 bg-transparent text-text-dim cursor-pointer transition-[background] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text"
-                onClick={onClose}
-              >
-                <X size={16} />
-              </button>
             </div>
             <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-0">
               <FilePreview
@@ -790,6 +1108,43 @@ export function CloudImportInline({
               />
             </div>
           </div>
+          {isExpandedStackedLayout && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="가져오기 레이아웃 높이 조절"
+              tabIndex={0}
+              className="group flex h-5 shrink-0 cursor-row-resize items-center justify-center bg-transparent"
+              onPointerDown={startStackedSplitResize}
+              onDoubleClick={resetStackedSplit}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  nudgeStackedSplit(-0.02);
+                }
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  nudgeStackedSplit(0.02);
+                }
+                if (event.key === "Home") {
+                  event.preventDefault();
+                  setStackedSplitRatio(
+                    clampStackedSplitRatio(IMPORT_WORKSPACE_STACKED_MIN_RATIO),
+                  );
+                }
+                if (event.key === "End") {
+                  event.preventDefault();
+                  setStackedSplitRatio(
+                    clampStackedSplitRatio(IMPORT_WORKSPACE_STACKED_MAX_RATIO),
+                  );
+                }
+              }}
+            >
+              <span
+                className={`h-1.5 w-14 rounded-full transition-colors ${isStackedSplitDragging ? "bg-accent-border" : "bg-border group-hover:bg-accent-border"}`}
+              />
+            </div>
+          )}
           {expanded && (
             <div
               role="separator"
@@ -826,8 +1181,8 @@ export function CloudImportInline({
             </div>
           )}
           <div
-            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expanded ? "shrink-0 max-h-[min(52vh,520px)] px-6 py-4 max-md:px-4 lg:h-full lg:max-h-none lg:min-h-0" : "flex-[2] px-5 py-4"}`}
-            style={!expanded ? { height: cloudBottomPanelHeight } : undefined}
+            className={`flex min-h-0 flex-col overflow-hidden bg-surface ${expandedReviewPaneClassName}`}
+            style={cloudReviewPaneStyle}
           >
             <ImportRightPanel hook={activeHook} onClose={onClose} />
           </div>

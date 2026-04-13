@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React from "react";
 import { createSpaceTab } from "../../space-settings/space-settings-api";
 import { useStudentManagement } from "../student-management-provider";
@@ -18,9 +19,9 @@ import { TabMemberOverview } from "../components/tab-member-overview";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { CustomTabContent } from "../components/custom-tab-content";
-import { useSpaceSettingsDrawer } from "../../space-settings";
-import type { Member } from "../types";
+import { AddCustomFieldModal } from "../components/add-custom-field-modal";
 import { useAppRoute } from "@/lib/app-route-context";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 const REMOVED_SYSTEM_TAB_KEYS = new Set(["courses", "guardian"]);
 
@@ -31,14 +32,12 @@ interface StudentDetailScreenProps {
 export function StudentDetailScreen({
   paramsPromise,
 }: StudentDetailScreenProps) {
+  const router = useRouter();
   const { resolveAppHref } = useAppRoute();
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode, selectedSpaceId, patchMemberInCaches } =
-    useStudentManagement();
-  const { openSpaceSettings } = useSpaceSettingsDrawer();
-  const [memberCounselingRecordCount, setMemberCounselingRecordCount] =
-    React.useState<number | null>(null);
+  const { sheetMode, selectedSpaceId } = useStudentManagement();
   const [quickAddTabOpen, setQuickAddTabOpen] = React.useState(false);
+  const [addFieldModalOpen, setAddFieldModalOpen] = React.useState(false);
   const [newTabName, setNewTabName] = React.useState("");
   const [addingTab, setAddingTab] = React.useState(false);
   const [quickAddError, setQuickAddError] = React.useState<string | null>(null);
@@ -100,23 +99,26 @@ export function StudentDetailScreen({
     }
   }
 
-  function handleManageFields() {
-    const spaceId = member?.spaceId ?? selectedSpaceId;
-    if (!spaceId) return;
-    openSpaceSettings({
-      spaceId,
-      initialTabId: overviewTab?.id,
-      onAfterClose: refetchTabs,
-    });
+  function handleOpenAddFieldModal() {
+    if (!member?.spaceId || !overviewTab?.id) return;
+    setAddFieldModalOpen(true);
   }
+
+  const handleOpenMemberRecordEntry = React.useCallback(
+    (memberId: string, memberName: string, spaceId: string) => {
+      router.push(
+        createPatchedHref(resolveAppHref("/home"), new URLSearchParams(), {
+          spaceId,
+          memberId,
+          studentName: memberName,
+          newRecordEntry: "true",
+        }),
+      );
+    },
+    [resolveAppHref, router],
+  );
   const visibleDynamicTabs = dynamicTabs.filter(
     (tab) => !REMOVED_SYSTEM_TAB_KEYS.has(tab.systemKey ?? ""),
-  );
-  const handleMemberPatched = React.useCallback(
-    (updatedMember: Member) => {
-      patchMemberInCaches(updatedMember.id, updatedMember);
-    },
-    [patchMemberInCaches],
   );
   const tabItems =
     visibleDynamicTabs.length > 0
@@ -232,29 +234,6 @@ export function StudentDetailScreen({
               )}
             </div>
           </div>
-
-          {memberCounselingRecordCount === null ||
-          memberCounselingRecordCount > 0 ? (
-            <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
-              <a
-                href={resolveAppHref(`/home?memberId=${member.id}`)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 16px",
-                  borderRadius: 12,
-                  background: "var(--surface3)",
-                  color: "var(--text)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                }}
-              >
-                + 새 상담 녹음
-              </a>
-            </div>
-          ) : null}
         </div>
 
         <StudentDetailTabs
@@ -267,25 +246,17 @@ export function StudentDetailScreen({
         {activeTab === "overview" && (
           <TabMemberOverview
             member={member}
-            onMemberUpdated={handleMemberPatched}
             overviewTabId={overviewTab?.id}
             guardianTabId={legacyGuardianTab?.id}
             memos={memberMemos}
             memosLoading={memberMemosLoading}
             memosError={memberMemosError}
             totalMemoCount={memberMemoCount}
-            onManageFields={overviewTab ? handleManageFields : undefined}
+            onAddField={overviewTab ? handleOpenAddFieldModal : undefined}
           />
         )}
 
-        {activeTab === "report" && (
-          <TabReport
-            member={member}
-            memos={memberMemos}
-            memosLoading={memberMemosLoading}
-            totalMemoCount={memberMemoCount}
-          />
-        )}
+        {activeTab === "report" && <TabReport member={member} />}
 
         {activeTab === "memos" && (
           <TabMemos
@@ -303,7 +274,13 @@ export function StudentDetailScreen({
           <TabCounselingRecords
             spaceId={member.spaceId}
             memberId={member.id}
-            onRecordCountChange={setMemberCounselingRecordCount}
+            onRequestRecordEntry={() =>
+              handleOpenMemberRecordEntry(
+                member.id,
+                member.name,
+                member.spaceId,
+              )
+            }
           />
         )}
 
@@ -334,7 +311,7 @@ export function StudentDetailScreen({
                   새 탭 추가
                 </h3>
                 <p className="mt-1 text-sm text-text-secondary">
-                  전체 수강생에 공통으로 보일 탭을 빠르게 추가합니다.
+                  현재 스페이스 수강생에게 공통으로 보일 탭을 빠르게 추가합니다.
                 </p>
               </div>
 
@@ -378,6 +355,15 @@ export function StudentDetailScreen({
               </div>
             </div>
           </div>
+        ) : null}
+
+        {addFieldModalOpen && overviewTab?.id ? (
+          <AddCustomFieldModal
+            spaceId={member.spaceId}
+            memberId={member.id}
+            tabId={overviewTab.id}
+            onClose={() => setAddFieldModalOpen(false)}
+          />
         ) : null}
 
         {sheetMode !== null && <div suppressHydrationWarning />}

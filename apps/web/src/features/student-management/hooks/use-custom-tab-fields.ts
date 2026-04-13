@@ -6,6 +6,7 @@ import type { FieldType } from "../../space-settings/types";
 export interface FieldDef {
   id: string;
   name: string;
+  sourceKey?: string | null;
   fieldType: FieldType;
   isRequired: boolean;
   displayOrder: number;
@@ -19,6 +20,19 @@ export interface FieldValue {
   valueJson: unknown;
   fieldType: string;
   fieldName: string;
+}
+
+export interface CustomTabFieldsQueryData {
+  fields: FieldDef[];
+  values: FieldValue[];
+}
+
+export function customTabFieldsQueryKey(
+  spaceId: string,
+  memberId: string,
+  tabId: string,
+) {
+  return ["custom-tab-fields", spaceId, memberId, tabId] as const;
 }
 
 export function resolveValue(
@@ -46,7 +60,7 @@ export function useCustomTabFields(
 ) {
   const queryClient = useQueryClient();
   const enabled = !!spaceId && !!memberId && !!tabId;
-  const queryKey = ["custom-tab-fields", spaceId, memberId, tabId] as const;
+  const queryKey = customTabFieldsQueryKey(spaceId, memberId, tabId);
 
   const { data, isPending } = useQuery({
     queryKey,
@@ -60,10 +74,7 @@ export function useCustomTabFields(
         throw new Error("커스텀 필드를 불러오지 못했습니다.");
       }
 
-      return res.json() as Promise<{
-        fields: FieldDef[];
-        values: FieldValue[];
-      }>;
+      return res.json() as Promise<CustomTabFieldsQueryData>;
     },
   });
 
@@ -86,25 +97,26 @@ export function useCustomTabFields(
     const payload = (await res.json()) as { values?: FieldValue[] };
     const updatedValues = Array.isArray(payload.values) ? payload.values : [];
 
-    queryClient.setQueryData<
-      { fields: FieldDef[]; values: FieldValue[] } | undefined
-    >(queryKey, (current) => {
-      if (!current || updatedValues.length === 0) {
-        return current;
-      }
+    queryClient.setQueryData<CustomTabFieldsQueryData | undefined>(
+      queryKey,
+      (current) => {
+        if (!current || updatedValues.length === 0) {
+          return current;
+        }
 
-      const nextValues = current.values.filter(
-        (item) =>
-          !updatedValues.some(
-            (updated) => updated.fieldDefinitionId === item.fieldDefinitionId,
-          ),
-      );
+        const nextValues = current.values.filter(
+          (item) =>
+            !updatedValues.some(
+              (updated) => updated.fieldDefinitionId === item.fieldDefinitionId,
+            ),
+        );
 
-      return {
-        ...current,
-        values: [...nextValues, ...updatedValues],
-      };
-    });
+        return {
+          ...current,
+          values: [...nextValues, ...updatedValues],
+        };
+      },
+    );
   }
 
   return {

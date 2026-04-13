@@ -5,6 +5,7 @@ import { FieldRenderer } from "./field-renderer";
 import {
   useCustomTabFields,
   resolveValue,
+  type FieldDef,
 } from "../hooks/use-custom-tab-fields";
 
 const TEXT_LIKE_TYPES = new Set([
@@ -21,18 +22,26 @@ interface CustomTabContentProps {
   spaceId: string;
   memberId: string;
   tabId: string;
+  emptyHint?: string;
+  onRequestFieldMenu?: (
+    field: FieldDef,
+    position: { x: number; y: number },
+  ) => void;
 }
 
 export function CustomTabContent({
   spaceId,
   memberId,
   tabId,
+  emptyHint,
+  onRequestFieldMenu,
 }: CustomTabContentProps) {
   const { fields, values, loading, saveValue } = useCustomTabFields(
     spaceId,
     memberId,
     tabId,
   );
+  const visibleFields = fields.filter((field) => !field.sourceKey);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -60,19 +69,23 @@ export function CustomTabContent({
     );
   }
 
-  if (fields.length === 0) {
+  if (visibleFields.length === 0) {
     return (
       <div className="py-10 text-center text-xs text-text-dim">
         아직 등록된 커스텀 필드가 없습니다.
-        <br />
-        <span className="opacity-60">스페이스 설정에서 필드를 추가하세요.</span>
+        {emptyHint ? (
+          <>
+            <br />
+            <span className="opacity-60">{emptyHint}</span>
+          </>
+        ) : null}
       </div>
     );
   }
 
   return (
     <div className="space-y-0">
-      {fields.map((field) => {
+      {visibleFields.map((field) => {
         const fv = values.find((v) => v.fieldDefinitionId === field.id);
         const resolved = resolveValue(field.fieldType, fv);
         const isEditing = editingId === field.id;
@@ -81,7 +94,15 @@ export function CustomTabContent({
         return (
           <div
             key={field.id}
-            className="flex items-start gap-3 py-[10px] border-b border-[rgba(255,255,255,0.04)] last:border-0"
+            className="group flex items-start gap-3 rounded-lg border-b border-[rgba(255,255,255,0.04)] px-2 py-[10px] transition-colors last:border-0 hover:bg-surface-3/40"
+            onContextMenu={(event) => {
+              if (!onRequestFieldMenu) return;
+              event.preventDefault();
+              onRequestFieldMenu(field, {
+                x: event.clientX,
+                y: event.clientY,
+              });
+            }}
           >
             <div
               className="w-[6px] h-[6px] rounded-full flex-shrink-0 mt-[5px]"
@@ -128,7 +149,7 @@ export function CustomTabContent({
                 <div
                   className={
                     isTextLike
-                      ? "cursor-text hover:opacity-80 transition-opacity"
+                      ? "cursor-text transition-opacity group-hover:opacity-90"
                       : ""
                   }
                   onClick={() => isTextLike && startEdit(field.id, resolved)}

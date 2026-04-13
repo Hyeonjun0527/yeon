@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery } from "@tanstack/react-query";
-import DOMPurify from "dompurify";
 import { Loader2 } from "lucide-react";
 import { detectFileKind } from "../file-kind";
 
@@ -133,7 +133,7 @@ function HeicPreview({ uri, fileName }: { uri: string; fileName: string }) {
 
 function SpreadsheetPreview({ uri }: { uri: string }) {
   const {
-    data: htmlContent,
+    data: rows,
     isPending: loading,
     error,
   } = useQuery({
@@ -146,7 +146,11 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
       const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       if (!ws) throw new Error("시트를 읽을 수 없습니다.");
-      return XLSX.utils.sheet_to_html(ws);
+      return XLSX.utils.sheet_to_json(ws, {
+        header: 1,
+        raw: false,
+        defval: "",
+      }) as string[][];
     },
   });
 
@@ -167,21 +171,15 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
     );
   }
 
-  if (!htmlContent) {
+  if (!rows || rows.length === 0) {
     return (
       <div className="flex items-center justify-center h-full min-h-[200px] text-text-dim text-sm text-center">
-        미리보기를 지원하지 않는 형식입니다.
+        데이터가 없습니다.
       </div>
     );
   }
 
-  return (
-    <div
-      className="scrollbar-subtle spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: DOMPurify로 sanitize 후 렌더
-      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
-    />
-  );
+  return <VirtualizedGridPreview rows={rows} />;
 }
 
 function CsvPreview({ uri }: { uri: string }) {
@@ -223,21 +221,7 @@ function CsvPreview({ uri }: { uri: string }) {
     );
   }
 
-  return (
-    <div className="scrollbar-subtle spreadsheet-preview h-full w-full overflow-auto text-xs text-text bg-surface">
-      <table>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {row.map((cell, ci) => (
-                <td key={ci}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <VirtualizedGridPreview rows={rows} />;
 }
 
 function TxtPreview({ uri }: { uri: string }) {
@@ -288,6 +272,136 @@ function PdfPreview({ uri, fileName }: { uri: string; fileName: string }) {
         title={`${fileName} 미리보기`}
         style={{ width: "100%", height: "100%", border: "none" }}
       />
+    </div>
+  );
+}
+
+function normalizePreviewRows(rows: string[][]) {
+  const safeRows = rows.map((row) => row.map((cell) => String(cell ?? "")));
+  const columnCount = Math.max(...safeRows.map((row) => row.length), 0);
+
+  if (columnCount === 0) {
+    return {
+      headerRow: [] as string[],
+      bodyRows: [] as string[][],
+      columnCount: 0,
+    };
+  }
+
+  const fillRow = (row: string[]) =>
+    Array.from({ length: columnCount }, (_, index) => row[index] ?? "");
+
+  const [rawHeaderRow, ...rawBodyRows] = safeRows;
+
+  const headerRow = rawHeaderRow ? fillRow(rawHeaderRow) : fillRow([]);
+
+  return {
+    headerRow,
+    bodyRows: rawBodyRows.map(fillRow),
+    columnCount,
+  };
+}
+
+function getColumnTrackFromCells(cells: string[]) {
+  const longestLength = cells.reduce(
+    (maxLength, cell) => Math.max(maxLength, cell.trim().length),
+    0,
+  );
+  const estimatedWidth = longestLength * 8 + 44;
+  const clampedWidth = Math.min(320, Math.max(120, estimatedWidth));
+
+  return `${clampedWidth}px`;
+}
+
+function VirtualizedGridPreview({ rows }: { rows: string[][] }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const { headerRow, bodyRows, columnCount } = useMemo(
+    () => normalizePreviewRows(rows),
+    [rows],
+  );
+  const gridTemplateColumns = useMemo(() => {
+    if (columnCount === 0) {
+      return "minmax(140px, 1fr)";
+    }
+
+    return Array.from({ length: columnCount }, (_, index) =>
+      getColumnTrackFromCells([
+        headerRow[index] ?? "",
+        ...bodyRows.map((row) => row[index] ?? ""),
+      ]),
+    ).join(" ");
+  }, [bodyRows, columnCount, headerRow]);
+  const rowVirtualizer = useVirtualizer({
+    count: bodyRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 12,
+  });
+
+  if (columnCount === 0) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[200px] text-text-dim text-sm text-center">
+        데이터가 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className="scrollbar-subtle h-full w-full overflow-auto bg-surface text-xs text-text"
+    >
+      <div className="min-w-full w-fit">
+        <div
+          className="sticky top-0 z-[1] grid min-w-full border-b-2 border-border bg-surface-2"
+          style={{ gridTemplateColumns, width: "max-content" }}
+        >
+          {headerRow.map((cell, index) => (
+            <div
+              key={`header-${index}`}
+              className="overflow-hidden text-ellipsis whitespace-nowrap border-r border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-secondary last:border-r-0"
+              title={cell}
+            >
+              {cell || "-"}
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="relative"
+          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const row = bodyRows[virtualRow.index];
+            if (!row) return null;
+
+            return (
+              <div
+                key={virtualRow.key}
+                className={`absolute left-0 top-0 grid min-w-full border-b border-border ${
+                  virtualRow.index % 2 === 0 ? "bg-surface" : "bg-surface-2/75"
+                }`}
+                style={{
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  gridTemplateColumns,
+                  width: "max-content",
+                }}
+              >
+                {row.map((cell, index) => (
+                  <div
+                    key={`${virtualRow.index}-${index}`}
+                    className="overflow-hidden text-ellipsis whitespace-nowrap border-r border-border px-3 py-2 text-text last:border-r-0"
+                    title={cell}
+                  >
+                    {cell || "-"}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
