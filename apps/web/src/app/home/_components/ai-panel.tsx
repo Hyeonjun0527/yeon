@@ -40,6 +40,7 @@ export interface AiPanelProps {
   /* 패널 상태 */
   width: number;
   collapsed: boolean;
+  canExpand: boolean;
   tab: "chat" | "history";
   model: AiModelType;
   panelRef: React.RefObject<HTMLDivElement | null>;
@@ -71,6 +72,7 @@ export interface AiPanelProps {
 export function AiPanel({
   width,
   collapsed,
+  canExpand,
   tab,
   model,
   panelRef,
@@ -104,13 +106,25 @@ export function AiPanel({
 
   return (
     <>
-      {collapsed && (
+      {collapsed && canExpand && (
         <button
-          className="relative left-auto top-auto m-3 mt-3 self-start w-6 h-6 rounded-[6px] border border-border bg-surface flex items-center justify-center cursor-pointer text-xs text-text-dim z-[11] transition-colors duration-150 hover:bg-surface-3"
+          className="relative left-auto top-auto m-3 mt-3 self-start flex h-7 w-7 items-center justify-center rounded-[6px] border border-border bg-surface-2 text-text-secondary transition-colors duration-150 hover:bg-surface-3 hover:text-text"
           onClick={onExpand}
           title="AI 패널 열기"
+          aria-label="AI 패널 열기"
         >
-          ◀
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m15 6-6 6 6 6" />
+          </svg>
         </button>
       )}
       <div

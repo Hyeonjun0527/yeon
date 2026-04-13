@@ -466,6 +466,10 @@ export function useRecords(selectedRecordId: string | null) {
     setIsRecording(true);
   }, []);
 
+  const stopRecording = useCallback(() => {
+    setIsRecording(false);
+  }, []);
+
   const cancelRecording = useCallback(() => {
     setIsRecording(false);
   }, []);
@@ -490,6 +494,7 @@ export function useRecords(selectedRecordId: string | null) {
     markAnalysisRetryStart,
     boostPolling,
     startRecording,
+    stopRecording,
     cancelRecording,
   };
 }

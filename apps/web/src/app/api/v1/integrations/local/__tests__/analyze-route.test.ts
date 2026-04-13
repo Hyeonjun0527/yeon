@@ -88,7 +88,10 @@ describe("local analyze route", () => {
       buffer: Buffer.from("name,email\n홍길동,hong@yeon.world"),
     });
     mockAnalyzeBuffer.mockResolvedValue({
-      cohorts: [{ name: "1기", students: [{ name: "홍길동" }] }],
+      preview: {
+        cohorts: [{ name: "1기", students: [{ name: "홍길동" }] }],
+      },
+      assistantMessage: null,
     });
 
     const form = new FormData();

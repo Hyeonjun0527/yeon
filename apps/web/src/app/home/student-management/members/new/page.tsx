@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
 import { useAppRoute } from "@/lib/app-route-context";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "수강중" },
@@ -20,7 +21,8 @@ const RISK_OPTIONS = [
 export default function MemberNewPage() {
   const router = useRouter();
   const { resolveAppHref } = useAppRoute();
-  const { selectedSpaceId, refetchMembers } = useStudentManagement();
+  const { spaces, spacesLoading, selectedSpaceId, refetchMembers } =
+    useStudentManagement();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,6 +31,11 @@ export default function MemberNewPage() {
   const [riskLevel, setRiskLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const studentManagementHref = createPatchedHref(
+    resolveAppHref("/home/student-management"),
+    new URLSearchParams(),
+    { spaceId: selectedSpaceId },
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +70,7 @@ export default function MemberNewPage() {
       }
 
       refetchMembers();
-      router.push(resolveAppHref("/home/student-management"));
+      router.push(studentManagementHref);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "수강생을 추가하지 못했습니다.",
@@ -73,11 +80,57 @@ export default function MemberNewPage() {
     }
   }
 
+  if (spacesLoading) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-8">
+        <div className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">
+          스페이스 정보를 불러오는 중...
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedSpaceId) {
+    const noSpaces = spaces.length === 0;
+
+    return (
+      <div className="mx-auto max-w-lg px-4 py-8">
+        <div className="mb-6">
+          <a
+            href={studentManagementHref}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-text-dim no-underline transition-colors hover:text-text-secondary"
+          >
+            ← 수강생 목록으로
+          </a>
+          <h1 className="text-xl font-bold tracking-tight text-text">
+            수강생 추가
+          </h1>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-lg font-semibold text-text">
+            {noSpaces
+              ? "먼저 스페이스를 만들어 주세요"
+              : "먼저 스페이스를 선택해 주세요"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            수강생은 전체 목록이 아니라 특정 스페이스 안에만 추가할 수 있습니다.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-text-dim">
+            {noSpaces
+              ? "학생관리 사이드바에서 스페이스를 만든 뒤 다시 수강생 추가로 들어와 주세요."
+              : "학생관리 사이드바에서 스페이스를 선택한 뒤 다시 수강생 추가를 진행해 주세요."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-lg mx-auto py-8 px-4">
       <div className="mb-6">
         <a
-          href={resolveAppHref("/home/student-management")}
+          href={studentManagementHref}
           className="text-sm text-text-dim hover:text-text-secondary transition-colors no-underline inline-flex items-center gap-1.5 mb-4"
         >
           ← 수강생 목록으로
@@ -85,11 +138,6 @@ export default function MemberNewPage() {
         <h1 className="text-xl font-bold text-text tracking-tight">
           수강생 추가
         </h1>
-        {selectedSpaceId === null && (
-          <p className="text-sm text-text-dim mt-1">
-            왼쪽 사이드바에서 스페이스를 선택해주세요.
-          </p>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -225,9 +273,7 @@ export default function MemberNewPage() {
           <button
             type="button"
             className="px-4 py-2.5 bg-surface-2 border border-border text-text-secondary text-sm font-medium rounded-lg cursor-pointer hover:border-border-light transition-colors"
-            onClick={() =>
-              router.push(resolveAppHref("/home/student-management"))
-            }
+            onClick={() => router.push(studentManagementHref)}
           >
             취소
           </button>

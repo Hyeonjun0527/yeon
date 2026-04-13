@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -32,11 +33,16 @@ import {
   InsightBanner,
   NewRecordEntryModal,
 } from "./_components";
-import { CreateSpaceModal } from "./_components/create-space-modal";
 import { HomeTutorial } from "@/components/tutorial";
+import { StudentSpaceCreateModal } from "@/features/student-management/components/space-create-modal";
+import { useAppRoute } from "@/lib/app-route-context";
+import { createPatchedHref } from "@/lib/route-state/search-params";
 
 function MockV2WorkspaceInner() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { resolveAppHref } = useAppRoute();
+  const autoEntryHandledRef = useRef(false);
 
   // ── refs: 순환 의존 해소 (selection ↔ records ↔ audio) ─────────
   const ensureDetailRef = useRef<(id: string) => void>(() => {});
@@ -54,7 +60,7 @@ function MockV2WorkspaceInner() {
   } = useCurrentSpace();
 
   const [showSpaceGateModal, setShowSpaceGateModal] = useState<
-    "form" | "import" | null
+    "blank" | "import" | null
   >(null);
 
   // ── 선택 (단일 source of truth) ──────────────────────────────
@@ -129,6 +135,7 @@ function MockV2WorkspaceInner() {
     selectMember: selection.selectMember,
     selectRecord: selection.selectRecord,
     startRecording: records.startRecording,
+    stopRecording: records.stopRecording,
     cancelRecording: records.cancelRecording,
     addReadyRecord: records.addReadyRecord,
     recordingStart: recording.start,
@@ -136,6 +143,34 @@ function MockV2WorkspaceInner() {
     recordingCancel: recording.cancel,
     openFilePicker: fileUpload.openFilePicker,
   });
+
+  useEffect(() => {
+    if (autoEntryHandledRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("newRecordEntry") !== "true") {
+      autoEntryHandledRef.current = true;
+      return;
+    }
+
+    entry.handleOpenNewRecordEntry(
+      searchParams.get("memberId"),
+      searchParams.get("studentName") ?? "",
+    );
+
+    window.history.replaceState(
+      null,
+      "",
+      createPatchedHref(window.location.pathname, searchParams, {
+        newRecordEntry: null,
+        studentName: null,
+      }),
+    );
+
+    autoEntryHandledRef.current = true;
+  }, [entry.handleOpenNewRecordEntry]);
 
   // ── AI 채팅 / 패널 ────────────────────────────────────────────
   const aiChat = useAiChat({
@@ -146,7 +181,9 @@ function MockV2WorkspaceInner() {
     onUpdateMessages: records.updateMessages,
     onUpdateAnalysisResult: records.updateAnalysisResult,
   });
-  const aiPanel = useAiPanel();
+  const aiPanel = useAiPanel({
+    hasSelectedRecord: selection.selectedRecordId !== null,
+  });
 
   // ── 재시도 ─────────────────────────────────────────────────────
   const recordRetry = useRecordRetry({
@@ -177,12 +214,26 @@ function MockV2WorkspaceInner() {
     [currentSpaceId, selection.clearAll, setCurrentSpaceId],
   );
 
+  const redirectToStudentManagementSpace = useCallback(
+    (spaceId: string) => {
+      router.push(
+        createPatchedHref(
+          resolveAppHref("/home/student-management"),
+          new URLSearchParams(),
+          { spaceId },
+        ),
+      );
+    },
+    [resolveAppHref, router],
+  );
+
   const handleSpaceCreated = useCallback(
     (space: Space) => {
       selection.clearAll();
       addSpace(space);
+      redirectToStudentManagementSpace(space.id);
     },
-    [addSpace, selection.clearAll],
+    [addSpace, redirectToStudentManagementSpace, selection.clearAll],
   );
 
   // ── 삭제 핸들러 ───────────────────────────────────────────────
@@ -317,18 +368,19 @@ function MockV2WorkspaceInner() {
       {showSpaceFirstGate ? (
         <>
           <HomeSpaceGate
-            onCreateBlankSpace={() => setShowSpaceGateModal("form")}
+            onCreateBlankSpace={() => setShowSpaceGateModal("blank")}
             onImportSpace={() => setShowSpaceGateModal("import")}
           />
 
           {showSpaceGateModal ? (
-            <CreateSpaceModal
+            <StudentSpaceCreateModal
               initialStep={showSpaceGateModal}
               onClose={() => setShowSpaceGateModal(null)}
               onCreated={(space) => {
                 handleSpaceCreated(space);
                 setShowSpaceGateModal(null);
               }}
+              onImported={() => setShowSpaceGateModal(null)}
             />
           ) : null}
         </>
@@ -370,8 +422,6 @@ function MockV2WorkspaceInner() {
               records={records.records}
               selectedId={selection.selectedRecordId}
               onSelect={selection.handleSelectRecord}
-              onStartRecording={entry.handleStartRecording}
-              onFileUpload={entry.handleOpenFileUpload}
               spaces={spaces}
               currentSpace={currentSpace}
               onSpaceChange={handleChangeSpace}
@@ -380,7 +430,7 @@ function MockV2WorkspaceInner() {
               membersLoading={membersLoading}
               selectedMemberId={selection.selectedMemberId}
               onSelectMember={selection.handleSelectMember}
-              onOpenQuickMemo={() => entry.handleOpenNewRecordEntry()}
+              onOpenNewRecordEntry={() => entry.handleOpenNewRecordEntry()}
               onDeleteRecord={handleDeleteRecord}
               onDeleteMember={handleDeleteMember}
               onDeleteSpace={handleDeleteSpace}
@@ -406,17 +456,17 @@ function MockV2WorkspaceInner() {
           )}
 
           {showCenterPanel && (
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <InsightBanner
-                members={members}
-                onHighlightWarning={() => {
-                  const target =
-                    members.find((m) => m.indicator === "warning") ??
-                    members.find((m) => m.indicator === "none");
-                  if (target) selection.handleSelectMember(target.id);
-                }}
-              />
-              <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden">
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <InsightBanner
+                  members={members}
+                  onHighlightWarning={() => {
+                    const target =
+                      members.find((m) => m.indicator === "warning") ??
+                      members.find((m) => m.indicator === "none");
+                    if (target) selection.handleSelectMember(target.id);
+                  }}
+                />
                 <CenterPanel
                   phase={records.viewState.kind as "processing" | "ready"}
                   selected={records.selected}
@@ -444,35 +494,36 @@ function MockV2WorkspaceInner() {
                   retryPending={recordRetry.retryPending}
                   retryFeedback={recordRetry.retryFeedback}
                 />
-
-                <AiPanel
-                  width={aiPanel.width}
-                  collapsed={aiPanel.collapsed}
-                  tab={aiPanel.tab}
-                  panelRef={aiPanel.panelRef}
-                  model={aiPanel.model}
-                  onSetTab={aiPanel.setTab}
-                  onToggleCollapsed={aiPanel.toggleCollapsed}
-                  onExpand={aiPanel.expand}
-                  onToggleModel={aiPanel.toggleModel}
-                  onStartResize={aiPanel.startResize}
-                  phase={records.viewState.kind as "processing" | "ready"}
-                  selected={records.selected}
-                  selectedId={selection.selectedRecordId}
-                  onClearMessages={records.clearMessages}
-                  aiInput={aiChat.input}
-                  onAiInputChange={aiChat.setInput}
-                  onSend={aiChat.send}
-                  onSendQuickChip={aiChat.sendQuickChip}
-                  canSend={aiChat.canSend}
-                  endRef={aiChat.endRef}
-                  textareaRef={aiChat.textareaRef}
-                  images={aiChat.images}
-                  onAddImages={aiChat.addImages}
-                  onRemoveImage={aiChat.removeImage}
-                  imageInputRef={aiChat.imageInputRef}
-                />
               </div>
+
+              <AiPanel
+                width={aiPanel.width}
+                collapsed={aiPanel.collapsed}
+                canExpand={aiPanel.canExpand}
+                tab={aiPanel.tab}
+                panelRef={aiPanel.panelRef}
+                model={aiPanel.model}
+                onSetTab={aiPanel.setTab}
+                onToggleCollapsed={aiPanel.toggleCollapsed}
+                onExpand={aiPanel.expand}
+                onToggleModel={aiPanel.toggleModel}
+                onStartResize={aiPanel.startResize}
+                phase={records.viewState.kind as "processing" | "ready"}
+                selected={records.selected}
+                selectedId={selection.selectedRecordId}
+                onClearMessages={records.clearMessages}
+                aiInput={aiChat.input}
+                onAiInputChange={aiChat.setInput}
+                onSend={aiChat.send}
+                onSendQuickChip={aiChat.sendQuickChip}
+                canSend={aiChat.canSend}
+                endRef={aiChat.endRef}
+                textareaRef={aiChat.textareaRef}
+                images={aiChat.images}
+                onAddImages={aiChat.addImages}
+                onRemoveImage={aiChat.removeImage}
+                imageInputRef={aiChat.imageInputRef}
+              />
             </div>
           )}
 
@@ -482,6 +533,9 @@ function MockV2WorkspaceInner() {
               onChooseRecording={entry.handleChooseRecordingEntry}
               onChooseUpload={entry.handleChooseUploadEntry}
               onChooseText={entry.handleChooseTextEntry}
+              linkedStudentName={
+                entry.entryMemberContext.current.studentName || undefined
+              }
             />
           )}
 

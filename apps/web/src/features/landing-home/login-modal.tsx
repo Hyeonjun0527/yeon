@@ -2,13 +2,16 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ChevronDown, X } from "lucide-react";
+
+import type { DevLoginOption } from "@/lib/auth/dev-login-options";
 
 type LoginModalProps = {
   open: boolean;
   onClose: () => void;
   nextPath: string;
+  devLoginOptions: DevLoginOption[];
 };
 
 function KakaoTalkIcon() {
@@ -55,16 +58,47 @@ function GoogleIcon() {
   );
 }
 
-export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
+function getProviderLabel(providers: DevLoginOption["providers"]) {
+  return providers
+    .map((provider) => {
+      if (provider === "google") {
+        return "구글";
+      }
+
+      if (provider === "kakao") {
+        return "카카오";
+      }
+
+      return "개발";
+    })
+    .join(" · ");
+}
+
+export function LoginModal({
+  open,
+  onClose,
+  nextPath,
+  devLoginOptions,
+}: LoginModalProps) {
   const [pendingProvider, setPendingProvider] = useState<
-    "google" | "kakao" | null
+    "google" | "kakao" | "dev-login" | "dev-create" | null
   >(null);
+  const [selectedDevLoginAccount, setSelectedDevLoginAccount] = useState(
+    devLoginOptions[0]?.accountKey ?? "",
+  );
+  const prefersReducedMotion = useReducedMotion();
+  const hasDevLoginOptions = devLoginOptions.length > 0;
+  const selectedDevLoginOption =
+    devLoginOptions.find(
+      (option) => option.accountKey === selectedDevLoginAccount,
+    ) ?? devLoginOptions[0];
 
   useEffect(() => {
     if (!open) {
       document.body.style.overflow = "";
       document.body.classList.remove("landing-login-open");
       setPendingProvider(null);
+      setSelectedDevLoginAccount(devLoginOptions[0]?.accountKey ?? "");
       return;
     }
 
@@ -84,14 +118,61 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
       document.body.classList.remove("landing-login-open");
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [open, onClose]);
+  }, [devLoginOptions, onClose, open]);
+
+  useEffect(() => {
+    if (!selectedDevLoginAccount && devLoginOptions[0]) {
+      setSelectedDevLoginAccount(devLoginOptions[0].accountKey);
+    }
+  }, [devLoginOptions, selectedDevLoginAccount]);
 
   const kakaoLoginHref = `/api/auth/kakao?next=${encodeURIComponent(nextPath)}`;
   const googleLoginHref = `/api/auth/google?next=${encodeURIComponent(nextPath)}`;
+  const backdropTransition = prefersReducedMotion
+    ? { duration: 0.01 }
+    : { duration: 0.14, ease: "easeOut" as const };
+  const modalTransition = prefersReducedMotion
+    ? { duration: 0.01 }
+    : { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
+  const modalInitial = prefersReducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, y: 12, scale: 0.985 };
+  const modalAnimate = prefersReducedMotion
+    ? { opacity: 1 }
+    : { opacity: 1, y: 0, scale: 1 };
+  const modalExit = prefersReducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, y: 8, scale: 0.99 };
 
   function moveToSocialLogin(provider: "google" | "kakao", href: string) {
     setPendingProvider(provider);
     window.location.assign(href);
+  }
+
+  function moveToDevLogin() {
+    if (!selectedDevLoginAccount) {
+      return;
+    }
+
+    setPendingProvider("dev-login");
+
+    const searchParams = new URLSearchParams({
+      account: selectedDevLoginAccount,
+      next: nextPath,
+    });
+
+    window.location.assign(`/api/auth/dev-login?${searchParams.toString()}`);
+  }
+
+  function createDevLoginAccount() {
+    setPendingProvider("dev-create");
+
+    const searchParams = new URLSearchParams({
+      create: "1",
+      next: nextPath,
+    });
+
+    window.location.assign(`/api/auth/dev-login?${searchParams.toString()}`);
   }
 
   if (typeof document === "undefined") {
@@ -103,10 +184,11 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
       {open ? (
         <motion.div
           className="fixed inset-0 z-20 flex items-center justify-center bg-[rgba(8,10,14,0.82)] p-6 md:p-4"
+          style={{ willChange: "opacity" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.14, ease: "easeOut" }}
+          transition={backdropTransition}
           onClick={onClose}
         >
           <motion.div
@@ -115,10 +197,14 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
             aria-modal="true"
             aria-labelledby="landing-login-title"
             className="w-[min(100%,560px)] rounded-[32px] border border-[rgba(17,19,24,0.08)] bg-gradient-to-b from-[#fffdf9] to-[#faf7f1] p-9 text-[#111318] shadow-[0_28px_80px_rgba(15,18,24,0.18)] md:p-[22px]"
-            initial={{ opacity: 0, y: 12, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.99 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              willChange: "transform, opacity",
+              transform: "translateZ(0)",
+            }}
+            initial={modalInitial}
+            animate={modalAnimate}
+            exit={modalExit}
+            transition={modalTransition}
             onClick={(event) => event.stopPropagation()}
           >
             {/* Header */}
@@ -176,6 +262,76 @@ export function LoginModal({ open, onClose, nextPath }: LoginModalProps) {
                 카카오 로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의한
                 것으로 간주됩니다.
               </p>
+
+              {hasDevLoginOptions ? (
+                <div className="mt-2 grid gap-3 rounded-[22px] border border-[rgba(17,19,24,0.08)] bg-[rgba(17,19,24,0.03)] p-4">
+                  <div className="grid gap-1">
+                    <p className="m-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[#7a818d]">
+                      로컬 개발 전용
+                    </p>
+                    <p className="m-0 text-[13px] leading-[1.55] text-[#4b5563]">
+                      운영자 테스트용으로 원하는 계정 세션을 바로 발급합니다.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <div className="relative">
+                      <select
+                        className="h-12 w-full appearance-none rounded-[14px] border border-[rgba(17,19,24,0.12)] bg-white px-4 pr-10 text-[14px] font-semibold text-[#111318] outline-none transition-colors duration-[180ms] ease-out hover:border-[rgba(17,19,24,0.2)] focus:border-[#111318]"
+                        aria-label="테스트 로그인 계정 선택"
+                        disabled={pendingProvider !== null}
+                        value={selectedDevLoginAccount}
+                        onChange={(event) =>
+                          setSelectedDevLoginAccount(event.target.value)
+                        }
+                      >
+                        {devLoginOptions.map((option) => (
+                          <option
+                            key={option.accountKey}
+                            value={option.accountKey}
+                          >
+                            {option.displayName
+                              ? `${option.displayName} · ${option.email}`
+                              : option.email}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7a818d]" />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="min-h-12 rounded-[14px] bg-[#111318] px-4 text-[14px] font-bold tracking-[-0.01em] text-white transition-[transform,background-color,opacity] duration-[180ms] ease-out hover:enabled:-translate-y-px hover:enabled:bg-[#1a1f28] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={
+                        pendingProvider !== null || !selectedDevLoginAccount
+                      }
+                      onClick={moveToDevLogin}
+                    >
+                      {pendingProvider === "dev-login"
+                        ? "테스트 로그인 중..."
+                        : "선택 계정으로 로그인"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="min-h-12 rounded-[14px] border border-[rgba(17,19,24,0.12)] bg-white px-4 text-[14px] font-bold tracking-[-0.01em] text-[#111318] transition-[transform,border-color,background-color,opacity] duration-[180ms] ease-out hover:enabled:-translate-y-px hover:enabled:border-[rgba(17,19,24,0.22)] hover:enabled:bg-[rgba(17,19,24,0.03)] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={pendingProvider !== null}
+                      onClick={createDevLoginAccount}
+                    >
+                      {pendingProvider === "dev-create"
+                        ? "생성 중..."
+                        : "새 계정 생성 후 로그인"}
+                    </button>
+                  </div>
+
+                  {selectedDevLoginOption ? (
+                    <p className="m-0 text-[12px] leading-[1.55] tracking-[-0.01em] text-[#626b79]">
+                      {selectedDevLoginOption.email} ·{" "}
+                      {getProviderLabel(selectedDevLoginOption.providers)}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </motion.div>
         </motion.div>

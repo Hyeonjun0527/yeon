@@ -295,7 +295,13 @@ export async function handleImportCommitRoute({
       });
     }
 
-    return NextResponse.json({ created }, { status: 201 });
+    return NextResponse.json(
+      {
+        created: { spaces: created.spaces, members: created.members },
+        spaceIds: created.spaceIds,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof ServiceError) {
       return jsonError(error.message, error.status);
@@ -411,11 +417,11 @@ export async function executeAnalyzeRoute({
           extraHeaders: {
             "x-import-draft-id": draftId,
           },
-          onDone: (preview) =>
+          onDone: (result) =>
             saveImportDraftPreview({
               userId,
               draftId,
-              preview,
+              preview: result.preview,
               status: "analyzed",
             }),
           onError: (message) =>
@@ -437,7 +443,7 @@ export async function executeAnalyzeRoute({
     }
 
     await markImportDraftAnalyzing(userId, draftId);
-    const preview = await analyzeBuffer(
+    const result = await analyzeBuffer(
       buffer,
       fileName,
       mimeType,
@@ -457,11 +463,15 @@ export async function executeAnalyzeRoute({
     await saveImportDraftPreview({
       userId,
       draftId,
-      preview,
+      preview: result.preview,
       status: "analyzed",
     });
 
-    return NextResponse.json({ draftId, preview });
+    return NextResponse.json({
+      draftId,
+      preview: result.preview,
+      assistantMessage: result.assistantMessage ?? null,
+    });
   } catch (error) {
     await saveImportDraftError({
       userId,

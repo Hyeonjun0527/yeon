@@ -16,6 +16,8 @@ interface RecordEntryDeps {
   selectRecord: (id: string) => void;
   /** useRecords.startRecording */
   startRecording: () => void;
+  /** useRecords.stopRecording */
+  stopRecording: () => void;
   /** useRecords.cancelRecording */
   cancelRecording: () => void;
   /** useRecords.addReadyRecord */
@@ -59,8 +61,9 @@ export function useRecordEntry(deps: RecordEntryDeps) {
 
   const handleStopRecording = useCallback(() => {
     recordingReturnMemberIdRef.current = null;
+    deps.stopRecording();
     deps.recordingStop();
-  }, [deps.recordingStop]);
+  }, [deps.recordingStop, deps.stopRecording]);
 
   const handleCancelRecording = useCallback(() => {
     const returnMemberId = recordingReturnMemberIdRef.current;

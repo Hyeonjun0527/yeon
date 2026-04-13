@@ -1,5 +1,5 @@
 import type { ImportAnalysisStage } from "@/lib/import-analysis-progress";
-import type { ImportPreview } from "../types";
+import type { ImportAnalysisResponse, ImportPreview } from "../types";
 
 export type RecoverableImportDraftStatus =
   | "uploaded"
@@ -109,7 +109,11 @@ export async function readImportSSE(
     progress?: number;
   }) => void,
   signal?: AbortSignal,
-): Promise<{ preview?: ImportPreview; error?: string }> {
+): Promise<{
+  preview?: ImportPreview;
+  assistantMessage?: string | null;
+  error?: string;
+}> {
   if (!res.body) return { error: "응답 스트림을 받지 못했습니다." };
 
   const reader = res.body.getReader();
@@ -136,6 +140,7 @@ export async function readImportSSE(
             stage?: ImportAnalysisStage;
             progress?: number;
             preview?: ImportPreview;
+            assistantMessage?: string | null;
             message?: string;
           };
           if (event.type === "progress" && event.text) {
@@ -146,7 +151,10 @@ export async function readImportSSE(
             });
           }
           if (event.type === "done" && event.preview)
-            return { preview: event.preview };
+            return {
+              preview: event.preview,
+              assistantMessage: event.assistantMessage ?? null,
+            };
           if (event.type === "error")
             return { error: event.message ?? "분석에 실패했습니다." };
         } catch {
@@ -171,7 +179,7 @@ export async function runImportAnalysisRequest(params: {
     stage?: ImportAnalysisStage;
     progress?: number;
   }) => void;
-}): Promise<ImportPreview> {
+}): Promise<ImportAnalysisResponse> {
   const res = await params.request();
 
   if (!res.ok) {
@@ -194,5 +202,8 @@ export async function runImportAnalysisRequest(params: {
     throw new Error(params.fallbackErrorMessage);
   }
 
-  return result.preview;
+  return {
+    preview: result.preview,
+    assistantMessage: result.assistantMessage ?? null,
+  } satisfies ImportAnalysisResponse;
 }

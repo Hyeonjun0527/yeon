@@ -90,6 +90,10 @@ describe("import-preview-service", () => {
           },
         ],
       }),
-    ).resolves.toEqual({ spaces: 2, members: 3 });
+    ).resolves.toMatchObject({
+      spaces: 2,
+      members: 3,
+      spaceIds: [expect.any(String), expect.any(String)],
+    });
   });
 });

@@ -186,6 +186,7 @@ export async function importPreviewIntoSpaces(
   const db = getDb();
   let spacesCreated = 0;
   let membersCreated = 0;
+  const spaceIds: string[] = [];
 
   for (const cohort of preview.cohorts) {
     const cohortMemberRows = cohort.students.map((student) => ({
@@ -197,6 +198,7 @@ export async function importPreviewIntoSpaces(
       const now = new Date();
       const spaceId = randomUUID();
       const spaceName = normalizeSpaceName(cohort.name);
+      spaceIds.push(spaceId);
 
       await tx.insert(spaces).values({
         id: spaceId,
@@ -308,5 +310,6 @@ export async function importPreviewIntoSpaces(
   return {
     spaces: spacesCreated,
     members: membersCreated,
+    spaceIds,
   };
 }

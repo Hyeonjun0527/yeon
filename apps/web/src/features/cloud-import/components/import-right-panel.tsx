@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Trash2 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Check, Loader2, Trash2, X } from "lucide-react";
 import {
   IMPORT_ANALYSIS_CHECKLIST,
   getImportAnalysisChecklistStep,
@@ -89,6 +90,16 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
     confirmImport,
     discardDraft,
   } = hook;
+  const [isDraftPolicyNoticeDismissed, setIsDraftPolicyNoticeDismissed] =
+    useState(false);
+
+  useEffect(() => {
+    setIsDraftPolicyNoticeDismissed(false);
+  }, [draftPolicyText, selectedFile?.id]);
+
+  const visibleDraftPolicyText = isDraftPolicyNoticeDismissed
+    ? null
+    : draftPolicyText;
 
   /* 파일 미선택 */
   if (!selectedFile) {
@@ -149,9 +160,8 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           </div>
         )}
         <DraftPolicyNotice
-          text={draftPolicyText}
-          onDiscard={discardDraft}
-          disabled={analyzing || importing}
+          text={visibleDraftPolicyText}
+          onDismiss={() => setIsDraftPolicyNoticeDismissed(true)}
         />
         {error && (
           <ErrorRecoveryNotice
@@ -189,9 +199,8 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
           </div>
         )}
         <DraftPolicyNotice
-          text={draftPolicyText}
-          onDiscard={discardDraft}
-          disabled={analyzing || importing}
+          text={visibleDraftPolicyText}
+          onDismiss={() => setIsDraftPolicyNoticeDismissed(true)}
         />
         <ImportAnalysisStatusCard
           message={
@@ -213,9 +222,8 @@ export function ImportRightPanel({ hook, onClose }: ImportRightPanelProps) {
         </div>
       )}
       <DraftPolicyNotice
-        text={draftPolicyText}
-        onDiscard={discardDraft}
-        disabled={analyzing || importing}
+        text={visibleDraftPolicyText}
+        onDismiss={() => setIsDraftPolicyNoticeDismissed(true)}
       />
       {error && (
         <ErrorRecoveryNotice
@@ -310,33 +318,37 @@ function ImportAnalysisStatusCard({
 
 function DraftPolicyNotice({
   text,
-  onDiscard,
-  disabled,
+  onDismiss,
 }: {
   text?: string | null;
-  onDiscard?: (() => Promise<void>) | (() => void);
-  disabled: boolean;
+  onDismiss: () => void;
 }) {
-  if (!text || !onDiscard) return null;
+  if (!text) return null;
 
   return (
-    <div className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-[6px] bg-[rgba(99,102,241,0.08)] border border-accent-border/40 text-[12px] text-text-secondary mb-3">
-      <p className="m-0 leading-relaxed">{text}</p>
+    <div className="mb-3 flex items-start justify-between gap-3 rounded-[10px] border border-accent-border/40 bg-[rgba(99,102,241,0.08)] px-3 py-2.5 text-[12px] text-text-secondary">
+      <p className="m-0 flex-1 leading-relaxed">{text}</p>
       <button
-        className="shrink-0 px-2.5 py-1 rounded-[6px] border border-border bg-transparent text-text-secondary text-[12px] font-medium cursor-pointer transition-[background,color] duration-[120ms] hover:bg-[var(--surface3)] hover:text-text disabled:opacity-50 disabled:cursor-not-allowed"
-        onClick={() => {
-          void onDiscard();
-        }}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-transparent bg-transparent text-text-dim transition-[background,color,border-color] duration-[120ms] hover:border-border hover:bg-[var(--surface3)] hover:text-text"
+        onClick={onDismiss}
         type="button"
-        disabled={disabled}
+        aria-label="임시 초안 안내 닫기"
       >
-        초안 지우기
+        <X size={14} />
       </button>
     </div>
   );
 }
 
 /* ── Preview Editor ── */
+
+const IMPORT_REVIEW_SPLIT_STORAGE_KEY = "yeon:import-review:split-ratio";
+const IMPORT_REVIEW_DEFAULT_RATIO = 0.64;
+const IMPORT_REVIEW_MIN_RATIO = 0.34;
+const IMPORT_REVIEW_MAX_RATIO = 0.8;
+const IMPORT_REVIEW_MIN_ANALYSIS_HEIGHT = 220;
+const IMPORT_REVIEW_MIN_CHAT_HEIGHT = 160;
+const IMPORT_REVIEW_RESIZER_HEIGHT = 20;
 
 interface PreviewEditorProps {
   preview: ImportPreview;
@@ -449,6 +461,298 @@ function removeCustomColumns(
   return nextColumns.length === columns.length ? columns : nextColumns;
 }
 
+function getAnalysisColumnTrackWidth(
+  preview: ImportPreview,
+  column: PreviewColumn,
+) {
+  const longestLength = preview.cohorts.reduce((maxLength, cohort) => {
+    return cohort.students.reduce((studentMaxLength, student) => {
+      const rawValue =
+        column.kind === "custom"
+          ? (student.customFields?.[column.key] ?? "")
+          : (student[column.key] ?? "");
+
+      const nextLength = String(rawValue ?? "").trim().length;
+      return Math.max(studentMaxLength, nextLength);
+    }, maxLength);
+  }, column.label.trim().length);
+
+  const estimatedWidth = longestLength * 8 + 52;
+  const minWidth = column.key === "name" ? 160 : 132;
+  const maxWidth = column.key === "name" ? 280 : 240;
+  const clampedWidth = Math.min(maxWidth, Math.max(minWidth, estimatedWidth));
+
+  return `${clampedWidth}px`;
+}
+
+type AnalysisVirtualRow =
+  | {
+      key: string;
+      type: "cohort";
+      ci: number;
+      cohort: ImportPreview["cohorts"][number];
+    }
+  | {
+      key: string;
+      type: "columns";
+      ci: number;
+    }
+  | {
+      key: string;
+      type: "student";
+      ci: number;
+      si: number;
+      student: ImportPreview["cohorts"][number]["students"][number];
+    };
+
+const ANALYSIS_ROW_HEIGHTS = {
+  cohort: 60,
+  columns: 38,
+  student: 42,
+} as const;
+
+function buildAnalysisVirtualRows(
+  preview: ImportPreview,
+): AnalysisVirtualRow[] {
+  const rows: AnalysisVirtualRow[] = [];
+
+  preview.cohorts.forEach((cohort, ci) => {
+    rows.push({
+      key: `cohort-${ci}`,
+      type: "cohort",
+      ci,
+      cohort,
+    });
+    rows.push({
+      key: `columns-${ci}`,
+      type: "columns",
+      ci,
+    });
+
+    cohort.students.forEach((student, si) => {
+      rows.push({
+        key: `student-${ci}-${si}`,
+        type: "student",
+        ci,
+        si,
+        student,
+      });
+    });
+  });
+
+  return rows;
+}
+
+const PreviewAnalysisContent = memo(
+  function PreviewAnalysisContent({
+    preview,
+    totalStudents,
+    columns,
+    columnSignature: _columnSignature,
+    onUpdateCohortName,
+    onUpdateStudent,
+    onRemoveStudent,
+  }: {
+    preview: ImportPreview;
+    totalStudents: number;
+    columns: PreviewColumn[];
+    columnSignature: string;
+    onUpdateCohortName: (ci: number, name: string) => void;
+    onUpdateStudent: (
+      ci: number,
+      si: number,
+      field: PreviewColumn,
+      value: string,
+    ) => void;
+    onRemoveStudent: (ci: number, si: number) => void;
+  }) {
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const virtualRows = useMemo(
+      () => buildAnalysisVirtualRows(preview),
+      [preview],
+    );
+    const gridTemplateColumns = useMemo(() => {
+      const columnTracks = columns.map((column) =>
+        getAnalysisColumnTrackWidth(preview, column),
+      );
+
+      return [...columnTracks, "48px"].join(" ");
+    }, [columns, preview]);
+    const rowVirtualizer = useVirtualizer({
+      count: virtualRows.length,
+      getScrollElement: () => scrollRef.current,
+      estimateSize: (index) => {
+        const row = virtualRows[index];
+        if (!row) return ANALYSIS_ROW_HEIGHTS.student;
+
+        return ANALYSIS_ROW_HEIGHTS[row.type];
+      },
+      overscan: 12,
+    });
+
+    return (
+      <>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div>
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+              분석 결과
+            </p>
+            <p className="m-0 mt-1 text-[13px] text-text-secondary">
+              {preview.cohorts.length}개 스페이스, {totalStudents}명 수강생
+            </p>
+          </div>
+          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-text-dim">
+            표 편집 가능
+          </span>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="scrollbar-subtle min-h-0 flex-1 overflow-auto px-4 py-4"
+        >
+          <div className="min-w-max" style={{ minWidth: "100%" }}>
+            <div
+              className="relative"
+              style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = virtualRows[virtualRow.index];
+                if (!row) return null;
+
+                return (
+                  <PreviewAnalysisVirtualRow
+                    key={virtualRow.key}
+                    row={row}
+                    columns={columns}
+                    gridTemplateColumns={gridTemplateColumns}
+                    onUpdateCohortName={onUpdateCohortName}
+                    onUpdateStudent={onUpdateStudent}
+                    onRemoveStudent={onRemoveStudent}
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                      height: `${virtualRow.size}px`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  },
+  (prev, next) =>
+    prev.preview === next.preview &&
+    prev.totalStudents === next.totalStudents &&
+    prev.columnSignature === next.columnSignature &&
+    prev.onUpdateCohortName === next.onUpdateCohortName &&
+    prev.onUpdateStudent === next.onUpdateStudent &&
+    prev.onRemoveStudent === next.onRemoveStudent,
+);
+
+const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
+  row,
+  columns,
+  gridTemplateColumns,
+  onUpdateCohortName,
+  onUpdateStudent,
+  onRemoveStudent,
+  style,
+}: {
+  row: AnalysisVirtualRow;
+  columns: PreviewColumn[];
+  gridTemplateColumns: string;
+  onUpdateCohortName: (ci: number, name: string) => void;
+  onUpdateStudent: (
+    ci: number,
+    si: number,
+    field: PreviewColumn,
+    value: string,
+  ) => void;
+  onRemoveStudent: (ci: number, si: number) => void;
+  style: {
+    transform: string;
+    height: string;
+  };
+}) {
+  if (row.type === "cohort") {
+    return (
+      <div
+        className="absolute left-0 top-0 w-full rounded-t-2xl border-x border-t border-border bg-surface/65 px-3 pt-3"
+        style={style}
+      >
+        <input
+          className="block w-full rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-sm font-semibold text-text focus:outline-none focus:border-accent"
+          value={row.cohort.name}
+          onChange={(event) => onUpdateCohortName(row.ci, event.target.value)}
+          placeholder="스페이스명"
+        />
+      </div>
+    );
+  }
+
+  if (row.type === "columns") {
+    return (
+      <div
+        className="absolute left-0 top-0 grid min-w-full border-x border-b border-border bg-surface/65"
+        style={{ ...style, gridTemplateColumns, width: "max-content" }}
+      >
+        {columns.map((column) => (
+          <div
+            key={`${row.key}-${column.key}`}
+            className="overflow-hidden text-ellipsis whitespace-nowrap border-r border-border px-2 py-1.5 text-[11px] font-semibold text-text-dim last:border-r-0"
+            title={column.label}
+          >
+            {column.label}
+          </div>
+        ))}
+        <div className="px-2 py-1.5" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="absolute left-0 top-0 grid min-w-full border-x border-b border-border bg-surface/65 even:bg-surface"
+      style={{ ...style, gridTemplateColumns, width: "max-content" }}
+    >
+      {columns.map((column) => {
+        const value =
+          column.kind === "custom"
+            ? (row.student.customFields?.[column.key] ?? "")
+            : (row.student[column.key] ?? "");
+
+        return (
+          <div
+            key={`${row.key}-${column.key}`}
+            className="min-w-0 border-r border-border px-2 py-1 last:border-r-0"
+          >
+            <input
+              className="w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-transparent px-1.5 py-1 text-[13px] text-text outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
+              value={value ?? ""}
+              onChange={(event) =>
+                onUpdateStudent(row.ci, row.si, column, event.target.value)
+              }
+              placeholder="-"
+              title={value ?? ""}
+            />
+          </div>
+        );
+      })}
+      <div className="px-2 py-1">
+        <button
+          className="flex h-6 w-6 items-center justify-center rounded bg-transparent text-text-dim transition-[background,color] duration-[120ms] hover:bg-[rgba(239,68,68,0.1)] hover:text-red"
+          onClick={() => onRemoveStudent(row.ci, row.si)}
+          type="button"
+          title="삭제"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+});
+
 function PreviewEditor({
   preview,
   onUpdate,
@@ -470,6 +774,16 @@ function PreviewEditor({
   const previewRef = useRef(preview);
   const columnsRef = useRef(columns);
   const pendingColumnsRef = useRef<PreviewColumn[] | null>(null);
+  const reviewWorkspaceRef = useRef<HTMLDivElement | null>(null);
+  const resizeStateRef = useRef<{
+    startClientY: number;
+    startRatio: number;
+    availableHeight: number;
+  } | null>(null);
+  const [analysisPanelRatio, setAnalysisPanelRatio] = useState(
+    IMPORT_REVIEW_DEFAULT_RATIO,
+  );
+  const [isResizingPanels, setIsResizingPanels] = useState(false);
 
   useEffect(() => {
     previewRef.current = preview;
@@ -483,6 +797,89 @@ function PreviewEditor({
   useEffect(() => {
     columnsRef.current = columns;
   }, [columns]);
+
+  const clampAnalysisPanelRatio = useCallback((ratio: number) => {
+    const containerHeight =
+      reviewWorkspaceRef.current?.getBoundingClientRect().height ?? 0;
+    const availableHeight = Math.max(
+      containerHeight - IMPORT_REVIEW_RESIZER_HEIGHT,
+      1,
+    );
+
+    if (!containerHeight) {
+      return Math.min(
+        IMPORT_REVIEW_MAX_RATIO,
+        Math.max(IMPORT_REVIEW_MIN_RATIO, ratio),
+      );
+    }
+
+    const minRatio = Math.max(
+      IMPORT_REVIEW_MIN_RATIO,
+      IMPORT_REVIEW_MIN_ANALYSIS_HEIGHT / availableHeight,
+    );
+    const maxRatio = Math.min(
+      IMPORT_REVIEW_MAX_RATIO,
+      1 - IMPORT_REVIEW_MIN_CHAT_HEIGHT / availableHeight,
+    );
+
+    if (minRatio >= maxRatio) {
+      return Math.min(
+        IMPORT_REVIEW_MAX_RATIO,
+        Math.max(IMPORT_REVIEW_MIN_RATIO, ratio),
+      );
+    }
+
+    return Math.min(maxRatio, Math.max(minRatio, ratio));
+  }, []);
+
+  useEffect(() => {
+    const savedRatio = window.localStorage.getItem(
+      IMPORT_REVIEW_SPLIT_STORAGE_KEY,
+    );
+
+    if (!savedRatio) return;
+
+    const parsed = Number(savedRatio);
+    if (!Number.isFinite(parsed)) return;
+
+    setAnalysisPanelRatio(clampAnalysisPanelRatio(parsed));
+  }, [clampAnalysisPanelRatio]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      IMPORT_REVIEW_SPLIT_STORAGE_KEY,
+      analysisPanelRatio.toFixed(4),
+    );
+  }, [analysisPanelRatio]);
+
+  useEffect(() => {
+    if (!isResizingPanels) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeState = resizeStateRef.current;
+      if (!resizeState) return;
+
+      const deltaY = event.clientY - resizeState.startClientY;
+      const nextRatio =
+        resizeState.startRatio + deltaY / resizeState.availableHeight;
+      setAnalysisPanelRatio(clampAnalysisPanelRatio(nextRatio));
+    };
+
+    const stopResizing = () => {
+      resizeStateRef.current = null;
+      setIsResizingPanels(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResizing);
+    window.addEventListener("pointercancel", stopResizing);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResizing);
+      window.removeEventListener("pointercancel", stopResizing);
+    };
+  }, [clampAnalysisPanelRatio, isResizingPanels]);
 
   const updateCohortName = useCallback(
     (ci: number, name: string) => {
@@ -582,34 +979,66 @@ function PreviewEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* 스크롤 가능한 미리보기 테이블 */}
-      <div className="scrollbar-subtle flex-1 overflow-y-auto py-3 min-h-0">
-        <div className="text-[13px] text-text-dim mb-4">
-          {preview.cohorts.length}개 스페이스, {totalStudents}명 수강생
-        </div>
-
-        {preview.cohorts.map((cohort, ci) => (
-          <PreviewCohortSection
-            key={ci}
-            ci={ci}
-            cohort={cohort}
+      <div ref={reviewWorkspaceRef} className="flex min-h-0 flex-1 flex-col">
+        <section
+          className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface-2/35"
+          style={{
+            flexBasis: `${(analysisPanelRatio * 100).toFixed(2)}%`,
+          }}
+        >
+          <PreviewAnalysisContent
+            preview={preview}
+            totalStudents={totalStudents}
             columns={columns}
             columnSignature={columnSignature}
             onUpdateCohortName={updateCohortName}
             onUpdateStudent={updateStudent}
             onRemoveStudent={removeStudent}
           />
-        ))}
-      </div>
+        </section>
 
-      {/* 채팅 영역 — 고정 */}
-      <div className="flex-shrink-0 border-t border-border">
-        <ChatSection
-          messages={chatMessages}
-          analyzing={analyzing}
-          streamingText={streamingText}
-          onSend={onRefine}
-        />
+        <button
+          type="button"
+          className="group flex h-5 shrink-0 cursor-row-resize items-center justify-center bg-transparent"
+          aria-label="분석 결과와 AI 요청 영역 높이 조절"
+          onPointerDown={(event) => {
+            const containerHeight =
+              reviewWorkspaceRef.current?.getBoundingClientRect().height ?? 0;
+            const availableHeight = Math.max(
+              containerHeight - IMPORT_REVIEW_RESIZER_HEIGHT,
+              1,
+            );
+
+            resizeStateRef.current = {
+              startClientY: event.clientY,
+              startRatio: analysisPanelRatio,
+              availableHeight,
+            };
+            setIsResizingPanels(true);
+          }}
+        >
+          <span className="h-1.5 w-14 rounded-full bg-border transition-colors group-hover:bg-accent-border" />
+        </button>
+
+        <section className="flex min-h-[160px] flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface/70">
+          <div className="border-b border-border px-4 py-3">
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+              AI 수정 요청
+            </p>
+            <p className="m-0 mt-1 text-[13px] text-text-secondary">
+              분석 결과를 바탕으로 수정 요청을 보내고 응답을 바로 반영합니다.
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1">
+            <ChatSection
+              messages={chatMessages}
+              analyzing={analyzing}
+              streamingText={streamingText}
+              onSend={onRefine}
+            />
+          </div>
+        </section>
       </div>
 
       {/* 확인/취소 버튼 */}
@@ -641,146 +1070,6 @@ function PreviewEditor({
     </div>
   );
 }
-
-const PreviewCohortSection = memo(
-  function PreviewCohortSection({
-    ci,
-    cohort,
-    columns,
-    columnSignature,
-    onUpdateCohortName,
-    onUpdateStudent,
-    onRemoveStudent,
-  }: {
-    ci: number;
-    cohort: ImportPreview["cohorts"][number];
-    columns: PreviewColumn[];
-    columnSignature: string;
-    onUpdateCohortName: (ci: number, name: string) => void;
-    onUpdateStudent: (
-      ci: number,
-      si: number,
-      field: PreviewColumn,
-      value: string,
-    ) => void;
-    onRemoveStudent: (ci: number, si: number) => void;
-  }) {
-    return (
-      <div className="mb-5">
-        <input
-          className="text-sm font-semibold text-text bg-[var(--surface2,var(--surface))] border border-border rounded-[6px] px-3 py-2 w-full mb-2.5 focus:outline-none focus:border-accent"
-          value={cohort.name}
-          onChange={(e) => onUpdateCohortName(ci, e.target.value)}
-          placeholder="스페이스명"
-        />
-        <div className="scrollbar-subtle overflow-x-auto">
-          <table className="w-full min-w-max border-collapse text-[13px]">
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className="text-left px-2 py-1.5 font-semibold text-text-dim text-[11px] border-b border-border whitespace-nowrap"
-                  >
-                    {column.label}
-                  </th>
-                ))}
-                <th
-                  className="text-left px-2 py-1.5 border-b border-border"
-                  style={{ width: 40 }}
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {cohort.students.map((student, si) => (
-                <PreviewStudentRow
-                  key={si}
-                  ci={ci}
-                  si={si}
-                  student={student}
-                  columns={columns}
-                  columnSignature={columnSignature}
-                  onUpdateStudent={onUpdateStudent}
-                  onRemoveStudent={onRemoveStudent}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  },
-  (prev, next) =>
-    prev.ci === next.ci &&
-    prev.cohort === next.cohort &&
-    prev.columnSignature === next.columnSignature,
-);
-
-const PreviewStudentRow = memo(
-  function PreviewStudentRow({
-    ci,
-    si,
-    student,
-    columns,
-    onUpdateStudent,
-    onRemoveStudent,
-  }: {
-    ci: number;
-    si: number;
-    student: ImportPreview["cohorts"][number]["students"][number];
-    columns: PreviewColumn[];
-    columnSignature: string;
-    onUpdateStudent: (
-      ci: number,
-      si: number,
-      field: PreviewColumn,
-      value: string,
-    ) => void;
-    onRemoveStudent: (ci: number, si: number) => void;
-  }) {
-    return (
-      <tr>
-        {columns.map((column) => {
-          const value =
-            column.kind === "custom"
-              ? (student.customFields?.[column.key] ?? "")
-              : (student[column.key] ?? "");
-
-          return (
-            <td
-              key={column.key}
-              className="px-2 py-1 border-b border-border min-w-[140px]"
-            >
-              <input
-                className="w-full px-1.5 py-1 border border-transparent rounded bg-transparent text-text text-[13px] focus:outline-none focus:border-accent focus:bg-[var(--surface2,var(--surface))]"
-                value={value ?? ""}
-                onChange={(e) =>
-                  onUpdateStudent(ci, si, column, e.target.value)
-                }
-                placeholder="-"
-              />
-            </td>
-          );
-        })}
-        <td className="px-2 py-1 border-b border-border">
-          <button
-            className="flex items-center justify-center w-6 h-6 rounded bg-transparent text-text-dim cursor-pointer border-0 transition-[background,color] duration-[120ms] hover:bg-[rgba(239,68,68,0.1)] hover:text-red"
-            onClick={() => onRemoveStudent(ci, si)}
-            type="button"
-            title="삭제"
-          >
-            <Trash2 size={14} />
-          </button>
-        </td>
-      </tr>
-    );
-  },
-  (prev, next) =>
-    prev.ci === next.ci &&
-    prev.si === next.si &&
-    prev.student === next.student &&
-    prev.columnSignature === next.columnSignature,
-);
 
 /* ── Chat Section ── */
 
@@ -825,7 +1114,7 @@ function ChatSection({
   }, [analyzing, input, onSend]);
 
   return (
-    <div className="flex flex-col" style={{ height: 220 }}>
+    <div className="flex h-full min-h-0 flex-col">
       <ChatMessageList
         messages={messages}
         analyzing={analyzing}
@@ -863,7 +1152,7 @@ const ChatMessageList = memo(function ChatMessageList({
   return (
     <div
       ref={scrollRef}
-      className="scrollbar-subtle flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2"
+      className="scrollbar-subtle flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3"
     >
       {isEmpty && (
         <div className="flex flex-col items-center justify-center h-full gap-1.5 text-center">

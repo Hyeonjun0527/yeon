@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LandingHome } from "@/features/landing-home";
@@ -7,6 +7,10 @@ import {
   buildAuthSessionCleanupHref,
   normalizeAuthRedirectPath,
 } from "@/server/auth/constants";
+import {
+  getRequestHostnameFromHostHeader,
+  listDevLoginOptions,
+} from "@/server/auth/dev-login";
 import { getAuthUserBySessionToken } from "@/server/auth/session";
 
 type HomePageProps = {
@@ -60,6 +64,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const requestedLoginModalOpen =
     pickFirstValue(resolvedSearchParams.login) === "1";
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE_NAME)?.value ?? null;
   const currentUser = sessionToken
     ? await getAuthUserBySessionToken(sessionToken)
@@ -87,10 +92,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     );
   }
 
+  const requestHostname = getRequestHostnameFromHostHeader(
+    headerStore.get("x-forwarded-host") ?? headerStore.get("host"),
+  );
+  const devLoginOptions = await listDevLoginOptions(requestHostname);
+
   return (
     <LandingHome
       nextPath={nextPath}
       initialLoginModalOpen={openLoginModalOnLoad}
+      devLoginOptions={devLoginOptions}
     />
   );
 }

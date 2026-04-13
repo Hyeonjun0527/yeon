@@ -52,18 +52,6 @@ export function useSpaceSidebarSelection({
     setSpaceSelection((prev) => pruneSpaceSelection(prev, validIds));
   }, [spaces]);
 
-  const clearSpaceSelection = useCallback(() => {
-    setSpaceSelection({ ids: [], anchorId: null });
-  }, []);
-
-  const handleSelectAllStudents = useCallback(() => {
-    clearSpaceSelection();
-    startSpaceTransition(() => {
-      setSelectedSpaceId(null);
-      resetDetailRouteIfNeeded(null);
-    });
-  }, [clearSpaceSelection, resetDetailRouteIfNeeded, setSelectedSpaceId]);
-
   const handleSpaceClick = useCallback(
     (
       event: React.MouseEvent<HTMLButtonElement>,
@@ -120,11 +108,9 @@ export function useSpaceSidebarSelection({
   return {
     spaceSelection,
     setSpaceSelection,
-    clearSpaceSelection,
     contextMenu,
     setContextMenu,
     isSpaceTransitioning,
-    handleSelectAllStudents,
     handleSpaceClick,
     handleSpaceContextMenu,
   };

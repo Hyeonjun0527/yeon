@@ -1,7 +1,16 @@
 "use client";
 
-import { Component, memo, useState, useCallback, useEffect } from "react";
+import {
+  Component,
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { ComponentType, ReactNode } from "react";
+import type { Application } from "@splinetool/runtime";
 import styles from "./landing-home.module.css";
 
 const SPLINE_SCENE =
@@ -9,21 +18,41 @@ const SPLINE_SCENE =
 
 const SPLINE_ERROR_PATTERN = /reading 'position'/;
 const MOBILE_SPLINE_MEDIA_QUERY = "(max-width: 767px)";
+const SPLINE_FADE_DURATION = 240;
+
+type SplineProps = {
+  scene: string;
+  onLoad?: (app: Application) => void;
+  renderOnDemand?: boolean;
+};
+
+type SplineComponentType = ComponentType<SplineProps>;
+
+let splineModulePromise: Promise<{ default: SplineComponentType }> | null =
+  null;
+let cachedSplineComponent: SplineComponentType | null = null;
+
+function prefetchSplineComponent() {
+  if (cachedSplineComponent) {
+    return Promise.resolve(cachedSplineComponent);
+  }
+
+  if (!splineModulePromise) {
+    splineModulePromise = import("@splinetool/react-spline").then((module) => {
+      cachedSplineComponent = module.default;
+      return module;
+    });
+  }
+
+  return splineModulePromise.then((module) => module.default);
+}
 
 function SplineFallbackScene() {
   return (
     <div className={styles.heroFallback} aria-hidden="true">
       <div className={styles.heroFallbackGlow} />
-      <div className={styles.heroFallbackBeam} />
-      <div className={styles.heroFallbackPulse} />
       <div className={styles.heroFallbackMesh} />
       <div className={styles.heroFallbackOrbit} />
-      <div className={styles.heroFallbackOrbitSecondary} />
-      <div className={styles.heroFallbackDataLane}>
-        <span />
-        <span />
-        <span />
-      </div>
       <div className={styles.heroFallbackColumn}>
         <div className={styles.heroFallbackCard}>
           <span className={styles.heroFallbackEyebrow}>LIVE RECORD</span>
@@ -62,13 +91,17 @@ function SplineFallbackScene() {
 }
 
 class SplineErrorBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; onError?: () => void },
   { hasError: boolean }
 > {
   state = { hasError: false };
 
   static getDerivedStateFromError() {
     return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError?.();
   }
 
   render() {
@@ -85,14 +118,30 @@ function SplineCanvas({ paused }: { paused: boolean }) {
     null,
   );
   const [shouldLoadSpline, setShouldLoadSpline] = useState(false);
-  const [SplineComponent, setSplineComponent] = useState<ComponentType<{
-    scene: string;
-    onError?: () => void;
-  }> | null>(null);
+  const [SplineComponent, setSplineComponent] =
+    useState<SplineComponentType | null>(cachedSplineComponent);
+  const [hasLiveScene, setHasLiveScene] = useState(false);
+  const splineApplicationRef = useRef<Application | null>(null);
 
   const handleError = useCallback(() => {
     setError(true);
   }, []);
+
+  const handleLoad = useCallback(
+    (application: Application) => {
+      splineApplicationRef.current = application;
+      setHasLiveScene(true);
+
+      if (paused) {
+        application.stop();
+        return;
+      }
+
+      application.play();
+      application.requestRender();
+    },
+    [paused],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -114,7 +163,27 @@ function SplineCanvas({ paused }: { paused: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || isMobileViewport !== false) {
+    if (isMobileViewport !== false) {
+      return;
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      void prefetchSplineComponent().catch(() => {
+        setError(true);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      isMobileViewport !== false ||
+      shouldLoadSpline
+    ) {
       return;
     }
 
@@ -125,42 +194,112 @@ function SplineCanvas({ paused }: { paused: boolean }) {
       ) => number;
       cancelIdleCallback?: (handle: number) => void;
     };
+    const cleanupHandlers: Array<() => void> = [];
+    let cancelled = false;
 
     const enableSpline = () => {
-      setShouldLoadSpline(true);
+      if (cancelled) {
+        return;
+      }
+
+      startTransition(() => {
+        setShouldLoadSpline(true);
+      });
     };
 
-    if (browserWindow.requestIdleCallback) {
-      const idleId = browserWindow.requestIdleCallback(enableSpline, {
-        timeout: 1500,
+    const warmAndEnableSpline = () => {
+      void prefetchSplineComponent()
+        .then(() => {
+          enableSpline();
+        })
+        .catch(() => {
+          if (cancelled) {
+            return;
+          }
+
+          setError(true);
+        });
+    };
+
+    const registerInteractionWarmup = (eventName: keyof WindowEventMap) => {
+      const handler = () => {
+        warmAndEnableSpline();
+      };
+
+      window.addEventListener(eventName, handler, {
+        once: true,
+        passive: true,
       });
 
-      return () => {
-        browserWindow.cancelIdleCallback?.(idleId);
+      cleanupHandlers.push(() => {
+        window.removeEventListener(eventName, handler);
+      });
+    };
+
+    registerInteractionWarmup("pointerdown");
+    registerInteractionWarmup("touchstart");
+    registerInteractionWarmup("wheel");
+    registerInteractionWarmup("keydown");
+
+    if (document.readyState === "complete") {
+      if (browserWindow.requestIdleCallback) {
+        const idleId = browserWindow.requestIdleCallback(() => {
+          warmAndEnableSpline();
+        });
+
+        cleanupHandlers.push(() => {
+          browserWindow.cancelIdleCallback?.(idleId);
+        });
+      } else {
+        const rafId = window.requestAnimationFrame(() => {
+          warmAndEnableSpline();
+        });
+
+        cleanupHandlers.push(() => {
+          window.cancelAnimationFrame(rafId);
+        });
+      }
+    } else {
+      const handleWindowLoad = () => {
+        warmAndEnableSpline();
       };
+
+      window.addEventListener("load", handleWindowLoad, { once: true });
+
+      cleanupHandlers.push(() => {
+        window.removeEventListener("load", handleWindowLoad);
+      });
     }
 
-    const timeoutId = globalThis.setTimeout(enableSpline, 1200);
-
     return () => {
-      globalThis.clearTimeout(timeoutId);
+      cancelled = true;
+      cleanupHandlers.forEach((cleanup) => cleanup());
     };
-  }, [isMobileViewport]);
+  }, [isMobileViewport, shouldLoadSpline]);
 
   useEffect(() => {
-    if (paused || isMobileViewport !== false || !shouldLoadSpline) {
+    if (isMobileViewport !== false || !shouldLoadSpline || error) {
       return;
     }
 
     let active = true;
+    let frameId: number | null = null;
 
-    void import("@splinetool/react-spline")
+    void prefetchSplineComponent()
       .then((module) => {
         if (!active) {
           return;
         }
 
-        setSplineComponent(() => module.default);
+        frameId = window.requestAnimationFrame(() => {
+          if (!active) {
+            return;
+          }
+
+          startTransition(() => {
+            setSplineComponent(() => module);
+          });
+        });
       })
       .catch(() => {
         if (!active) {
@@ -172,40 +311,105 @@ function SplineCanvas({ paused }: { paused: boolean }) {
 
     return () => {
       active = false;
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
     };
-  }, [isMobileViewport, paused, shouldLoadSpline]);
+  }, [error, isMobileViewport, shouldLoadSpline]);
 
   useEffect(() => {
-    function suppress(e: ErrorEvent) {
-      if (SPLINE_ERROR_PATTERN.test(e.message)) {
-        e.preventDefault();
-      }
+    const application = splineApplicationRef.current;
+    if (!application) {
+      return;
     }
-    window.addEventListener("error", suppress);
-    return () => window.removeEventListener("error", suppress);
+
+    if (paused) {
+      application.stop();
+      return;
+    }
+
+    application.play();
+    application.requestRender();
+  }, [paused]);
+
+  useEffect(() => {
+    if (isMobileViewport !== false) {
+      return;
+    }
+
+    function handleWindowError(e: ErrorEvent) {
+      const message = e.message ?? "";
+      if (!SPLINE_ERROR_PATTERN.test(message)) {
+        return;
+      }
+
+      const filename = e.filename ?? "";
+      const stack =
+        e.error instanceof Error
+          ? (e.error.stack ?? "")
+          : String(e.error ?? "");
+
+      if (!/spline/i.test(filename) && !/spline/i.test(stack)) {
+        return;
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Spline 런타임 오류 감지", {
+          message,
+          filename,
+        });
+      }
+
+      setError(true);
+    }
+
+    window.addEventListener("error", handleWindowError);
+    return () => window.removeEventListener("error", handleWindowError);
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    return () => {
+      splineApplicationRef.current = null;
+    };
   }, []);
 
-  if (error) {
-    return <SplineFallbackScene />;
-  }
+  const hasDesktopViewport = isMobileViewport === false;
+  const shouldRenderSpline =
+    hasDesktopViewport && Boolean(SplineComponent) && !error;
+  const shouldShowSpline = shouldRenderSpline && hasLiveScene;
+  const shouldShowFallback = !hasDesktopViewport || error || !hasLiveScene;
 
-  if (paused) {
-    return <SplineFallbackScene />;
-  }
-
-  if (isMobileViewport !== false) {
-    return <SplineFallbackScene />;
-  }
-
-  if (!shouldLoadSpline) {
-    return <SplineFallbackScene />;
-  }
-
-  if (!SplineComponent) {
-    return <SplineFallbackScene />;
-  }
-
-  return <SplineComponent scene={SPLINE_SCENE} onError={handleError} />;
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className={`${styles.splineFallbackLayer} ${
+          shouldShowFallback ? styles.splineVisible : styles.splineHidden
+        }`}
+      >
+        <SplineFallbackScene />
+      </div>
+      <div
+        aria-hidden={!shouldShowSpline}
+        className={`${styles.splineLayer} ${
+          shouldShowSpline ? styles.splineVisible : styles.splineHidden
+        } ${paused ? styles.splineDimmed : ""}`}
+        style={{
+          transitionDuration: `${SPLINE_FADE_DURATION}ms`,
+        }}
+      >
+        <SplineErrorBoundary onError={handleError}>
+          {SplineComponent ? (
+            <SplineComponent
+              scene={SPLINE_SCENE}
+              onLoad={handleLoad}
+              renderOnDemand
+            />
+          ) : null}
+        </SplineErrorBoundary>
+      </div>
+    </>
+  );
 }
 
 type SplineHeroProps = {
@@ -220,9 +424,7 @@ export const SplineHero = memo(function SplineHero({
       className={`${styles.splineContainer} pointer-events-none absolute inset-0 w-full h-full`}
       data-landing-spline="true"
     >
-      <SplineErrorBoundary>
-        <SplineCanvas paused={paused} />
-      </SplineErrorBoundary>
+      <SplineCanvas paused={paused} />
     </div>
   );
 });

@@ -34,7 +34,10 @@ describe("file-analysis-service", () => {
         "application/pdf",
         "pdf",
       ),
-    ).resolves.toEqual({ cohorts: [] });
+    ).resolves.toEqual({
+      preview: { cohorts: [] },
+      assistantMessage: null,
+    });
   });
 
   it("parseExcelToText는 시트 이름과 CSV 텍스트를 포함한다", () => {

@@ -8,12 +8,12 @@
 
 import { useEffect } from "react";
 import { CloudCog, Loader2, Upload } from "lucide-react";
-import type { CloudProvider } from "./types";
+import type { CloudProvider, ImportCommitResult } from "./types";
 import { useCloudImport } from "./hooks/use-cloud-import";
 
 interface ProviderImportProps {
   provider: CloudProvider;
-  onImportComplete?: () => void;
+  onImportComplete?: (result: ImportCommitResult) => void;
 }
 
 function ProviderImport({ provider, onImportComplete }: ProviderImportProps) {
@@ -66,7 +66,7 @@ function ProviderImport({ provider, onImportComplete }: ProviderImportProps) {
 }
 
 interface CloudImportProps {
-  onImportComplete?: () => void;
+  onImportComplete?: (result: ImportCommitResult) => void;
 }
 
 export function CloudImport({ onImportComplete }: CloudImportProps) {

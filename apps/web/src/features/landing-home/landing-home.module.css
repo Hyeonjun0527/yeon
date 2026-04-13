@@ -2,10 +2,14 @@
    Landing Home — minimal CSS kept for things Tailwind cannot express
    ───────────────────────────────────────────── */
 
+.landing {
+  position: relative;
+}
+
 /* ── dot-grid overlay (pseudo-element) ── */
 .landing::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -15,14 +19,49 @@
     transparent 1px
   );
   background-size: 32px 32px;
+  opacity: 0.45;
 }
 
 /* ── spline container: force children to fill ── */
+.splineContainer {
+  position: absolute;
+  inset: 0;
+  contain: layout paint;
+}
+
 .splineContainer > div,
 .splineContainer canvas {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
+}
+
+.splineLayer,
+.splineFallbackLayer {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity 220ms ease,
+    visibility 220ms ease;
+}
+
+.splineLayer {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.splineVisible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.splineHidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.splineDimmed {
+  opacity: 0.18;
 }
 
 .heroFallback {
@@ -351,17 +390,17 @@
   pointer-events: none;
   background:
     linear-gradient(
-      to top,
-      var(--dark-bg) 0%,
-      rgba(5, 5, 5, 0.58) 15%,
-      transparent 42%
-    ),
-    linear-gradient(
       to right,
       rgba(5, 5, 5, 0.82) 0%,
-      rgba(5, 5, 5, 0.62) 24%,
-      rgba(5, 5, 5, 0.22) 52%,
+      rgba(5, 5, 5, 0.54) 26%,
+      rgba(5, 5, 5, 0.16) 54%,
       transparent 74%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(5, 5, 5, 0.06) 0%,
+      rgba(5, 5, 5, 0.22) 48%,
+      rgba(5, 5, 5, 0.86) 100%
     );
 }
 
@@ -374,26 +413,25 @@
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(8, 8, 10, 0.72),
-    rgba(8, 8, 10, 0.42)
+    rgba(8, 8, 10, 0.82),
+    rgba(8, 8, 10, 0.58)
   );
   border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.26);
 }
 
 /* ── philosophy glow (radial gradient) ── */
 .philosophyGlow {
   position: absolute;
-  width: 600px;
-  height: 600px;
+  width: 440px;
+  height: 440px;
   top: 50%;
   left: 50%;
   translate: -50% -50%;
   background: radial-gradient(
     circle,
-    rgba(129, 140, 248, 0.08) 0%,
-    rgba(129, 140, 248, 0.03) 40%,
+    rgba(129, 140, 248, 0.06) 0%,
+    rgba(129, 140, 248, 0.02) 42%,
     transparent 70%
   );
   pointer-events: none;
@@ -403,14 +441,14 @@
 /* ── CTA glow (radial gradient) ── */
 .ctaGlow {
   position: absolute;
-  width: 800px;
-  height: 400px;
+  width: 560px;
+  height: 280px;
   bottom: 0;
   left: 50%;
   translate: -50% 30%;
   background: radial-gradient(
     ellipse,
-    rgba(129, 140, 248, 0.1) 0%,
+    rgba(129, 140, 248, 0.08) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -493,11 +531,11 @@
     background:
       linear-gradient(
         180deg,
-        rgba(5, 5, 5, 0.18) 0%,
-        rgba(5, 5, 5, 0.52) 28%,
+        rgba(5, 5, 5, 0.2) 0%,
+        rgba(5, 5, 5, 0.46) 28%,
         rgba(5, 5, 5, 0.9) 100%
       ),
-      linear-gradient(180deg, rgba(5, 5, 5, 0.18), rgba(5, 5, 5, 0.7));
+      linear-gradient(180deg, rgba(5, 5, 5, 0.12), rgba(5, 5, 5, 0.64));
   }
 
   .heroMobileScrim {
