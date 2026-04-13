@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -18,22 +18,6 @@ function isStudentDetailPath(pathname: string) {
   const rest = pathname.slice(prefix.length);
 
   return !!rest && !rest.includes("/") && rest !== "check-board";
-}
-
-function getStudentDetailMemberId(pathname: string) {
-  const prefix = "/home/student-management/";
-
-  if (!pathname.startsWith(prefix)) {
-    return null;
-  }
-
-  const rest = pathname.slice(prefix.length);
-
-  if (!rest || rest.includes("/") || rest === "check-board") {
-    return null;
-  }
-
-  return rest;
 }
 
 export function useStudentManagementApiState() {
@@ -73,58 +57,21 @@ export function useStudentManagementApiState() {
     [searchParams],
   );
   const spaceIdFromQuery = currentSearchParams.get("spaceId");
-  const detailMemberId = getStudentDetailMemberId(normalizedPathname);
-  const cachedDetailMemberSpaceId = useMemo(() => {
-    if (!detailMemberId) {
-      return null;
-    }
-
-    const cachedMember = queryClient.getQueryData<{ member: Member }>([
-      "member",
-      detailMemberId,
-    ]);
-
-    if (cachedMember?.member.spaceId) {
-      return cachedMember.member.spaceId;
-    }
-
-    const cachedMemberLists = queryClient.getQueriesData<{ members: Member[] }>(
-      {
-        queryKey: ["members"],
-      },
-    );
-
-    for (const [, payload] of cachedMemberLists) {
-      const matchedMember = payload?.members.find(
-        (member) => member.id === detailMemberId,
-      );
-
-      if (matchedMember?.spaceId) {
-        return matchedMember.spaceId;
-      }
-    }
-
-    return null;
-  }, [detailMemberId, queryClient]);
+  const pendingSpaceIdRef = useRef<string | null>(null);
+  const lastSelectedSpaceIdRef = useRef<string | null>(null);
+  const [optimisticSpaceId, setOptimisticSpaceId] = useState<string | null>(
+    null,
+  );
   const shouldDeferDefaultSpaceSelection =
     isStudentDetailPath(normalizedPathname) &&
-    !spaceIdFromQuery &&
-    !cachedDetailMemberSpaceId;
+    (!spaceIdFromQuery ||
+      !spaces.some((space) => space.id === spaceIdFromQuery));
   const matchedSpaceFromQuery = useMemo(
     () =>
       spaceIdFromQuery
         ? (spaces.find((space) => space.id === spaceIdFromQuery) ?? null)
         : null,
     [spaceIdFromQuery, spaces],
-  );
-
-  const matchedCachedDetailSpace = useMemo(
-    () =>
-      cachedDetailMemberSpaceId
-        ? (spaces.find((space) => space.id === cachedDetailMemberSpaceId) ??
-          null)
-        : null,
-    [cachedDetailMemberSpaceId, spaces],
   );
 
   const replaceSearchState = useCallback(
@@ -136,42 +83,93 @@ export function useStudentManagementApiState() {
   );
 
   useEffect(() => {
-    if (spaces.length === 0) return;
-
-    if (shouldDeferDefaultSpaceSelection) {
+    const currentQuerySpaceId = matchedSpaceFromQuery?.id ?? null;
+    if (!currentQuerySpaceId) {
       return;
     }
 
-    if (matchedSpaceFromQuery || matchedCachedDetailSpace || spaceIdFromQuery) {
+    if (pendingSpaceIdRef.current === currentQuerySpaceId) {
+      pendingSpaceIdRef.current = null;
+    }
+    lastSelectedSpaceIdRef.current = currentQuerySpaceId;
+
+    setOptimisticSpaceId((current) =>
+      current === currentQuerySpaceId ? null : current,
+    );
+  }, [matchedSpaceFromQuery]);
+
+  useEffect(() => {
+    if (spaces.length === 0 || shouldDeferDefaultSpaceSelection) {
       return;
     }
 
-    const nextSpaceId = spaces[0]?.id ?? null;
+    if (matchedSpaceFromQuery) {
+      return;
+    }
+
+    const nextSpaceId =
+      (lastSelectedSpaceIdRef.current &&
+      spaces.some((space) => space.id === lastSelectedSpaceIdRef.current)
+        ? lastSelectedSpaceIdRef.current
+        : null) ??
+      spaces[0]?.id ??
+      null;
     if (!nextSpaceId) {
       return;
     }
 
+    if (
+      pendingSpaceIdRef.current &&
+      pendingSpaceIdRef.current !== nextSpaceId
+    ) {
+      return;
+    }
+
+    pendingSpaceIdRef.current = nextSpaceId;
+    setOptimisticSpaceId((current) => current ?? nextSpaceId);
     replaceSearchState({ spaceId: nextSpaceId });
   }, [
-    matchedCachedDetailSpace,
     matchedSpaceFromQuery,
     replaceSearchState,
-    spaceIdFromQuery,
     shouldDeferDefaultSpaceSelection,
     spaces,
   ]);
 
-  const selectedSpaceId = shouldDeferDefaultSpaceSelection
-    ? null
-    : (matchedSpaceFromQuery?.id ??
-      matchedCachedDetailSpace?.id ??
-      (spaceIdFromQuery ? null : (spaces[0]?.id ?? null)));
+  const selectedSpaceId =
+    optimisticSpaceId ?? matchedSpaceFromQuery?.id ?? null;
   const setSelectedSpaceId = useCallback(
     (id: string | null) => {
+      if (selectedSpaceId === id && pendingSpaceIdRef.current === null) {
+        return;
+      }
+
+      pendingSpaceIdRef.current = id;
+      lastSelectedSpaceIdRef.current = id;
+      setOptimisticSpaceId(id);
       replaceSearchState({ spaceId: id });
     },
-    [replaceSearchState],
+    [replaceSearchState, selectedSpaceId],
   );
+
+  useEffect(() => {
+    if (!optimisticSpaceId) {
+      return;
+    }
+
+    if (pendingSpaceIdRef.current === optimisticSpaceId) {
+      return;
+    }
+
+    if (matchedSpaceFromQuery?.id === optimisticSpaceId) {
+      return;
+    }
+
+    if (spaces.some((space) => space.id === optimisticSpaceId)) {
+      return;
+    }
+
+    setOptimisticSpaceId(null);
+  }, [matchedSpaceFromQuery, optimisticSpaceId, spaces]);
 
   const {
     data: membersData,
