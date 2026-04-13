@@ -11,6 +11,11 @@ import {
   ArrowLeft,
   ChevronRight,
 } from "lucide-react";
+import {
+  CLOUD_PROVIDER_ORDER,
+  DEFAULT_CLOUD_PROVIDER,
+  getCloudProviderLabel,
+} from "@/features/cloud-import/cloud-provider-config";
 import { useCloudImport } from "@/features/cloud-import/hooks/use-cloud-import";
 import type { CloudProvider, DriveFile } from "@/features/cloud-import/types";
 
@@ -109,8 +114,7 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
       <div className="flex flex-col items-center gap-3 py-10 text-center">
         <CloudCog size={28} className="text-text-dim" />
         <p className="text-[14px] font-semibold text-text">
-          {provider === "onedrive" ? "OneDrive" : "Google Drive"} 연결이
-          필요합니다
+          {getCloudProviderLabel(provider)} 연결이 필요합니다
         </p>
         <p className="text-[12px] text-text-dim max-w-[260px]">
           클라우드 드라이브를 연결하면 파일을 바로 불러올 수 있습니다.
@@ -247,7 +251,7 @@ export function CloudProfilePicker({
   onClose,
 }: CloudProfilePickerProps) {
   const [activeProvider, setActiveProvider] =
-    useState<CloudProvider>("onedrive");
+    useState<CloudProvider>(DEFAULT_CLOUD_PROVIDER);
 
   return (
     <div
@@ -281,17 +285,17 @@ export function CloudProfilePicker({
 
         {/* Provider 탭 */}
         <div className="flex border-b border-border flex-shrink-0">
-          {(["onedrive", "googledrive"] as CloudProvider[]).map((p) => (
+          {CLOUD_PROVIDER_ORDER.map((provider) => (
             <button
-              key={p}
+              key={provider}
               className={`flex-1 py-2.5 text-[13px] font-medium bg-transparent border-0 border-b-2 cursor-pointer transition-colors font-[inherit] ${
-                activeProvider === p
+                activeProvider === provider
                   ? "text-accent border-b-accent"
                   : "text-text-dim border-b-transparent hover:text-text"
               }`}
-              onClick={() => setActiveProvider(p)}
+              onClick={() => setActiveProvider(provider)}
             >
-              {p === "onedrive" ? "OneDrive" : "Google Drive"}
+              {getCloudProviderLabel(provider)}
             </button>
           ))}
         </div>

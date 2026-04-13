@@ -21,6 +21,11 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import {
+  CLOUD_PROVIDER_ORDER,
+  DEFAULT_CLOUD_PROVIDER,
+  getCloudProviderLabel,
+} from "../cloud-provider-config";
 import type { CloudProvider, DriveFile } from "../types";
 import type { ImportCommitResult } from "../types";
 import { isSelectableKind } from "../file-kind";
@@ -190,7 +195,7 @@ export function CloudImportInline({
   onWorkspaceModeChange,
 }: CloudImportInlineProps) {
   const [activeProvider, setActiveProvider] =
-    useState<CloudProvider>("onedrive");
+    useState<CloudProvider>(DEFAULT_CLOUD_PROVIDER);
   const [isDragging, setIsDragging] = useState(false);
   const [showSavedDraftsModal, setShowSavedDraftsModal] = useState(false);
   const [isSavedDraftsRefreshPending, setIsSavedDraftsRefreshPending] =
@@ -496,6 +501,7 @@ export function CloudImportInline({
     onDraftDiscarded,
   );
   const activeHook = activeProvider === "onedrive" ? onedrive : googledrive;
+  const activeProviderLabel = getCloudProviderLabel(activeProvider);
   const {
     data: localDraftsData,
     isPending: localDraftsLoading,
@@ -1296,28 +1302,20 @@ export function CloudImportInline({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {/* Provider 탭 */}
           <div className="flex gap-0 border-b border-border flex-shrink-0">
-            <button
-              className={`flex-1 px-4 py-2.5 text-[13px] font-medium bg-transparent border-0 border-b-2 cursor-pointer transition-[color,border-color] duration-150 ${
-                activeProvider === "onedrive"
-                  ? "text-accent border-b-accent font-semibold"
-                  : "text-text-dim border-b-transparent hover:text-text"
-              }`}
-              onClick={() => switchProvider("onedrive")}
-              type="button"
-            >
-              OneDrive
-            </button>
-            <button
-              className={`flex-1 px-4 py-2.5 text-[13px] font-medium bg-transparent border-0 border-b-2 cursor-pointer transition-[color,border-color] duration-150 ${
-                activeProvider === "googledrive"
-                  ? "text-accent border-b-accent font-semibold"
-                  : "text-text-dim border-b-transparent hover:text-text"
-              }`}
-              onClick={() => switchProvider("googledrive")}
-              type="button"
-            >
-              Google Drive
-            </button>
+            {CLOUD_PROVIDER_ORDER.map((provider) => (
+              <button
+                key={provider}
+                className={`flex-1 px-4 py-2.5 text-[13px] font-medium bg-transparent border-0 border-b-2 cursor-pointer transition-[color,border-color] duration-150 ${
+                  activeProvider === provider
+                    ? "text-accent border-b-accent font-semibold"
+                    : "text-text-dim border-b-transparent hover:text-text"
+                }`}
+                onClick={() => switchProvider(provider)}
+                type="button"
+              >
+                {getCloudProviderLabel(provider)}
+              </button>
+            ))}
           </div>
 
           {/* OAuth 미연결 */}
@@ -1335,8 +1333,7 @@ export function CloudImportInline({
                   marginBottom: 4,
                 }}
               >
-                {activeProvider === "onedrive" ? "OneDrive" : "Google Drive"}{" "}
-                연결이 필요합니다
+                {activeProviderLabel} 연결이 필요합니다
               </p>
               <p
                 style={{
