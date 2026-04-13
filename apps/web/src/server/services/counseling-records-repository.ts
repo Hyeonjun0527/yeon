@@ -181,6 +181,7 @@ const VALID_PROCESSING_STAGES = new Set<CounselingRecordProcessingStage>([
   "downloading",
   "chunking",
   "transcribing",
+  "partial_transcript_ready",
   "resolving_speakers",
   "transcript_ready",
   "analyzing",

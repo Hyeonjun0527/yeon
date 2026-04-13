@@ -10,6 +10,10 @@ import {
   members,
   spaces,
 } from "@/server/db/schema";
+import {
+  getSpacePeriodInputError,
+  normalizeSpaceDateInput,
+} from "@/lib/space-period";
 
 import { buildValueColumns } from "./member-field-values-service";
 import { type FieldType } from "./member-fields-service";
@@ -25,6 +29,8 @@ export const studentImportSchema = z.object({
 
 export const cohortImportSchema = z.object({
   name: z.string().min(1),
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
   students: z.array(studentImportSchema),
 });
 
@@ -41,9 +47,10 @@ type CustomFieldEntry = {
 
 const DEFAULT_SYSTEM_TABS = [
   { systemKey: "overview", name: "개요", displayOrder: 0 },
-  { systemKey: "counseling", name: "상담기록", displayOrder: 1 },
-  { systemKey: "memos", name: "메모", displayOrder: 2 },
-  { systemKey: "report", name: "리포트", displayOrder: 3 },
+  { systemKey: "student_board", name: "출석·과제", displayOrder: 1 },
+  { systemKey: "counseling", name: "상담기록", displayOrder: 2 },
+  { systemKey: "memos", name: "메모", displayOrder: 3 },
+  { systemKey: "report", name: "리포트", displayOrder: 4 },
 ] as const;
 
 const MEMBER_INSERT_CHUNK_SIZE = 500;
@@ -66,6 +73,24 @@ function normalizeSpaceName(value: string) {
     throw new ServiceError(400, "스페이스 이름은 필수입니다.");
   }
   return name;
+}
+
+function normalizeCohortPeriod(cohort: ImportPreviewBody["cohorts"][number]): {
+  startDate: string | null;
+  endDate: string | null;
+} {
+  const startDate = normalizeSpaceDateInput(cohort.startDate);
+  const endDate = normalizeSpaceDateInput(cohort.endDate);
+  const periodError = getSpacePeriodInputError(startDate, endDate);
+
+  if (periodError) {
+    throw new ServiceError(
+      400,
+      `"${normalizeSpaceName(cohort.name)}" 진행기간이 올바르지 않습니다. ${periodError}`,
+    );
+  }
+
+  return { startDate, endDate };
 }
 
 function normalizeMemberRow(
@@ -116,8 +141,22 @@ function looksLikeDate(value: string) {
   return /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(value);
 }
 
-function inferCustomFieldType(name: string, values: string[]): FieldType {
+const LEGACY_GUARDIAN_PLAIN_TEXT_FIELD_PATTERN = /^(긴급|비상)연락처(관계)?$/;
+
+export function inferCustomFieldType(
+  name: string,
+  values: string[],
+): FieldType {
   const loweredName = name.toLowerCase();
+  const compactName = name.replace(/\s+/g, "");
+
+  if (LEGACY_GUARDIAN_PLAIN_TEXT_FIELD_PATTERN.test(compactName)) {
+    return "text";
+  }
+
+  if (/관계/.test(name) || /relation/.test(loweredName)) {
+    return "text";
+  }
 
   if (/이메일|e-?mail|email/.test(name) || values.some(looksLikeEmail)) {
     return "email";
@@ -184,28 +223,28 @@ export async function importPreviewIntoSpaces(
   preview: ImportPreviewBody,
 ) {
   const db = getDb();
-  let spacesCreated = 0;
-  let membersCreated = 0;
-  const spaceIds: string[] = [];
+  return db.transaction(async (tx) => {
+    let spacesCreated = 0;
+    let membersCreated = 0;
+    const spaceIds: string[] = [];
 
-  for (const cohort of preview.cohorts) {
-    const cohortMemberRows = cohort.students.map((student) => ({
-      student,
-      customFieldEntries: normalizeCustomFieldEntries(student.customFields),
-    }));
-
-    await db.transaction(async (tx) => {
+    for (const cohort of preview.cohorts) {
+      const cohortMemberRows = cohort.students.map((student) => ({
+        student,
+        customFieldEntries: normalizeCustomFieldEntries(student.customFields),
+      }));
       const now = new Date();
       const spaceId = randomUUID();
       const spaceName = normalizeSpaceName(cohort.name);
+      const period = normalizeCohortPeriod(cohort);
       spaceIds.push(spaceId);
 
       await tx.insert(spaces).values({
         id: spaceId,
         name: spaceName,
         description: null,
-        startDate: null,
-        endDate: null,
+        startDate: period.startDate,
+        endDate: period.endDate,
         createdByUserId: userId,
         createdAt: now,
         updatedAt: now,
@@ -301,15 +340,14 @@ export async function importPreviewIntoSpaces(
       )) {
         await tx.insert(memberFieldValues).values(chunk);
       }
-    });
+      spacesCreated++;
+      membersCreated += cohort.students.length;
+    }
 
-    spacesCreated++;
-    membersCreated += cohort.students.length;
-  }
-
-  return {
-    spaces: spacesCreated,
-    members: membersCreated,
-    spaceIds,
-  };
+    return {
+      spaces: spacesCreated,
+      members: membersCreated,
+      spaceIds,
+    };
+  });
 }

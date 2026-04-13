@@ -207,17 +207,17 @@ describe("public-check-service", () => {
     });
 
     expect(vi.mocked(persistMemberBoardSnapshot)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0]).toMatchObject(
-      {
-        memberId: "member-1",
-        spaceId: "space-1",
-        attendanceStatus: "present",
-        assignmentStatus: "done",
-        assignmentLink: "https://example.com/homework",
-        source: "public_qr",
-        sessionId: "session-1",
-      },
-    );
+    expect(
+      vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0],
+    ).toMatchObject({
+      memberId: "member-1",
+      spaceId: "space-1",
+      attendanceStatus: "present",
+      assignmentStatus: "done",
+      assignmentLink: "https://example.com/homework",
+      source: "public_qr",
+      sessionId: "session-1",
+    });
     expect(insertedPayloads[0]).toMatchObject({
       memberId: "member-1",
       sessionId: "session-1",
@@ -278,15 +278,15 @@ describe("public-check-service", () => {
     });
 
     expect(vi.mocked(persistMemberBoardSnapshot)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0]).toMatchObject(
-      {
-        memberId: "member-1",
-        spaceId: "space-1",
-        attendanceStatus: "present",
-        source: "public_qr",
-        sessionId: "session-1",
-      },
-    );
+    expect(
+      vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0],
+    ).toMatchObject({
+      memberId: "member-1",
+      spaceId: "space-1",
+      attendanceStatus: "present",
+      source: "public_qr",
+      sessionId: "session-1",
+    });
     expect(insertedPayloads[0]).toMatchObject({
       memberId: "member-1",
       sessionId: "session-1",

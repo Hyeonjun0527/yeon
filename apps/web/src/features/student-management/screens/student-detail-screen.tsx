@@ -5,23 +5,42 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import { createSpaceTab } from "../../space-settings/space-settings-api";
 import { useStudentManagement } from "../student-management-provider";
+import { isProtectedMemberTab } from "@/lib/member-tab-policy";
 import { useMemberDetail } from "../hooks/use-member-detail";
 import { useStudentDetail } from "../hooks/use-student-detail";
 import { useStudentMemos } from "../hooks/use-student-memos";
 import { useMemberMemos } from "../hooks/use-member-memos";
 import { useDynamicMemberTabs } from "../hooks/use-dynamic-member-tabs";
+import { useMemberTabActions } from "../hooks/use-member-tab-actions";
+import type { Member } from "../types";
 import { StudentDetailHeader } from "../components/student-detail-header";
 import { StudentDetailTabs } from "../components/student-detail-tabs";
+import { MemberBoardSlotCard } from "../components/member-board-slot-card";
 import { TabOverview } from "../components/tab-overview";
 import { TabCounseling } from "../components/tab-counseling";
 import { TabCounselingRecords } from "../components/tab-counseling-records";
 import { TabMemberOverview } from "../components/tab-member-overview";
+import { TabMemberStudentBoard } from "../components/tab-member-student-board";
 import { TabMemos } from "../components/tab-memos";
 import { TabReport } from "../components/tab-report";
 import { CustomTabContent } from "../components/custom-tab-content";
+import {
+  MemberFieldContextMenu,
+  MemberFieldDeleteModal,
+  MemberFieldEditModal,
+} from "../components/member-field-action-overlays";
+import {
+  MemberTabContextMenu,
+  MemberTabDeleteModal,
+  MemberTabRenameModal,
+} from "../components/member-tab-action-overlays";
 import { AddCustomFieldModal } from "../components/add-custom-field-modal";
+import { getFieldChoiceOptions } from "../member-field-edit-policy";
 import { useAppRoute } from "@/lib/app-route-context";
 import { createPatchedHref } from "@/lib/route-state/search-params";
+import { formatSpacePeriodLabel } from "@/lib/space-period";
+import { customTabFieldsQueryKey } from "../hooks/use-custom-tab-fields";
+import { useMemberFieldActions } from "../hooks/use-member-field-actions";
 
 const REMOVED_SYSTEM_TAB_KEYS = new Set(["courses", "guardian"]);
 
@@ -35,20 +54,23 @@ export function StudentDetailScreen({
   const router = useRouter();
   const { resolveAppHref } = useAppRoute();
   const { studentId } = React.use(paramsPromise);
-  const { sheetMode, selectedSpaceId } = useStudentManagement();
+  const { sheetMode, selectedSpaceId, spaces } = useStudentManagement();
   const [quickAddTabOpen, setQuickAddTabOpen] = React.useState(false);
-  const [addFieldModalOpen, setAddFieldModalOpen] = React.useState(false);
+  const [fieldAddTargetTabId, setFieldAddTargetTabId] = React.useState<
+    string | null
+  >(null);
   const [newTabName, setNewTabName] = React.useState("");
   const [addingTab, setAddingTab] = React.useState(false);
   const [quickAddError, setQuickAddError] = React.useState<string | null>(null);
-  const backHref = selectedSpaceId
-    ? `${resolveAppHref("/home/student-management")}?spaceId=${selectedSpaceId}`
-    : resolveAppHref("/home/student-management");
 
   /* ── API 기반 멤버 조회 ── */
   const { member, activeTab, setActiveTab } = useMemberDetail({
     memberId: studentId,
   });
+  const detailSpaceId = member?.spaceId ?? selectedSpaceId;
+  const backHref = detailSpaceId
+    ? `${resolveAppHref("/home/student-management")}?spaceId=${detailSpaceId}`
+    : resolveAppHref("/home/student-management");
   const {
     memos: memberMemos,
     newMemoText: memberMemoText,
@@ -59,13 +81,13 @@ export function StudentDetailScreen({
     isSaving: memberMemoSaving,
     totalCount: memberMemoCount,
   } = useMemberMemos({
-    spaceId: member?.spaceId ?? null,
+    spaceId: detailSpaceId ?? null,
     memberId: member?.id ?? null,
   });
 
   /* ── 동적 탭 목록 ── */
   const { tabs: dynamicTabs, refetch: refetchTabs } =
-    useDynamicMemberTabs(selectedSpaceId);
+    useDynamicMemberTabs(detailSpaceId);
 
   function handleRequestAddTab() {
     if (!selectedSpaceId) return;
@@ -99,9 +121,9 @@ export function StudentDetailScreen({
     }
   }
 
-  function handleOpenAddFieldModal() {
-    if (!member?.spaceId || !overviewTab?.id) return;
-    setAddFieldModalOpen(true);
+  function handleOpenAddFieldModal(tabId: string | null | undefined) {
+    if (!member?.spaceId || !tabId) return;
+    setFieldAddTargetTabId(tabId);
   }
 
   const handleOpenMemberRecordEntry = React.useCallback(
@@ -125,6 +147,7 @@ export function StudentDetailScreen({
       ? visibleDynamicTabs.map((t) => ({
           id: t.systemKey ?? t.id,
           label: t.name,
+          isEditable: t.tabType === "custom" && !isProtectedMemberTab(t),
         }))
       : undefined;
   // 현재 탭이 시스템 키가 아닌 UUID이면 커스텀 탭
@@ -135,12 +158,51 @@ export function StudentDetailScreen({
     (t) => t.systemKey === "overview",
   );
   const legacyGuardianTab = dynamicTabs.find((t) => t.systemKey === "guardian");
+  const activeCustomTabQueryKey =
+    member && activeCustomTab
+      ? customTabFieldsQueryKey(member.spaceId, member.id, activeCustomTab.id)
+      : null;
+  const memberTabActions = useMemberTabActions({
+    spaceId: detailSpaceId,
+    tabs: visibleDynamicTabs,
+    activeTab,
+    setActiveTab,
+  });
+  const customFieldActions = useMemberFieldActions({
+    member:
+      member ??
+      ({
+        id: "",
+        spaceId: "",
+        name: "",
+        email: null,
+        phone: null,
+        status: "active",
+        createdAt: "",
+        updatedAt: "",
+      } as Member),
+    queryKey: activeCustomTabQueryKey,
+  });
 
   React.useEffect(() => {
     if (activeTab === "courses" || activeTab === "guardian") {
       setActiveTab("overview");
     }
   }, [activeTab, setActiveTab]);
+
+  React.useEffect(() => {
+    if (visibleDynamicTabs.length === 0) {
+      return;
+    }
+
+    const isKnownTab = visibleDynamicTabs.some((tab) => {
+      return (tab.systemKey ?? tab.id) === activeTab;
+    });
+
+    if (!isKnownTab) {
+      setActiveTab("overview");
+    }
+  }, [activeTab, setActiveTab, visibleDynamicTabs]);
 
   /* ── 레거시 mock 학생 조회 (member가 없을 때 폴백) ── */
   const { student } = useStudentDetail({ studentId });
@@ -166,6 +228,13 @@ export function StudentDetailScreen({
 
   /* member가 있는 경우 API 기반 렌더 */
   if (member) {
+    const memberSpace =
+      spaces.find((space) => space.id === member.spaceId) ?? null;
+    const memberSpacePeriodLabel = formatSpacePeriodLabel(
+      memberSpace?.startDate ?? null,
+      memberSpace?.endDate ?? null,
+    );
+
     return (
       <div>
         {/* 이름/상태 헤더 — Member 기반 */}
@@ -192,47 +261,39 @@ export function StudentDetailScreen({
           </Link>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 20,
-            padding: 24,
-            background: "var(--surface2)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "var(--text)",
-                marginBottom: 4,
-              }}
-            >
-              {member.name}
+        <div className="mb-6 rounded-2xl border border-border bg-surface-2 p-5 lg:p-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[22px] font-bold text-text">
+                    {member.name}
+                  </div>
+                  <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] text-text-dim">
+                    {memberSpace?.name ?? "스페이스 미확인"}
+                  </span>
+                  <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] text-text-dim">
+                    {memberSpacePeriodLabel ?? "진행기간 미설정"}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+                  {member.phone && <span>{member.phone}</span>}
+                  {member.email && (
+                    <>
+                      {member.phone && <span>·</span>}
+                      <span>{member.email}</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: "var(--text-secondary)",
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              {member.phone && <span>{member.phone}</span>}
-              {member.email && (
-                <>
-                  {member.phone && <span>·</span>}
-                  <span>{member.email}</span>
-                </>
-              )}
-            </div>
+
+            <MemberBoardSlotCard
+              spaceId={member.spaceId}
+              memberId={member.id}
+              startDate={memberSpace?.startDate ?? null}
+              endDate={memberSpace?.endDate ?? null}
+            />
           </div>
         </div>
 
@@ -241,6 +302,22 @@ export function StudentDetailScreen({
           onTabChange={setActiveTab}
           tabs={tabItems}
           onRequestAddTab={selectedSpaceId ? handleRequestAddTab : undefined}
+          onRequestTabMenu={(tabId, position) => {
+            const targetTab = visibleDynamicTabs.find(
+              (tab) => tab.tabType === "custom" && tab.id === tabId,
+            );
+            if (!targetTab) {
+              return;
+            }
+
+            memberTabActions.openTabMenu(
+              {
+                id: targetTab.id,
+                name: targetTab.name,
+              },
+              position,
+            );
+          }}
         />
 
         {activeTab === "overview" && (
@@ -252,7 +329,18 @@ export function StudentDetailScreen({
             memosLoading={memberMemosLoading}
             memosError={memberMemosError}
             totalMemoCount={memberMemoCount}
-            onAddField={overviewTab ? handleOpenAddFieldModal : undefined}
+            onAddField={
+              overviewTab?.id
+                ? () => handleOpenAddFieldModal(overviewTab.id)
+                : undefined
+            }
+          />
+        )}
+
+        {activeTab === "student_board" && (
+          <TabMemberStudentBoard
+            spaceId={member.spaceId}
+            memberId={member.id}
           />
         )}
 
@@ -290,6 +378,25 @@ export function StudentDetailScreen({
             spaceId={selectedSpaceId}
             memberId={member.id}
             tabId={activeCustomTab.id}
+            title={activeCustomTab.name}
+            onRequestAddField={() =>
+              handleOpenAddFieldModal(activeCustomTab.id)
+            }
+            onRequestFieldMenu={({ field, value, position }) =>
+              customFieldActions.openFieldMenu(
+                {
+                  field,
+                  value,
+                  valueFieldType: field.fieldType,
+                  valueOptions: getFieldChoiceOptions(
+                    field.fieldType,
+                    field.options,
+                  ),
+                  valueScope: "fieldValue",
+                },
+                position,
+              )
+            }
           />
         )}
 
@@ -357,14 +464,80 @@ export function StudentDetailScreen({
           </div>
         ) : null}
 
-        {addFieldModalOpen && overviewTab?.id ? (
+        {fieldAddTargetTabId ? (
           <AddCustomFieldModal
             spaceId={member.spaceId}
             memberId={member.id}
-            tabId={overviewTab.id}
-            onClose={() => setAddFieldModalOpen(false)}
+            tabId={fieldAddTargetTabId}
+            onClose={() => setFieldAddTargetTabId(null)}
           />
         ) : null}
+
+        {memberTabActions.contextMenu ? (
+          <MemberTabContextMenu
+            x={memberTabActions.contextMenu.x}
+            y={memberTabActions.contextMenu.y}
+            onRename={() =>
+              memberTabActions.openRenameModal(
+                memberTabActions.contextMenu!.target,
+              )
+            }
+            onDelete={() =>
+              memberTabActions.openDeleteModal(
+                memberTabActions.contextMenu!.target,
+              )
+            }
+          />
+        ) : null}
+
+        <MemberTabRenameModal
+          target={memberTabActions.renameTarget}
+          isSubmitting={memberTabActions.isRenaming}
+          errorMessage={memberTabActions.renameErrorMessage}
+          onClose={memberTabActions.closeRenameModal}
+          onSubmit={memberTabActions.submitRename}
+        />
+
+        <MemberTabDeleteModal
+          target={memberTabActions.deleteTarget}
+          isDeleting={memberTabActions.isDeleting}
+          errorMessage={memberTabActions.deleteErrorMessage}
+          onClose={memberTabActions.closeDeleteModal}
+          onDelete={memberTabActions.confirmDelete}
+        />
+
+        {customFieldActions.contextMenu ? (
+          <MemberFieldContextMenu
+            x={customFieldActions.contextMenu.x}
+            y={customFieldActions.contextMenu.y}
+            onRename={() =>
+              customFieldActions.openEditModal(
+                customFieldActions.contextMenu!.target,
+              )
+            }
+            onDelete={() =>
+              customFieldActions.openDeleteModal(
+                customFieldActions.contextMenu!.target,
+              )
+            }
+          />
+        ) : null}
+
+        <MemberFieldEditModal
+          target={customFieldActions.editTarget}
+          isSubmitting={customFieldActions.isEditing}
+          errorMessage={customFieldActions.editErrorMessage}
+          onClose={customFieldActions.closeEditModal}
+          onSubmit={customFieldActions.submitEdit}
+        />
+
+        <MemberFieldDeleteModal
+          target={customFieldActions.deleteTarget}
+          isDeleting={customFieldActions.isDeleting}
+          errorMessage={customFieldActions.deleteErrorMessage}
+          onClose={customFieldActions.closeDeleteModal}
+          onDelete={customFieldActions.confirmDelete}
+        />
 
         {sheetMode !== null && <div suppressHydrationWarning />}
       </div>
@@ -378,6 +551,7 @@ export function StudentDetailScreen({
       <StudentDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === "overview" && <TabOverview student={student!} />}
+      {activeTab === "student_board" && <TabMemberStudentBoard />}
       {activeTab === "counseling" && (
         <TabCounseling history={student!.counselingHistory} />
       )}

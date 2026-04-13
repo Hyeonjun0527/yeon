@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   createPublicCheckSessionBodySchema,
+  studentBoardHistoryPeriodSchema,
   studentBoardResponseSchema,
 } from "@yeon/api-contract";
 
@@ -29,7 +30,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { spaceId } = await context.params;
-    const data = await listSpaceStudentBoard(currentUser.id, spaceId);
+    const periodResult = studentBoardHistoryPeriodSchema.safeParse(
+      request.nextUrl.searchParams.get("historyPeriod") ?? "7d",
+    );
+
+    if (!periodResult.success) {
+      return jsonError("보드 이력 기간 값이 올바르지 않습니다.", 400);
+    }
+
+    const data = await listSpaceStudentBoard(
+      currentUser.id,
+      spaceId,
+      periodResult.data,
+    );
 
     return NextResponse.json(studentBoardResponseSchema.parse(data));
   });

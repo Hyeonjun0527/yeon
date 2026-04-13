@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 
 import { useTutorial } from "./use-tutorial";
+import { useTutorialPolicy } from "@/app/home/_components/home-sidebar-layout-context";
 
 const Joyride = dynamic(
   () => import("react-joyride").then((m) => ({ default: m.Joyride })),
@@ -74,19 +75,28 @@ const DESKTOP_BOARD_STEPS = [
 
 export function CheckBoardTutorial() {
   const { run, finish } = useTutorial("check-board");
+  const { mode } = useTutorialPolicy("check-board");
   const steps = useMemo(() => {
-    if (typeof document === "undefined") {
-      return DESKTOP_BOARD_STEPS;
+    if (mode === "disabled") {
+      return [];
     }
 
-    if (!document.querySelector('[data-tutorial="check-board-summary"]')) {
+    if (mode === "empty") {
       return NO_SPACE_STEPS;
+    }
+
+    if (typeof window === "undefined") {
+      return DESKTOP_BOARD_STEPS;
     }
 
     return window.matchMedia("(max-width: 639px)").matches
       ? MOBILE_BOARD_STEPS
       : DESKTOP_BOARD_STEPS;
-  }, [run]);
+  }, [mode, run]);
+
+  if (mode === "disabled") {
+    return null;
+  }
 
   const handleEvent = (data: EventData) => {
     const { status } = data;

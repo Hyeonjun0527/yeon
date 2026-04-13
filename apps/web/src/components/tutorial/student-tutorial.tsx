@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 import { useTutorial } from "./use-tutorial";
+import { useTutorialPolicy } from "@/app/home/_components/home-sidebar-layout-context";
 
 const Joyride = dynamic(
   () => import("react-joyride").then((m) => ({ default: m.Joyride })),
@@ -44,15 +45,22 @@ const BASE_STEPS = [
 
 export function StudentTutorial() {
   const { run, finish } = useTutorial("student");
+  const { mode } = useTutorialPolicy("student");
   const steps = useMemo(() => {
-    if (typeof document === "undefined") {
+    if (mode === "disabled") {
+      return [];
+    }
+
+    if (mode === "full") {
       return [...BASE_STEPS, MEMBER_CARD_STEP];
     }
 
-    return document.querySelector(MEMBER_CARD_STEP.target)
-      ? [...BASE_STEPS, MEMBER_CARD_STEP]
-      : [...BASE_STEPS, EMPTY_STATE_STEP];
-  }, [run]);
+    return [...BASE_STEPS, EMPTY_STATE_STEP];
+  }, [mode, run]);
+
+  if (mode === "disabled") {
+    return null;
+  }
 
   const handleEvent = (data: EventData) => {
     const { status } = data;

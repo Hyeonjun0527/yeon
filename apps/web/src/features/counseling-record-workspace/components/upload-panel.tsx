@@ -1,4 +1,4 @@
-import { LoaderCircle, Mic, Upload } from "lucide-react";
+import { Download, LoaderCircle, Mic, Upload } from "lucide-react";
 import type { RecordingPhase, UploadFormState, UploadTone } from "../types";
 import { COUNSELING_TYPE_OPTIONS } from "../constants";
 import {
@@ -7,6 +7,7 @@ import {
   formatFileSize,
 } from "../utils";
 import styles from "../counseling-record-workspace.module.css";
+import { AUDIO_SAMPLE_TEST_DATA } from "@/lib/test-data-downloads";
 
 export interface UploadPanelProps {
   isUploadPanelOpen: boolean;
@@ -160,6 +161,37 @@ export function UploadPanel({
                 </span>
               </div>
             </button>
+            <a
+              href={AUDIO_SAMPLE_TEST_DATA.href}
+              download={AUDIO_SAMPLE_TEST_DATA.downloadName}
+              className="flex items-center gap-[14px] min-h-[64px] py-4 px-[18px] border rounded-[10px] text-left cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-[180ms] hover:-translate-y-px"
+              style={{
+                borderColor: "var(--border-soft)",
+                background: "var(--surface-primary)",
+                color: "inherit",
+                textDecoration: "none",
+              }}
+            >
+              <Download
+                size={20}
+                strokeWidth={2}
+                style={{ flexShrink: 0, color: "var(--accent)" }}
+              />
+              <div className="grid gap-[2px]">
+                <span
+                  className="text-[15px] font-bold leading-[1.3]"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {AUDIO_SAMPLE_TEST_DATA.label}
+                </span>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  20분 분량 샘플 음성 다운로드
+                </span>
+              </div>
+            </a>
           </div>
         ) : null}
 

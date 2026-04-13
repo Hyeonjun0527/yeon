@@ -16,7 +16,6 @@ import type {
   CreatePublicCheckSessionBody,
   PublicCheckLocationSearchResponse,
   PublicCheckLocationSearchResult,
-  StudentBoardHistoryPeriod,
   StudentBoardResponse,
   StudentAssignmentStatus,
   StudentAttendanceStatus,
@@ -27,7 +26,8 @@ import {
   usePublicCheckLocationSearch,
   useSpaceStudentBoard,
 } from "../hooks/use-space-student-board";
-import { StudentBoardHistoryList } from "./student-board-history-list";
+import { useStudentManagement } from "../student-management-provider";
+import { StudentBoardGrassRoster } from "./student-board-grass-roster";
 
 interface StudentCheckBoardPanelProps {
   spaceId: string;
@@ -143,14 +143,6 @@ function toBoardSessions(data: StudentBoardResponse | undefined) {
   return data.sessions;
 }
 
-function toBoardHistory(data: StudentBoardResponse | undefined) {
-  if (!data) {
-    return [];
-  }
-
-  return data.history;
-}
-
 function formatLastPublicCheckAt(value: string | null | undefined) {
   if (!value) {
     return "기록 없음";
@@ -193,8 +185,7 @@ export function StudentCheckBoardPanel({
   spaceId,
   members,
 }: StudentCheckBoardPanelProps) {
-  const [historyPeriod, setHistoryPeriod] =
-    useState<StudentBoardHistoryPeriod>("7d");
+  const { spaces } = useStudentManagement();
   const {
     data,
     loading,
@@ -202,16 +193,20 @@ export function StudentCheckBoardPanel({
     updateMemberBoard,
     createSession,
     updateSession,
-  } = useSpaceStudentBoard(spaceId, historyPeriod);
+  } = useSpaceStudentBoard(spaceId, "space");
   const boardRows = useMemo(() => toBoardRows(data), [data]);
   const boardSessions = useMemo(() => toBoardSessions(data), [data]);
-  const boardHistory = useMemo(() => toBoardHistory(data), [data]);
+  const selectedSpace = useMemo(
+    () => spaces.find((space) => space.id === spaceId) ?? null,
+    [spaceId, spaces],
+  );
   const rowMap = useMemo(
     () => new Map(boardRows.map((row) => [row.memberId, row])),
     [boardRows],
   );
   const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isGrassOpen, setIsGrassOpen] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(
     boardSessions.length === 0,
   );
@@ -424,8 +419,9 @@ export function StudentCheckBoardPanel({
                 <p className="mt-1 text-[11px] text-text-dim">
                   QR / 위치 기반 세션 운영 · 현재{" "}
                   {
-                    boardSessions.filter((session) => session.status === "active")
-                      .length
+                    boardSessions.filter(
+                      (session) => session.status === "active",
+                    ).length
                   }
                   개 활성
                 </p>
@@ -887,14 +883,42 @@ export function StudentCheckBoardPanel({
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           {!loading && !error ? (
-            <StudentBoardHistoryList
-              title="날짜별 출석 · 과제 이력"
-              description="기간 안에서 날짜별 최종 상태를 밀도 높게 확인합니다."
-              period={historyPeriod}
-              history={boardHistory}
-              onPeriodChange={setHistoryPeriod}
-              emptyMessage="선택한 기간에는 출석·과제 이력이 없습니다."
-            />
+            <div className="rounded-2xl border border-border bg-surface-2 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-text">
+                    진행기간 잔디 보기
+                  </div>
+                  <p className="mt-1 text-[11px] text-text-dim">
+                    빠른 수정은 그대로 두고, 필요할 때만 전체 기간 잔디를
+                    펼칩니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text"
+                  onClick={() => setIsGrassOpen((prev) => !prev)}
+                >
+                  {isGrassOpen ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronDown size={14} />
+                  )}
+                  {isGrassOpen ? "잔디 숨기기" : "잔디 보기"}
+                </button>
+              </div>
+
+              {isGrassOpen ? (
+                <div className="mt-4">
+                  <StudentBoardGrassRoster
+                    members={members}
+                    rows={boardRows}
+                    startDate={selectedSpace?.startDate ?? null}
+                    endDate={selectedSpace?.endDate ?? null}
+                  />
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           {!loading && !error ? (
@@ -910,7 +934,7 @@ export function StudentCheckBoardPanel({
               </div>
 
               <div
-                className="space-y-3 sm:hidden"
+                className="space-y-2 sm:hidden"
                 data-tutorial="check-board-member-board-mobile"
               >
                 {members.map((member) => {
@@ -924,15 +948,12 @@ export function StudentCheckBoardPanel({
                   return (
                     <article
                       key={member.id}
-                      className="rounded-xl border border-border bg-surface p-2.5"
+                      className="rounded-xl border border-border bg-surface px-2.5 py-2"
                     >
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="min-w-0">
-                          <div className="text-[13px] font-semibold tracking-[-0.02em] text-text">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-semibold tracking-[-0.02em] text-text">
                             {member.name}
-                          </div>
-                          <div className="mt-0.5 text-[11px] text-text-dim">
-                            {member.phone ?? "전화번호 없음"}
                           </div>
                         </div>
                         <SelfCheckReadyBadge
@@ -940,9 +961,10 @@ export function StudentCheckBoardPanel({
                         />
                       </div>
 
-                      <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="mt-1.5 grid grid-cols-[80px_80px_minmax(0,1fr)_58px] gap-1.5">
                         <select
-                          className="h-11 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text"
+                          aria-label={`${member.name} 출석 상태`}
+                          className="h-10 rounded-lg border border-border bg-surface-2 px-2 text-[12px] text-text outline-none"
                           value={draft.attendanceStatus}
                           onChange={(event) =>
                             handleDraftChange(member.id, {
@@ -951,12 +973,13 @@ export function StudentCheckBoardPanel({
                             })
                           }
                         >
-                          <option value="unknown">출석 · 미정</option>
+                          <option value="unknown">미정</option>
                           <option value="present">출석</option>
                           <option value="absent">미출석</option>
                         </select>
                         <select
-                          className="h-11 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text"
+                          aria-label={`${member.name} 과제 상태`}
+                          className="h-10 rounded-lg border border-border bg-surface-2 px-2 text-[12px] text-text outline-none"
                           value={draft.assignmentStatus}
                           onChange={(event) =>
                             handleDraftChange(member.id, {
@@ -965,32 +988,26 @@ export function StudentCheckBoardPanel({
                             })
                           }
                         >
-                          <option value="unknown">과제 · 미정</option>
-                          <option value="done">과제 완료</option>
-                          <option value="not_done">과제 미완료</option>
+                          <option value="unknown">미정</option>
+                          <option value="done">완료</option>
+                          <option value="not_done">미완료</option>
                         </select>
-                        <div className="col-span-2 flex h-11 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3">
-                          <Link2 size={14} className="shrink-0 text-text-dim" />
+                        <div className="flex h-10 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5">
+                          <Link2 size={12} className="shrink-0 text-text-dim" />
                           <input
-                            className="w-full min-w-0 bg-transparent text-[13px] text-text outline-none"
+                            aria-label={`${member.name} 과제 링크`}
+                            className="w-full min-w-0 bg-transparent text-[12px] text-text outline-none placeholder:text-text-dim"
                             value={draft.assignmentLink}
                             onChange={(event) =>
                               handleDraftChange(member.id, {
                                 assignmentLink: event.target.value,
                               })
                             }
-                            placeholder="과제 링크"
+                            placeholder="링크"
                           />
                         </div>
-                      </div>
-
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="min-w-0 flex-1 text-[10px] leading-relaxed text-text-secondary">
-                          최근 공개체크:{" "}
-                          {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
-                        </span>
                         <button
-                          className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 px-3 text-[12px] font-medium text-text-secondary disabled:opacity-50"
+                          className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 px-2 text-[12px] font-medium text-text-secondary disabled:opacity-50"
                           disabled={isUpdatingBoard}
                           onClick={() =>
                             updateMemberBoard.mutate({
@@ -1005,6 +1022,17 @@ export function StudentCheckBoardPanel({
                         >
                           저장
                         </button>
+                      </div>
+
+                      <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[10px] leading-none text-text-secondary">
+                        <span className="truncate">
+                          {member.phone ?? "전화번호 없음"}
+                        </span>
+                        <span className="shrink-0 text-text-dim">·</span>
+                        <span className="truncate">
+                          최근 공개체크{" "}
+                          {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                        </span>
                       </div>
                     </article>
                   );
@@ -1234,7 +1262,6 @@ export function StudentCheckBoardPanel({
               </div>
             </div>
           ) : null}
-
         </div>
       ) : null}
 

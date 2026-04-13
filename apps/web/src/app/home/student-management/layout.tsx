@@ -24,13 +24,17 @@ import { useStudentManagement } from "@/features/student-management/student-mana
 import { StudentSpaceCreateModal } from "@/features/student-management/components/space-create-modal";
 import { HomeSpaceGate } from "@/app/home/_components/home-space-gate";
 import { useClickOutside } from "@/app/home/_hooks";
-import { useHomeSidebarLayout } from "@/app/home/_components/home-sidebar-layout-context";
+import {
+  useHomeSidebarLayout,
+  useSidebarToggleVisibility,
+} from "@/app/home/_components/home-sidebar-layout-context";
 import {
   SpaceSettingsDrawerProvider,
   SpaceSettingsDrawerHost,
   useSpaceSettingsDrawer,
 } from "@/features/space-settings";
 import type { LocalImportDraftSummary } from "./_lib/space-sidebar-types";
+import { getStudentManagementLayoutUiPolicy } from "./_lib/student-management-layout-ui-policy";
 import { createPatchedHref } from "@/lib/route-state/search-params";
 import { useAppRoute } from "@/lib/app-route-context";
 
@@ -271,11 +275,19 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
       setMobileActionTarget(target);
     }, 140);
   };
-  const showStudentShell = !noSpaces;
+  const studentLayoutUiPolicy = getStudentManagementLayoutUiPolicy({
+    spacesLoading,
+    spaceCount: spaces.length,
+  });
+
+  useSidebarToggleVisibility(
+    "students",
+    studentLayoutUiPolicy.canToggleSidebar,
+  );
 
   return (
     <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
-      {showStudentShell ? (
+      {studentLayoutUiPolicy.showStudentShell ? (
         <div className="border-b border-border bg-surface px-3 py-3 md:hidden">
           <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface-2 p-1">
             <button
@@ -341,7 +353,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      {showStudentShell ? (
+      {studentLayoutUiPolicy.showStudentShell ? (
         <nav
           className={`scrollbar-subtle relative hidden flex-shrink-0 transition-[width,padding] duration-200 md:flex ${
             studentSidebarCollapsed
@@ -351,148 +363,151 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         >
           {!studentSidebarCollapsed ? (
             <div className="flex min-h-full w-full flex-col gap-1">
-            <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-1 pb-1.5">
-              스페이스
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {spaceSelection.ids.length > 1 ? (
-                <div className="mb-1 rounded-[8px] border border-accent-border bg-accent-dim px-2.5 py-2 text-[12px] font-medium text-accent max-md:min-w-[220px]">
-                  스페이스 {spaceSelection.ids.length}개 선택됨
-                </div>
-              ) : null}
-              <button
-                className="flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent w-full text-left text-text-dim transition-[border-color,color,background] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
-                onClick={() => openCreateModal("choose")}
-                type="button"
-              >
-                <Plus size={14} />
-                <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                  스페이스 만들기
-                </span>
-              </button>
-              {spacesLoading && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    padding: "4px 10px",
-                  }}
-                >
-                  불러오는 중...
-                </div>
-              )}
-              {noSpaces && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-dim)",
-                    padding: "4px 10px",
-                  }}
-                >
-                  스페이스가 없습니다.
-                </div>
-              )}
-              {spaces.map((space, index) => {
-                const isSpaceSelected = spaceSelection.ids.includes(space.id);
-                const isActiveSpace = selectedSpaceId === space.id;
-
-                return (
-                  <button
-                    key={space.id}
-                    className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
-                      isSpaceSelected
-                        ? isActiveSpace
-                          ? " bg-accent-dim text-accent font-semibold"
-                          : " bg-accent-dim text-text font-medium"
-                        : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
-                    }`}
-                    onClick={(event) =>
-                      handleSpaceClick(event, space.id, index)
-                    }
-                    onContextMenu={(event) =>
-                      handleSpaceContextMenu(event, space.id, space.name)
-                    }
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: "var(--accent)" }}
-                    />
-                    <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {space.name}
-                    </span>
-                    {isActiveSpace ? (
-                      <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">
-                        {members.length}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {spaceActionError ? (
-              <div className="mt-2 rounded-[6px] border border-red/20 bg-red/10 px-2.5 py-2 text-[12px] text-red">
-                {spaceActionError}
+              <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-1 pb-1.5">
+                스페이스
               </div>
-            ) : null}
-
-            <div
-              style={{
-                marginTop: "auto",
-                paddingTop: 16,
-                borderTop: "1px solid var(--border)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              {localDraftCount > 0 ? (
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-accent-border bg-accent-dim/50 px-3 py-3 text-left transition-colors hover:border-accent hover:bg-accent-dim"
-                  onClick={() => openCreateModal("import")}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 rounded-lg bg-surface px-2 py-2 text-accent shrink-0">
-                      <FileClock size={14} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center justify-between gap-2">
-                        <span className="min-w-0 flex-1 text-[13px] font-semibold text-text truncate">
-                          가져오기 작업 보기
-                        </span>
-                        <span className="shrink-0 rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-accent">
-                          {localDraftCount}개
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] leading-relaxed text-text-dim line-clamp-2">
-                        분석 중이거나 저장된 가져오기 작업을 한곳에서 확인하고,
-                        원하는 초안을 골라 이어서 작업할 수 있습니다.
-                      </p>
-                    </div>
+              <div className="flex flex-col gap-0.5">
+                {spaceSelection.ids.length > 1 ? (
+                  <div className="mb-1 rounded-[8px] border border-accent-border bg-accent-dim px-2.5 py-2 text-[12px] font-medium text-accent max-md:min-w-[220px]">
+                    스페이스 {spaceSelection.ids.length}개 선택됨
                   </div>
+                ) : null}
+                <button
+                  className="flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border border-dashed border-border bg-transparent w-full text-left text-text-dim transition-[border-color,color,background] duration-150 hover:border-accent-border hover:bg-accent-dim hover:text-accent"
+                  onClick={() => openCreateModal("choose")}
+                  type="button"
+                >
+                  <Plus size={14} />
+                  <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                    스페이스 만들기
+                  </span>
                 </button>
-              ) : null}
-              {localDraftCount === 0 && localDraftsLoading ? (
-                <div className="rounded-[8px] border border-border bg-surface-2 px-3 py-2 text-[12px] text-text-dim">
-                  가져오기 작업 확인 중...
+                {spacesLoading && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-dim)",
+                      padding: "4px 10px",
+                    }}
+                  >
+                    불러오는 중...
+                  </div>
+                )}
+                {noSpaces && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-dim)",
+                      padding: "4px 10px",
+                    }}
+                  >
+                    스페이스가 없습니다.
+                  </div>
+                )}
+                {spaces.map((space, index) => {
+                  const isSpaceSelected = spaceSelection.ids.includes(space.id);
+                  const isActiveSpace = selectedSpaceId === space.id;
+
+                  return (
+                    <button
+                      key={space.id}
+                      className={`flex items-center gap-2 py-2 px-2.5 rounded-[6px] text-[13px] font-medium cursor-pointer border-none w-full text-left transition-[background,color] duration-[120ms] max-md:whitespace-nowrap max-md:py-2 max-md:px-3${
+                        isSpaceSelected
+                          ? isActiveSpace
+                            ? " bg-accent-dim text-accent font-semibold"
+                            : " bg-accent-dim text-text font-medium"
+                          : " bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text"
+                      }`}
+                      onClick={(event) =>
+                        handleSpaceClick(event, space.id, index)
+                      }
+                      onContextMenu={(event) =>
+                        handleSpaceContextMenu(event, space.id, space.name)
+                      }
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: "var(--accent)" }}
+                      />
+                      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {space.name}
+                      </span>
+                      {isActiveSpace ? (
+                        <span className="ml-auto text-[11px] text-text-dim font-medium tabular-nums">
+                          {members.length}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {spaceActionError ? (
+                <div className="mt-2 rounded-[6px] border border-red/20 bg-red/10 px-2.5 py-2 text-[12px] text-red">
+                  {spaceActionError}
                 </div>
               ) : null}
-              {localDraftsError ? (
-                <div className="rounded-[8px] border border-red/20 bg-red/10 px-3 py-2 text-[12px] text-red">
-                  {localDraftsError}
-                </div>
-              ) : null}
-            </div>
+
+              <div
+                style={{
+                  marginTop: "auto",
+                  paddingTop: 16,
+                  borderTop: "1px solid var(--border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                {localDraftCount > 0 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-accent-border bg-accent-dim/50 px-3 py-3 text-left transition-colors hover:border-accent hover:bg-accent-dim"
+                    onClick={() => openCreateModal("import")}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 rounded-lg bg-surface px-2 py-2 text-accent shrink-0">
+                        <FileClock size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="min-w-0 flex-1 text-[13px] font-semibold text-text truncate">
+                            가져오기 작업 보기
+                          </span>
+                          <span className="shrink-0 rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            {localDraftCount}개
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-text-dim line-clamp-2">
+                          분석 중이거나 저장된 가져오기 작업을 한곳에서
+                          확인하고, 원하는 초안을 골라 이어서 작업할 수
+                          있습니다.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ) : null}
+                {localDraftCount === 0 && localDraftsLoading ? (
+                  <div className="rounded-[8px] border border-border bg-surface-2 px-3 py-2 text-[12px] text-text-dim">
+                    가져오기 작업 확인 중...
+                  </div>
+                ) : null}
+                {localDraftsError ? (
+                  <div className="rounded-[8px] border border-red/20 bg-red/10 px-3 py-2 text-[12px] text-red">
+                    {localDraftsError}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </nav>
       ) : null}
       <main
         className={`scrollbar-subtle flex-1 overflow-y-auto ${
-          showStudentShell ? "p-8 max-md:px-3 max-md:py-4" : ""
+          studentLayoutUiPolicy.showStudentShell
+            ? "p-8 max-md:px-3 max-md:py-4"
+            : ""
         }`}
       >
-        {noSpaces ? (
+        {studentLayoutUiPolicy.surface === "space-gate" ? (
           <HomeSpaceGate
             variant="student-management"
             onCreateBlankSpace={() => openCreateModal("blank")}

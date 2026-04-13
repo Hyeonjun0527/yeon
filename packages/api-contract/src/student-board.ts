@@ -18,7 +18,12 @@ export const studentBoardSourceValues = [
 export const publicCheckMethodValues = ["qr", "location"] as const;
 export const publicCheckEntryValues = ["qr", "location"] as const;
 export const publicCheckSessionStatusValues = ["active", "closed"] as const;
-export const studentBoardHistoryPeriodValues = ["7d", "30d", "365d"] as const;
+export const studentBoardHistoryPeriodValues = [
+  "space",
+  "7d",
+  "30d",
+  "365d",
+] as const;
 export const publicCheckSessionModeValues = [
   "attendance_only",
   "assignment_only",
@@ -53,6 +58,7 @@ export const publicCheckSessionModeSchema = z.enum(
 export const publicCheckVerificationStatusSchema = z.enum(
   publicCheckVerificationStatusValues,
 );
+export const studentBoardDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const studentBoardRowSchema = z.object({
   memberId: z.string().uuid(),
@@ -65,13 +71,23 @@ export const studentBoardRowSchema = z.object({
   assignmentMarkedSource: studentBoardSourceSchema.nullable(),
   lastPublicCheckAt: z.string().datetime().nullable(),
   isSelfCheckReady: z.boolean(),
+  dailyCells: z.array(
+    z.object({
+      date: studentBoardDateSchema,
+      attendanceStatus: studentAttendanceStatusSchema,
+      assignmentStatus: studentAssignmentStatusSchema,
+      assignmentLink: z.string().max(1000).nullable(),
+      occurredAt: z.string().datetime().nullable(),
+      source: studentBoardSourceSchema.nullable(),
+    }),
+  ),
 });
 
 export const studentBoardHistoryItemSchema = z.object({
   id: z.string().uuid(),
   memberId: z.string().uuid(),
   memberName: z.string().min(1),
-  historyDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  historyDate: studentBoardDateSchema,
   occurredAt: z.string().datetime(),
   attendanceStatus: studentAttendanceStatusSchema,
   assignmentStatus: studentAssignmentStatusSchema,
@@ -123,11 +139,11 @@ export const studentBoardResponseSchema = z.object({
   rows: z.array(studentBoardRowSchema),
   sessions: z.array(publicCheckSessionSummarySchema),
   historyPeriod: studentBoardHistoryPeriodSchema,
-  history: z.array(studentBoardHistoryItemSchema),
 });
 
-export const memberStudentBoardHistoryResponseSchema = z.object({
+export const memberStudentBoardResponseSchema = z.object({
   period: studentBoardHistoryPeriodSchema,
+  dailyCells: studentBoardRowSchema.shape.dailyCells,
   history: z.array(studentBoardHistoryItemSchema),
 });
 
@@ -160,7 +176,11 @@ export const publicCheckSessionPublicSchema = z.object({
 export const submitPublicCheckBodySchema = z.object({
   method: publicCheckMethodSchema,
   name: z.string().min(1).max(100).nullable().optional(),
-  phoneLast4: z.string().regex(/^\d{4}$/).nullable().optional(),
+  phoneLast4: z
+    .string()
+    .regex(/^\d{4}$/)
+    .nullable()
+    .optional(),
   assignmentStatus: studentAssignmentStatusSchema.optional(),
   assignmentLink: z.string().max(1000).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
@@ -192,6 +212,7 @@ export type StudentAssignmentStatus = z.infer<
 >;
 export type StudentBoardSource = z.infer<typeof studentBoardSourceSchema>;
 export type StudentBoardRow = z.infer<typeof studentBoardRowSchema>;
+export type StudentBoardDailyCell = StudentBoardRow["dailyCells"][number];
 export type StudentBoardHistoryPeriod = z.infer<
   typeof studentBoardHistoryPeriodSchema
 >;
@@ -225,8 +246,8 @@ export type PublicCheckLocationSearchResponse = z.infer<
   typeof publicCheckLocationSearchResponseSchema
 >;
 export type StudentBoardResponse = z.infer<typeof studentBoardResponseSchema>;
-export type MemberStudentBoardHistoryResponse = z.infer<
-  typeof memberStudentBoardHistoryResponseSchema
+export type MemberStudentBoardResponse = z.infer<
+  typeof memberStudentBoardResponseSchema
 >;
 export type CreatePublicCheckSessionBody = z.infer<
   typeof createPublicCheckSessionBodySchema

@@ -20,6 +20,7 @@ const PROCESSING_STAGE_TO_STEP: Record<
   downloading: 0,
   chunking: 1,
   transcribing: 2,
+  partial_transcript_ready: 2,
   resolving_speakers: 3,
   transcript_ready: 4,
   analyzing: 4,

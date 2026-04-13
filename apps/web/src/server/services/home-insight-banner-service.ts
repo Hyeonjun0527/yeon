@@ -18,7 +18,10 @@ function toIso(value: Date | null | undefined) {
 
 function toDismissalMap(rows: { bannerKey: string; hiddenUntil: Date }[]) {
   return new Map<HomeInsightBannerKey, string>(
-    rows.map((row) => [row.bannerKey as HomeInsightBannerKey, row.hiddenUntil.toISOString()]),
+    rows.map((row) => [
+      row.bannerKey as HomeInsightBannerKey,
+      row.hiddenUntil.toISOString(),
+    ]),
   );
 }
 
@@ -46,7 +49,9 @@ export async function dismissHomeInsightBanner(params: {
   userId: string;
   bannerKey: HomeInsightBannerKey;
 }): Promise<DismissHomeInsightBannerResponse> {
-  const hiddenUntil = new Date(Date.now() + HOME_INSIGHT_BANNER_DISMISS_DURATION_MS);
+  const hiddenUntil = new Date(
+    Date.now() + HOME_INSIGHT_BANNER_DISMISS_DURATION_MS,
+  );
 
   await getDb()
     .insert(homeInsightBannerDismissals)

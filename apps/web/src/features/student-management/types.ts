@@ -66,7 +66,12 @@ export interface ClassRoom {
 export type ViewMode = "card" | "dense" | "table";
 
 /** 탭 ID */
-export type DetailTab = "overview" | "counseling" | "memos" | "report";
+export type DetailTab =
+  | "overview"
+  | "student_board"
+  | "counseling"
+  | "memos"
+  | "report";
 
 /** Sheet 모드 */
 export type SheetMode = "create" | "edit" | null;

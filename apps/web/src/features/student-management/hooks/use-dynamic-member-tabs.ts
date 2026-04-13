@@ -2,6 +2,10 @@
 
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ensureStudentBoardSystemTab,
+  SYNTHETIC_STUDENT_BOARD_TAB_ID,
+} from "@/lib/member-system-tabs";
 
 export interface DynamicTab {
   id: string;
@@ -16,9 +20,13 @@ function toVisibleTabs(data: DynamicTab[] | undefined) {
   return data ? data : [];
 }
 
+export function memberTabsQueryKey(spaceId: string | null) {
+  return ["member-tabs", spaceId] as const;
+}
+
 export function useDynamicMemberTabs(spaceId: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = ["member-tabs", spaceId] as const;
+  const queryKey = memberTabsQueryKey(spaceId);
 
   const { data, isPending } = useQuery({
     queryKey,
@@ -30,7 +38,17 @@ export function useDynamicMemberTabs(spaceId: string | null) {
       }
 
       const data = (await res.json()) as { tabs: DynamicTab[] };
-      return data.tabs.filter((t) => t.isVisible);
+      return ensureStudentBoardSystemTab(
+        data.tabs.filter((t) => t.isVisible),
+        () => ({
+          id: SYNTHETIC_STUDENT_BOARD_TAB_ID,
+          name: "출석·과제",
+          tabType: "system",
+          systemKey: "student_board",
+          isVisible: true,
+          displayOrder: 1,
+        }),
+      );
     },
   });
 

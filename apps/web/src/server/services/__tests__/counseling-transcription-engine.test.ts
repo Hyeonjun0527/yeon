@@ -9,6 +9,7 @@ const {
   mapOpenAiSegments,
   shouldChunkTranscription,
   getPreferredTranscriptionStrategy,
+  isRecoverableEmptyChunk,
 } = _testing;
 
 describe("mapSpeakerTone", () => {
@@ -437,10 +438,54 @@ describe("transcription strategy", () => {
     );
   });
 
-  it("긴 오디오는 non-diarize 우선 전략과 최대 청크를 선택한다", () => {
+  it("긴 오디오는 non-diarize 우선 전략과 4분 청크를 선택한다", () => {
     const strategy = getPreferredTranscriptionStrategy(3599_736);
     expect(strategy.preferNonDiarization).toBe(true);
-    expect(strategy.chunkDurationSeconds).toBe(23 * 60);
+    expect(strategy.chunkDurationSeconds).toBe(4 * 60);
     expect(strategy.modelCandidates[0]).toContain("transcribe");
+  });
+
+  it("20분을 넘는 9MB mp3는 통파일이 아니라 청킹 경로로 들어간다", () => {
+    const durationMs = 20 * 60 * 1000 + 1;
+    const strategy = getPreferredTranscriptionStrategy(durationMs);
+
+    expect(strategy.preferNonDiarization).toBe(true);
+    expect(strategy.chunkDurationSeconds).toBe(4 * 60);
+    expect(
+      shouldChunkTranscription(
+        9 * 1024 * 1024,
+        durationMs,
+        strategy.chunkDurationSeconds,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("recoverable empty chunk", () => {
+  it("duration이 없고 파일이 매우 작으면 자동 폐기 대상으로 본다", () => {
+    expect(
+      isRecoverableEmptyChunk({
+        byteSize: 620,
+        durationMs: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("duration이 없더라도 파일이 크면 자동 폐기 대상으로 보지 않는다", () => {
+    expect(
+      isRecoverableEmptyChunk({
+        byteSize: 32 * 1024,
+        durationMs: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("duration이 있으면 파일이 작아도 유효 chunk로 유지한다", () => {
+    expect(
+      isRecoverableEmptyChunk({
+        byteSize: 900,
+        durationMs: 120,
+      }),
+    ).toBe(false);
   });
 });

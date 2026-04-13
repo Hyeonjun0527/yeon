@@ -16,6 +16,15 @@ type RecordRetryDeps = {
   selectRecord: (id: string) => void;
 };
 
+function canRetryTranscription(selected: RecordItem | null) {
+  return (
+    !!selected &&
+    (selected.status === "error" ||
+      (selected.status === "processing" &&
+        selected.processingStage === "partial_transcript_ready"))
+  );
+}
+
 async function readErrorMessage(res: Response, fallbackMessage: string) {
   const contentType = res.headers.get("content-type") ?? "";
 
@@ -56,7 +65,13 @@ export function useRecordRetry({
   const retryPending = retryFailedRecordPending || retryFailedAnalysisPending;
 
   const retryFailedRecord = useCallback(async () => {
-    if (!selected || selected.status !== "error" || retryFailedRecordPending) {
+    const currentRecord = selected;
+
+    if (
+      !currentRecord ||
+      !canRetryTranscription(currentRecord) ||
+      retryFailedRecordPending
+    ) {
       return;
     }
 
@@ -64,7 +79,7 @@ export function useRecordRetry({
     setRetryFeedback({ message: null, tone: "idle" });
     try {
       const res = await fetch(
-        `/api/v1/counseling-records/${selected.id}/transcribe`,
+        `/api/v1/counseling-records/${currentRecord.id}/transcribe`,
         {
           method: "POST",
           headers: {
@@ -87,7 +102,9 @@ export function useRecordRetry({
       boostPolling();
       setRetryFeedback({
         message:
-          "재전사를 다시 시작했습니다. 처리 중 상태를 자동으로 더 자주 갱신합니다.",
+          currentRecord.status === "error"
+            ? "재전사를 다시 시작했습니다. 처리 중 상태를 자동으로 더 자주 갱신합니다."
+            : "누락된 전사 구간 재시도를 시작했습니다. 복구가 끝나면 AI 분석을 이어갈 수 있습니다.",
         tone: "success",
       });
     } catch (error) {

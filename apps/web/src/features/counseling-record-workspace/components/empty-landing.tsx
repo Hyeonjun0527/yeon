@@ -1,10 +1,11 @@
-import { Mic, Upload } from "lucide-react";
+import { Download, Mic, Upload } from "lucide-react";
 import type { RecordingPhase } from "../types";
 import {
   formatCompactDuration,
   formatFileSize,
   formatDurationLabel,
 } from "../utils";
+import { AUDIO_SAMPLE_TEST_DATA } from "@/lib/test-data-downloads";
 
 export interface EmptyLandingProps {
   recordingPhase: RecordingPhase;
@@ -70,29 +71,44 @@ export function EmptyLanding({
         </p>
 
         {recordingPhase === "idle" && !hasAudioReady ? (
-          <div className="grid grid-cols-2 gap-3 mt-2">
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 py-[14px] px-7 border border-transparent rounded-xl text-[15px] font-bold cursor-pointer transition-[opacity,box-shadow,background,border-color] duration-150 hover:opacity-90"
-              style={{ background: "var(--accent)", color: "white" }}
-              onClick={onFileInputClick}
-            >
-              <Upload size={16} strokeWidth={2.2} />
-              파일 업로드
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 py-[14px] px-7 rounded-xl text-[15px] font-bold cursor-pointer transition-[opacity,box-shadow,background,border-color] duration-150"
+          <div className="mt-2 grid gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className="flex items-center justify-center gap-2 py-[14px] px-7 border border-transparent rounded-xl text-[15px] font-bold cursor-pointer transition-[opacity,box-shadow,background,border-color] duration-150 hover:opacity-90"
+                style={{ background: "var(--accent)", color: "white" }}
+                onClick={onFileInputClick}
+              >
+                <Upload size={16} strokeWidth={2.2} />
+                파일 업로드
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-center gap-2 py-[14px] px-7 rounded-xl text-[15px] font-bold cursor-pointer transition-[opacity,box-shadow,background,border-color] duration-150"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "var(--text-primary)",
+                }}
+                onClick={onStartRecording}
+              >
+                <Mic size={16} strokeWidth={2.2} />
+                바로 녹음하기
+              </button>
+            </div>
+            <a
+              href={AUDIO_SAMPLE_TEST_DATA.href}
+              download={AUDIO_SAMPLE_TEST_DATA.downloadName}
+              className="inline-flex items-center justify-center gap-2 py-[13px] px-7 rounded-xl border text-[14px] font-semibold transition-[background-color,border-color,color] duration-150"
               style={{
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.06)",
-                color: "var(--text-primary)",
+                borderColor: "rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.04)",
+                color: "var(--text-secondary)",
               }}
-              onClick={onStartRecording}
             >
-              <Mic size={16} strokeWidth={2.2} />
-              바로 녹음하기
-            </button>
+              <Download size={15} strokeWidth={2.1} />
+              {AUDIO_SAMPLE_TEST_DATA.label}
+            </a>
           </div>
         ) : null}
 

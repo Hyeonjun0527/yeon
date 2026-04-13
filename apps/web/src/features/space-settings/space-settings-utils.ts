@@ -5,7 +5,11 @@ export function resolveInitialSelectedTabId(
   selectedTabId: string | null,
   initialTabId?: string,
 ) {
-  if (selectedTabId || tabs.length === 0) {
+  if (tabs.length === 0) {
+    return selectedTabId;
+  }
+
+  if (selectedTabId && tabs.some((tab) => tab.id === selectedTabId)) {
     return selectedTabId;
   }
 
@@ -18,4 +22,31 @@ export function moveItem<T>(items: T[], fromIdx: number, toIdx: number) {
   const [moved] = reordered.splice(fromIdx, 1);
   reordered.splice(toIdx, 0, moved);
   return reordered;
+}
+
+export function getAdjacentCustomTabIndexes(
+  tabs: SpaceTab[],
+  currentIndex: number,
+) {
+  const currentTab = tabs[currentIndex];
+  if (!currentTab || currentTab.tabType !== "custom") {
+    return {
+      previousIndex: null,
+      nextIndex: null,
+    };
+  }
+
+  const customIndexes = tabs.flatMap((tab, index) =>
+    tab.tabType === "custom" ? [index] : [],
+  );
+  const currentCustomIndex = customIndexes.indexOf(currentIndex);
+
+  return {
+    previousIndex:
+      currentCustomIndex > 0 ? customIndexes[currentCustomIndex - 1] : null,
+    nextIndex:
+      currentCustomIndex >= 0 && currentCustomIndex < customIndexes.length - 1
+        ? customIndexes[currentCustomIndex + 1]
+        : null,
+  };
 }

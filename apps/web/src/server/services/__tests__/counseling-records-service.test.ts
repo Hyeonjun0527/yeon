@@ -622,6 +622,113 @@ describe("counseling-records-service bulk optimizations", () => {
     });
   });
 
+  it("retryCounselingRecordTranscription는 partial transcript 상태면 기존 chunk를 유지한 채 누락 구간만 다시 시도한다", async () => {
+    const dbMock = createDbMock({});
+    const preservedChunks = [
+      {
+        index: 0,
+        offsetMs: 0,
+        transcriptText: "첫 번째 구간",
+        language: "ko",
+        durationMs: 30_000,
+        model: "gpt-4o-transcribe-diarize",
+        segments: [
+          {
+            startMs: 0,
+            endMs: 15_000,
+            speakerLabel: "화자 1",
+            speakerTone: "unknown",
+            text: "첫 번째 구간",
+          },
+        ],
+      },
+      {
+        index: 2,
+        offsetMs: 60_000,
+        transcriptText: "세 번째 구간",
+        language: "ko",
+        durationMs: 30_000,
+        model: "gpt-4o-transcribe-diarize",
+        segments: [
+          {
+            startMs: 60_000,
+            endMs: 75_000,
+            speakerLabel: "화자 2",
+            speakerTone: "unknown",
+            text: "세 번째 구간",
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(getDb).mockReturnValue(dbMock.db as never);
+    mocks.findOwnedRecord
+      .mockResolvedValueOnce({
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "processing",
+        processingStage: "partial_transcript_ready",
+        processingChunkCount: 3,
+        transcriptionChunks: preservedChunks,
+        analysisStatus: "idle",
+      })
+      .mockResolvedValue({
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "ready",
+        analysisStatus: "idle",
+      });
+    mocks.findOwnedRecordDetailSource.mockResolvedValue({
+      record: {
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "processing",
+        analysisStatus: "idle",
+        processingStage: "queued",
+      },
+      segments: [],
+    });
+    mocks.mapRecordDetail.mockReturnValue({
+      id: "record-1",
+      status: "processing",
+      processingStage: "queued",
+      transcriptSegments: [],
+    });
+
+    await expect(
+      retryCounselingRecordTranscription(
+        { id: "user-1", email: "mentor@example.com" } as never,
+        "record-1",
+      ),
+    ).resolves.toEqual({
+      id: "record-1",
+      status: "processing",
+      processingStage: "queued",
+      transcriptSegments: [],
+    });
+
+    expect(dbMock.updateSetPayloads[0]).toMatchObject({
+      status: "processing",
+      processingStage: "queued",
+      processingChunkCount: 3,
+      processingChunkCompletedCount: 2,
+      transcriptionChunks: preservedChunks,
+      processingMessage:
+        "누락된 전사 구간만 다시 준비하고 있습니다. 이미 저장된 원문은 유지됩니다.",
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      analysisErrorMessage: null,
+      analysisResult: null,
+      analysisCompletedAt: null,
+    });
+  });
+
   it("getCounselingRecordAudio는 텍스트 메모면 404를 던진다", async () => {
     mocks.findOwnedRecord.mockResolvedValue({
       id: "record-1",
@@ -653,7 +760,10 @@ describe("counseling-records-service bulk optimizations", () => {
       ],
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
-    mocks.findOwnedRecord.mockResolvedValue({ id: "record-1" });
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "ready",
+    });
     mocks.mapSegmentRow.mockReturnValue({ id: "segment-1", text: "기존 문장" });
 
     await expect(
@@ -679,7 +789,7 @@ describe("counseling-records-service bulk optimizations", () => {
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
     mocks.findOwnedRecord
-      .mockResolvedValueOnce({ id: "record-1" })
+      .mockResolvedValueOnce({ id: "record-1", status: "ready" })
       .mockResolvedValueOnce({
         id: "record-1",
         status: "ready",
@@ -718,7 +828,10 @@ describe("counseling-records-service bulk optimizations", () => {
   it("bulkUpdateSpeakerLabel는 변경된 segment가 없으면 분석 상태를 초기화하지 않는다", async () => {
     const dbMock = createDbMock({ updateReturning: [[]] });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
-    mocks.findOwnedRecord.mockResolvedValue({ id: "record-1" });
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "ready",
+    });
 
     await expect(
       bulkUpdateSpeakerLabel("user-1", "record-1", "화자 A", "멘토"),
@@ -734,7 +847,7 @@ describe("counseling-records-service bulk optimizations", () => {
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
     mocks.findOwnedRecord
-      .mockResolvedValueOnce({ id: "record-1" })
+      .mockResolvedValueOnce({ id: "record-1", status: "ready" })
       .mockResolvedValueOnce({
         id: "record-1",
         status: "ready",
@@ -765,5 +878,23 @@ describe("counseling-records-service bulk optimizations", () => {
       "user-1",
       "record-1",
     );
+  });
+
+  it("updateTranscriptSegment는 partial transcript 상태면 400을 던진다", async () => {
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "processing",
+      processingStage: "partial_transcript_ready",
+    });
+
+    await expect(
+      updateTranscriptSegment("user-1", "record-1", "segment-1", {
+        text: "수정된 문장",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        "원문 전사가 모두 준비된 기록만 편집할 수 있습니다. 누락 구간 복구 후 다시 시도해 주세요.",
+    });
   });
 });

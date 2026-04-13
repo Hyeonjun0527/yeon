@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
+import { isProtectedMemberTab } from "@/lib/member-tab-policy";
 import { FIELD_TYPE_LABELS } from "../types";
 import type { FieldType, SpaceTab } from "../types";
 import { useSpaceSettings } from "../hooks/use-space-settings";
+import { getAdjacentCustomTabIndexes } from "../space-settings-utils";
 import { SpaceTemplatePreviewModal } from "./space-template-preview-modal";
 
 interface SpaceSettingsContentProps {
   spaceId: string;
   spaceName?: string;
   initialTabId?: string | null;
+  onBack?: () => void;
   onClose: () => void;
 }
 
@@ -31,6 +34,7 @@ export function SpaceSettingsContent({
   spaceId,
   spaceName,
   initialTabId,
+  onBack,
   onClose,
 }: SpaceSettingsContentProps) {
   const {
@@ -66,6 +70,9 @@ export function SpaceSettingsContent({
   const [newFieldType, setNewFieldType] = useState<FieldType>("text");
   const [addingField, setAddingField] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmDeleteTabId, setConfirmDeleteTabId] = useState<string | null>(
+    null,
+  );
   const [resetting, setResetting] = useState(false);
   const [templateName, setTemplateName] = useState(
     spaceName ? `${spaceName} 템플릿` : "",
@@ -82,6 +89,9 @@ export function SpaceSettingsContent({
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const selectedTab = tabs.find((t) => t.id === selectedTabId) ?? null;
+  const selectedStudentBoardTab = selectedTab?.systemKey === "student_board";
+  const confirmDeleteTab =
+    tabs.find((tab) => tab.id === confirmDeleteTabId) ?? null;
   const selectedTemplate = useMemo(
     () =>
       templates.find((template) => template.id === selectedTemplateId) ?? null,
@@ -194,14 +204,26 @@ export function SpaceSettingsContent({
     <div className="flex flex-col h-full">
       {/* 헤더 */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
-        <div>
-          <h2 className="text-base font-semibold text-text">
-            수강생 정보 구성
-          </h2>
-          <p className="text-xs text-text-dim mt-0.5">
-            {spaceName ? `${spaceName} · ` : ""}수강생 상세 페이지의 탭과 입력
-            항목을 설정합니다
-          </p>
+        <div className="flex items-center gap-2">
+          {onBack ? (
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-2 text-text-dim transition-colors hover:bg-surface-3 hover:text-text"
+              onClick={onBack}
+              aria-label="뒤로 가기"
+            >
+              <ArrowLeft size={15} />
+            </button>
+          ) : null}
+          <div>
+            <h2 className="text-base font-semibold text-text">
+              수강생 정보 구성
+            </h2>
+            <p className="text-xs text-text-dim mt-0.5">
+              {spaceName ? `${spaceName} · ` : ""}수강생 상세 페이지의 탭과 입력
+              항목을 설정합니다
+            </p>
+          </div>
         </div>
         <button
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-dim hover:text-text hover:bg-surface-3 transition-colors border-none bg-transparent cursor-pointer"
@@ -463,21 +485,32 @@ export function SpaceSettingsContent({
                 불러오는 중…
               </div>
             ) : (
-              tabs.map((tab, idx) => (
-                <TabRow
-                  key={tab.id}
-                  tab={tab}
-                  isSelected={tab.id === selectedTabId}
-                  canMoveUp={idx > 0}
-                  canMoveDown={idx < tabs.length - 1}
-                  onSelect={() => setSelectedTabId(tab.id)}
-                  onRename={(name) => renameTab(tab.id, name)}
-                  onToggleVisible={() => toggleTabVisibility(tab.id)}
-                  onDelete={() => deleteTab(tab.id)}
-                  onMoveUp={() => reorderTabs(idx, idx - 1)}
-                  onMoveDown={() => reorderTabs(idx, idx + 1)}
-                />
-              ))
+              tabs.map((tab, idx) => {
+                const { previousIndex, nextIndex } =
+                  getAdjacentCustomTabIndexes(tabs, idx);
+
+                return (
+                  <TabRow
+                    key={tab.id}
+                    tab={tab}
+                    isSelected={tab.id === selectedTabId}
+                    canMoveUp={previousIndex !== null}
+                    canMoveDown={nextIndex !== null}
+                    onSelect={() => setSelectedTabId(tab.id)}
+                    onRename={(name) => renameTab(tab.id, name)}
+                    onToggleVisible={() => toggleTabVisibility(tab.id)}
+                    onDelete={() => setConfirmDeleteTabId(tab.id)}
+                    onMoveUp={() => {
+                      if (previousIndex === null) return;
+                      reorderTabs(idx, previousIndex);
+                    }}
+                    onMoveDown={() => {
+                      if (nextIndex === null) return;
+                      reorderTabs(idx, nextIndex);
+                    }}
+                  />
+                );
+              })
             )}
           </div>
 
@@ -514,11 +547,11 @@ export function SpaceSettingsContent({
                   <span className="text-sm font-semibold text-text">
                     {selectedTab.name}
                   </span>
-                  {selectedTab.tabType === "system" && (
+                  {isProtectedMemberTab(selectedTab) ? (
                     <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-surface-3 text-text-dim border border-border">
-                      시스템
+                      읽기 전용
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <span className="text-xs text-text-dim">
                   {fields.length}개 필드
@@ -529,6 +562,16 @@ export function SpaceSettingsContent({
                 {fieldsLoading ? (
                   <div className="px-6 py-8 text-xs text-text-dim text-center">
                     불러오는 중…
+                  </div>
+                ) : selectedStudentBoardTab ? (
+                  <div className="px-6 py-8 text-center">
+                    <p className="text-xs text-text-dim">
+                      출석·과제 탭은 조회 전용 기본 탭입니다
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-text-dim">
+                      이 탭의 내용은 출석·과제 보드와 학생 상세 집계에서
+                      자동으로 구성됩니다.
+                    </p>
                   </div>
                 ) : fields.length === 0 ? (
                   <div className="px-6 py-8 text-center">
@@ -567,44 +610,46 @@ export function SpaceSettingsContent({
                 )}
               </div>
 
-              <div className="border-t border-border px-6 py-3 flex-shrink-0">
-                <p className="text-[10px] text-text-dim mb-2">
-                  수강생마다 수집할 항목을 추가합니다 (예: GitHub URL, 희망
-                  직무, 최종 학력)
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 bg-surface-3 border border-border rounded-md px-2 py-[6px] text-xs text-text placeholder:text-text-dim outline-none focus:border-accent transition-colors"
-                    placeholder="항목 이름"
-                    value={newFieldName}
-                    onChange={(e) => setNewFieldName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleCreateField();
-                    }}
-                    maxLength={80}
-                  />
-                  <select
-                    className="bg-surface-3 border border-border rounded-md px-2 py-[6px] text-xs text-text outline-none focus:border-accent transition-colors cursor-pointer"
-                    value={newFieldType}
-                    onChange={(e) =>
-                      setNewFieldType(e.target.value as FieldType)
-                    }
-                  >
-                    {ALL_FIELD_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {FIELD_TYPE_LABELS[t]}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    className="px-3 py-[6px] rounded-md bg-accent text-white text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity border-none disabled:opacity-50 whitespace-nowrap"
-                    onClick={handleCreateField}
-                    disabled={addingField || !newFieldName.trim()}
-                  >
-                    + 추가
-                  </button>
+              {!selectedStudentBoardTab && (
+                <div className="border-t border-border px-6 py-3 flex-shrink-0">
+                  <p className="text-[10px] text-text-dim mb-2">
+                    수강생마다 수집할 항목을 추가합니다 (예: GitHub URL, 희망
+                    직무, 최종 학력)
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 bg-surface-3 border border-border rounded-md px-2 py-[6px] text-xs text-text placeholder:text-text-dim outline-none focus:border-accent transition-colors"
+                      placeholder="항목 이름"
+                      value={newFieldName}
+                      onChange={(e) => setNewFieldName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCreateField();
+                      }}
+                      maxLength={80}
+                    />
+                    <select
+                      className="bg-surface-3 border border-border rounded-md px-2 py-[6px] text-xs text-text outline-none focus:border-accent transition-colors cursor-pointer"
+                      value={newFieldType}
+                      onChange={(e) =>
+                        setNewFieldType(e.target.value as FieldType)
+                      }
+                    >
+                      {ALL_FIELD_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {FIELD_TYPE_LABELS[t]}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="px-3 py-[6px] rounded-md bg-accent text-white text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity border-none disabled:opacity-50 whitespace-nowrap"
+                      onClick={handleCreateField}
+                      disabled={addingField || !newFieldName.trim()}
+                    >
+                      + 추가
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
@@ -703,6 +748,62 @@ export function SpaceSettingsContent({
         open={previewOpen && Boolean(selectedTemplateId)}
         onClose={() => setPreviewOpen(false)}
       />
+
+      {confirmDeleteTab ? (
+        <div
+          className="fixed inset-0 z-[330] flex items-center justify-center bg-[rgba(0,0,0,0.62)] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setConfirmDeleteTabId(null);
+            }
+          }}
+        >
+          <div className="flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+            <div className="border-b border-border px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                탭 삭제
+              </p>
+              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
+                정말 삭제할까요?
+              </h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+                이 탭과 탭 안의 커스텀 필드가 현재 스페이스에서 함께 제거됩니다.
+              </p>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <div className="rounded-xl border border-border bg-surface-2/70 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-dim">
+                  삭제할 탭
+                </p>
+                <p className="mt-1 text-sm font-semibold text-text">
+                  {confirmDeleteTab.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text"
+                onClick={() => setConfirmDeleteTabId(null)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95"
+                onClick={() => {
+                  void deleteTab(confirmDeleteTab.id);
+                  setConfirmDeleteTabId(null);
+                }}
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -736,11 +837,15 @@ function TabRow({
 }: TabRowProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(tab.name);
-
+  const isReadOnly = isProtectedMemberTab(tab);
   const canDelete = tab.tabType === "custom";
-  const canHide = tab.systemKey !== "overview";
+  const canHide = tab.tabType === "custom";
+  const canReorder = tab.tabType === "custom";
 
   function startEdit(e: React.MouseEvent) {
+    if (isReadOnly) {
+      return;
+    }
     e.stopPropagation();
     setEditValue(tab.name);
     setEditing(true);
@@ -772,43 +877,49 @@ function TabRow({
       } ${!tab.isVisible ? "opacity-50" : ""}`}
       onClick={editing ? undefined : onSelect}
     >
-      <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          className="w-4 h-3 flex items-center justify-center text-text-dim hover:text-text border-none bg-transparent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp();
-          }}
-          disabled={!canMoveUp}
-        >
-          <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-            <path
-              d="M1 5l3-4 3 4"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          className="w-4 h-3 flex items-center justify-center text-text-dim hover:text-text border-none bg-transparent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown();
-          }}
-          disabled={!canMoveDown}
-        >
-          <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-            <path
-              d="M1 1l3 4 3-4"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+      <div className="flex w-4 flex-col gap-0.5">
+        {canReorder ? (
+          <>
+            <button
+              className="w-4 h-3 flex items-center justify-center text-text-dim hover:text-text border-none bg-transparent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUp();
+              }}
+              disabled={!canMoveUp}
+            >
+              <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                <path
+                  d="M1 5l3-4 3 4"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              className="w-4 h-3 flex items-center justify-center text-text-dim hover:text-text border-none bg-transparent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveDown();
+              }}
+              disabled={!canMoveDown}
+            >
+              <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                <path
+                  d="M1 1l3 4 3-4"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <span className="block h-6" aria-hidden="true" />
+        )}
       </div>
 
       {editing ? (
@@ -825,8 +936,8 @@ function TabRow({
       ) : (
         <span
           className={`flex-1 text-xs truncate ${isSelected ? "text-text font-medium" : "text-text-secondary"}`}
-          onDoubleClick={startEdit}
-          title={tab.tabType === "system" ? tab.name : "더블클릭으로 이름 변경"}
+          onDoubleClick={isReadOnly ? undefined : startEdit}
+          title={isReadOnly ? tab.name : "더블클릭으로 이름 변경"}
         >
           {tab.name}
         </span>
@@ -834,21 +945,27 @@ function TabRow({
 
       {!editing && (
         <>
-          <button
-            className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-accent opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0"
-            onClick={startEdit}
-            title="이름 변경"
-          >
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-              <path
-                d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          {isReadOnly ? (
+            <span className="rounded-full border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text-dim">
+              읽기 전용
+            </span>
+          ) : (
+            <button
+              className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-accent opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0"
+              onClick={startEdit}
+              title="이름 변경"
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path
+                  d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           {canHide && (
             <button
               className={`w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer p-0 ${tab.isVisible ? "text-text-dim hover:text-text" : "text-text-dim"}`}

@@ -27,10 +27,30 @@ type SplineProps = {
 };
 
 type SplineComponentType = ComponentType<SplineProps>;
+type SplineRuntimeErrorCandidate = {
+  error?: unknown;
+  filename?: string;
+  message?: string;
+};
 
 let splineModulePromise: Promise<{ default: SplineComponentType }> | null =
   null;
 let cachedSplineComponent: SplineComponentType | null = null;
+
+function matchesSplineRuntimeError({
+  error,
+  filename = "",
+  message = "",
+}: SplineRuntimeErrorCandidate) {
+  if (!SPLINE_ERROR_PATTERN.test(message)) {
+    return false;
+  }
+
+  const stack =
+    error instanceof Error ? (error.stack ?? "") : String(error ?? "");
+
+  return /spline/i.test(filename) || /spline/i.test(stack);
+}
 
 function prefetchSplineComponent() {
   if (cachedSplineComponent) {
@@ -121,11 +141,34 @@ function SplineCanvas({ paused }: { paused: boolean }) {
   const [SplineComponent, setSplineComponent] =
     useState<SplineComponentType | null>(cachedSplineComponent);
   const [hasLiveScene, setHasLiveScene] = useState(false);
+  const handledSplineRuntimeErrorRef = useRef(false);
   const splineApplicationRef = useRef<Application | null>(null);
 
-  const handleError = useCallback(() => {
+  const activateFallback = useCallback(() => {
+    if (handledSplineRuntimeErrorRef.current) {
+      return;
+    }
+
+    handledSplineRuntimeErrorRef.current = true;
+
+    const application = splineApplicationRef.current;
+    splineApplicationRef.current = null;
+
+    if (application) {
+      try {
+        application.stop();
+      } catch {
+        // Spline runtime cleanup can fail while the scene is already broken.
+      }
+    }
+
+    setHasLiveScene(false);
     setError(true);
   }, []);
+
+  const handleError = useCallback(() => {
+    activateFallback();
+  }, [activateFallback]);
 
   const handleLoad = useCallback(
     (application: Application) => {
@@ -169,7 +212,7 @@ function SplineCanvas({ paused }: { paused: boolean }) {
 
     const rafId = window.requestAnimationFrame(() => {
       void prefetchSplineComponent().catch(() => {
-        setError(true);
+        activateFallback();
       });
     });
 
@@ -217,7 +260,7 @@ function SplineCanvas({ paused }: { paused: boolean }) {
             return;
           }
 
-          setError(true);
+          activateFallback();
         });
     };
 
@@ -306,7 +349,7 @@ function SplineCanvas({ paused }: { paused: boolean }) {
           return;
         }
 
-        setError(true);
+        activateFallback();
       });
 
     return () => {
@@ -337,35 +380,69 @@ function SplineCanvas({ paused }: { paused: boolean }) {
       return;
     }
 
-    function handleWindowError(e: ErrorEvent) {
-      const message = e.message ?? "";
-      if (!SPLINE_ERROR_PATTERN.test(message)) {
-        return;
-      }
+    function handleWindowError(event: ErrorEvent) {
+      const message = event.message ?? "";
+      const filename = event.filename ?? "";
 
-      const filename = e.filename ?? "";
-      const stack =
-        e.error instanceof Error
-          ? (e.error.stack ?? "")
-          : String(e.error ?? "");
-
-      if (!/spline/i.test(filename) && !/spline/i.test(stack)) {
-        return;
-      }
-
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Spline 런타임 오류 감지", {
-          message,
+      if (
+        !matchesSplineRuntimeError({
+          error: event.error,
           filename,
-        });
+          message,
+        })
+      ) {
+        return;
       }
 
-      setError(true);
+      event.preventDefault();
+      activateFallback();
     }
 
-    window.addEventListener("error", handleWindowError);
-    return () => window.removeEventListener("error", handleWindowError);
-  }, [isMobileViewport]);
+    const previousOnError = window.onerror;
+    const splineOnError: OnErrorEventHandler = (
+      message,
+      source,
+      _lineno,
+      _colno,
+      error,
+    ) => {
+      if (
+        matchesSplineRuntimeError({
+          error,
+          filename: typeof source === "string" ? source : "",
+          message: typeof message === "string" ? message : "",
+        })
+      ) {
+        activateFallback();
+        return true;
+      }
+
+      if (typeof previousOnError === "function") {
+        return (
+          previousOnError.call(
+            window,
+            message,
+            source,
+            _lineno,
+            _colno,
+            error,
+          ) ?? false
+        );
+      }
+
+      return false;
+    };
+
+    window.onerror = splineOnError;
+    window.addEventListener("error", handleWindowError, true);
+
+    return () => {
+      window.removeEventListener("error", handleWindowError, true);
+      if (window.onerror === splineOnError) {
+        window.onerror = previousOnError;
+      }
+    };
+  }, [activateFallback, isMobileViewport]);
 
   useEffect(() => {
     return () => {
@@ -383,7 +460,7 @@ function SplineCanvas({ paused }: { paused: boolean }) {
     <>
       <div
         aria-hidden="true"
-        className={`${styles.splineFallbackLayer} ${
+        className={`pointer-events-none ${styles.splineFallbackLayer} ${
           shouldShowFallback ? styles.splineVisible : styles.splineHidden
         }`}
       >
@@ -403,7 +480,7 @@ function SplineCanvas({ paused }: { paused: boolean }) {
             <SplineComponent
               scene={SPLINE_SCENE}
               onLoad={handleLoad}
-              renderOnDemand
+              renderOnDemand={false}
             />
           ) : null}
         </SplineErrorBoundary>
@@ -421,7 +498,7 @@ export const SplineHero = memo(function SplineHero({
 }: SplineHeroProps) {
   return (
     <div
-      className={`${styles.splineContainer} pointer-events-none absolute inset-0 w-full h-full`}
+      className={`${styles.splineContainer} absolute inset-0 h-full w-full`}
       data-landing-spline="true"
     >
       <SplineCanvas paused={paused} />

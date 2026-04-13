@@ -77,6 +77,7 @@ export const RISK_LEVEL_META: Record<
 /* ── 탭 목록 ── */
 export const DETAIL_TABS: { id: DetailTab; label: string }[] = [
   { id: "overview", label: "개요" },
+  { id: "student_board", label: "출석·과제" },
   { id: "counseling", label: "상담기록" },
   { id: "memos", label: "메모" },
   { id: "report", label: "리포트" },
