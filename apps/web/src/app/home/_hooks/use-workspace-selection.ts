@@ -32,11 +32,24 @@ interface SelectionDeps {
 
 // ── URL 헬퍼 (모듈 스코프, hook 외부) ─────────────────────────────
 function buildUrl(memberId: string | null, recordId: string | null): string {
-  const params = new URLSearchParams();
-  if (memberId) params.set("memberId", memberId);
-  if (recordId) params.set("recordId", recordId);
+  if (typeof window === "undefined") {
+    return "/";
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  params.delete("memberId");
+  params.delete("recordId");
+
+  if (memberId) {
+    params.set("memberId", memberId);
+  }
+
+  if (recordId) {
+    params.set("recordId", recordId);
+  }
+
   const query = params.toString();
-  const path = typeof window !== "undefined" ? window.location.pathname : "/";
+  const path = window.location.pathname;
   return query ? `${path}?${query}` : path;
 }
 

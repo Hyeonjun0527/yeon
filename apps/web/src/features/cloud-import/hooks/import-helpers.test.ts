@@ -96,7 +96,7 @@ describe("runImportAnalysisRequest", () => {
               stage: "ai_mapping",
               progress: 50,
             },
-            { type: "done", preview },
+            { type: "done", preview, assistantMessage: "답변" },
           ],
           { "x-import-draft-id": "draft-1" },
         ),
@@ -105,7 +105,7 @@ describe("runImportAnalysisRequest", () => {
       onProgress: ({ text }) => progressSpy.push(text),
     });
 
-    expect(result).toEqual(preview);
+    expect(result).toEqual({ preview, assistantMessage: "답변" });
     expect(draftSpy).toEqual(["draft-1"]);
     expect(progressSpy).toEqual(["분석 중"]);
   });

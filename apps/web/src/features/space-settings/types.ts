@@ -32,10 +32,12 @@ export interface SpaceField {
   spaceId: string;
   tabId: string;
   name: string;
+  sourceKey?: string | null;
   fieldType: FieldType;
   options: SelectOption[] | null;
   isRequired: boolean;
   displayOrder: number;
+  deletedAt?: string | null;
 }
 
 export interface SpaceTemplateSummary {

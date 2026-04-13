@@ -134,6 +134,13 @@
       "when": 1776010800000,
       "tag": "0018_public_check_tables_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1776067200000,
+      "tag": "0019_overview_field_governance",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import type {
   FieldSchemaHint,
+  ImportAnalysisResult,
   ImportPreview,
   RefineContext,
 } from "./file-analysis-service";
@@ -19,11 +20,11 @@ export type ImportSSEEvent =
       stage: ImportAnalysisStage;
       progress: number;
     }
-  | { type: "done"; preview: ImportPreview }
+  | { type: "done"; preview: ImportPreview; assistantMessage?: string | null }
   | { type: "error"; message: string };
 
 interface ImportSSEOptions {
-  onDone?: (preview: ImportPreview) => Promise<void> | void;
+  onDone?: (result: ImportAnalysisResult) => Promise<void> | void;
   onError?: (message: string) => Promise<void> | void;
   onProgress?: (progress: ImportAnalysisProgressState) => Promise<void> | void;
   extraHeaders?: Record<string, string>;
@@ -62,7 +63,7 @@ export function createImportSSEStream(
 
       try {
         await reportProgress(createImportAnalysisProgressState("queued"));
-        const preview = await analyzeBuffer(
+        const result = await analyzeBuffer(
           buffer,
           fileName,
           mimeType,
@@ -71,9 +72,13 @@ export function createImportSSEStream(
           fieldHints,
           reportProgress,
         );
-        await Promise.resolve(options?.onDone?.(preview));
+        await Promise.resolve(options?.onDone?.(result));
         if (cancelled) return;
-        send({ type: "done", preview });
+        send({
+          type: "done",
+          preview: result.preview,
+          assistantMessage: result.assistantMessage ?? null,
+        });
         controller.close();
       } catch (err) {
         const message =

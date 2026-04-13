@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   ChatMessage,
+  ImportCommitResult,
   DriveFile,
   ImportHook,
   ImportPreview,
@@ -17,6 +24,8 @@ import {
   runImportAnalysisRequest,
   summaryText,
 } from "./import-helpers";
+import { answerLocalPreviewQuestion } from "./local-preview-assistant";
+import { applyLocalPreviewRefinement } from "./local-preview-refinement";
 import { resetImportState } from "./import-state-reset";
 import { useImportDraftRecovery } from "./use-import-draft-recovery";
 
@@ -51,7 +60,7 @@ export interface UseLocalImportReturn extends ImportHook {
 }
 
 export function useLocalImport(
-  onImportComplete?: () => void,
+  onImportComplete?: (result: ImportCommitResult) => void,
   initialDraftId?: string | null,
   onDraftDiscarded?: () => void,
 ): UseLocalImportReturn {
@@ -222,7 +231,7 @@ export function useLocalImport(
         formData.append("draftId", draftId);
       }
 
-      const preview = await runImportAnalysisRequest({
+      const analysisResult = await runImportAnalysisRequest({
         request: () =>
           fetch("/api/v1/integrations/local/analyze", {
             method: "POST",
@@ -245,10 +254,12 @@ export function useLocalImport(
       setProcessingStage(completedState.stage);
       setProcessingProgress(completedState.progress);
       setProcessingMessage(completedState.message);
-      setEditablePreview(structuredClone(preview));
+      startTransition(() => {
+        setEditablePreview(analysisResult.preview);
+      });
       pushMessage(
         "ai",
-        `파일 분석이 완료됐습니다! ${summaryText(preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
+        `파일 분석이 완료됐습니다! ${summaryText(analysisResult.preview)}을 찾았습니다. 수정이 필요하면 말씀해 주세요.`,
       );
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
@@ -308,12 +319,10 @@ export function useLocalImport(
         throw new Error(text || "가져오기에 실패했습니다.");
       }
 
-      const data = (await res.json()) as {
-        created: { spaces: number; members: number };
-      };
+      const data = (await res.json()) as ImportCommitResult;
       setImportResult(data.created);
       clearStoredDraftId();
-      onImportComplete?.();
+      onImportComplete?.(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "가져오기에 실패했습니다.");
     } finally {
@@ -394,10 +403,61 @@ export function useLocalImport(
     async (instruction: string) => {
       if ((!rawFileRef.current && !draftId) || !editablePreview) return;
 
+      const trimmedInstruction = instruction.trim();
+      if (!trimmedInstruction) return;
+
+      pushMessage("user", trimmedInstruction);
+
+      const localAnswer = answerLocalPreviewQuestion(
+        editablePreview,
+        trimmedInstruction,
+      );
+
+      if (localAnswer) {
+        pushMessage("ai", localAnswer.message);
+        return;
+      }
+
+      const localRefinement = applyLocalPreviewRefinement(
+        editablePreview,
+        trimmedInstruction,
+      );
+
+      if (localRefinement) {
+        const completedState = getCompletedAnalysisState();
+        setError(null);
+        setProcessingStage(completedState.stage);
+        setProcessingProgress(completedState.progress);
+        setProcessingMessage(completedState.message);
+        setStreamingText(null);
+        startTransition(() => {
+          setEditablePreview(localRefinement.preview);
+        });
+        clearRecoveryNotice();
+
+        if (draftId) {
+          if (previewSaveTimerRef.current) {
+            clearTimeout(previewSaveTimerRef.current);
+          }
+
+          previewSaveTimerRef.current = setTimeout(() => {
+            void fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(localRefinement.preview),
+            }).catch(() => {
+              // 자동 저장 실패는 다음 입력 기회에서 재시도
+            });
+          }, 400);
+        }
+
+        pushMessage("ai", localRefinement.message);
+        return;
+      }
+
       analyzeAbortRef.current?.abort();
       const controller = new AbortController();
       analyzeAbortRef.current = controller;
-      pushMessage("user", instruction);
       const prevPreview = editablePreview;
 
       try {
@@ -416,10 +476,10 @@ export function useLocalImport(
         if (draftId) {
           formData.append("draftId", draftId);
         }
-        formData.append("instruction", instruction);
+        formData.append("instruction", trimmedInstruction);
         formData.append("previousResult", JSON.stringify(prevPreview));
 
-        const preview = await runImportAnalysisRequest({
+        const analysisResult = await runImportAnalysisRequest({
           request: () =>
             fetch("/api/v1/integrations/local/analyze", {
               method: "POST",
@@ -442,8 +502,14 @@ export function useLocalImport(
         setProcessingStage(completedState.stage);
         setProcessingProgress(completedState.progress);
         setProcessingMessage(completedState.message);
-        setEditablePreview(structuredClone(preview));
-        pushMessage("ai", diffText(prevPreview, preview));
+        startTransition(() => {
+          setEditablePreview(analysisResult.preview);
+        });
+        pushMessage(
+          "ai",
+          analysisResult.assistantMessage?.trim() ||
+            diffText(prevPreview, analysisResult.preview),
+        );
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         const msg =
@@ -458,7 +524,13 @@ export function useLocalImport(
         }
       }
     },
-    [draftId, editablePreview, markFreshDraft, pushMessage],
+    [
+      clearRecoveryNotice,
+      draftId,
+      editablePreview,
+      markFreshDraft,
+      pushMessage,
+    ],
   );
 
   const fileProxyUrl =

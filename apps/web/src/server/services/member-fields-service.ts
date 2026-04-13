@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import {
   memberFieldTypeValues,
@@ -10,6 +10,7 @@ import {
 
 import { getDb } from "@/server/db";
 import { memberFieldDefinitions } from "@/server/db/schema";
+import { DEFAULT_OVERVIEW_FIELDS } from "@/lib/member-overview-fields";
 
 import { ServiceError } from "./service-error";
 
@@ -51,7 +52,12 @@ export async function getFieldsForSpace(
   return db
     .select()
     .from(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.spaceId, spaceId))
+    .where(
+      and(
+        eq(memberFieldDefinitions.spaceId, spaceId),
+        isNull(memberFieldDefinitions.deletedAt),
+      ),
+    )
     .orderBy(asc(memberFieldDefinitions.displayOrder));
 }
 
@@ -71,9 +77,36 @@ export async function getFieldsForTab(
       and(
         eq(memberFieldDefinitions.tabId, tabId),
         eq(memberFieldDefinitions.spaceId, spaceId),
+        isNull(memberFieldDefinitions.deletedAt),
       ),
     )
     .orderBy(asc(memberFieldDefinitions.displayOrder));
+}
+
+export async function createDefaultOverviewFields(
+  spaceId: string,
+  overviewTabId: string,
+  userId: string,
+): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+
+  const rows = DEFAULT_OVERVIEW_FIELDS.map((field) => ({
+    id: randomUUID(),
+    spaceId,
+    tabId: overviewTabId,
+    createdByUserId: userId,
+    name: field.name,
+    sourceKey: field.sourceKey,
+    fieldType: field.fieldType,
+    options: null,
+    isRequired: false,
+    displayOrder: field.displayOrder,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  await db.insert(memberFieldDefinitions).values(rows).onConflictDoNothing();
 }
 
 /**
@@ -114,6 +147,7 @@ export async function createField(
       tabId,
       createdByUserId: userId,
       name,
+      sourceKey: null,
       fieldType: data.fieldType,
       options,
       isRequired: data.isRequired ?? false,
@@ -149,7 +183,24 @@ export async function updateField(
     )
     .limit(1);
 
-  if (!existing) throw new ServiceError(404, "필드를 찾지 못했습니다.");
+  if (!existing || existing.deletedAt) {
+    throw new ServiceError(404, "필드를 찾지 못했습니다.");
+  }
+
+  if (existing.sourceKey) {
+    if (
+      (data.fieldType !== undefined && data.fieldType !== existing.fieldType) ||
+      data.options !== undefined ||
+      (data.isRequired !== undefined &&
+        data.isRequired !== existing.isRequired) ||
+      (data.tabId !== undefined && data.tabId !== existing.tabId)
+    ) {
+      throw new ServiceError(
+        403,
+        "기본 항목은 이름과 순서만 변경할 수 있습니다.",
+      );
+    }
+  }
 
   const patch: Record<string, unknown> = { updatedAt: new Date() };
 
@@ -203,11 +254,22 @@ export async function deleteField(
     )
     .limit(1);
 
-  if (!existing) throw new ServiceError(404, "필드를 찾지 못했습니다.");
+  if (!existing || existing.deletedAt) {
+    throw new ServiceError(404, "필드를 찾지 못했습니다.");
+  }
 
-  await db
-    .delete(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.id, fieldId));
+  const [deleted] = await db
+    .update(memberFieldDefinitions)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(memberFieldDefinitions.id, fieldId))
+    .returning();
+
+  if (!deleted) {
+    throw new ServiceError(500, "필드를 삭제하지 못했습니다.");
+  }
 }
 
 /**

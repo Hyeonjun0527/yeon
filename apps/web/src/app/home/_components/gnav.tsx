@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { SettingsIcon, LogOutIcon, RecordIcon, StudentsIcon } from "./icons";
+import { useHomeSidebarLayout } from "./home-sidebar-layout-context";
 import { useClickOutside } from "../_hooks";
 import { useLogout } from "@/lib/use-logout";
 import { useAppRoute } from "@/lib/app-route-context";
@@ -15,21 +16,53 @@ export function Gnav({ activeMenu }: GnavProps) {
   const [showMenu, setShowMenu] = useState(false);
   const { logout, isLoggingOut } = useLogout();
   const { resolveAppHref } = useAppRoute();
+  const {
+    sidebarCollapsed,
+    toggleSidebarCollapsed,
+    studentSidebarCollapsed,
+    toggleStudentSidebarCollapsed,
+  } = useHomeSidebarLayout();
   const menuRef = useClickOutside<HTMLDivElement>(
     () => setShowMenu(false),
     showMenu,
   );
+  const isStudentsMenu = activeMenu === "students";
+  const isCurrentSidebarCollapsed = isStudentsMenu
+    ? studentSidebarCollapsed
+    : sidebarCollapsed;
+  const handleToggleSidebar = isStudentsMenu
+    ? toggleStudentSidebarCollapsed
+    : toggleSidebarCollapsed;
 
   return (
     <div className="hidden w-14 border-r border-border bg-bg py-4 md:flex md:flex-col md:items-center md:gap-1">
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer text-text-dim mb-1"
-        title="홈"
+      <button
+        type="button"
+        className={`mb-1 flex h-9 w-9 items-center justify-center rounded-lg border transition-colors duration-150 ${
+          isCurrentSidebarCollapsed
+            ? "border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text"
+            : "border-transparent bg-transparent text-text-dim hover:bg-surface-3 hover:text-text-secondary"
+        }`}
+        onClick={handleToggleSidebar}
+        title={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
+        aria-label={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
       >
-        <span className="font-[Outfit,sans-serif] font-bold text-[13px] tracking-[-0.5px] bg-gradient-to-br from-accent to-cyan bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
-          Y
-        </span>
-      </div>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform duration-150 ${
+            isCurrentSidebarCollapsed ? "" : "rotate-180"
+          }`}
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
       <div className="mt-2">
         <Link
           href={resolveAppHref("/home")}

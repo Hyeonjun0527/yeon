@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Download,
   ExternalLink,
@@ -31,13 +31,16 @@ type SheetConflict = {
 };
 
 type PanelState =
-  | { kind: "loading" }
   | { kind: "drive-disconnected" }
   | {
       kind: "ready";
       integration: ExportIntegration | null;
       sheetSyncReady: boolean;
     };
+
+const DISCONNECTED_PANEL_STATE: PanelState = {
+  kind: "drive-disconnected",
+};
 
 async function readErrorMessage(
   res: Response,
@@ -60,7 +63,8 @@ async function readErrorMessage(
 }
 
 export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
-  const [state, setState] = useState<PanelState>({ kind: "loading" });
+  const [state, setState] = useState<PanelState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [sheetUrl, setSheetUrl] = useState("");
@@ -89,21 +93,36 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     "csv" | "xlsx" | null
   >(null);
 
+  const stateCacheRef = useRef(new Map<string, PanelState>());
+  const visibleStateRef = useRef<PanelState | null>(null);
+  const requestIdRef = useRef(0);
+
+  const displayState = state ?? DISCONNECTED_PANEL_STATE;
+  const isDriveDisconnected = displayState.kind === "drive-disconnected";
+  const isReady = displayState.kind === "ready";
+  const integration = isReady ? displayState.integration : null;
+  const sheetSyncReady = isReady ? displayState.sheetSyncReady : false;
+  const hasIntegration = integration !== null;
+
+  useEffect(() => {
+    visibleStateRef.current = state;
+  }, [state]);
+
   const integrationStatusLabel =
-    state.kind === "drive-disconnected"
+    displayState.kind === "drive-disconnected"
       ? "Google 미연결"
-      : state.kind === "ready" && !state.sheetSyncReady
+      : displayState.kind === "ready" && !displayState.sheetSyncReady
         ? "Google Sheets 재연결 필요"
-        : state.kind === "ready" && state.integration
+        : displayState.kind === "ready" && displayState.integration
           ? "Google Sheets 연결됨"
           : "시트 연동 준비";
 
   const integrationStatusTone =
-    state.kind === "drive-disconnected"
+    displayState.kind === "drive-disconnected"
       ? "text-text-dim bg-surface-3 border-border"
-      : state.kind === "ready" && !state.sheetSyncReady
+      : displayState.kind === "ready" && !displayState.sheetSyncReady
         ? "text-yellow-200 bg-yellow-500/10 border-yellow-500/20"
-        : state.kind === "ready" && state.integration
+        : displayState.kind === "ready" && displayState.integration
           ? "text-green bg-[rgba(34,197,94,0.12)] border-[rgba(34,197,94,0.22)]"
           : "text-accent bg-accent-dim border-accent-border";
 
@@ -112,12 +131,40 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   const secondaryActionClass =
     "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-surface-3 px-3 py-2 text-[12px] text-text-secondary transition-colors duration-150 hover:border-border-light hover:bg-surface-4 hover:text-text disabled:cursor-not-allowed disabled:opacity-50";
 
+  const commitState = useCallback(
+    (targetSpaceId: string, nextState: PanelState) => {
+      stateCacheRef.current.set(targetSpaceId, nextState);
+      visibleStateRef.current = nextState;
+      setState(nextState);
+    },
+    [],
+  );
+
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const cachedState = stateCacheRef.current.get(spaceId) ?? null;
+
     setError(null);
-    setState({ kind: "loading" });
+    setIsLoading(true);
+
+    if (cachedState) {
+      visibleStateRef.current = cachedState;
+      setState(cachedState);
+    } else if (visibleStateRef.current === null) {
+      visibleStateRef.current = DISCONNECTED_PANEL_STATE;
+      setState(DISCONNECTED_PANEL_STATE);
+    }
 
     try {
-      const driveRes = await fetch("/api/v1/integrations/googledrive/status");
+      const [driveRes, sheetRes] = await Promise.all([
+        fetch("/api/v1/integrations/googledrive/status"),
+        fetch(`/api/v1/spaces/${spaceId}/sheet-export`),
+      ]);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       if (!driveRes.ok) {
         throw new Error("Google 연결 상태를 확인하지 못했습니다.");
       }
@@ -127,35 +174,54 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       };
 
       if (!driveData.connected) {
-        setState({ kind: "drive-disconnected" });
+        commitState(spaceId, DISCONNECTED_PANEL_STATE);
         return;
       }
 
-      const res = await fetch(`/api/v1/spaces/${spaceId}/sheet-export`);
-      if (!res.ok) {
+      if (!sheetRes.ok) {
         throw new Error("시트 익스포트 설정을 불러오지 못했습니다.");
       }
-      const data = (await res.json()) as {
+      const data = (await sheetRes.json()) as {
         integration: ExportIntegration | null;
       };
-      setState({
+      commitState(spaceId, {
         kind: "ready",
         integration: data.integration,
         sheetSyncReady: driveData.sheetSyncReady ?? true,
       });
     } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setError(
         err instanceof Error
           ? err.message
           : "시트 익스포트 패널을 초기화하지 못했습니다.",
       );
-      setState({ kind: "ready", integration: null, sheetSyncReady: false });
+      const fallbackState = cachedState ?? DISCONNECTED_PANEL_STATE;
+      visibleStateRef.current = fallbackState;
+      setState(fallbackState);
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [spaceId]);
+  }, [commitState, spaceId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setError(null);
+    setSheetUrl("");
+    setFormError(null);
+    setShowSheetConnectForm(false);
+    setSyncResult(null);
+    setImportResult(null);
+    setImportConflicts([]);
+  }, [spaceId]);
 
   const handleConnectSheet = useCallback(async () => {
     if (!sheetUrl.trim()) {
@@ -224,7 +290,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   }, [spaceId, load]);
 
   const handleImportFromSheet = useCallback(async () => {
-    if (state.kind !== "ready" || !state.integration) {
+    if (displayState.kind !== "ready" || !displayState.integration) {
       return;
     }
 
@@ -290,7 +356,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     } finally {
       setImporting(false);
     }
-  }, [spaceId, state, load]);
+  }, [displayState, load, spaceId]);
 
   const handleDownload = useCallback(
     async (format: "csv" | "xlsx") => {
@@ -353,13 +419,6 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     }
   }, [spaceId, load]);
 
-  const isLoading = state.kind === "loading";
-  const isDriveDisconnected = state.kind === "drive-disconnected";
-  const isReady = state.kind === "ready";
-  const integration = isReady ? state.integration : null;
-  const sheetSyncReady = isReady ? state.sheetSyncReady : false;
-  const hasIntegration = integration !== null;
-
   const lastSyncedLabel = integration?.lastSyncedAt
     ? new Date(integration.lastSyncedAt).toLocaleString("ko-KR")
     : "아직 없음";
@@ -382,6 +441,8 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       ? "먼저 Google을 연결한 뒤 시트 URL을 붙이면 됩니다."
       : "Google 연결 후 시트 URL만 붙이면 현재 스페이스에 연결됩니다.";
 
+  const disabledLinkClass = isLoading ? "pointer-events-none opacity-50" : "";
+
   return (
     <section className="rounded-2xl border border-border bg-surface-2/65 px-4 py-3">
       <div className="flex flex-col gap-3">
@@ -396,7 +457,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
               >
                 {integrationStatusLabel}
               </span>
-              {!isLoading && recentActivityLabel !== "준비 완료" ? (
+              {recentActivityLabel !== "준비 완료" ? (
                 <span className="text-[11px] text-text-dim">
                   {recentActivityLabel}
                 </span>
@@ -408,10 +469,10 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {isLoading ? null : isDriveDisconnected ? (
+            {isDriveDisconnected ? (
               <a
                 href="/api/v1/integrations/googledrive/auth"
-                className={secondaryActionClass}
+                className={`${secondaryActionClass} ${disabledLinkClass}`}
               >
                 <Link2 size={13} />
                 Google 연결
@@ -419,7 +480,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
             ) : isReady && !sheetSyncReady ? (
               <a
                 href="/api/v1/integrations/googledrive/auth"
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[12px] font-medium text-yellow-100 transition-colors hover:border-yellow-400/50"
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[12px] font-medium text-yellow-100 transition-colors hover:border-yellow-400/50 ${disabledLinkClass}`}
               >
                 <Link2 size={13} />
                 Google 재연결
@@ -429,7 +490,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
                 type="button"
                 className={primaryActionClass}
                 onClick={() => void handleImportFromSheet()}
-                disabled={importing || syncing || disconnecting}
+                disabled={importing || syncing || disconnecting || isLoading}
               >
                 <Undo2 size={13} />
                 {importing ? "반영 중..." : "시트에서 가져오기"}
@@ -446,32 +507,31 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
               </button>
             )}
 
-            {!isLoading ? (
-              <button
-                type="button"
-                className={secondaryActionClass}
-                onClick={handleSync}
-                disabled={
-                  !hasIntegration ||
-                  !sheetSyncReady ||
-                  syncing ||
-                  disconnecting ||
-                  importing
-                }
-              >
-                <RefreshCw
-                  size={13}
-                  className={syncing ? "animate-spin" : undefined}
-                />
-                {syncing ? "동기화 중..." : "동기화"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className={secondaryActionClass}
+              onClick={handleSync}
+              disabled={
+                !hasIntegration ||
+                !sheetSyncReady ||
+                syncing ||
+                disconnecting ||
+                importing ||
+                isLoading
+              }
+            >
+              <RefreshCw
+                size={13}
+                className={syncing ? "animate-spin" : undefined}
+              />
+              {syncing ? "동기화 중..." : "동기화"}
+            </button>
 
             <button
               type="button"
               className={secondaryActionClass}
               onClick={() => void handleDownload("csv")}
-              disabled={downloadingFormat !== null}
+              disabled={downloadingFormat !== null || isLoading}
               title="CSV 파일로 다운로드"
             >
               <Download size={13} />
@@ -482,7 +542,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
               type="button"
               className={secondaryActionClass}
               onClick={() => void handleDownload("xlsx")}
-              disabled={downloadingFormat !== null}
+              disabled={downloadingFormat !== null || isLoading}
               title="엑셀 파일로 다운로드"
             >
               <Download size={13} />
@@ -534,7 +594,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
           </div>
         ) : null}
 
-        {isReady && !hasIntegration && showSheetConnectForm ? (
+        {isReady && !hasIntegration && showSheetConnectForm && !isLoading ? (
           <div className="rounded-xl border border-border bg-surface-3/70 px-3 py-3">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
               <label className="min-w-0 flex-1">

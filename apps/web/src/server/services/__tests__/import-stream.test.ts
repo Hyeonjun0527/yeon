@@ -1,7 +1,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
 vi.mock("../file-analysis-service", () => ({
-  analyzeBuffer: vi.fn(async () => ({ cohorts: [] })),
+  analyzeBuffer: vi.fn(async () => ({
+    preview: { cohorts: [] },
+    assistantMessage: "답변",
+  })),
 }));
 
 import { createImportSSEStream } from "../import-stream";

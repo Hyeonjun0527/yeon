@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useStudentManagement } from "../student-management-provider";
@@ -9,6 +9,14 @@ import { createPatchedHref } from "@/lib/route-state/search-params";
 
 interface UseMemberDetailParams {
   memberId: string;
+}
+
+function readActiveTabFromUrl() {
+  if (typeof window === "undefined") {
+    return "overview";
+  }
+
+  return new URLSearchParams(window.location.search).get("tab") ?? "overview";
 }
 
 export function useMemberDetail({ memberId }: UseMemberDetailParams) {
@@ -21,7 +29,7 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
   }, []);
   const { members, selectedSpaceId, setSelectedSpaceId } =
     useStudentManagement();
-  const activeTab = getCurrentSearchParams().get("tab") ?? "overview";
+  const [activeTab, setActiveTabState] = useState(readActiveTabFromUrl);
 
   const contextMember: Member | undefined = members.find(
     (m) => m.id === memberId,
@@ -72,6 +80,27 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
     setSelectedSpaceId,
   ]);
 
+  useEffect(() => {
+    const syncActiveTabFromUrl = () => {
+      const nextActiveTab = readActiveTabFromUrl();
+      setActiveTabState((current) =>
+        current === nextActiveTab ? current : nextActiveTab,
+      );
+    };
+
+    syncActiveTabFromUrl();
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.addEventListener("popstate", syncActiveTabFromUrl);
+
+    return () => {
+      window.removeEventListener("popstate", syncActiveTabFromUrl);
+    };
+  }, [memberId, pathname]);
+
   const member: Member | undefined =
     contextMember ??
     (memberData?.member && selectedSpaceId === memberData.member.spaceId
@@ -80,9 +109,21 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
 
   const setActiveTab = useCallback(
     (tab: string) => {
-      router.replace(
-        createPatchedHref(pathname, getCurrentSearchParams(), { tab }),
-      );
+      setActiveTabState((current) => (current === tab ? current : tab));
+
+      const nextHref = createPatchedHref(pathname, getCurrentSearchParams(), {
+        tab,
+      });
+
+      if (typeof window !== "undefined") {
+        const currentHref = `${window.location.pathname}${window.location.search}`;
+
+        if (currentHref === nextHref) {
+          return;
+        }
+      }
+
+      router.replace(nextHref);
     },
     [getCurrentSearchParams, pathname, router],
   );

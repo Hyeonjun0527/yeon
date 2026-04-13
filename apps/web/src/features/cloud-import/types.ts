@@ -34,9 +34,19 @@ export interface ImportPreview {
   cohorts: ImportCohort[];
 }
 
+export interface ImportAnalysisResponse {
+  preview: ImportPreview;
+  assistantMessage?: string | null;
+}
+
 export interface ImportResult {
   spaces: number;
   members: number;
+}
+
+export interface ImportCommitResult {
+  created: ImportResult;
+  spaceIds: string[];
 }
 
 export interface ChatMessage {

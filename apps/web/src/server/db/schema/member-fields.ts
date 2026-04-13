@@ -25,45 +25,63 @@ import { users } from "./users";
  * options JSONB 형식 (select / multi_select):
  *   [{ value: string, color: string }]
  */
-export const memberFieldDefinitions = pgTable("member_field_definitions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: uuid("space_id")
-    .notNull()
-    .references(() => spaces.id, { onDelete: "cascade" }),
-  createdByUserId: uuid("created_by_user_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
+export const memberFieldDefinitions = pgTable(
+  "member_field_definitions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
 
-  /** 이 필드가 속한 탭 (overview 탭 또는 custom 탭만 허용) */
-  tabId: uuid("tab_id")
-    .notNull()
-    .references(() => memberTabDefinitions.id, { onDelete: "cascade" }),
+    /** 이 필드가 속한 탭 (overview 탭 또는 custom 탭만 허용) */
+    tabId: uuid("tab_id")
+      .notNull()
+      .references(() => memberTabDefinitions.id, { onDelete: "cascade" }),
 
-  /** 운영자가 지정한 필드 이름 (예: "GitHub 링크", "직전 직장") */
-  name: varchar("name", { length: 80 }).notNull(),
+    /** 운영자가 지정한 필드 이름 (예: "GitHub 링크", "직전 직장") */
+    name: varchar("name", { length: 80 }).notNull(),
 
-  /** text | long_text | number | date | select | multi_select | checkbox | url | email | phone */
-  fieldType: varchar("field_type", { length: 30 }).notNull(),
+    /**
+     * 기본 overview 필드가 어떤 원본 값을 가리키는지 나타내는 식별자.
+     * null 이면 일반 커스텀 필드다.
+     */
+    sourceKey: varchar("source_key", { length: 50 }),
 
-  /**
-   * select / multi_select 선택지 배열
-   * [{ value: "서울", color: "#818cf8" }, ...]
-   */
-  options: jsonb("options"),
+    /** text | long_text | number | date | select | multi_select | checkbox | url | email | phone */
+    fieldType: varchar("field_type", { length: 30 }).notNull(),
 
-  /** true 이면 프로필 완성도 분모에 포함 */
-  isRequired: boolean("is_required").notNull().default(false),
+    /**
+     * select / multi_select 선택지 배열
+     * [{ value: "서울", color: "#818cf8" }, ...]
+     */
+    options: jsonb("options"),
 
-  /** 탭 내 표시 순서 (오름차순) */
-  displayOrder: integer("display_order").notNull().default(0),
+    /** true 이면 프로필 완성도 분모에 포함 */
+    isRequired: boolean("is_required").notNull().default(false),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+    /** 탭 내 표시 순서 (오름차순) */
+    displayOrder: integer("display_order").notNull().default(0),
+
+    /** null 이 아니면 사용자에게는 삭제된 상태로 본다 */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("member_field_definitions_space_source_key_unique").on(
+      t.spaceId,
+      t.sourceKey,
+    ),
+  ],
+);
 
 /**
  * 커스텀 필드 값 (수강생 × 필드 정의 단위)

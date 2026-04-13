@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type {
   MemberFieldType as FieldType,
@@ -135,6 +135,7 @@ export async function getFieldValuesForDefinitions(
       and(
         eq(memberFieldValues.memberId, memberId),
         eq(memberFieldDefinitions.spaceId, spaceId),
+        isNull(memberFieldDefinitions.deletedAt),
         ...(fieldDefinitionIds?.length
           ? [inArray(memberFieldValues.fieldDefinitionId, fieldDefinitionIds)]
           : []),
@@ -162,6 +163,7 @@ export async function upsertFieldValue(
       and(
         eq(memberFieldDefinitions.id, payload.fieldDefinitionId),
         eq(memberFieldDefinitions.spaceId, spaceId),
+        isNull(memberFieldDefinitions.deletedAt),
       ),
     )
     .limit(1);
@@ -238,6 +240,7 @@ export async function bulkUpsertFieldValues(
       and(
         eq(memberFieldDefinitions.spaceId, spaceId),
         inArray(memberFieldDefinitions.id, definitionIds),
+        isNull(memberFieldDefinitions.deletedAt),
       ),
     );
 

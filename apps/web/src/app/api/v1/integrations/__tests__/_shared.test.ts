@@ -83,7 +83,11 @@ describe("integrations _shared", () => {
   });
 
   it("handleImportCommitRoute는 draftId가 있으면 importing/imported를 모두 기록한다", async () => {
-    mockImportPreviewIntoSpaces.mockResolvedValue({ spaces: 1, members: 2 });
+    mockImportPreviewIntoSpaces.mockResolvedValue({
+      spaces: 1,
+      members: 2,
+      spaceIds: ["space-1"],
+    });
     const request = new NextRequest(
       "http://localhost/api/v1/integrations/local/import",
       {
@@ -105,9 +109,13 @@ describe("integrations _shared", () => {
     expect(mockMarkImportDraftImported).toHaveBeenCalledWith({
       userId: "user-1",
       draftId: "550e8400-e29b-41d4-a716-446655440000",
-      result: { spaces: 1, members: 2 },
+      result: { spaces: 1, members: 2, spaceIds: ["space-1"] },
     });
     expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      created: { spaces: 1, members: 2 },
+      spaceIds: ["space-1"],
+    });
   });
 
   it("handleCloudAnalyzeRoute는 access token이 없으면 401을 반환한다", async () => {

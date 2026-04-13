@@ -11,6 +11,7 @@ import { getDb } from "@/server/db";
 import { memberTabDefinitions } from "@/server/db/schema";
 
 import { ServiceError } from "./service-error";
+import { createDefaultOverviewFields } from "./member-fields-service";
 
 /* ── 타입 ── */
 
@@ -64,6 +65,11 @@ export async function createDefaultSystemTabs(
   }));
 
   await db.insert(memberTabDefinitions).values(rows).onConflictDoNothing();
+
+  const overviewTab = await getOverviewTab(spaceId);
+  if (overviewTab) {
+    await createDefaultOverviewFields(spaceId, overviewTab.id, userId);
+  }
 }
 
 /**

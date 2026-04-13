@@ -141,6 +141,64 @@ describe("초기 상태", () => {
   });
 });
 
+/* ── recording state ── */
+
+describe("recording state", () => {
+  it("녹음을 시작하면 viewState가 'recording'이 된다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result } = renderHook(() => useRecords(null), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
+
+    act(() => {
+      result.current.startRecording();
+    });
+
+    expect(result.current.viewState.kind).toBe("recording");
+  });
+
+  it("녹음 종료 후 processing 레코드가 선택되어 있으면 viewState가 'processing'으로 전환된다", async () => {
+    mockFetch({ "/api/v1/counseling-records": { records: [] } });
+
+    const { result, rerender } = renderHook(
+      ({ selectedId }: { selectedId: string | null }) => useRecords(selectedId),
+      {
+        wrapper: createWrapper(),
+        initialProps: { selectedId: null as string | null },
+      },
+    );
+
+    await waitFor(() =>
+      expect(result.current.viewState.kind).not.toBe("loading"),
+    );
+
+    act(() => {
+      result.current.startRecording();
+    });
+
+    expect(result.current.viewState.kind).toBe("recording");
+
+    const tempRec = makeTempRecord({ id: "temp-stop" });
+    act(() => {
+      result.current.addProcessingRecord(tempRec);
+    });
+
+    rerender({ selectedId: "temp-stop" });
+
+    act(() => {
+      result.current.stopRecording();
+    });
+
+    expect(result.current.viewState.kind).toBe("processing");
+    expect(result.current.selected?.id).toBe("temp-stop");
+  });
+});
+
 /* ── addProcessingRecord ── */
 
 describe("addProcessingRecord", () => {

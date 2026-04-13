@@ -4,6 +4,7 @@ import {
   PROCESSING_STEPS,
   getProcessingChecklistStep,
 } from "../_lib/processing-progress";
+import { inferFailurePresentation } from "../_lib/failure-presentation";
 import type { AnalysisResult, RecordItem } from "../_lib/types";
 import type { RecordMemberMismatchWarning } from "../_lib/record-member-mismatch";
 import { fmtTime, fmtMs } from "../_lib/utils";
@@ -149,55 +150,6 @@ function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
   );
 }
 
-function inferFailurePresentation(selected: RecordItem) {
-  const message = selected.errorMessage ?? "알 수 없는 오류가 발생했습니다.";
-  const normalized = message.toLowerCase();
-  const isAnalysisFailure =
-    selected.analysisStatus === "error" ||
-    normalized.includes("analysis") ||
-    normalized.includes("분석");
-  const isLongAudioFailure =
-    normalized.includes("audio duration") ||
-    normalized.includes("longer than") ||
-    normalized.includes("maximum for this model") ||
-    normalized.includes("1400 seconds") ||
-    normalized.includes("길이") ||
-    normalized.includes("duration");
-
-  if (isAnalysisFailure) {
-    return {
-      badge: "AI 분석 실패",
-      title: "AI 분석에 실패했습니다",
-      description:
-        "전사는 남아 있으므로 AI 분석 단계만 다시 시도할 수 있습니다.",
-      retryLabel: "AI 분석 다시 시도",
-      toneClass: "text-accent",
-      isAnalysisFailure: true,
-    };
-  }
-
-  if (isLongAudioFailure) {
-    return {
-      badge: "전사 실패",
-      title: "음성 전사 길이 제한으로 실패했습니다",
-      description:
-        "현재 모델 한도를 넘는 긴 음성이라 재시도 전 전사 전략이 바뀌어야 할 수 있습니다. 그래도 재전사를 다시 시도할 수 있습니다.",
-      retryLabel: "전사 다시 시도",
-      toneClass: "text-red",
-      isAnalysisFailure: false,
-    };
-  }
-
-  return {
-    badge: "전사 실패",
-    title: "음성 분석에 실패했습니다",
-    description: "원본 음성에서 전사 파이프라인을 다시 시작할 수 있습니다.",
-    retryLabel: "재전사 다시 시도",
-    toneClass: "text-red",
-    isAnalysisFailure: false,
-  };
-}
-
 type RetryFeedback = {
   message: string | null;
   tone: "idle" | "success" | "error";
@@ -294,23 +246,25 @@ export function CenterPanel({
             <p className="text-text-dim text-[12px] mt-2 max-w-[520px] leading-relaxed">
               {failure.description}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (failure.isAnalysisFailure) {
-                  onRetryFailedAnalysis();
-                  return;
-                }
-                onRetryFailedRecord();
-              }}
-              disabled={retryPending}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-accent-border bg-accent-dim px-4 py-2 text-[13px] font-semibold text-accent transition-colors hover:border-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {retryPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : null}
-              {retryPending ? "재시도 준비 중..." : failure.retryLabel}
-            </button>
+            {failure.canRetry ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (failure.isAnalysisFailure) {
+                    onRetryFailedAnalysis();
+                    return;
+                  }
+                  onRetryFailedRecord();
+                }}
+                disabled={retryPending}
+                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-accent-border bg-accent-dim px-4 py-2 text-[13px] font-semibold text-accent transition-colors hover:border-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {retryPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : null}
+                {retryPending ? "재시도 준비 중..." : failure.retryLabel}
+              </button>
+            ) : null}
             {retryFeedback.message ? (
               <p
                 className={`mt-3 text-[12px] leading-relaxed ${

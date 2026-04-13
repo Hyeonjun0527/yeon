@@ -38,7 +38,20 @@ function getCheckModeLabel(mode: CreatePublicCheckSessionBody["checkMode"]) {
     case "assignment_only":
       return "과제";
     case "attendance_and_assignment":
-      return "출석+과제";
+      return "출석 + 과제";
+  }
+}
+
+function getCheckModeActionDescription(
+  mode: CreatePublicCheckSessionBody["checkMode"],
+) {
+  switch (mode) {
+    case "attendance_only":
+      return "출석 확인";
+    case "assignment_only":
+      return "과제 제출";
+    case "attendance_and_assignment":
+      return "출석·과제 제출";
   }
 }
 
@@ -64,6 +77,26 @@ function toBoardSessions(data: StudentBoardResponse | undefined) {
   }
 
   return data.sessions;
+}
+
+function formatLastPublicCheckAt(value: string | null | undefined) {
+  if (!value) {
+    return "기록 없음";
+  }
+
+  return new Date(value).toLocaleString("ko-KR");
+}
+
+function SelfCheckReadyBadge({ ready }: { ready: boolean }) {
+  return ready ? (
+    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">
+      가능
+    </span>
+  ) : (
+    <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
+      전화번호 필요
+    </span>
+  );
 }
 
 function MethodToggleIndicator({ active }: { active: boolean }) {
@@ -146,6 +179,9 @@ export function StudentCheckBoardPanel({
   const isCreatingSession = createSession.isPending;
   const isUpdatingBoard = updateMemberBoard.isPending;
   const isUpdatingSession = updateSession.isPending;
+  const checkModeActionDescription = getCheckModeActionDescription(
+    sessionForm.checkMode,
+  );
 
   const handleDraftChange = (memberId: string, patch: Partial<DraftRow>) => {
     setDrafts((prev) => ({
@@ -301,6 +337,7 @@ export function StudentCheckBoardPanel({
                       출석 + 과제
                     </option>
                     <option value="attendance_only">출석만</option>
+                    <option value="assignment_only">과제만</option>
                   </select>
                   <button
                     type="button"
@@ -325,7 +362,7 @@ export function StudentCheckBoardPanel({
                       <div className="min-w-0">
                         <div className="text-xs font-medium">QR 체크인</div>
                         <div className="mt-0.5 text-[11px] text-text-dim">
-                          QR 스캔으로 출석·과제 제출 확인
+                          QR 스캔으로 {checkModeActionDescription}
                         </div>
                       </div>
                     </div>
@@ -358,7 +395,7 @@ export function StudentCheckBoardPanel({
                       <div className="min-w-0">
                         <div className="text-xs font-medium">위치 인증</div>
                         <div className="mt-0.5 text-[11px] text-text-dim">
-                          지정 위치에서 출석·과제 제출 허용
+                          지정 위치에서 {checkModeActionDescription} 허용
                         </div>
                       </div>
                     </div>
@@ -555,15 +592,9 @@ export function StudentCheckBoardPanel({
                           {member.phone ?? "전화번호 없음"}
                         </div>
                       </div>
-                      {row?.isSelfCheckReady ? (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">
-                          셀프체크 가능
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
-                          전화번호 필요
-                        </span>
-                      )}
+                      <SelfCheckReadyBadge
+                        ready={Boolean(row?.isSelfCheckReady)}
+                      />
                     </div>
 
                     <div className="mt-3 grid gap-2">
@@ -613,11 +644,7 @@ export function StudentCheckBoardPanel({
                     <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-text-secondary">
                       <span>
                         최근 공개체크:{" "}
-                        {row?.lastPublicCheckAt
-                          ? new Date(row.lastPublicCheckAt).toLocaleString(
-                              "ko-KR",
-                            )
-                          : "-"}
+                        {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
                       </span>
                       <button
                         className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-text-secondary disabled:opacity-50"
@@ -644,125 +671,227 @@ export function StudentCheckBoardPanel({
 
           {!loading && !error ? (
             <div
-              className="hidden overflow-x-auto rounded-2xl border border-border sm:block"
+              className="hidden overflow-hidden rounded-2xl border border-border bg-surface-2 xl:block"
               data-tutorial="check-board-member-board-desktop"
             >
-              <table className="min-w-full divide-y divide-border text-sm">
-                <thead className="bg-surface text-left text-text-secondary">
-                  <tr>
-                    <th className="px-3 py-2.5">수강생</th>
-                    <th className="px-3 py-2.5">셀프체크</th>
-                    <th className="px-3 py-2.5">출석</th>
-                    <th className="px-3 py-2.5">과제</th>
-                    <th className="px-3 py-2.5 min-w-[220px]">과제 링크</th>
-                    <th className="px-3 py-2.5">최근 공개체크</th>
-                    <th className="px-3 py-2.5">저장</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-surface-2">
-                  {members.map((member) => {
-                    const row = rowMap.get(member.id);
-                    const draft = drafts[member.id] ?? {
-                      attendanceStatus: "unknown",
-                      assignmentStatus: "unknown",
-                      assignmentLink: "",
-                    };
+              <div className="border-b border-border bg-surface px-4 py-2 text-[11px] font-medium tracking-[0.04em] text-text-dim">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="min-w-0 flex-[1.8] truncate">수강생</span>
+                  <span className="w-[64px] shrink-0 text-center">
+                    셀프체크
+                  </span>
+                  <span className="w-[92px] shrink-0">출석</span>
+                  <span className="w-[92px] shrink-0">과제</span>
+                  <span className="min-w-0 flex-[1.35] truncate">
+                    과제 링크
+                  </span>
+                  <span className="w-[112px] shrink-0 truncate text-right">
+                    최근 공개체크
+                  </span>
+                  <span className="w-[72px] shrink-0 text-center">저장</span>
+                </div>
+              </div>
 
-                    return (
-                      <tr key={member.id}>
-                        <td className="px-3 py-3">
-                          <div className="font-medium text-text">
-                            {member.name}
-                          </div>
-                          <div className="mt-0.5 text-[11px] text-text-dim">
-                            {member.phone ?? "전화번호 없음"}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-xs">
-                          {row?.isSelfCheckReady ? (
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">
-                              가능
-                            </span>
-                          ) : (
-                            <span className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">
-                              전화번호 필요
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          <select
-                            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text"
-                            value={draft.attendanceStatus}
-                            onChange={(event) =>
-                              handleDraftChange(member.id, {
-                                attendanceStatus: event.target
-                                  .value as StudentAttendanceStatus,
-                              })
-                            }
-                          >
-                            <option value="unknown">미정</option>
-                            <option value="present">출석</option>
-                            <option value="absent">미출석</option>
-                          </select>
-                        </td>
-                        <td className="px-3 py-3">
-                          <select
-                            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text"
-                            value={draft.assignmentStatus}
-                            onChange={(event) =>
-                              handleDraftChange(member.id, {
-                                assignmentStatus: event.target
-                                  .value as StudentAssignmentStatus,
-                              })
-                            }
-                          >
-                            <option value="unknown">미정</option>
-                            <option value="done">완료</option>
-                            <option value="not_done">미완료</option>
-                          </select>
-                        </td>
-                        <td className="px-3 py-3">
-                          <input
-                            className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text"
-                            value={draft.assignmentLink}
-                            onChange={(event) =>
-                              handleDraftChange(member.id, {
-                                assignmentLink: event.target.value,
-                              })
-                            }
-                            placeholder="과제 링크"
-                          />
-                        </td>
-                        <td className="px-3 py-3 text-xs text-text-secondary">
-                          {row?.lastPublicCheckAt
-                            ? new Date(row.lastPublicCheckAt).toLocaleString(
-                                "ko-KR",
-                              )
-                            : "-"}
-                        </td>
-                        <td className="px-3 py-3">
-                          <button
-                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary disabled:opacity-50"
-                            disabled={isUpdatingBoard}
-                            onClick={() =>
-                              updateMemberBoard.mutate({
-                                memberId: member.id,
-                                body: {
-                                  attendanceStatus: draft.attendanceStatus,
-                                  assignmentStatus: draft.assignmentStatus,
-                                  assignmentLink: draft.assignmentLink || null,
-                                },
-                              })
-                            }
-                          >
-                            저장
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="divide-y divide-border">
+                {members.map((member) => {
+                  const row = rowMap.get(member.id);
+                  const draft = drafts[member.id] ?? {
+                    attendanceStatus: "unknown",
+                    assignmentStatus: "unknown",
+                    assignmentLink: "",
+                  };
+
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex min-w-0 items-center gap-2.5 px-4 py-2.5"
+                    >
+                      <div className="min-w-0 flex-[1.8]">
+                        <div className="truncate text-[13px] font-semibold tracking-[-0.02em] text-text">
+                          {member.name}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] leading-none text-text-dim">
+                          {member.phone ?? "전화번호 없음"}
+                        </div>
+                      </div>
+
+                      <div className="flex w-[64px] shrink-0 justify-center">
+                        <SelfCheckReadyBadge
+                          ready={Boolean(row?.isSelfCheckReady)}
+                        />
+                      </div>
+
+                      <select
+                        className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
+                        value={draft.attendanceStatus}
+                        onChange={(event) =>
+                          handleDraftChange(member.id, {
+                            attendanceStatus: event.target
+                              .value as StudentAttendanceStatus,
+                          })
+                        }
+                      >
+                        <option value="unknown">미정</option>
+                        <option value="present">출석</option>
+                        <option value="absent">미출석</option>
+                      </select>
+
+                      <select
+                        className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
+                        value={draft.assignmentStatus}
+                        onChange={(event) =>
+                          handleDraftChange(member.id, {
+                            assignmentStatus: event.target
+                              .value as StudentAssignmentStatus,
+                          })
+                        }
+                      >
+                        <option value="unknown">미정</option>
+                        <option value="done">완료</option>
+                        <option value="not_done">미완료</option>
+                      </select>
+
+                      <div className="flex h-9 min-w-0 flex-[1.35] items-center gap-2 rounded-lg border border-border bg-surface px-3 transition-colors hover:border-border-light">
+                        <Link2 size={13} className="shrink-0 text-text-dim" />
+                        <input
+                          className="w-full min-w-0 bg-transparent text-[13px] text-text outline-none placeholder:text-text-dim"
+                          value={draft.assignmentLink}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              assignmentLink: event.target.value,
+                            })
+                          }
+                          placeholder="과제 링크"
+                        />
+                      </div>
+
+                      <div className="w-[112px] shrink-0 truncate text-right text-[11px] text-text-secondary">
+                        {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                      </div>
+
+                      <button
+                        className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-lg border border-border bg-surface px-2.5 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
+                        disabled={isUpdatingBoard}
+                        onClick={() =>
+                          updateMemberBoard.mutate({
+                            memberId: member.id,
+                            body: {
+                              attendanceStatus: draft.attendanceStatus,
+                              assignmentStatus: draft.assignmentStatus,
+                              assignmentLink: draft.assignmentLink || null,
+                            },
+                          })
+                        }
+                      >
+                        저장
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {!loading && !error ? (
+            <div className="hidden gap-3 sm:grid xl:hidden">
+              {members.map((member) => {
+                const row = rowMap.get(member.id);
+                const draft = drafts[member.id] ?? {
+                  attendanceStatus: "unknown",
+                  assignmentStatus: "unknown",
+                  assignmentLink: "",
+                };
+
+                return (
+                  <article
+                    key={member.id}
+                    className="rounded-2xl border border-border bg-surface-2 px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold tracking-[-0.02em] text-text">
+                          {member.name}
+                        </div>
+                        <div className="mt-1 truncate text-[12px] text-text-dim">
+                          {member.phone ?? "전화번호 없음"}
+                        </div>
+                      </div>
+
+                      <SelfCheckReadyBadge
+                        ready={Boolean(row?.isSelfCheckReady)}
+                      />
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[96px_96px_minmax(0,1fr)_88px]">
+                      <select
+                        className="h-10 rounded-xl border border-border bg-surface px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
+                        value={draft.attendanceStatus}
+                        onChange={(event) =>
+                          handleDraftChange(member.id, {
+                            attendanceStatus: event.target
+                              .value as StudentAttendanceStatus,
+                          })
+                        }
+                      >
+                        <option value="unknown">출석 · 미정</option>
+                        <option value="present">출석</option>
+                        <option value="absent">미출석</option>
+                      </select>
+
+                      <select
+                        className="h-10 rounded-xl border border-border bg-surface px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
+                        value={draft.assignmentStatus}
+                        onChange={(event) =>
+                          handleDraftChange(member.id, {
+                            assignmentStatus: event.target
+                              .value as StudentAssignmentStatus,
+                          })
+                        }
+                      >
+                        <option value="unknown">과제 · 미정</option>
+                        <option value="done">완료</option>
+                        <option value="not_done">미완료</option>
+                      </select>
+
+                      <div className="flex h-10 min-w-0 items-center gap-2 rounded-xl border border-border bg-surface px-3 transition-colors hover:border-border-light">
+                        <Link2 size={14} className="shrink-0 text-text-dim" />
+                        <input
+                          className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
+                          value={draft.assignmentLink}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              assignmentLink: event.target.value,
+                            })
+                          }
+                          placeholder="과제 링크"
+                        />
+                      </div>
+
+                      <button
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
+                        disabled={isUpdatingBoard}
+                        onClick={() =>
+                          updateMemberBoard.mutate({
+                            memberId: member.id,
+                            body: {
+                              attendanceStatus: draft.attendanceStatus,
+                              assignmentStatus: draft.assignmentStatus,
+                              assignmentLink: draft.assignmentLink || null,
+                            },
+                          })
+                        }
+                      >
+                        저장
+                      </button>
+                    </div>
+
+                    <div className="mt-2 text-[11px] text-text-secondary">
+                      최근 공개체크:{" "}
+                      {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : null}
         </div>

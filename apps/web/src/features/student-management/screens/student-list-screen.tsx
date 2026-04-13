@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertTriangle,
@@ -37,11 +44,28 @@ function getMemberInitial(name: string) {
   return name.charAt(0);
 }
 
-export function StudentListScreen() {
-  const { spaces, selectedSpaceId, refetchMembers } = useStudentManagement();
+function getRiskSignalsSummary(signals?: string[]) {
+  if (!signals || signals.length === 0) {
+    return null;
+  }
 
-  const { filteredMembers, viewMode, setViewMode, loading, error } =
-    useMemberList();
+  return signals.join(", ");
+}
+
+const CARD_PAGE_SIZE = 24;
+
+export function StudentListScreen() {
+  const { spaces, spacesLoading, selectedSpaceId, refetchMembers } =
+    useStudentManagement();
+
+  const {
+    filteredMembers,
+    rawMemberCount,
+    viewMode,
+    setViewMode,
+    loading,
+    error,
+  } = useMemberList();
 
   const { openSpaceSettings } = useSpaceSettingsDrawer();
   const router = useRouter();
@@ -49,6 +73,7 @@ export function StudentListScreen() {
 
   const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
   const spaceName = currentSpace?.name ?? null;
+  const noSpaces = !spacesLoading && spaces.length === 0;
   const detailBaseHref = selectedSpaceId
     ? (memberId: string) =>
         `${resolveAppHref(`/home/student-management/${memberId}`)}?spaceId=${selectedSpaceId}`
@@ -83,49 +108,83 @@ export function StudentListScreen() {
 
   const isEmpty = !loading && !error && filteredMembers.length === 0;
   const hasMembers = !loading && !error && filteredMembers.length > 0;
+  const isFilteredEmpty =
+    !loading && !error && rawMemberCount > 0 && filteredMembers.length === 0;
 
-  // ── 가상 스크롤 ─────────────────────────────────────────────────
-  const gridContainerRef = useRef<HTMLDivElement>(null);
+  // dense view만 가상 스크롤을 사용한다. 카드 뷰는 자연스러운 CSS grid를 유지해야
+  // 기존 디자인과 간격이 보존되고, row-based virtualization으로 인한 레이아웃 왜곡을 피할 수 있다.
+  const denseListRef = useRef<HTMLDivElement>(null);
+  const cardSentinelRef = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
-  const [gridWidth, setGridWidth] = useState(0);
+  const isDenseView = viewMode === "dense";
+  const [visibleCardCount, setVisibleCardCount] = useState(CARD_PAGE_SIZE);
 
   useEffect(() => {
-    const el = gridContainerRef.current;
+    const el = isDenseView ? denseListRef.current : cardSentinelRef.current;
     if (!el) return;
 
-    // 스크롤 컨테이너 = 가장 가까운 <main>
     setScrollElement(el.closest("main") as HTMLElement | null);
-
-    // 컨테이너 너비 관찰 → 카드 모드 컬럼 수 계산
-    const observer = new ResizeObserver(([entry]) => {
-      setGridWidth(entry.contentRect.width);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const CARD_MIN_W = 260;
-  const CARD_GAP = 16;
-  const columnCount =
-    viewMode === "dense"
-      ? 1
-      : gridWidth > 0
-        ? Math.max(
-            1,
-            Math.floor((gridWidth + CARD_GAP) / (CARD_MIN_W + CARD_GAP)),
-          )
-        : 1;
-  const rowCount = Math.ceil(filteredMembers.length / columnCount);
-
-  const scrollMarginTop = gridContainerRef.current?.offsetTop ?? 0;
+  }, [isDenseView, hasMembers]);
 
   const rowVirtualizer = useVirtualizer({
-    count: hasMembers ? rowCount : 0,
+    count: isDenseView && hasMembers ? filteredMembers.length : 0,
     getScrollElement: () => scrollElement,
-    estimateSize: () => (viewMode === "dense" ? 48 : 200),
+    estimateSize: () => 48,
     overscan: 5,
-    scrollMargin: scrollMarginTop,
+    scrollMargin: denseListRef.current?.offsetTop ?? 0,
   });
+  const denseRows = rowVirtualizer.getVirtualItems();
+  const visibleCardMembers = isDenseView
+    ? filteredMembers
+    : filteredMembers.slice(0, visibleCardCount);
+  const hasMoreCardMembers =
+    !isDenseView && visibleCardMembers.length < filteredMembers.length;
+
+  useEffect(() => {
+    if (isDenseView) {
+      return;
+    }
+
+    setVisibleCardCount(CARD_PAGE_SIZE);
+  }, [filteredMembers, isDenseView, selectedSpaceId]);
+
+  useEffect(() => {
+    if (isDenseView || !hasMoreCardMembers) {
+      return;
+    }
+
+    const sentinel = cardSentinelRef.current;
+    const rootElement = scrollElement;
+
+    if (!sentinel || !rootElement) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        startTransition(() => {
+          setVisibleCardCount((current) =>
+            Math.min(current + CARD_PAGE_SIZE, filteredMembers.length),
+          );
+        });
+      },
+      {
+        root: rootElement,
+        rootMargin: "320px 0px",
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredMembers.length, hasMoreCardMembers, isDenseView, scrollElement]);
 
   const viewModeToggle = (
     <div className="flex items-center rounded-lg border border-border bg-surface-2 p-1">
@@ -207,8 +266,185 @@ export function StudentListScreen() {
     [detailBaseHref, handleSelectMember, router, selectedIds],
   );
 
+  const renderMemberCard = useCallback(
+    (member: (typeof filteredMembers)[number], index: number) => {
+      const statusMeta =
+        MEMBER_STATUS_META[member.status] ?? MEMBER_STATUS_META.active;
+      const resolvedRiskLevel = member.aiRiskLevel ?? member.initialRiskLevel;
+      const riskMeta = resolvedRiskLevel
+        ? RISK_LEVEL_META[resolvedRiskLevel as RiskLevel]
+        : null;
+      const riskSignalsSummary = getRiskSignalsSummary(member.aiRiskSignals);
+      const isSelected = selectedIds.has(member.id);
+
+      return (
+        <div
+          key={member.id}
+          data-tutorial={index === 0 ? "member-card" : undefined}
+          role="button"
+          tabIndex={0}
+          aria-pressed={isSelected}
+          aria-label={`${member.name} ${isSelected ? "선택됨" : "선택 안 됨"}`}
+          className={`relative border transition-all duration-150 ${
+            isDenseView
+              ? `rounded-lg px-3 py-2 ${
+                  isSelected
+                    ? "border-accent-border bg-accent-dim"
+                    : "border-border bg-surface-2 hover:border-border-light hover:bg-surface-3"
+                }`
+              : `${
+                  isSelected
+                    ? "border-accent-border bg-accent-dim"
+                    : "border-border bg-surface-2 hover:border-border-light hover:bg-surface-3"
+                } rounded p-5`
+          }`}
+          onClick={(event) => handleMemberCardClick(event, member.id)}
+          onKeyDown={(event) => handleMemberCardKeyDown(event, member.id)}
+        >
+          {isSelected ? (
+            <div
+              className={`absolute z-10 rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-accent ${
+                isDenseView ? "right-2 top-2" : "right-3 top-3"
+              }`}
+            >
+              선택됨
+            </div>
+          ) : null}
+
+          <div className="block" style={{ textDecoration: "none" }}>
+            <div
+              className={`flex ${
+                isDenseView
+                  ? "items-center gap-2.5 pr-12"
+                  : "mb-3 items-center gap-3"
+              }`}
+            >
+              <div
+                className={`flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--accent),var(--cyan))] font-bold text-white ${
+                  isDenseView ? "h-9 w-9 text-[13px]" : "h-10 w-10 text-base"
+                }`}
+              >
+                {getMemberInitial(member.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className={`flex ${
+                    isDenseView
+                      ? "items-center justify-between gap-2"
+                      : "flex-col"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div
+                      className={`truncate font-semibold text-text ${
+                        isDenseView ? "text-[14px] leading-none" : "text-[15px]"
+                      }`}
+                    >
+                      {member.name}
+                    </div>
+                    <div
+                      className={`truncate text-text-dim ${
+                        isDenseView
+                          ? "mt-1 text-[11px] leading-none"
+                          : "mt-0.5 text-xs"
+                      }`}
+                    >
+                      {getMemberContact(member)}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`flex flex-wrap gap-1.5 ${
+                      isDenseView ? "shrink-0 items-center justify-end" : "mt-3"
+                    }`}
+                  >
+                    <span
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 10,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: statusMeta.color,
+                        background: statusMeta.bgColor,
+                      }}
+                    >
+                      {statusMeta.label}
+                    </span>
+                    {riskMeta ? (
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 3,
+                          padding: "2px 8px",
+                          borderRadius: 10,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: riskMeta.color,
+                          background: riskMeta.bgColor,
+                          border: `1px solid ${riskMeta.borderColor}`,
+                        }}
+                      >
+                        <AlertTriangle size={10} />
+                        {member.aiRiskLevel
+                          ? `위험도 ${riskMeta.label}`
+                          : riskMeta.label}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {riskSignalsSummary && !isDenseView ? (
+              <p
+                className="mt-3 truncate text-[12px] leading-[1.5] text-text-secondary"
+                title={riskSignalsSummary}
+              >
+                <span className="mr-1 text-text-dim">AI 위험 신호</span>
+                {riskSignalsSummary}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      );
+    },
+    [handleMemberCardClick, handleMemberCardKeyDown, isDenseView, selectedIds],
+  );
+
+  if (spacesLoading) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-6 text-sm text-text-secondary">
+        스페이스와 수강생 목록을 불러오는 중...
+      </div>
+    );
+  }
+
+  if (!selectedSpaceId) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <AlertTriangle size={22} />
+        </div>
+        <h2 className="text-xl font-semibold text-text">
+          {noSpaces
+            ? "먼저 스페이스를 만들어 주세요"
+            : "먼저 스페이스를 선택해 주세요"}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">
+          수강생 추가와 출석·과제 보드는 모두 스페이스 안에서만 관리됩니다.
+        </p>
+        <p className="mt-1 text-sm leading-6 text-text-dim">
+          {noSpaces
+            ? "왼쪽 사이드바의 스페이스 만들기에서 공간을 만든 뒤 수강생을 등록해 주세요."
+            : "왼쪽 사이드바에서 스페이스를 선택한 뒤 수강생 목록을 확인해 주세요."}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="min-w-0 w-full">
       {/* 헤더 */}
       <div className="mb-4 space-y-3">
         <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-start">
@@ -217,7 +453,7 @@ export function StudentListScreen() {
               className="text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl"
               data-tutorial="space-title"
             >
-              {spaceName ?? "전체 수강생"}
+              {spaceName}
             </h2>
             {!loading && (
               <p className="mt-0.5 text-sm text-text-secondary">
@@ -325,7 +561,24 @@ export function StudentListScreen() {
       )}
 
       {/* 빈 상태 */}
-      {isEmpty && (
+      {isFilteredEmpty && (
+        <div className="flex flex-col items-center justify-center px-5 py-20 text-center">
+          <User size={40} className="mb-4 text-text-dim" />
+          <p className="mb-2 text-lg font-semibold text-text">
+            필터 결과가 없습니다.
+          </p>
+          <p className="max-w-md text-sm leading-relaxed text-text-secondary">
+            현재 스페이스에는 수강생이 있지만, 검색어나 상태/위험도 필터 때문에
+            목록에서 제외되고 있습니다.
+          </p>
+          <p className="mt-3 text-[12px] leading-relaxed text-text-dim">
+            URL의 `q`, `status`, `risk` 파라미터를 지우거나 필터를 초기화해 전체
+            목록을 다시 확인해 주세요.
+          </p>
+        </div>
+      )}
+
+      {isEmpty && !isFilteredEmpty && (
         <div
           className="flex flex-col items-center justify-center py-20 px-5 text-center"
           data-tutorial="member-empty-state"
@@ -351,205 +604,54 @@ export function StudentListScreen() {
       )}
 
       {/* 수강생 목록 (가상 스크롤) */}
-      {hasMembers && (
-        <div
-          ref={gridContainerRef}
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const startIdx = virtualRow.index * columnCount;
-            const endIdx = Math.min(
-              startIdx + columnCount,
-              filteredMembers.length,
-            );
-            const rowMembers = filteredMembers.slice(startIdx, endIdx);
+      {hasMembers &&
+        (isDenseView ? (
+          <div
+            ref={denseListRef}
+            className="w-full"
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              position: "relative",
+            }}
+          >
+            {denseRows.map((virtualRow) => {
+              const member = filteredMembers[virtualRow.index];
+              if (!member) {
+                return null;
+              }
 
-            return (
-              <div
-                key={virtualRow.key}
-                ref={rowVirtualizer.measureElement}
-                data-index={virtualRow.index}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualRow.start - rowVirtualizer.options.scrollMargin}px)`,
-                }}
-                className={
-                  viewMode === "dense"
-                    ? "grid gap-1.5"
-                    : "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] max-md:grid-cols-1"
-                }
-              >
-                {rowMembers.map((member) => {
-                  const statusMeta =
-                    MEMBER_STATUS_META[member.status] ??
-                    MEMBER_STATUS_META.active;
-                  const resolvedRiskLevel =
-                    member.aiRiskLevel ?? member.initialRiskLevel;
-                  const riskMeta = resolvedRiskLevel
-                    ? RISK_LEVEL_META[resolvedRiskLevel as RiskLevel]
-                    : null;
-                  const isSelected = selectedIds.has(member.id);
-
-                  return (
-                    <div
-                      key={member.id}
-                      data-tutorial={
-                        member === filteredMembers[0]
-                          ? "member-card"
-                          : undefined
-                      }
-                      role="button"
-                      tabIndex={0}
-                      aria-pressed={isSelected}
-                      aria-label={`${member.name} ${isSelected ? "선택됨" : "선택 안 됨"}`}
-                      className={`relative border transition-all duration-150 ${
-                        viewMode === "dense"
-                          ? `rounded-lg px-3 py-2 ${
-                              isSelected
-                                ? "border-accent-border bg-accent-dim"
-                                : "border-border bg-surface-2 hover:border-border-light hover:bg-surface-3"
-                            }`
-                          : `${
-                              isSelected
-                                ? "border-accent-border bg-accent-dim"
-                                : "border-border bg-surface-2 hover:border-border-light hover:bg-surface-3"
-                            } rounded p-5`
-                      }`}
-                      onClick={(event) =>
-                        handleMemberCardClick(event, member.id)
-                      }
-                      onKeyDown={(event) =>
-                        handleMemberCardKeyDown(event, member.id)
-                      }
-                    >
-                      {isSelected ? (
-                        <div
-                          className={`absolute z-10 rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-accent ${
-                            viewMode === "dense"
-                              ? "right-2 top-2"
-                              : "right-3 top-3"
-                          }`}
-                        >
-                          선택됨
-                        </div>
-                      ) : null}
-
-                      <div className="block" style={{ textDecoration: "none" }}>
-                        <div
-                          className={`flex ${
-                            viewMode === "dense"
-                              ? "items-center gap-2.5 pr-12"
-                              : "mb-3 items-center gap-3"
-                          }`}
-                        >
-                          <div
-                            className={`flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--accent),var(--cyan))] font-bold text-white ${
-                              viewMode === "dense"
-                                ? "h-9 w-9 text-[13px]"
-                                : "h-10 w-10 text-base"
-                            }`}
-                          >
-                            {getMemberInitial(member.name)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div
-                              className={`flex ${
-                                viewMode === "dense"
-                                  ? "items-center justify-between gap-2"
-                                  : "flex-col"
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div
-                                  className={`truncate font-semibold text-text ${
-                                    viewMode === "dense"
-                                      ? "text-[14px] leading-none"
-                                      : "text-[15px]"
-                                  }`}
-                                >
-                                  {member.name}
-                                </div>
-                                <div
-                                  className={`truncate text-text-dim ${
-                                    viewMode === "dense"
-                                      ? "mt-1 text-[11px] leading-none"
-                                      : "mt-0.5 text-xs"
-                                  }`}
-                                >
-                                  {getMemberContact(member)}
-                                </div>
-                              </div>
-
-                              <div
-                                className={`flex flex-wrap gap-1.5 ${
-                                  viewMode === "dense"
-                                    ? "shrink-0 items-center justify-end"
-                                    : "mt-3"
-                                }`}
-                              >
-                                <span
-                                  style={{
-                                    padding: "2px 8px",
-                                    borderRadius: 10,
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: statusMeta.color,
-                                    background: statusMeta.bgColor,
-                                  }}
-                                >
-                                  {statusMeta.label}
-                                </span>
-                                {riskMeta && (
-                                  <span
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 3,
-                                      padding: "2px 8px",
-                                      borderRadius: 10,
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      color: riskMeta.color,
-                                      background: riskMeta.bgColor,
-                                      border: `1px solid ${riskMeta.borderColor}`,
-                                    }}
-                                  >
-                                    <AlertTriangle size={10} />
-                                    {member.aiRiskLevel
-                                      ? `위험도 ${riskMeta.label}`
-                                      : riskMeta.label}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {member.aiRiskSummary ? (
-                          <p
-                            className={`text-[12px] leading-[1.5] text-text-secondary ${
-                              viewMode === "dense" ? "hidden" : "mt-3"
-                            }`}
-                          >
-                            {member.aiRiskSummary}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={virtualRow.key}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start - rowVirtualizer.options.scrollMargin}px)`,
+                  }}
+                >
+                  {renderMemberCard(member, virtualRow.index)}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))] max-md:grid-cols-1">
+            {visibleCardMembers.map((member, index) =>
+              renderMemberCard(member, index),
+            )}
+          </div>
+        ))}
+      {hasMoreCardMembers ? (
+        <div ref={cardSentinelRef} className="flex justify-center py-6">
+          <div className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[12px] text-text-dim">
+            아래로 스크롤하면 더 불러옵니다
+          </div>
         </div>
-      )}
+      ) : null}
       <StudentTutorial />
     </div>
   );

@@ -9,7 +9,7 @@ import {
   buildStudentReportDocument,
   createDefaultStudentReportSettings,
 } from "../report-builder";
-import type { Member, Memo } from "../types";
+import type { Member } from "../types";
 
 const member: Member = {
   id: "member-1",
@@ -88,23 +88,8 @@ const detailsById: Record<string, CounselingRecordDetail> = {
   },
 };
 
-const memos: Memo[] = [
-  {
-    id: "memo-1",
-    date: "2026-04-11",
-    text: "과제 제출 루틴 확인이 필요함",
-    author: "멘토 A",
-  },
-  {
-    id: "memo-2",
-    date: "2026-04-09",
-    text: "보호자 공유 전 표현 수위를 점검하기",
-    author: "멘토 B",
-  },
-];
-
 describe("buildStudentReportDocument", () => {
-  it("상담 분석 데이터를 반영한 구조화 리포트 문서를 생성한다", () => {
+  it("여러 상담을 묶는 촘촘한 2단 요약 리포트 문서를 생성한다", () => {
     const document = buildStudentReportDocument({
       member,
       records,
@@ -114,61 +99,55 @@ describe("buildStudentReportDocument", () => {
     });
 
     expect(document.title).toContain("김서윤 상담 리포트");
-    expect(document.summary).toContain("최근 상담 1건");
+    expect(document.summary).toContain("상담 1건을 묶어");
     expect(document.sections.map((section) => section.title)).toEqual([
-      "핵심 키워드",
-      "주요 이슈",
-      "후속 액션",
+      "핵심 요약",
       "상담 기록 요약",
     ]);
-    expect(document.sections[0]?.bullets).toContain("과제");
-    expect(document.sections[2]?.bullets.join(" ")).toContain(
-      "주간 체크포인트를 더 촘촘히 잡기",
+    expect(document.sections[0]?.bullets).toContain(
+      "시간 관리 흔들림: 과제 제출 리듬이 무너짐",
     );
+    expect(document.sections[1]?.bullets.join(" ")).toContain("3월 진도 점검");
   });
 
-  it("작성 메모와 섹션 옵션을 문서 구조에 반영한다", () => {
+  it("분석 결과가 없어도 preview 기반으로 2단 리포트를 유지한다", () => {
     const document = buildStudentReportDocument({
       member,
       records,
-      detailsById,
-      settings: {
-        ...createDefaultStudentReportSettings(member.name),
-        focusNote: "보호자 공유 전 전달 톤을 차분하게 유지",
-        includeKeywords: false,
-        includeActions: false,
-      },
-    });
-
-    expect(document.sections[0]?.title).toBe("작성 메모");
-    expect(document.sections[0]?.bullets[0]).toContain("보호자 공유");
-    expect(
-      document.sections.some((section) => section.title === "핵심 키워드"),
-    ).toBe(false);
-    expect(
-      document.sections.some((section) => section.title === "후속 액션"),
-    ).toBe(false);
-  });
-
-  it("서버 저장 메모를 리포트 메타와 최근 운영 메모 섹션에 반영한다", () => {
-    const document = buildStudentReportDocument({
-      member,
-      records,
-      detailsById,
-      memos,
       settings: createDefaultStudentReportSettings(member.name),
     });
 
-    expect(document.meta.some((item) => item.label === "운영 메모")).toBe(true);
+    expect(document.sections.map((section) => section.title)).toEqual([
+      "핵심 요약",
+      "상담 기록 요약",
+    ]);
+    expect(document.sections[0]?.bullets[0]).toContain(
+      "최근 과제 누락이 있었지만 회복 의지가 확인됨.",
+    );
+    expect(document.sections[1]?.bullets[0]).toContain(
+      "최근 과제 누락이 있었지만 회복 의지가 확인됨.",
+    );
+  });
+
+  it("운영 메모와 후속 액션 관련 출력은 리포트에서 제거한다", () => {
+    const document = buildStudentReportDocument({
+      member,
+      records,
+      detailsById,
+      settings: createDefaultStudentReportSettings(member.name),
+    });
+
+    expect(document.meta.some((item) => item.label === "운영 메모")).toBe(
+      false,
+    );
+    expect(document.meta.some((item) => item.label === "AI 분석 반영")).toBe(
+      false,
+    );
     expect(
-      document.meta.find((item) => item.label === "운영 메모")?.value,
-    ).toBe("2건");
+      document.sections.some((section) => section.title === "후속 액션"),
+    ).toBe(false);
     expect(
       document.sections.some((section) => section.title === "최근 운영 메모"),
-    ).toBe(true);
-    expect(
-      document.sections.find((section) => section.title === "최근 운영 메모")
-        ?.bullets[0],
-    ).toContain("과제 제출 루틴 확인이 필요함");
+    ).toBe(false);
   });
 });

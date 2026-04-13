@@ -1,18 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileUp, FolderPlus, Sparkles, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  FileClock,
+  FileUp,
+  FolderPlus,
+  Sparkles,
+  Upload,
+  X,
+} from "lucide-react";
 
-import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
+import {
+  CloudImportInline,
+  type CloudImportEntryControls,
+} from "@/features/cloud-import/components/cloud-import-inline";
 
 import type { Space } from "../types";
+import type { ImportCommitResult } from "@/features/cloud-import/types";
 
 export type StudentSpaceCreateStep = "choose" | "blank" | "import";
 
 interface StudentSpaceCreateModalProps {
   onClose: () => void;
   onCreated: (space: Space) => void;
-  onImported: () => void;
+  onImported: (result: ImportCommitResult) => void;
   onDraftDiscarded?: () => void;
   initialStep?: StudentSpaceCreateStep;
   initialLocalDraftId?: string | null;
@@ -35,6 +48,9 @@ export function StudentSpaceCreateModal({
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importControls, setImportControls] =
+    useState<CloudImportEntryControls | null>(null);
+  const [isImportWorkspaceMode, setIsImportWorkspaceMode] = useState(false);
 
   useEffect(() => {
     setStep(initialStep);
@@ -91,39 +107,86 @@ export function StudentSpaceCreateModal({
         }}
       >
         <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0))] px-5 py-5">
-            <div className="min-w-0">
-              <span className="inline-flex items-center rounded-full border border-accent-border bg-accent-dim/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.06em] text-accent">
-                AI 가져오기
-              </span>
-              <h2 className="mt-3 text-[21px] font-semibold tracking-[-0.03em] text-text">
-                AI로 스페이스 초안 만들기
-              </h2>
-              <p className="mt-1.5 max-w-[560px] text-[13px] leading-relaxed text-text-secondary">
-                저장된 초안을 이어보거나 새 파일을 불러와 스페이스 구조를 바로
-                검토할 수 있습니다.
-              </p>
-            </div>
+          <div
+            className={`border-b border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0))] px-5 ${isImportWorkspaceMode ? "py-4" : "py-5"}`}
+          >
+            <div
+              className={`flex gap-4 ${isImportWorkspaceMode ? "items-center justify-between" : "items-start justify-between"}`}
+            >
+              <div className="min-w-0">
+                <span className="inline-flex items-center rounded-full border border-accent-border bg-accent-dim/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.06em] text-accent">
+                  AI 가져오기
+                </span>
 
-            <div className="flex items-center gap-2">
+                {!isImportWorkspaceMode ? (
+                  <>
+                    <h2 className="mt-3 text-[21px] font-semibold tracking-[-0.03em] text-text">
+                      AI로 스페이스 초안 만들기
+                    </h2>
+                    <p className="mt-1.5 max-w-[560px] text-[13px] leading-relaxed text-text-secondary">
+                      저장된 초안을 이어보거나 새 파일을 불러와 스페이스 구조를
+                      바로 검토할 수 있습니다.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+
               <button
                 type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-2/80 text-text-dim transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-2/80 text-text-dim transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
                 onClick={onClose}
                 aria-label="닫기"
               >
                 <X size={16} />
               </button>
             </div>
+
+            {!isImportWorkspaceMode ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3 py-2 text-[11px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text disabled:cursor-default disabled:opacity-50"
+                  onClick={() => importControls?.openSavedDrafts()}
+                  disabled={!importControls}
+                >
+                  <FileClock size={12} />
+                  저장 작업
+                  {importControls && importControls.localDraftCount > 0 ? (
+                    <span className="rounded-full border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-secondary">
+                      {importControls.localDraftCount}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-accent-border bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:cursor-default disabled:opacity-50"
+                  onClick={() => importControls?.openFilePicker()}
+                  disabled={!importControls}
+                >
+                  <Upload size={13} />내 컴퓨터에서 파일 선택
+                </button>
+                <a
+                  href="/api/test/space-import-sample"
+                  download
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3.5 py-2 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+                >
+                  <Download size={13} />
+                  테스트 데이터 다운로드
+                </a>
+              </div>
+            ) : null}
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden">
             <CloudImportInline
               expanded
+              hideEntryHeader
               initialLocalDraftId={initialLocalDraftId}
               onDraftIdChange={(draftId) => {
                 onRouteStateChange?.({ step: "import", draftId });
               }}
+              onEntryControlsChange={setImportControls}
+              onWorkspaceModeChange={setIsImportWorkspaceMode}
               onDraftDiscarded={onDraftDiscarded}
               onClose={onClose}
               onImportComplete={onImported}
