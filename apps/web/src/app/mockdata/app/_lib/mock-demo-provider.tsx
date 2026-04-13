@@ -146,6 +146,38 @@ type DemoStore = {
 
 const DEMO_SPACE_ID = demoSpaces[0]?.id ?? "space-7";
 const nowIso = "2026-04-12T14:10:00.000Z";
+const demoLocationSearchResults = [
+  {
+    id: "keyword:demo-1",
+    label: "패스트캠퍼스 강남캠퍼스 · 서울 강남구 테헤란로 231",
+    placeName: "패스트캠퍼스 강남캠퍼스",
+    roadAddressName: "서울 강남구 테헤란로 231",
+    addressName: "서울 강남구 역삼동 647-3",
+    latitude: 37.5012,
+    longitude: 127.0396,
+    source: "keyword" as const,
+  },
+  {
+    id: "address:서울 강남구 테헤란로 427:127.056:37.504",
+    label: "위워크타워 · 서울 강남구 테헤란로 427",
+    placeName: "위워크타워",
+    roadAddressName: "서울 강남구 테헤란로 427",
+    addressName: "서울 강남구 삼성동 142-43",
+    latitude: 37.504,
+    longitude: 127.056,
+    source: "address" as const,
+  },
+  {
+    id: "keyword:demo-2",
+    label: "마루180 · 서울 강남구 역삼로 180",
+    placeName: "마루180",
+    roadAddressName: "서울 강남구 역삼로 180",
+    addressName: "서울 강남구 역삼동 702-10",
+    latitude: 37.4967,
+    longitude: 127.0386,
+    source: "keyword" as const,
+  },
+];
 
 function createJsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -637,6 +669,29 @@ async function handleMockApi(request: Request): Promise<Response | null> {
       : [];
     demoStore.memberMemos[memberLogsMatch[2]] = [log, ...existingLogs];
     return createJsonResponse({ log }, 201);
+  }
+
+  const publicCheckLocationMatch = path.match(
+    /^\/api\/v1\/spaces\/([^/]+)\/public-check-locations$/,
+  );
+  if (publicCheckLocationMatch && method === "GET") {
+    const query = url.searchParams.get("query")?.trim() ?? "";
+    const loweredQuery = query.toLowerCase();
+    const results =
+      query.length < 2
+        ? []
+        : demoLocationSearchResults.filter((result) =>
+            [
+              result.label,
+              result.placeName,
+              result.roadAddressName,
+              result.addressName,
+            ]
+              .filter(Boolean)
+              .some((value) => value!.toLowerCase().includes(loweredQuery)),
+          );
+
+    return createJsonResponse({ results });
   }
 
   const boardMatch = path.match(/^\/api\/v1\/spaces\/([^/]+)\/student-board$/);

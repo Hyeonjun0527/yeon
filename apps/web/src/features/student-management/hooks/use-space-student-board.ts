@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreatePublicCheckSessionBody,
+  PublicCheckLocationSearchResponse,
   StudentBoardResponse,
   UpdatePublicCheckSessionBody,
   UpdateStudentBoardBody,
@@ -123,4 +124,32 @@ export function useSpaceStudentBoard(spaceId: string | null) {
     createSession,
     updateSession,
   };
+}
+
+export function usePublicCheckLocationSearch(
+  spaceId: string | null,
+  query: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["public-check-location-search", spaceId, query],
+    enabled: enabled && !!spaceId && query.trim().length >= 2,
+    queryFn: async () => {
+      const params = new URLSearchParams({ query });
+      const response = await fetch(
+        `/api/v1/spaces/${spaceId}/public-check-locations?${params.toString()}`,
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(
+          payload?.message || "위치 검색 결과를 불러오지 못했습니다.",
+        );
+      }
+
+      return (await response.json()) as PublicCheckLocationSearchResponse;
+    },
+  });
 }

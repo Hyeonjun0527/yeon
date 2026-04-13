@@ -81,6 +81,26 @@ export const publicCheckSessionSummarySchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const publicCheckLocationSearchSourceSchema = z.enum([
+  "keyword",
+  "address",
+]);
+
+export const publicCheckLocationSearchResultSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  placeName: z.string().nullable(),
+  roadAddressName: z.string().nullable(),
+  addressName: z.string().nullable(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  source: publicCheckLocationSearchSourceSchema,
+});
+
+export const publicCheckLocationSearchResponseSchema = z.object({
+  results: z.array(publicCheckLocationSearchResultSchema),
+});
+
 export const studentBoardResponseSchema = z.object({
   rows: z.array(studentBoardRowSchema),
   sessions: z.array(publicCheckSessionSummarySchema),
@@ -95,7 +115,7 @@ export const createPublicCheckSessionBodySchema = z.object({
   locationLabel: z.string().max(120).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
-  radiusMeters: z.number().int().min(10).max(1000).nullable().optional(),
+  radiusMeters: z.number().int().min(50).max(300).nullable().optional(),
 });
 
 export const updatePublicCheckSessionBodySchema = z.object({
@@ -150,6 +170,15 @@ export type PublicCheckVerificationStatus = z.infer<
 >;
 export type PublicCheckSessionSummary = z.infer<
   typeof publicCheckSessionSummarySchema
+>;
+export type PublicCheckLocationSearchSource = z.infer<
+  typeof publicCheckLocationSearchSourceSchema
+>;
+export type PublicCheckLocationSearchResult = z.infer<
+  typeof publicCheckLocationSearchResultSchema
+>;
+export type PublicCheckLocationSearchResponse = z.infer<
+  typeof publicCheckLocationSearchResponseSchema
 >;
 export type StudentBoardResponse = z.infer<typeof studentBoardResponseSchema>;
 export type CreatePublicCheckSessionBody = z.infer<

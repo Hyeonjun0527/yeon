@@ -165,7 +165,19 @@ export async function createPublicCheckSession(params: {
   ) {
     throw new ServiceError(
       400,
-      "위치 기반 체크인을 쓰려면 위치명/좌표/반경을 모두 입력해야 합니다.",
+      "위치 기반 체크인을 쓰려면 검색 결과에서 기준 위치를 선택하고 반경을 설정해야 합니다.",
+    );
+  }
+
+  if (
+    params.body.enabledMethods.includes("location") &&
+    params.body.radiusMeters !== null &&
+    params.body.radiusMeters !== undefined &&
+    (params.body.radiusMeters < 50 || params.body.radiusMeters > 300)
+  ) {
+    throw new ServiceError(
+      400,
+      "위치 기반 체크인 반경은 50m에서 300m 사이로 설정해 주세요.",
     );
   }
 
