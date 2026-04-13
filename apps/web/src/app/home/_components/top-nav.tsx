@@ -25,6 +25,27 @@ type HelpContent = {
   workflow: string;
 };
 
+const TUTORIAL_TARGET_SELECTORS = {
+  home: [
+    '[data-tutorial="new-record-btn"]',
+    '[data-tutorial="ai-panel"]',
+    '[data-tutorial="link-member-btn"]',
+    '[data-tutorial="members-section"]',
+  ],
+  student: [
+    '[data-tutorial="member-card"]',
+    '[data-tutorial="space-title"]',
+    '[data-tutorial="add-member-btn"]',
+  ],
+  "check-board": [
+    '[data-tutorial="check-board-summary"]',
+    '[data-tutorial="check-board-session-panel"]',
+    '[data-tutorial="check-board-member-board"]',
+    '[data-tutorial="check-board-member-board-mobile"]',
+    '[data-tutorial="check-board-member-board-desktop"]',
+  ],
+} as const;
+
 const HELP_CONTENTS: Record<
   "home" | "student-management" | "check-board",
   HelpContent
@@ -82,6 +103,45 @@ function getHelpContentKey(pathname: string): keyof typeof HELP_CONTENTS {
   return "home";
 }
 
+function useTutorialTriggerVisibility(
+  tutorialKey: keyof typeof TUTORIAL_TARGET_SELECTORS,
+  enabled: boolean,
+) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || typeof document === "undefined") {
+      setVisible(false);
+      return;
+    }
+
+    const selectors = TUTORIAL_TARGET_SELECTORS[tutorialKey];
+    const updateVisibility = () => {
+      setVisible(selectors.some((selector) => document.querySelector(selector)));
+    };
+
+    updateVisibility();
+
+    const observer = new MutationObserver(() => {
+      updateVisibility();
+    });
+    const root = document.querySelector(".app-theme") ?? document.body;
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-tutorial"],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [enabled, tutorialKey]);
+
+  return visible;
+}
+
 export function TopNav({ section }: TopNavProps) {
   const pathname = usePathname();
   const { normalizeAppPathname, resolveAppHref } = useAppRoute();
@@ -101,10 +161,14 @@ export function TopNav({ section }: TopNavProps) {
       : section === "students"
         ? "student"
         : "home";
-  const canShowTutorialTrigger =
+  const canResolveTutorialRoute =
     normalizedPathname === "/home" ||
     normalizedPathname === "/home/student-management" ||
     normalizedPathname === "/home/student-management/check-board";
+  const canShowTutorialTrigger = useTutorialTriggerVisibility(
+    tutorialKey,
+    canResolveTutorialRoute,
+  );
 
   return (
     <div className="sticky top-0 z-[100] bg-[rgba(9,9,11,0.85)] backdrop-blur-[16px] border-b border-border flex items-center px-4 h-12 gap-3">

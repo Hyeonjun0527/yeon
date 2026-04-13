@@ -22,6 +22,7 @@ import { useSpaceSidebarSelection } from "./_hooks/use-space-sidebar-selection";
 import { StudentManagementProvider } from "@/features/student-management";
 import { useStudentManagement } from "@/features/student-management/student-management-provider";
 import { StudentSpaceCreateModal } from "@/features/student-management/components/space-create-modal";
+import { HomeSpaceGate } from "@/app/home/_components/home-space-gate";
 import { useClickOutside } from "@/app/home/_hooks";
 import { useHomeSidebarLayout } from "@/app/home/_components/home-sidebar-layout-context";
 import {
@@ -270,85 +271,86 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
       setMobileActionTarget(target);
     }, 140);
   };
+  const showStudentShell = !noSpaces;
 
   return (
     <div className="flex flex-1 overflow-hidden md:flex-row flex-col">
-      <div className="border-b border-border bg-surface px-3 py-3 md:hidden">
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface-2 p-1">
+      {showStudentShell ? (
+        <div className="border-b border-border bg-surface px-3 py-3 md:hidden">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface-2 p-1">
+            <button
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
+                !isCheckBoardRoute
+                  ? "bg-accent text-white"
+                  : "text-text-secondary hover:bg-surface-3 hover:text-text"
+              }`}
+              onClick={() =>
+                router.push(
+                  createPatchedHref(
+                    resolveAppHref("/home/student-management"),
+                    new URLSearchParams(window.location.search),
+                    { spaceId: selectedSpaceId },
+                  ),
+                )
+              }
+              type="button"
+            >
+              <Users size={14} />
+              학생관리
+            </button>
+            <button
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
+                isCheckBoardRoute
+                  ? "bg-accent text-white"
+                  : "text-text-secondary hover:bg-surface-3 hover:text-text"
+              }`}
+              onClick={() =>
+                router.push(
+                  createPatchedHref(
+                    resolveAppHref("/home/student-management/check-board"),
+                    new URLSearchParams(window.location.search),
+                    { spaceId: selectedSpaceId },
+                  ),
+                )
+              }
+              type="button"
+            >
+              <ClipboardCheck size={14} />
+              출석보드
+            </button>
+          </div>
+
           <button
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
-              !isCheckBoardRoute
-                ? "bg-accent text-white"
-                : "text-text-secondary hover:bg-surface-3 hover:text-text"
-            }`}
-            onClick={() =>
-              router.push(
-                createPatchedHref(
-                  resolveAppHref("/home/student-management"),
-                  new URLSearchParams(window.location.search),
-                  { spaceId: selectedSpaceId },
-                ),
-              )
-            }
             type="button"
+            className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-left transition-colors hover:border-border-light hover:bg-surface-3"
+            onClick={() => setMobileSpaceDrawerOpen(true)}
           >
-            <Users size={14} />
-            학생관리
-          </button>
-          <button
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
-              isCheckBoardRoute
-                ? "bg-accent text-white"
-                : "text-text-secondary hover:bg-surface-3 hover:text-text"
-            }`}
-            onClick={() =>
-              router.push(
-                createPatchedHref(
-                  resolveAppHref("/home/student-management/check-board"),
-                  new URLSearchParams(window.location.search),
-                  { spaceId: selectedSpaceId },
-                ),
-              )
-            }
-            type="button"
-          >
-            <ClipboardCheck size={14} />
-            출석보드
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-text-dim">
+                현재 스페이스
+              </div>
+              <div className="mt-1 truncate text-sm font-semibold text-text">
+                {currentSpace?.name ?? "스페이스를 선택해 주세요"}
+              </div>
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-text-secondary">
+              <ChevronsUpDown size={14} />
+              변경
+            </div>
           </button>
         </div>
+      ) : null}
 
-        <button
-          type="button"
-          className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-left transition-colors hover:border-border-light hover:bg-surface-3"
-          onClick={() => setMobileSpaceDrawerOpen(true)}
+      {showStudentShell ? (
+        <nav
+          className={`scrollbar-subtle relative hidden flex-shrink-0 transition-[width,padding] duration-200 md:flex ${
+            studentSidebarCollapsed
+              ? "w-0 overflow-visible border-r-0 bg-transparent px-0 py-0"
+              : "w-[240px] overflow-y-auto border-r border-border bg-surface px-3 pt-5 pb-5"
+          }`}
         >
-          <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-text-dim">
-              현재 스페이스
-            </div>
-            <div className="mt-1 truncate text-sm font-semibold text-text">
-              {currentSpace?.name ??
-                (noSpaces
-                  ? "스페이스를 만들어 주세요"
-                  : "스페이스를 선택해 주세요")}
-            </div>
-          </div>
-          <div className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-text-secondary">
-            <ChevronsUpDown size={14} />
-            변경
-          </div>
-        </button>
-      </div>
-
-      <nav
-        className={`scrollbar-subtle relative hidden flex-shrink-0 transition-[width,padding] duration-200 md:flex ${
-          studentSidebarCollapsed
-            ? "w-0 overflow-visible border-r-0 bg-transparent px-0 py-0"
-            : "w-[240px] overflow-y-auto border-r border-border bg-surface px-3 pt-5 pb-5"
-        }`}
-      >
-        {!studentSidebarCollapsed ? (
-          <div className="flex min-h-full w-full flex-col gap-1">
+          {!studentSidebarCollapsed ? (
+            <div className="flex min-h-full w-full flex-col gap-1">
             <div className="text-[11px] font-semibold text-text-dim uppercase tracking-[0.05em] px-2.5 pt-1 pb-1.5">
               스페이스
             </div>
@@ -481,11 +483,24 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
                 </div>
               ) : null}
             </div>
-          </div>
-        ) : null}
-      </nav>
-      <main className="scrollbar-subtle flex-1 overflow-y-auto p-8 max-md:px-3 max-md:py-4">
-        {children}
+            </div>
+          ) : null}
+        </nav>
+      ) : null}
+      <main
+        className={`scrollbar-subtle flex-1 overflow-y-auto ${
+          showStudentShell ? "p-8 max-md:px-3 max-md:py-4" : ""
+        }`}
+      >
+        {noSpaces ? (
+          <HomeSpaceGate
+            variant="student-management"
+            onCreateBlankSpace={() => openCreateModal("blank")}
+            onImportSpace={() => openCreateModal("import")}
+          />
+        ) : (
+          children
+        )}
       </main>
       {mobileSpaceDrawerOpen ? (
         <div className="fixed inset-0 z-[340] bg-[rgba(0,0,0,0.62)] p-3 md:hidden">
