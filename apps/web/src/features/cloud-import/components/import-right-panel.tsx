@@ -507,7 +507,7 @@ type AnalysisVirtualRow =
     };
 
 const ANALYSIS_ROW_HEIGHTS = {
-  cohort: 118,
+  cohort: 82,
   columns: 38,
   student: 42,
 } as const;
@@ -698,29 +698,26 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
 
     return (
       <div
-        className="absolute left-0 top-0 w-full rounded-t-2xl border-x border-t border-border bg-surface/65 px-3 pt-3"
+        className="absolute left-0 top-0 w-full rounded-t-2xl border-x border-t border-border bg-surface/65 px-3 pt-2"
         style={style}
       >
-        <div className="grid gap-2 grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] items-start gap-2">
+          <div className="min-w-0">
             <input
-              className="block w-full rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-sm font-semibold text-text focus:outline-none focus:border-accent"
+              className="block w-full rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-1.5 text-sm font-semibold text-text focus:border-accent focus:outline-none"
               value={row.cohort.name}
               onChange={(event) =>
                 onUpdateCohortName(row.ci, event.target.value)
               }
               placeholder="스페이스명"
             />
-            <p className="m-0 text-[11px] leading-relaxed text-text-dim">
-              각 스페이스는 진행기간을 따로 가져갑니다.
-            </p>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="min-w-0">
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="date"
-                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-[13px] text-text outline-none transition-colors focus:border-accent"
+                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-1.5 text-[13px] text-text outline-none transition-colors focus:border-accent"
                 value={row.cohort.startDate ?? ""}
                 onChange={(event) =>
                   onUpdateCohortPeriod(row.ci, "startDate", event.target.value)
@@ -729,7 +726,7 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
               />
               <input
                 type="date"
-                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-[13px] text-text outline-none transition-colors focus:border-accent"
+                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-1.5 text-[13px] text-text outline-none transition-colors focus:border-accent"
                 value={row.cohort.endDate ?? ""}
                 onChange={(event) =>
                   onUpdateCohortPeriod(row.ci, "endDate", event.target.value)
@@ -738,12 +735,11 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
               />
             </div>
             <p
-              className={`m-0 text-[11px] leading-relaxed ${
+              className={`m-0 min-h-4 px-1 pt-1 text-[10px] leading-tight ${
                 periodError ? "text-red" : "text-text-dim"
               }`}
             >
-              {periodError ??
-                "시작일과 종료일을 함께 입력하면 가져온 뒤 바로 잔디 기간 기준이 됩니다."}
+              {periodError ?? ""}
             </p>
           </div>
         </div>
