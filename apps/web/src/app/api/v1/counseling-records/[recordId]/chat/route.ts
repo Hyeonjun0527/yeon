@@ -1,15 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
-import type { CounselingChatMessage } from "@yeon/api-contract/counseling-records";
+import {
+  counselingChatRequestSchema,
+  type CounselingChatMessage,
+} from "@yeon/api-contract/counseling-records";
 import { getCounselingRecordDetail } from "@/server/services/counseling-records-service";
 import {
   appendCounselingRecordAssistantMessages,
   clearCounselingRecordAssistantMessages,
 } from "@/server/services/counseling-records-service";
-import { streamCounselingAiChat } from "@/server/services/counseling-ai-service";
+import {
+  streamCounselingAiChat,
+  streamWebSearchAiChat,
+} from "@/server/services/counseling-ai-service";
 import { ServiceError } from "@/server/services/service-error";
 
 import { jsonError, requireAuthenticatedUser } from "../../_shared";
@@ -21,15 +26,6 @@ type RouteContext = {
     recordId: string;
   }>;
 };
-
-const chatMessageSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string(),
-});
-
-const chatRequestSchema = z.object({
-  messages: z.array(chatMessageSchema).nonempty(),
-});
 
 async function persistAssistantMessageFromStream(params: {
   stream: ReadableStream<Uint8Array>;
@@ -118,7 +114,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return jsonError("요청 형식이 올바르지 않습니다.", 400);
   }
 
-  const parsed = chatRequestSchema.safeParse(body);
+  const parsed = counselingChatRequestSchema.safeParse(body);
 
   if (!parsed.success) {
     return jsonError("메시지가 비어 있습니다.", 400);
@@ -143,20 +139,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
       userMessage,
     ]);
 
-    const upstream = await streamCounselingAiChat(
-      {
-        studentName: detail.studentName,
-        sessionTitle: detail.sessionTitle,
-        counselingType: detail.counselingType,
-        createdAt: detail.createdAt,
-      },
-      detail.transcriptSegments.map((segment) => ({
-        speakerLabel: segment.speakerLabel,
-        text: segment.text,
-        startMs: segment.startMs ?? 0,
-      })),
-      parsed.data.messages,
-    );
+    const upstream = parsed.data.useWebSearch
+      ? await streamWebSearchAiChat(parsed.data.messages)
+      : await streamCounselingAiChat(
+          {
+            studentName: detail.studentName,
+            sessionTitle: detail.sessionTitle,
+            counselingType: detail.counselingType,
+            createdAt: detail.createdAt,
+          },
+          detail.transcriptSegments.map((segment) => ({
+            speakerLabel: segment.speakerLabel,
+            text: segment.text,
+            startMs: segment.startMs ?? 0,
+          })),
+          parsed.data.messages,
+        );
 
     const [clientStream, persistenceStream] = upstream.tee();
 

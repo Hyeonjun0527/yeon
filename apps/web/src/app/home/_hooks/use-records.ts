@@ -17,6 +17,7 @@ import type {
 } from "../_lib/types";
 import { getProcessingChecklistStep } from "../_lib/processing-progress";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
+import { normalizeCounselingTranscriptSegments } from "@/lib/counseling-transcript-display";
 
 const POLL_INTERVAL_MS = 3000;
 const BOOSTED_POLL_INTERVAL_MS = 1000;
@@ -64,15 +65,7 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
 function detailToTranscript(
   detail: CounselingRecordDetail,
 ): TranscriptSegment[] {
-  return detail.transcriptSegments.map((seg) => ({
-    id: seg.id,
-    segmentIndex: seg.segmentIndex,
-    startMs: seg.startMs,
-    endMs: seg.endMs,
-    speakerLabel: seg.speakerLabel,
-    speakerTone: seg.speakerTone,
-    text: seg.text,
-  }));
+  return normalizeCounselingTranscriptSegments(detail.transcriptSegments);
 }
 
 function detailToRecordPatch(

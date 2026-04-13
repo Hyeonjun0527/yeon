@@ -496,68 +496,218 @@
 .transcriptViewport {
   min-height: 0;
   overflow: auto;
-  display: grid;
-  gap: 4px;
   padding: 8px 26px 28px;
 }
 
-.segmentRow {
+.transcriptVirtualList {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+}
+
+.transcriptVirtualRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 10px;
+}
+
+.displayBlock {
   display: grid;
-  grid-template-columns: 64px 64px minmax(0, 1fr);
-  align-items: start;
   gap: 12px;
-  padding: 14px 0;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: transparent;
+  width: 100%;
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.02);
   color: inherit;
   text-align: left;
-}
-
-.segmentMatched {
-  margin: 0 -10px;
-  padding: 14px 10px;
-  border-radius: 14px;
-  border-left: 3px solid rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.06);
-}
-
-.segmentActive {
-  margin: 0 -10px;
-  padding: 14px 10px;
-  border-radius: 14px;
-  border-left: 3px solid rgba(17, 132, 91, 0.42);
-  background: rgba(17, 132, 91, 0.06);
-}
-
-.segmentSeekable {
-  width: calc(100% + 20px);
-  margin-left: -10px;
-  margin-right: -10px;
-  cursor: pointer;
   transition:
+    border-color 0.18s ease,
     background-color 0.18s ease,
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+    transform 0.18s ease;
 }
 
-.segmentSeekable:hover {
+.displayBlockMatched {
+  border-color: rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.07);
+}
+
+.displayBlockActive {
+  border-color: rgba(17, 132, 91, 0.38);
+  background: rgba(17, 132, 91, 0.08);
+}
+
+.displayBlockSeekable {
+  cursor: pointer;
+}
+
+.displayBlockSeekable:hover {
   transform: translateX(2px);
-  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.22);
 }
 
-.segmentSeekable:focus-visible {
+.displayBlockSeekable:focus-visible {
   outline: 2px solid rgba(99, 102, 241, 0.32);
   outline-offset: 2px;
-  border-radius: 10px;
 }
 
-.segmentStatic {
-  width: 100%;
+.displayBlockStatic {
+  cursor: default;
+}
+
+.displayBlockHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.displayBlockMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.displayBlockTime {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.displayBlockSpeaker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.displayBlockCount {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.displayBlockAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.displayBlockAction:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text-primary);
+}
+
+.displayBlockChunks {
+  display: grid;
+  gap: 8px;
+}
+
+.displayBlockChunk {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 15px;
+  line-height: 1.82;
+  color: var(--text-primary);
+}
+
+.rawSegmentPanel {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.rawSegmentRow {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.rawSegmentMatched {
+  border-color: rgba(99, 102, 241, 0.24);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.rawSegmentActive {
+  border-color: rgba(17, 132, 91, 0.3);
+  background: rgba(17, 132, 91, 0.08);
+}
+
+.rawSegmentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rawSegmentMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rawSegmentText {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.rawSegmentEditTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rawSegmentEditTrigger:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
 }
 
 .segmentTime {
-  padding-top: 4px;
   font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
@@ -584,21 +734,6 @@
 .segmentSpeakerClickable:hover {
   transform: scale(1.08);
   filter: brightness(1.15);
-}
-
-.segmentText {
-  margin: 0;
-  max-width: 78ch;
-  font-size: 15px;
-  line-height: 1.75;
-  cursor: text;
-  border-radius: 4px;
-  padding: 2px 4px;
-  transition: background-color 0.12s ease;
-}
-
-.segmentText:hover {
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .segmentEditArea {
@@ -736,19 +871,21 @@
     max-height: 400px;
   }
 
-  .segmentRow {
-    grid-template-columns: auto auto minmax(0, 1fr);
-    gap: 8px;
-  }
-
   .segmentTime {
     font-size: 11px;
   }
 
-  .segmentSpeaker {
+  .segmentSpeaker,
+  .displayBlockSpeaker {
     min-height: 24px;
     padding: 0 8px;
     font-size: 11px;
+  }
+
+  .displayBlockHeader,
+  .rawSegmentHeader {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .detailHeaderTop,

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Loader2, Link2, Link2Off } from "lucide-react";
 import styles from "../home.module.css";
 import {
@@ -8,6 +9,11 @@ import { inferFailurePresentation } from "../_lib/failure-presentation";
 import type { AnalysisResult, RecordItem } from "../_lib/types";
 import type { RecordMemberMismatchWarning } from "../_lib/record-member-mismatch";
 import { fmtTime, fmtMs } from "../_lib/utils";
+import { buildTranscriptDisplayBlocks } from "@/lib/counseling-transcript-display";
+
+const EMPTY_TRANSCRIPT_DISPLAY_BLOCKS: ReturnType<
+  typeof buildTranscriptDisplayBlocks
+> = [];
 
 function AnalysisCards({ analysis }: { analysis: AnalysisResult }) {
   return (
@@ -193,6 +199,20 @@ export function CenterPanel({
   retryPending,
   retryFeedback,
 }: CenterPanelProps) {
+  const transcriptDisplayBlocks = useMemo(
+    () =>
+      selected
+        ? buildTranscriptDisplayBlocks(selected.transcript)
+        : EMPTY_TRANSCRIPT_DISPLAY_BLOCKS,
+    [selected],
+  );
+  const transcriptSummaryText =
+    selected && transcriptDisplayBlocks.length > 0
+      ? `화자 턴 ${transcriptDisplayBlocks.length}개 · ${selected.transcript.length}개 세그먼트`
+      : selected && selected.transcript.length > 0
+        ? `${selected.transcript.length}개 세그먼트`
+        : "";
+
   /* 기록 목록은 있지만 아직 선택하지 않은 상태 */
   if (!selected) {
     return (
@@ -406,9 +426,7 @@ export function CenterPanel({
 
           <details className="mt-4" open>
             <summary className="text-[13px] font-semibold text-text-secondary cursor-pointer select-none mb-3 hover:text-text transition-colors">
-              전사 원문{" "}
-              {selected.transcript.length > 0 &&
-                `(${selected.transcript.length}개 세그먼트)`}
+              전사 원문 {transcriptSummaryText && `(${transcriptSummaryText})`}
             </summary>
             {transcriptLoading ? (
               <div className="text-text-dim text-[13px] py-6">
@@ -632,9 +650,7 @@ export function CenterPanel({
           {/* 전사 텍스트 */}
           <details className="mt-4" open={!selected.analysisResult}>
             <summary className="text-[13px] font-semibold text-text-secondary cursor-pointer select-none mb-3 hover:text-text transition-colors">
-              전사 원문{" "}
-              {selected.transcript.length > 0 &&
-                `(${selected.transcript.length}개 세그먼트)`}
+              전사 원문 {transcriptSummaryText && `(${transcriptSummaryText})`}
             </summary>
             {transcriptLoading ? (
               <div className="text-text-dim text-[13px] py-6">

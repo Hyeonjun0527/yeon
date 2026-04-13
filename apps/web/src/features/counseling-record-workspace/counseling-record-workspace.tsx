@@ -317,7 +317,6 @@ export function CounselingRecordWorkspace() {
                       transcriptEditor.handleSpeakerLabelChange
                     }
                     currentAudioTimeMs={audioPlayer.currentAudioTimeMs}
-                    activeSegmentRef={audioPlayer.activeSegmentRef}
                     seekAudioToTime={audioPlayer.seekAudioToTime}
                   />
                 </section>

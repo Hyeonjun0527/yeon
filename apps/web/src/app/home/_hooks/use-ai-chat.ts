@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import type { CounselingChatRequest } from "@yeon/api-contract/counseling-records";
 import type { AiMessage, AnalysisResult, AttachedImage } from "../_lib/types";
 
 interface UseAiChatParams {
@@ -8,6 +9,7 @@ interface UseAiChatParams {
   selectedMessages: AiMessage[];
   selectedStatus: "ready" | "processing" | "error" | null;
   selectedAnalysisResult: AnalysisResult | null;
+  useWebSearch: boolean;
   onUpdateMessages: (
     id: string,
     updater: (prev: AiMessage[]) => AiMessage[],
@@ -42,11 +44,21 @@ async function readSseStream(
 
 // INITIAL_ANALYSIS_PROMPT 제거됨 — 분석은 /analyze 엔드포인트가 JSON으로 처리
 
+const WEB_SEARCH_PENDING_MESSAGE = "웹검색중...";
+
+function isPendingAssistantMessage(message?: AiMessage) {
+  return (
+    message?.role === "assistant" &&
+    (message.text === "" || message.text === WEB_SEARCH_PENDING_MESSAGE)
+  );
+}
+
 export function useAiChat({
   selectedId,
   selectedMessages,
   selectedStatus,
   selectedAnalysisResult,
+  useWebSearch,
   onUpdateMessages,
   onUpdateAnalysisResult,
 }: UseAiChatParams) {
@@ -114,7 +126,11 @@ export function useAiChat({
   }, []);
 
   const sendToApi = useCallback(
-    async (recordId: string, messages: AiMessage[]) => {
+    async (
+      recordId: string,
+      messages: AiMessage[],
+      options: { useWebSearch: boolean },
+    ) => {
       const apiMessages = messages
         .filter((m) => m.role === "user" || m.role === "assistant")
         .map((m) => ({
@@ -123,13 +139,40 @@ export function useAiChat({
             ? `${m.text || ""}${m.text ? "\n" : ""}[이미지 ${m.images.length}장 첨부]`
             : m.text,
         }));
+      const assistantPlaceholder = options.useWebSearch
+        ? WEB_SEARCH_PENDING_MESSAGE
+        : "";
+      const payload: CounselingChatRequest = {
+        messages: apiMessages,
+        useWebSearch: options.useWebSearch,
+      };
 
       abortRef.current = new AbortController();
+
+      onUpdateMessages(recordId, (prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+
+        if (isPendingAssistantMessage(updated[lastIdx])) {
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            text: assistantPlaceholder,
+          };
+          return updated;
+        }
+
+        updated.push({
+          role: "assistant" as const,
+          text: assistantPlaceholder,
+          createdAt: new Date().toISOString(),
+        });
+        return updated;
+      });
 
       const res = await fetch(`/api/v1/counseling-records/${recordId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify(payload),
         signal: abortRef.current.signal,
       });
 
@@ -140,15 +183,6 @@ export function useAiChat({
 
       const reader = res.body.getReader();
       let accumulated = "";
-
-      onUpdateMessages(recordId, (prev) => [
-        ...prev,
-        {
-          role: "assistant" as const,
-          text: "",
-          createdAt: new Date().toISOString(),
-        },
-      ]);
 
       await readSseStream(reader, (chunk) => {
         try {
@@ -167,6 +201,10 @@ export function useAiChat({
           return updated;
         });
       });
+
+      if (!accumulated.trim()) {
+        throw new Error("AI 응답이 비어 있습니다.");
+      }
     },
     [onUpdateMessages],
   );
@@ -252,18 +290,26 @@ export function useAiChat({
     ];
 
     setStreaming(true);
-    sendToApi(selectedId, allMessages)
+    sendToApi(selectedId, allMessages, { useWebSearch })
       .catch((err) => {
-        if ((err as Error).name === "AbortError") return;
+        if ((err as Error).name === "AbortError") {
+          onUpdateMessages(selectedId, (prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+
+            if (isPendingAssistantMessage(updated[lastIdx])) {
+              updated.pop();
+            }
+
+            return updated;
+          });
+          return;
+        }
         onUpdateMessages(selectedId, (prev) => {
           const updated = [...prev];
           const lastIdx = updated.length - 1;
           // 스트리밍 중 빈 assistant 메시지가 이미 추가된 경우 교체
-          if (
-            lastIdx >= 0 &&
-            updated[lastIdx].role === "assistant" &&
-            !updated[lastIdx].text
-          ) {
+          if (lastIdx >= 0 && isPendingAssistantMessage(updated[lastIdx])) {
             updated[lastIdx] = {
               ...updated[lastIdx],
               text: "AI 응답을 가져오지 못했습니다.",
@@ -281,7 +327,15 @@ export function useAiChat({
         setStreaming(false);
         abortRef.current = null;
       });
-  }, [input, images, selectedId, streaming, onUpdateMessages, sendToApi]);
+  }, [
+    input,
+    images,
+    selectedId,
+    streaming,
+    onUpdateMessages,
+    sendToApi,
+    useWebSearch,
+  ]);
 
   const sendQuickChip = useCallback(
     (text: string) => {
@@ -301,17 +355,25 @@ export function useAiChat({
       ];
 
       setStreaming(true);
-      sendToApi(selectedId, allMessages)
+      sendToApi(selectedId, allMessages, { useWebSearch })
         .catch((err) => {
-          if ((err as Error).name === "AbortError") return;
+          if ((err as Error).name === "AbortError") {
+            onUpdateMessages(selectedId, (prev) => {
+              const updated = [...prev];
+              const lastIdx = updated.length - 1;
+
+              if (isPendingAssistantMessage(updated[lastIdx])) {
+                updated.pop();
+              }
+
+              return updated;
+            });
+            return;
+          }
           onUpdateMessages(selectedId, (prev) => {
             const updated = [...prev];
             const lastIdx = updated.length - 1;
-            if (
-              lastIdx >= 0 &&
-              updated[lastIdx].role === "assistant" &&
-              !updated[lastIdx].text
-            ) {
+            if (lastIdx >= 0 && isPendingAssistantMessage(updated[lastIdx])) {
               updated[lastIdx] = {
                 ...updated[lastIdx],
                 text: "AI 응답을 가져오지 못했습니다.",
@@ -330,7 +392,7 @@ export function useAiChat({
           abortRef.current = null;
         });
     },
-    [selectedId, streaming, onUpdateMessages, sendToApi],
+    [onUpdateMessages, selectedId, sendToApi, streaming, useWebSearch],
   );
 
   return {

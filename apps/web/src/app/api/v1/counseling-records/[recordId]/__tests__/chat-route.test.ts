@@ -8,6 +8,7 @@ const mockGetCounselingRecordDetail = vi.fn();
 const mockAppendMessages = vi.fn();
 const mockClearMessages = vi.fn();
 const mockStreamCounselingAiChat = vi.fn();
+const mockStreamWebSearchAiChat = vi.fn();
 
 vi.mock("../../_shared", () => ({
   jsonError: (message: string, status: number) =>
@@ -26,6 +27,8 @@ vi.mock("@/server/services/counseling-records-service", () => ({
 vi.mock("@/server/services/counseling-ai-service", () => ({
   streamCounselingAiChat: (...args: unknown[]) =>
     mockStreamCounselingAiChat(...args),
+  streamWebSearchAiChat: (...args: unknown[]) =>
+    mockStreamWebSearchAiChat(...args),
 }));
 
 import { DELETE, POST } from "../chat/route";
@@ -45,6 +48,7 @@ function createSseStream(chunks: string[]) {
 describe("chat route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStreamWebSearchAiChat.mockReset();
   });
 
   it("POST는 마지막 메시지가 비어 있으면 400을 반환한다", async () => {
@@ -130,6 +134,50 @@ describe("chat route", () => {
 
     expect(response.headers.get("Content-Type")).toBe("text/event-stream");
     expect(mockAppendMessages).toHaveBeenCalled();
+    expect(mockStreamCounselingAiChat).toHaveBeenCalled();
+  });
+
+  it("POST는 웹검색 토글이 켜지면 웹검색 스트림을 사용한다", async () => {
+    mockRequireAuthenticatedUser.mockResolvedValue({
+      currentUser: { id: "user-1" },
+      response: null,
+    });
+    mockGetCounselingRecordDetail.mockResolvedValue({
+      studentName: "홍길동",
+      sessionTitle: "1차 상담",
+      counselingType: "대면 상담",
+      createdAt: "2026-04-12T10:00:00.000Z",
+      transcriptSegments: [
+        { speakerLabel: "멘토", text: "안녕하세요", startMs: 0 },
+      ],
+    });
+    mockStreamWebSearchAiChat.mockResolvedValue(
+      createSseStream([
+        'data: {"content":"검색 답변입니다."}\n',
+        "data: [DONE]\n",
+      ]),
+    );
+
+    const response = await POST(
+      new NextRequest(
+        "http://localhost/api/v1/counseling-records/record-1/chat",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "최신 소식 알려줘" }],
+            useWebSearch: true,
+          }),
+        },
+      ),
+      { params: Promise.resolve({ recordId: "record-1" }) },
+    );
+
+    expect(response.headers.get("Content-Type")).toBe("text/event-stream");
+    expect(mockStreamWebSearchAiChat).toHaveBeenCalledWith([
+      { role: "user", content: "최신 소식 알려줘" },
+    ]);
+    expect(mockStreamCounselingAiChat).not.toHaveBeenCalled();
   });
 
   it("DELETE는 clear 실패 ServiceError를 그대로 반환한다", async () => {

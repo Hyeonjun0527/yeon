@@ -132,7 +132,13 @@ class SplineErrorBoundary extends Component<
   }
 }
 
-function SplineCanvas({ paused }: { paused: boolean }) {
+function SplineCanvas({
+  paused,
+  onLiveSceneChange,
+}: {
+  paused: boolean;
+  onLiveSceneChange?: (isLive: boolean) => void;
+}) {
   const [error, setError] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(
     null,
@@ -456,6 +462,10 @@ function SplineCanvas({ paused }: { paused: boolean }) {
   const shouldShowSpline = shouldRenderSpline && hasLiveScene;
   const shouldShowFallback = !hasDesktopViewport || error || !hasLiveScene;
 
+  useEffect(() => {
+    onLiveSceneChange?.(shouldShowSpline);
+  }, [onLiveSceneChange, shouldShowSpline]);
+
   return (
     <>
       <div
@@ -491,17 +501,19 @@ function SplineCanvas({ paused }: { paused: boolean }) {
 
 type SplineHeroProps = {
   paused?: boolean;
+  onLiveSceneChange?: (isLive: boolean) => void;
 };
 
 export const SplineHero = memo(function SplineHero({
   paused = false,
+  onLiveSceneChange,
 }: SplineHeroProps) {
   return (
     <div
       className={`${styles.splineContainer} absolute inset-0 h-full w-full`}
       data-landing-spline="true"
     >
-      <SplineCanvas paused={paused} />
+      <SplineCanvas paused={paused} onLiveSceneChange={onLiveSceneChange} />
     </div>
   );
 });

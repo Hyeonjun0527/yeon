@@ -14,6 +14,7 @@ export function useAiPanel({ hasSelectedRecord }: UseAiPanelOptions) {
   const [width, setWidth] = useState(AI_PANEL_DEFAULT_WIDTH);
   const [isUserCollapsed, setIsUserCollapsed] = useState(false);
   const [model, setModel] = useState<AiModelType>("일반 모델");
+  const [useWebSearch, setUseWebSearch] = useState(false);
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const collapsed = isUserCollapsed || !hasSelectedRecord;
 
@@ -33,6 +34,14 @@ export function useAiPanel({ hasSelectedRecord }: UseAiPanelOptions) {
   const toggleModel = useCallback(() => {
     setModel((p) => (p === "일반 모델" ? "고급 모델" : "일반 모델"));
   }, []);
+
+  const toggleWebSearch = useCallback(() => {
+    if (!hasSelectedRecord) {
+      return;
+    }
+
+    setUseWebSearch((prev) => !prev);
+  }, [hasSelectedRecord]);
 
   /**
    * 리사이즈 핵심:
@@ -72,11 +81,13 @@ export function useAiPanel({ hasSelectedRecord }: UseAiPanelOptions) {
     collapsed,
     canExpand: hasSelectedRecord,
     model,
+    useWebSearch,
     tab,
     panelRef,
     setTab,
     toggleCollapsed,
     toggleModel,
+    toggleWebSearch,
     startResize,
     expand: () => {
       if (!hasSelectedRecord) {
