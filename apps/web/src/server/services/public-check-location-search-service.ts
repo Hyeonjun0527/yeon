@@ -1,3 +1,4 @@
+import proj4 from "proj4";
 import { z } from "zod";
 import type {
   PublicCheckLocationSearchResponse,
@@ -6,98 +7,153 @@ import type {
 
 import { ServiceError } from "./service-error";
 
-const KAKAO_LOCAL_API_BASE_URL = "https://dapi.kakao.com/v2/local/search";
-const KAKAO_LOCAL_TIMEOUT_MS = 7000;
+const JUSO_SEARCH_API_URL =
+  "https://business.juso.go.kr/addrlink/addrLinkApi.do";
+const JUSO_COORD_API_URL =
+  "https://business.juso.go.kr/addrlink/addrCoordApi.do";
+const JUSO_API_TIMEOUT_MS = 7000;
 const MAX_LOCATION_SEARCH_RESULTS = 6;
+const WGS84_PROJECTION = "WGS84";
+const JUSO_UTMK_PROJECTION =
+  "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs";
 
-const keywordSearchResponseSchema = z.object({
-  documents: z.array(
-    z.object({
-      id: z.string().min(1),
-      place_name: z.string().min(1),
-      address_name: z.string().min(1).nullable().optional(),
-      road_address_name: z.string().min(1).nullable().optional(),
-      x: z.string().min(1),
-      y: z.string().min(1),
-    }),
-  ),
+const jusoCommonSchema = z.object({
+  errorCode: z.string().min(1),
+  errorMessage: z.string().min(1),
+  totalCount: z.string().optional(),
+  currentPage: z.string().optional(),
+  countPerPage: z.string().optional(),
 });
 
-const addressSearchResponseSchema = z.object({
-  documents: z.array(
-    z.object({
-      address_name: z.string().min(1),
-      x: z.string().min(1),
-      y: z.string().min(1),
-      address: z
-        .object({
-          address_name: z.string().min(1),
-        })
-        .nullable()
-        .optional(),
-      road_address: z
-        .object({
-          address_name: z.string().min(1),
-          building_name: z.string().nullable().optional(),
-        })
-        .nullable()
-        .optional(),
-    }),
-  ),
+const jusoSearchItemSchema = z.object({
+  roadAddr: z.string().min(1),
+  roadAddrPart1: z.string().min(1),
+  roadAddrPart2: z.string().optional(),
+  jibunAddr: z.string().min(1),
+  admCd: z.string().min(1),
+  rnMgtSn: z.string().min(1),
+  bdMgtSn: z.string().min(1),
+  detBdNmList: z.string().optional(),
+  bdNm: z.string().optional(),
+  udrtYn: z.string().min(1),
+  buldMnnm: z.string().min(1),
+  buldSlno: z.string().min(1),
 });
 
-const kakaoErrorResponseSchema = z.object({
-  errorType: z.string().optional(),
-  message: z.string().optional(),
+const jusoSearchResponseSchema = z.object({
+  results: z.object({
+    common: jusoCommonSchema,
+    juso: z.array(jusoSearchItemSchema).optional().default([]),
+  }),
 });
 
-function getRequiredKakaoRestApiKey() {
-  const value = process.env.KAKAO_REST_API_KEY?.trim();
+const jusoCoordItemSchema = z.object({
+  admCd: z.string().min(1),
+  rnMgtSn: z.string().min(1),
+  bdMgtSn: z.string().min(1),
+  udrtYn: z.string().min(1),
+  buldMnnm: z.string().min(1),
+  buldSlno: z.string().min(1),
+  entX: z.string().min(1),
+  entY: z.string().min(1),
+  bdNm: z.string().optional(),
+});
+
+const jusoCoordResponseSchema = z.object({
+  results: z.object({
+    common: jusoCommonSchema,
+    juso: z.array(jusoCoordItemSchema).optional().default([]),
+  }),
+});
+
+type JusoSearchItem = z.infer<typeof jusoSearchItemSchema>;
+type JusoCoordItem = z.infer<typeof jusoCoordItemSchema>;
+type JusoApiEnvelope<TItem> = {
+  results: {
+    common: z.infer<typeof jusoCommonSchema>;
+    juso: TItem[];
+  };
+};
+
+function getRequiredJusoApiConfirmKey() {
+  const value = process.env.JUSO_API_CONFIRM_KEY?.trim();
 
   if (!value) {
-    throw new ServiceError(500, "KAKAO_REST_API_KEY가 설정되지 않았습니다.");
+    throw new ServiceError(500, "JUSO_API_CONFIRM_KEY가 설정되지 않았습니다.");
   }
 
   return value;
 }
 
-function parseCoordinate(value: string, axis: "위도" | "경도") {
+function parseNumberString(value: string, label: string) {
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
-    throw new ServiceError(
-      502,
-      `카카오 위치 검색 응답의 ${axis} 값이 올바르지 않습니다.`,
-    );
+    throw new ServiceError(502, `Juso 응답의 ${label} 값이 올바르지 않습니다.`);
   }
 
   return parsed;
 }
 
-async function fetchKakaoLocationJson<TSchema>(options: {
-  path: string;
-  query: string;
+function mapJusoApiError(errorCode: string, errorMessage: string) {
+  switch (errorCode) {
+    case "E0001":
+      return new ServiceError(
+        500,
+        "JUSO_API_CONFIRM_KEY 설정 또는 승인키 권한을 확인해 주세요.",
+      );
+    case "E0014":
+      return new ServiceError(
+        500,
+        "Juso 개발승인키 사용 기간이 만료됐습니다. 새 승인키를 발급받아 주세요.",
+      );
+    case "E0007":
+      return new ServiceError(
+        429,
+        "Juso 주소 검색 요청이 잠시 많습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    case "E0005":
+    case "E0006":
+    case "E0008":
+    case "E0009":
+    case "E0010":
+    case "E0011":
+    case "E0012":
+    case "E0013":
+      return new ServiceError(400, errorMessage);
+    default:
+      return new ServiceError(
+        502,
+        errorMessage || "Juso 주소 검색 요청이 실패했습니다.",
+      );
+  }
+}
+
+async function fetchJusoJson<
+  TSchema extends JusoApiEnvelope<unknown>,
+>(options: {
+  url: string;
+  params: Record<string, string>;
   schema: z.ZodType<TSchema>;
   contextLabel: string;
-  apiKey: string;
 }) {
-  const url = new URL(`${KAKAO_LOCAL_API_BASE_URL}/${options.path}`);
+  const requestUrl = new URL(options.url);
 
-  url.searchParams.set("query", options.query);
-  url.searchParams.set("size", String(MAX_LOCATION_SEARCH_RESULTS));
+  Object.entries(options.params).forEach(([key, value]) => {
+    requestUrl.searchParams.set(key, value);
+  });
+  requestUrl.searchParams.set("resultType", "json");
 
   let response: Response;
   try {
-    response = await fetch(url, {
-      headers: {
-        Authorization: `KakaoAK ${options.apiKey}`,
-      },
-      signal: AbortSignal.timeout(KAKAO_LOCAL_TIMEOUT_MS),
+    response = await fetch(requestUrl, {
+      method: "GET",
+      signal: AbortSignal.timeout(JUSO_API_TIMEOUT_MS),
       cache: "no-store",
     });
   } catch (error) {
-    console.error(`${options.contextLabel}: 카카오 위치 검색 요청 실패`, error);
-    throw new ServiceError(502, "카카오 위치 검색 요청이 실패했습니다.");
+    console.error(`${options.contextLabel}: Juso 요청 실패`, error);
+    throw new ServiceError(502, "Juso 주소 검색 요청이 실패했습니다.");
   }
 
   const rawBody = await response.text();
@@ -108,43 +164,8 @@ async function fetchKakaoLocationJson<TSchema>(options: {
       parsedBody = JSON.parse(rawBody);
     } catch {
       console.error(`${options.contextLabel}: JSON 파싱 실패`, rawBody);
-      throw new ServiceError(
-        502,
-        "카카오 위치 검색 응답을 해석하지 못했습니다.",
-      );
+      throw new ServiceError(502, "Juso 주소 검색 응답을 해석하지 못했습니다.");
     }
-  }
-
-  if (!response.ok) {
-    const kakaoError = kakaoErrorResponseSchema.safeParse(parsedBody);
-
-    console.error(`${options.contextLabel}: 카카오 위치 검색 응답 오류`, {
-      status: response.status,
-      body: parsedBody ?? rawBody,
-    });
-
-    if (
-      kakaoError.success &&
-      kakaoError.data.errorType === "NotAuthorizedError" &&
-      kakaoError.data.message?.includes("OPEN_MAP_AND_LOCAL")
-    ) {
-      throw new ServiceError(
-        500,
-        "Kakao Developers에서 OPEN_MAP_AND_LOCAL 서비스를 활성화해야 위치 검색을 사용할 수 있습니다.",
-      );
-    }
-
-    if (
-      kakaoError.success &&
-      kakaoError.data.errorType === "NotAuthorizedError"
-    ) {
-      throw new ServiceError(
-        500,
-        "KAKAO_REST_API_KEY 설정 또는 Kakao 앱 권한을 확인해 주세요.",
-      );
-    }
-
-    throw new ServiceError(502, "카카오 위치 검색 요청이 실패했습니다.");
   }
 
   const parsed = options.schema.safeParse(parsedBody);
@@ -153,74 +174,109 @@ async function fetchKakaoLocationJson<TSchema>(options: {
     console.error(`${options.contextLabel}: 응답 스키마 불일치`, {
       issues: parsed.error.issues,
       body: parsedBody,
+      status: response.status,
     });
     throw new ServiceError(
       502,
-      "카카오 위치 검색 응답 형식이 올바르지 않습니다.",
+      "Juso 주소 검색 응답 형식이 올바르지 않습니다.",
     );
+  }
+
+  const { common } = parsed.data.results;
+
+  if (!response.ok || common.errorCode !== "0") {
+    console.error(`${options.contextLabel}: Juso 응답 오류`, {
+      status: response.status,
+      body: parsedBody,
+    });
+    throw mapJusoApiError(common.errorCode, common.errorMessage);
   }
 
   return parsed.data;
 }
 
-function buildKeywordLabel(
-  document: z.infer<typeof keywordSearchResponseSchema>["documents"][number],
+function pickPlaceName(...candidates: Array<string | undefined>) {
+  for (const candidate of candidates) {
+    const normalized = candidate
+      ?.split(",")
+      .map((value) => value.trim())
+      .find(Boolean);
+
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+function convertUtmkToWgs84(entX: string, entY: string) {
+  const x = parseNumberString(entX, "X좌표");
+  const y = parseNumberString(entY, "Y좌표");
+  const [longitude, latitude] = proj4(JUSO_UTMK_PROJECTION, WGS84_PROJECTION, [
+    x,
+    y,
+  ]);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new ServiceError(502, "Juso 좌표를 위경도로 변환하지 못했습니다.");
+  }
+
+  return { latitude, longitude };
+}
+
+async function fetchJusoCoordinates(
+  document: JusoSearchItem,
+  confirmKey: string,
 ) {
-  const roadAddress = document.road_address_name?.trim() || null;
-  const address = document.address_name?.trim() || null;
+  const coordResponse = await fetchJusoJson({
+    url: JUSO_COORD_API_URL,
+    params: {
+      confmKey: confirmKey,
+      admCd: document.admCd,
+      rnMgtSn: document.rnMgtSn,
+      udrtYn: document.udrtYn,
+      buldMnnm: document.buldMnnm,
+      buldSlno: document.buldSlno,
+    },
+    schema: jusoCoordResponseSchema,
+    contextLabel: "Juso 좌표 검색",
+  });
 
-  if (roadAddress) {
-    return `${document.place_name} · ${roadAddress}`;
+  const [coordDocument] = coordResponse.results.juso;
+
+  if (!coordDocument) {
+    throw new ServiceError(502, "Juso 좌표 검색 결과가 비어 있습니다.");
   }
 
-  if (address) {
-    return `${document.place_name} · ${address}`;
-  }
-
-  return document.place_name;
+  return coordDocument;
 }
 
-function normalizeKeywordResult(
-  document: z.infer<typeof keywordSearchResponseSchema>["documents"][number],
+function normalizeJusoResult(
+  searchDocument: JusoSearchItem,
+  coordDocument: JusoCoordItem,
 ): PublicCheckLocationSearchResult {
+  const { latitude, longitude } = convertUtmkToWgs84(
+    coordDocument.entX,
+    coordDocument.entY,
+  );
+  const placeName = pickPlaceName(
+    searchDocument.bdNm,
+    searchDocument.detBdNmList,
+    coordDocument.bdNm,
+  );
+  const roadAddress = searchDocument.roadAddr.trim();
+  const primaryRoadAddress = searchDocument.roadAddrPart1.trim();
+
   return {
-    id: `keyword:${document.id}`,
-    label: buildKeywordLabel(document),
-    placeName: document.place_name,
-    roadAddressName: document.road_address_name?.trim() || null,
-    addressName: document.address_name?.trim() || null,
-    longitude: parseCoordinate(document.x, "경도"),
-    latitude: parseCoordinate(document.y, "위도"),
-    source: "keyword",
-  };
-}
-
-function buildAddressLabel(
-  document: z.infer<typeof addressSearchResponseSchema>["documents"][number],
-) {
-  const roadAddress = document.road_address?.address_name?.trim() || null;
-  const buildingName = document.road_address?.building_name?.trim() || null;
-
-  if (buildingName && roadAddress) {
-    return `${buildingName} · ${roadAddress}`;
-  }
-
-  return roadAddress ?? document.address_name;
-}
-
-function normalizeAddressResult(
-  document: z.infer<typeof addressSearchResponseSchema>["documents"][number],
-): PublicCheckLocationSearchResult {
-  return {
-    id: `address:${document.address_name}:${document.x}:${document.y}`,
-    label: buildAddressLabel(document),
-    placeName: document.road_address?.building_name?.trim() || null,
-    roadAddressName: document.road_address?.address_name?.trim() || null,
-    addressName:
-      document.address?.address_name?.trim() || document.address_name.trim(),
-    longitude: parseCoordinate(document.x, "경도"),
-    latitude: parseCoordinate(document.y, "위도"),
-    source: "address",
+    id: `juso:${searchDocument.bdMgtSn}`,
+    label: placeName ? `${placeName} · ${primaryRoadAddress}` : roadAddress,
+    placeName,
+    roadAddressName: roadAddress,
+    addressName: searchDocument.jibunAddr.trim(),
+    latitude,
+    longitude,
+    source: placeName ? "keyword" : "address",
   };
 }
 
@@ -229,10 +285,10 @@ function dedupeLocationResults(results: PublicCheckLocationSearchResult[]) {
 
   for (const result of results) {
     const key = [
-      result.latitude.toFixed(6),
-      result.longitude.toFixed(6),
       result.roadAddressName ?? "",
       result.addressName ?? "",
+      result.latitude.toFixed(6),
+      result.longitude.toFixed(6),
     ].join(":");
 
     if (!deduped.has(key)) {
@@ -252,29 +308,54 @@ export async function searchPublicCheckLocations(
     return { results: [] };
   }
 
-  const apiKey = getRequiredKakaoRestApiKey();
+  const confirmKey = getRequiredJusoApiConfirmKey();
+  const searchResponse = await fetchJusoJson({
+    url: JUSO_SEARCH_API_URL,
+    params: {
+      confmKey: confirmKey,
+      currentPage: "1",
+      countPerPage: String(MAX_LOCATION_SEARCH_RESULTS),
+      keyword: trimmedQuery,
+      firstSort: "road",
+    },
+    schema: jusoSearchResponseSchema,
+    contextLabel: "Juso 주소 검색",
+  });
 
-  const [keywordResponse, addressResponse] = await Promise.all([
-    fetchKakaoLocationJson({
-      path: "keyword.json",
-      query: trimmedQuery,
-      schema: keywordSearchResponseSchema,
-      contextLabel: "카카오 키워드 위치 검색",
-      apiKey,
+  const documents = searchResponse.results.juso.slice(
+    0,
+    MAX_LOCATION_SEARCH_RESULTS,
+  );
+
+  if (documents.length === 0) {
+    return { results: [] };
+  }
+
+  const coordinateResults = await Promise.allSettled(
+    documents.map(async (document) => {
+      const coordDocument = await fetchJusoCoordinates(document, confirmKey);
+      return normalizeJusoResult(document, coordDocument);
     }),
-    fetchKakaoLocationJson({
-      path: "address.json",
-      query: trimmedQuery,
-      schema: addressSearchResponseSchema,
-      contextLabel: "카카오 주소 위치 검색",
-      apiKey,
-    }),
-  ]);
+  );
 
-  const keywordResults = keywordResponse.documents.map(normalizeKeywordResult);
-  const addressResults = addressResponse.documents.map(normalizeAddressResult);
+  const results: PublicCheckLocationSearchResult[] = [];
+  let firstError: unknown = null;
 
-  return {
-    results: dedupeLocationResults([...keywordResults, ...addressResults]),
-  };
+  for (const result of coordinateResults) {
+    if (result.status === "fulfilled") {
+      results.push(result.value);
+      continue;
+    }
+
+    firstError ??= result.reason;
+    console.error("Juso 위치 결과 좌표 보강 실패", result.reason);
+  }
+
+  if (results.length === 0 && firstError) {
+    throw firstError instanceof Error
+      ? firstError
+      : new ServiceError(502, "Juso 좌표 검색 요청이 실패했습니다.");
+  }
+
+  return { results: dedupeLocationResults(results) };
 }
