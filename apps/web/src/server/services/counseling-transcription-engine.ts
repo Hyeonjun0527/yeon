@@ -213,6 +213,21 @@ async function runFfmpeg(args: string[]) {
   try {
     await execFileAsync("ffmpeg", args);
   } catch (error) {
+    const errorCode =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? error.code
+        : null;
+
+    if (errorCode === "ENOENT") {
+      throw new ServiceError(
+        500,
+        "긴 음성 파일 분할에 필요한 ffmpeg가 서버 이미지에 없습니다. 배포 컨테이너에 ffmpeg 패키지를 포함해 주세요.",
+      );
+    }
+
     const message =
       error instanceof Error
         ? error.message
@@ -241,7 +256,22 @@ async function probeDurationMs(filePath: string): Promise<number | null> {
     return Number.isFinite(seconds) && seconds > 0
       ? Math.round(seconds * 1000)
       : null;
-  } catch {
+  } catch (error) {
+    const errorCode =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? error.code
+        : null;
+
+    if (errorCode === "ENOENT") {
+      throw new ServiceError(
+        500,
+        "음성 길이 확인에 필요한 ffprobe가 서버 이미지에 없습니다. 배포 컨테이너에 ffmpeg 패키지를 포함해 주세요.",
+      );
+    }
+
     return null;
   }
 }

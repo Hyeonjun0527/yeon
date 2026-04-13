@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   StudentBoardDailyCell,
@@ -8,7 +8,12 @@ import type {
 } from "@yeon/api-contract";
 
 import type { Member } from "../types";
+import {
+  getStudentBoardGrassAvailableYears,
+  getStudentBoardGrassDefaultYear,
+} from "../student-board-grass";
 import { StudentBoardGrassGrid } from "./student-board-grass-grid";
+import { StudentBoardGrassYearNavigator } from "./student-board-grass-year-navigator";
 
 function countMatchingCells(
   dailyCells: StudentBoardDailyCell[],
@@ -44,6 +49,15 @@ export function StudentBoardGrassRoster({
   endDate,
 }: StudentBoardGrassRosterProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const availableYears = useMemo(
+    () => getStudentBoardGrassAvailableYears(startDate, endDate),
+    [endDate, startDate],
+  );
+  const defaultYear = useMemo(
+    () => getStudentBoardGrassDefaultYear(startDate),
+    [startDate],
+  );
+  const [selectedYear, setSelectedYear] = useState<number | null>(defaultYear);
   const rosterItems = useMemo(() => {
     const rowMap = new Map(rows.map((row) => [row.memberId, row]));
 
@@ -63,6 +77,22 @@ export function StudentBoardGrassRoster({
       };
     });
   }, [members, rows]);
+
+  useEffect(() => {
+    if (availableYears.length === 0) {
+      setSelectedYear(null);
+      return;
+    }
+
+    setSelectedYear((previousYear) => {
+      if (previousYear !== null && availableYears.includes(previousYear)) {
+        return previousYear;
+      }
+
+      return defaultYear ?? availableYears[0] ?? null;
+    });
+  }, [availableYears, defaultYear]);
+
   const rowVirtualizer = useVirtualizer({
     count: startDate ? rosterItems.length : 0,
     getScrollElement: () => scrollRef.current,
@@ -73,14 +103,18 @@ export function StudentBoardGrassRoster({
 
   return (
     <section className="rounded-2xl border border-border bg-surface-2 p-3 sm:p-4">
-      <div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="text-sm font-semibold text-text">출석·과제 잔디</h4>
-          <p className="mt-1 text-[11px] text-text-dim">
-            진행기간 전체 · 하루 2분할 · 범위 밖 날짜는 ghost cell로 유지
-          </p>
         </div>
-        <div className="text-[11px] text-text-dim">{members.length}명 보기</div>
+        <div className="flex items-center gap-2">
+          <StudentBoardGrassYearNavigator
+            years={availableYears}
+            selectedYear={selectedYear}
+            onChange={setSelectedYear}
+          />
+          <div className="text-[11px] text-text-dim">{members.length}명</div>
+        </div>
       </div>
 
       {!startDate ? (
@@ -92,21 +126,7 @@ export function StudentBoardGrassRoster({
       {startDate ? (
         <div className="scrollbar-subtle mt-4 overflow-x-auto">
           <div className="min-w-[880px]">
-            <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-3 border-b border-border pb-3">
-              <div className="px-1 pt-[13px] text-[11px] text-text-dim">
-                이름 · 출석 · 과제 완료
-              </div>
-              <StudentBoardGrassGrid
-                dailyCells={[]}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            </div>
-
-            <div
-              ref={scrollRef}
-              className="mt-3 max-h-[560px] overflow-y-auto pr-1"
-            >
+            <div ref={scrollRef} className="max-h-[560px] overflow-y-auto pr-1">
               <div
                 className="relative"
                 style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
@@ -139,6 +159,7 @@ export function StudentBoardGrassRoster({
                           dailyCells={item.dailyCells}
                           startDate={startDate}
                           endDate={endDate}
+                          displayYear={selectedYear}
                           showMonthHeaders={false}
                           showDayLabels={false}
                         />

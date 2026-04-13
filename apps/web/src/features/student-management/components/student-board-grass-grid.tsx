@@ -7,6 +7,7 @@ import {
   buildStudentBoardGrassCalendar,
   buildStudentBoardDailyCellDateMap,
   getStudentBoardGrassHalfTone,
+  isStudentBoardGrassDateInDisplayYear,
   isStudentBoardGrassDateInRange,
   STUDENT_BOARD_GRASS_DAY_LABELS,
   toStudentBoardGrassDateKey,
@@ -16,6 +17,7 @@ interface StudentBoardGrassGridProps {
   dailyCells: StudentBoardDailyCell[];
   startDate?: string | null;
   endDate?: string | null;
+  displayYear?: number | null;
   showMonthHeaders?: boolean;
   showDayLabels?: boolean;
 }
@@ -24,12 +26,17 @@ export function StudentBoardGrassGrid({
   dailyCells,
   startDate,
   endDate,
+  displayYear,
   showMonthHeaders = true,
   showDayLabels = true,
 }: StudentBoardGrassGridProps) {
-  const { weeks, monthHeaders } = useMemo(
-    () => buildStudentBoardGrassCalendar(startDate, endDate),
-    [endDate, startDate],
+  const {
+    weeks,
+    monthHeaders,
+    displayYear: resolvedDisplayYear,
+  } = useMemo(
+    () => buildStudentBoardGrassCalendar(startDate, endDate, displayYear),
+    [displayYear, endDate, startDate],
   );
   const historyDateMap = useMemo(
     () => buildStudentBoardDailyCellDateMap(dailyCells),
@@ -67,14 +74,19 @@ export function StudentBoardGrassGrid({
               ) : null}
               {weeks.map((week, weekIndex) => {
                 const date = week[dayIndex];
-                const inRange = isStudentBoardGrassDateInRange({
-                  date,
-                  startDate,
-                  endDate,
-                });
-                const item = historyDateMap.get(
-                  toStudentBoardGrassDateKey(date),
-                );
+                const inRange =
+                  isStudentBoardGrassDateInDisplayYear(
+                    date,
+                    resolvedDisplayYear,
+                  ) &&
+                  isStudentBoardGrassDateInRange({
+                    date,
+                    startDate,
+                    endDate,
+                  });
+                const item = inRange
+                  ? historyDateMap.get(toStudentBoardGrassDateKey(date))
+                  : null;
 
                 return (
                   <td key={`${dayIndex}-${weekIndex}`} className="p-0">

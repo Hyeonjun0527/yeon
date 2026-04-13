@@ -12,6 +12,14 @@ export const STUDENT_BOARD_GRASS_DAY_LABELS = [
 
 export type StudentBoardGrassWeek = Date[];
 
+function getUtcToday() {
+  const today = new Date();
+
+  return new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+  );
+}
+
 export function parseStudentBoardGrassDate(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -46,18 +54,82 @@ function getMonthLabel(date: Date) {
   }).format(date);
 }
 
-export function buildStudentBoardGrassCalendar(
+function getResolvedStudentBoardGrassEndDate(
+  endDate: string | null | undefined,
+) {
+  return parseStudentBoardGrassDate(endDate) ?? getUtcToday();
+}
+
+export function getStudentBoardGrassAvailableYears(
   startDate: string | null | undefined,
   endDate: string | null | undefined,
 ) {
   const parsedStartDate = parseStudentBoardGrassDate(startDate);
-  const parsedEndDate = parseStudentBoardGrassDate(endDate);
-  const today = new Date();
-  const fallbackEnd = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+
+  if (!parsedStartDate) {
+    return [];
+  }
+
+  const parsedEndDate = getResolvedStudentBoardGrassEndDate(endDate);
+  const startYear = parsedStartDate.getUTCFullYear();
+  const endYear = parsedEndDate.getUTCFullYear();
+  const rangeStartYear = Math.min(startYear, endYear);
+  const rangeEndYear = Math.max(startYear, endYear);
+
+  return Array.from(
+    { length: rangeEndYear - rangeStartYear + 1 },
+    (_, index) => rangeStartYear + index,
   );
-  const rangeStart = parsedStartDate ?? addUtcDays(fallbackEnd, -83);
-  const rangeEnd = parsedEndDate ?? fallbackEnd;
+}
+
+export function getStudentBoardGrassDefaultYear(
+  startDate: string | null | undefined,
+) {
+  return parseStudentBoardGrassDate(startDate)?.getUTCFullYear() ?? null;
+}
+
+function resolveStudentBoardGrassDisplayYear(params: {
+  startDate: string | null | undefined;
+  endDate: string | null | undefined;
+  displayYear?: number | null;
+}) {
+  const availableYears = getStudentBoardGrassAvailableYears(
+    params.startDate,
+    params.endDate,
+  );
+
+  if (availableYears.length === 0) {
+    return params.displayYear ?? getUtcToday().getUTCFullYear();
+  }
+
+  if (params.displayYear && availableYears.includes(params.displayYear)) {
+    return params.displayYear;
+  }
+
+  return (
+    getStudentBoardGrassDefaultYear(params.startDate) ?? availableYears[0] ?? 0
+  );
+}
+
+export function isStudentBoardGrassDateInDisplayYear(
+  date: Date,
+  displayYear: number,
+) {
+  return date.getUTCFullYear() === displayYear;
+}
+
+export function buildStudentBoardGrassCalendar(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  displayYear?: number | null,
+) {
+  const resolvedDisplayYear = resolveStudentBoardGrassDisplayYear({
+    startDate,
+    endDate,
+    displayYear,
+  });
+  const rangeStart = new Date(Date.UTC(resolvedDisplayYear, 0, 1));
+  const rangeEnd = new Date(Date.UTC(resolvedDisplayYear, 11, 31));
   const calendarStart = getUtcWeekStart(rangeStart);
   const calendarEnd = getUtcWeekEnd(rangeEnd);
   const weeks: StudentBoardGrassWeek[] = [];
@@ -73,18 +145,33 @@ export function buildStudentBoardGrassCalendar(
   }
 
   const monthHeaders = weeks.map((week, index) => {
-    const weekMonthKey = `${week[0]?.getUTCFullYear()}-${week[0]?.getUTCMonth()}`;
+    const weekDisplayDate =
+      week.find((date) =>
+        isStudentBoardGrassDateInDisplayYear(date, resolvedDisplayYear),
+      ) ?? null;
+
+    if (!weekDisplayDate) {
+      return "";
+    }
+
+    const weekMonthKey = `${weekDisplayDate.getUTCFullYear()}-${weekDisplayDate.getUTCMonth()}`;
     const previousWeek = weeks[index - 1];
+    const previousDisplayDate =
+      previousWeek?.find((date) =>
+        isStudentBoardGrassDateInDisplayYear(date, resolvedDisplayYear),
+      ) ?? null;
     const previousMonthKey = previousWeek
-      ? `${previousWeek[0]?.getUTCFullYear()}-${previousWeek[0]?.getUTCMonth()}`
+      ? previousDisplayDate
+        ? `${previousDisplayDate.getUTCFullYear()}-${previousDisplayDate.getUTCMonth()}`
+        : null
       : null;
 
     return previousMonthKey === weekMonthKey
       ? ""
-      : getMonthLabel(week[0] as Date);
+      : getMonthLabel(weekDisplayDate);
   });
 
-  return { weeks, monthHeaders };
+  return { weeks, monthHeaders, displayYear: resolvedDisplayYear };
 }
 
 export function buildStudentBoardDailyCellDateMap(
@@ -119,15 +206,7 @@ export function isStudentBoardGrassDateInRange(params: {
     return false;
   }
 
-  const parsedEndDate =
-    parseStudentBoardGrassDate(endDate) ??
-    new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    );
+  const parsedEndDate = getResolvedStudentBoardGrassEndDate(endDate);
 
   return (
     date.getTime() >= parsedStartDate.getTime() &&

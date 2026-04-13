@@ -158,10 +158,19 @@ export function useFileUpload({
     ],
   );
 
+  const uploadPreparedFile = useCallback(
+    async (file: File) => {
+      await processFile(file);
+    },
+    [processFile],
+  );
+
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) processFile(file);
+      if (file) {
+        void processFile(file);
+      }
       e.target.value = "";
     },
     [processFile],
@@ -211,7 +220,7 @@ export function useFileUpload({
       if (!hasFiles(e)) return;
       const file = e.dataTransfer.files[0];
       if (file && isAcceptedAudioFile(file)) {
-        processFile(file);
+        void processFile(file);
       } else if (file) {
         setError(AUDIO_UPLOAD_ERROR_MESSAGE);
       }
@@ -225,6 +234,7 @@ export function useFileUpload({
     error,
     fileInputRef,
     openFilePicker,
+    uploadPreparedFile,
     handleInputChange,
     handleDragEnter,
     handleDragLeave,

@@ -513,7 +513,7 @@ export async function importSpaceFromLinkedSheet(
           memberId: null,
           memberName: null,
           message:
-            "연동된 시트가 비어 있습니다. 먼저 시트 동기화로 최신 상태를 다시 내보내 주세요.",
+            "연동된 시트가 비어 있습니다. 먼저 시트에 최신 상태를 다시 반영해 주세요.",
         }),
       ],
       lastSyncedAt: integration.lastSyncedAt,
@@ -548,7 +548,7 @@ export async function importSpaceFromLinkedSheet(
           memberId: null,
           memberName: null,
           message:
-            "충돌 안전 가져오기를 쓰려면 먼저 시트 동기화로 최신 상태를 한 번 내보내야 합니다.",
+            "충돌 없이 가져오려면 먼저 시트에 최신 상태를 한 번 반영해야 합니다.",
         }),
       ],
       lastSyncedAt: integration.lastSyncedAt,
@@ -722,7 +722,7 @@ export async function importSpaceFromLinkedSheet(
             memberId: managedMemberId,
             memberName: name,
             message:
-              "서버에 기준 스냅샷이 없는 row입니다. 먼저 시트 동기화로 최신 상태를 다시 내보내 주세요.",
+              "서버에 기준 스냅샷이 없는 row입니다. 먼저 시트에 최신 상태를 다시 반영해 주세요.",
             sheet: sheetPayload,
           }),
         );

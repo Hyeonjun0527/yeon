@@ -147,6 +147,7 @@ function MockV2WorkspaceInner() {
     recordingStop: recording.stop,
     recordingCancel: recording.cancel,
     openFilePicker: fileUpload.openFilePicker,
+    uploadPreparedFile: fileUpload.uploadPreparedFile,
   });
 
   useEffect(() => {
@@ -557,6 +558,7 @@ function MockV2WorkspaceInner() {
               onClose={entry.handleNewRecordEntryClose}
               onChooseRecording={entry.handleChooseRecordingEntry}
               onChooseUpload={entry.handleChooseUploadEntry}
+              onChoosePreparedUpload={entry.handleChoosePreparedUploadEntry}
               onChooseText={entry.handleChooseTextEntry}
               linkedStudentName={
                 entry.entryMemberContext.current.studentName || undefined
