@@ -198,7 +198,7 @@ describe("public-check-location-search-service", () => {
                 errorMessage: "승인되지 않은 KEY 입니다.",
                 totalCount: "0",
               },
-              juso: [],
+              juso: null,
             },
           }),
           { status: 200 },
