@@ -134,6 +134,7 @@ export function usePublicCheckLocationSearch(
   return useQuery({
     queryKey: ["public-check-location-search", spaceId, query],
     enabled: enabled && !!spaceId && query.trim().length >= 2,
+    retry: false,
     queryFn: async () => {
       const params = new URLSearchParams({ query });
       const response = await fetch(
