@@ -2,6 +2,7 @@ import type {
   AnalysisResult,
   CounselingRecordAnalysisStatus,
   CounselingRecordProcessingStage,
+  CounselingRecordSource,
 } from "@yeon/api-contract/counseling-records";
 export type { AnalysisResult };
 
@@ -54,6 +55,7 @@ export interface RecordItem {
   durationMs: number;
   studentName: string;
   type: string;
+  recordSource: CounselingRecordSource;
   audioUrl: string | null;
   transcript: TranscriptSegment[];
   aiSummary: string;
