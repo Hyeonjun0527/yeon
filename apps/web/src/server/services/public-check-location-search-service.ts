@@ -43,7 +43,7 @@ const jusoSearchItemSchema = z.object({
 const jusoSearchResponseSchema = z.object({
   results: z.object({
     common: jusoCommonSchema,
-    juso: z.array(jusoSearchItemSchema).optional().default([]),
+    juso: z.array(jusoSearchItemSchema).nullable().optional().default([]),
   }),
 });
 
@@ -62,7 +62,7 @@ const jusoCoordItemSchema = z.object({
 const jusoCoordResponseSchema = z.object({
   results: z.object({
     common: jusoCommonSchema,
-    juso: z.array(jusoCoordItemSchema).optional().default([]),
+    juso: z.array(jusoCoordItemSchema).nullable().optional().default([]),
   }),
 });
 
@@ -71,7 +71,7 @@ type JusoCoordItem = z.infer<typeof jusoCoordItemSchema>;
 type JusoApiEnvelope<TItem> = {
   results: {
     common: z.infer<typeof jusoCommonSchema>;
-    juso: TItem[];
+    juso: TItem[] | null | undefined;
   };
 };
 
@@ -182,7 +182,14 @@ async function fetchJusoJson<
     );
   }
 
-  const { common } = parsed.data.results;
+  const normalizedData = {
+    ...parsed.data,
+    results: {
+      ...parsed.data.results,
+      juso: parsed.data.results.juso ?? [],
+    },
+  } satisfies TSchema;
+  const { common } = normalizedData.results;
 
   if (!response.ok || common.errorCode !== "0") {
     console.error(`${options.contextLabel}: Juso 응답 오류`, {
@@ -192,7 +199,7 @@ async function fetchJusoJson<
     throw mapJusoApiError(common.errorCode, common.errorMessage);
   }
 
-  return parsed.data;
+  return normalizedData;
 }
 
 function pickPlaceName(...candidates: Array<string | undefined>) {
