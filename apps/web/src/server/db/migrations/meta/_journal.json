@@ -141,6 +141,13 @@
       "when": 1776067200000,
       "tag": "0019_overview_field_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1776081600000,
+      "tag": "0020_clammy_nomad",
+      "breakpoints": true
     }
   ]
 }
