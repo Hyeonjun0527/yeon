@@ -273,7 +273,9 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       });
 
       if (!res.ok) {
-        throw new Error(await readErrorMessage(res, "동기화에 실패했습니다."));
+        throw new Error(
+          await readErrorMessage(res, "시트에 반영하지 못했습니다."),
+        );
       }
 
       const data = (await res.json()) as {
@@ -283,7 +285,9 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
       setSyncResult(data);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "동기화에 실패했습니다.");
+      setError(
+        err instanceof Error ? err.message : "시트에 반영하지 못했습니다.",
+      );
     } finally {
       setSyncing(false);
     }
@@ -426,7 +430,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   const recentActivityLabel = importResult
     ? `${importResult.created}명 추가 · ${importResult.updated}명 갱신`
     : syncResult
-      ? `${syncResult.exported}명 최신화`
+      ? `${syncResult.exported}명 시트 반영`
       : hasIntegration
         ? "준비 완료"
         : isDriveDisconnected
@@ -436,10 +440,10 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
             : "URL 연결 대기";
 
   const compactDescription = hasIntegration
-    ? "시트에서 수정한 수강생 정보를 다시 반영합니다."
+    ? "연결 후에는 웹에서 바꾼 수강생 정보를 시트에 반영하고, 시트에서 바꾼 내용은 다시 가져올 수 있습니다."
     : isDriveDisconnected
-      ? "먼저 Google을 연결한 뒤 시트 URL을 붙이면 됩니다."
-      : "Google 연결 후 시트 URL만 붙이면 현재 스페이스에 연결됩니다.";
+      ? "먼저 Google을 연결하고, 새 Google 시트를 만든 뒤 URL을 붙여 넣어 주세요. 연결 후에는 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다."
+      : "새 Google 시트를 만든 뒤 URL을 붙여 넣으면 현재 스페이스에 연결되고, 이후 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다.";
 
   const disabledLinkClass = isLoading ? "pointer-events-none opacity-50" : "";
 
@@ -524,7 +528,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
                 size={13}
                 className={syncing ? "animate-spin" : undefined}
               />
-              {syncing ? "동기화 중..." : "동기화"}
+              {syncing ? "시트에 반영 중..." : "시트에 반영하기"}
             </button>
 
             <button
@@ -639,7 +643,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
                   <ExternalLink size={12} className="shrink-0" />
                 </a>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-dim">
-                  <span>마지막 동기화 {lastSyncedLabel}</span>
+                  <span>마지막 반영 {lastSyncedLabel}</span>
                   {importResult || syncResult ? (
                     <span>{recentActivityLabel}</span>
                   ) : null}
