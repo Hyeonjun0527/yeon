@@ -37,11 +37,22 @@ FROM deps AS builder
 WORKDIR /app
 
 COPY --from=pruner /app/out/full/ .
+COPY voice-test-data/test-counseling.mp3 ./voice-test-data/test-counseling.mp3
+COPY "voice-test-data/상담기록_테스트음성_20분.mp3" "./voice-test-data/상담기록_테스트음성_20분.mp3"
+COPY voice-test-data/test-bootcamp-counseling-1hour.mp3 ./voice-test-data/test-bootcamp-counseling-1hour.mp3
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # 플랫폼에 따라 워크플로우에서 --build-arg NODE_MEMORY=<value> 로 조정한다.
 ARG NODE_MEMORY=4096
+
+RUN mkdir -p apps/web/public/test-data \
+    && rm -f apps/web/public/test-data/test-counseling.mp3 \
+      "apps/web/public/test-data/상담기록_테스트음성_20분.mp3" \
+      apps/web/public/test-data/test-bootcamp-counseling-1hour.mp3 \
+    && cp voice-test-data/test-counseling.mp3 apps/web/public/test-data/test-counseling.mp3 \
+    && cp "voice-test-data/상담기록_테스트음성_20분.mp3" "apps/web/public/test-data/상담기록_테스트음성_20분.mp3" \
+    && cp voice-test-data/test-bootcamp-counseling-1hour.mp3 apps/web/public/test-data/test-bootcamp-counseling-1hour.mp3
 
 RUN NODE_OPTIONS="--max-old-space-size=${NODE_MEMORY}" \
     pnpm --filter @yeon/web build
@@ -56,7 +67,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
-RUN groupadd --system --gid 1001 nodejs \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./

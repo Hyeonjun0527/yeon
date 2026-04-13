@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MemberStudentBoardResponse } from "@yeon/api-contract";
 
 import { useMemberStudentBoard } from "../hooks/use-space-student-board";
+import {
+  getStudentBoardGrassAvailableYears,
+  getStudentBoardGrassDefaultYear,
+} from "../student-board-grass";
 import { StudentBoardGrassGrid } from "./student-board-grass-grid";
+import { StudentBoardGrassYearNavigator } from "./student-board-grass-year-navigator";
 
 interface MemberBoardSlotCardProps {
   spaceId?: string | null;
@@ -39,12 +44,40 @@ export function MemberBoardSlotCard({
     [historyQuery.data],
   );
   const hasRange = !!startDate;
+  const availableYears = useMemo(
+    () => getStudentBoardGrassAvailableYears(startDate, endDate),
+    [endDate, startDate],
+  );
+  const defaultYear = useMemo(
+    () => getStudentBoardGrassDefaultYear(startDate),
+    [startDate],
+  );
+  const [selectedYear, setSelectedYear] = useState<number | null>(defaultYear);
+
+  useEffect(() => {
+    if (availableYears.length === 0) {
+      setSelectedYear(null);
+      return;
+    }
+
+    setSelectedYear((previousYear) => {
+      if (previousYear !== null && availableYears.includes(previousYear)) {
+        return previousYear;
+      }
+
+      return defaultYear ?? availableYears[0] ?? null;
+    });
+  }, [availableYears, defaultYear]);
 
   return (
     <section className="border-t border-border pt-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="m-0 text-sm font-semibold text-text">출석·과제 요약</p>
-        <span className="text-[11px] text-text-dim">출석 / 과제</span>
+        <StudentBoardGrassYearNavigator
+          years={availableYears}
+          selectedYear={selectedYear}
+          onChange={setSelectedYear}
+        />
       </div>
 
       {!hasRange ? (
@@ -65,6 +98,7 @@ export function MemberBoardSlotCard({
             dailyCells={dailyCells}
             startDate={startDate}
             endDate={endDate}
+            displayYear={selectedYear}
           />
         </div>
       ) : null}

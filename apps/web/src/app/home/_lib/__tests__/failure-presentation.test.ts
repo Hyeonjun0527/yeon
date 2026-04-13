@@ -58,4 +58,18 @@ describe("inferFailurePresentation", () => {
     expect(presentation.canRetry).toBe(true);
     expect(presentation.retryLabel).toBe("재전사 다시 시도");
   });
+
+  it("ffmpeg 누락은 전사 환경 오류로 별도 안내한다", () => {
+    const presentation = inferFailurePresentation(
+      makeRecord({
+        errorMessage:
+          "긴 음성 파일 분할에 필요한 ffmpeg가 서버 이미지에 없습니다. 배포 컨테이너에 ffmpeg 패키지를 포함해 주세요.",
+      }),
+    );
+
+    expect(presentation.badge).toBe("전사 환경 오류");
+    expect(presentation.title).toBe("긴 음성 전사 도구가 서버에 없습니다");
+    expect(presentation.canRetry).toBe(true);
+    expect(presentation.retryLabel).toBe("재전사 다시 시도");
+  });
 });

@@ -442,8 +442,8 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
   const compactDescription = hasIntegration
     ? "연결 후에는 웹에서 바꾼 수강생 정보를 시트에 반영하고, 시트에서 바꾼 내용은 다시 가져올 수 있습니다."
     : isDriveDisconnected
-      ? "먼저 Google을 연결하고, 새 Google 시트를 만든 뒤 URL을 붙여 넣어 주세요. 연결 후에는 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다."
-      : "새 Google 시트를 만든 뒤 URL을 붙여 넣으면 현재 스페이스에 연결되고, 이후 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다.";
+      ? "먼저 Google을 연결한 뒤 https://drive.google.com/ 에서 새 Google 시트를 만들고, 생성한 시트 URL을 붙여 넣어 연동해 주세요.\n연결 후에는 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다."
+      : "https://drive.google.com/ 에서 새 Google 시트를 만든 뒤, 생성한 시트 URL을 붙여 넣어 현재 스페이스에 연동해 주세요.\n이후 웹 변경을 시트에 반영하거나 시트 변경을 다시 가져올 수 있습니다.";
 
   const disabledLinkClass = isLoading ? "pointer-events-none opacity-50" : "";
 
@@ -467,7 +467,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-dim">
+            <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-text-dim">
               {compactDescription}
             </p>
           </div>
