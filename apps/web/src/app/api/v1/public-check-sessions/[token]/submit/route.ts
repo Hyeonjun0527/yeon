@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   submitPublicCheckBodySchema,
@@ -5,6 +6,11 @@ import {
 } from "@yeon/api-contract";
 
 import { jsonError } from "@/app/api/v1/counseling-records/_shared";
+import {
+  applyRememberedPublicCheckIdentityCookie,
+  clearRememberedPublicCheckIdentityCookie,
+  getRememberedPublicCheckIdentities,
+} from "@/server/services/public-check-device-cookie";
 import { submitPublicCheck } from "@/server/services/public-check-service";
 import { ServiceError } from "@/server/services/service-error";
 
@@ -14,7 +20,7 @@ type RouteContext = {
   params: Promise<{ token: string }>;
 };
 
-export async function POST(request: Request, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext) {
   const { token } = await context.params;
 
   let body: unknown;
@@ -30,8 +36,32 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const result = await submitPublicCheck({ token, body: parsed.data });
-    return NextResponse.json(submitPublicCheckResultSchema.parse(result));
+    const outcome = await submitPublicCheck({
+      token,
+      body: parsed.data,
+      rememberedIdentities: getRememberedPublicCheckIdentities(request),
+    });
+    const response = NextResponse.json(
+      submitPublicCheckResultSchema.parse(outcome.result),
+    );
+
+    if (outcome.shouldClearRememberedIdentity) {
+      clearRememberedPublicCheckIdentityCookie(
+        response,
+        request,
+        outcome.spaceId,
+      );
+    }
+
+    if (outcome.rememberedMemberId) {
+      applyRememberedPublicCheckIdentityCookie(response, {
+        request,
+        spaceId: outcome.spaceId,
+        memberId: outcome.rememberedMemberId,
+      });
+    }
+
+    return response;
   } catch (error) {
     if (error instanceof ServiceError) {
       return jsonError(error.message, error.status);

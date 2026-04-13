@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  ensureStudentBoardSystemTab,
+  SYNTHETIC_STUDENT_BOARD_TAB_ID,
+} from "@/lib/member-system-tabs";
+import { isProtectedMemberTab } from "@/lib/member-tab-policy";
+import {
   applySpaceTemplate,
   createSpaceField,
   createSpaceTab,
@@ -50,9 +55,18 @@ export function useSpaceSettings(
     setError(null);
     try {
       const data = await fetchSpaceTabs(spaceId);
-      setTabs(data.tabs);
+      const nextTabs = ensureStudentBoardSystemTab(data.tabs, () => ({
+        id: SYNTHETIC_STUDENT_BOARD_TAB_ID,
+        spaceId,
+        tabType: "system",
+        systemKey: "student_board",
+        name: "출석·과제",
+        isVisible: true,
+        displayOrder: 1,
+      }));
+      setTabs(nextTabs);
       setSelectedTabId((prev) =>
-        resolveInitialSelectedTabId(data.tabs, prev, initialTabId),
+        resolveInitialSelectedTabId(nextTabs, prev, initialTabId),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "탭을 불러오지 못했습니다.");
@@ -78,6 +92,11 @@ export function useSpaceSettings(
   const loadFields = useCallback(
     async (tabId: string) => {
       if (!spaceId) return;
+      if (tabId === SYNTHETIC_STUDENT_BOARD_TAB_ID) {
+        setFields([]);
+        setFieldsLoading(false);
+        return;
+      }
       setFieldsLoading(true);
       setError(null);
       try {
@@ -127,6 +146,11 @@ export function useSpaceSettings(
       if (!spaceId) return;
       const trimmed = name.trim();
       if (!trimmed) return;
+      const targetTab = tabs.find((tab) => tab.id === tabId);
+      if (targetTab && isProtectedMemberTab(targetTab)) {
+        setError("기본 탭은 수정할 수 없습니다.");
+        return;
+      }
       const prev = tabs;
       setTabs((t) =>
         t.map((tab) => (tab.id === tabId ? { ...tab, name: trimmed } : tab)),
@@ -162,6 +186,10 @@ export function useSpaceSettings(
       if (!spaceId) return;
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
+      if (isProtectedMemberTab(tab)) {
+        setError("기본 탭은 수정할 수 없습니다.");
+        return;
+      }
       setError(null);
       const newVisible = !tab.isVisible;
       setTabs((prev) =>
@@ -184,6 +212,11 @@ export function useSpaceSettings(
   const deleteTab = useCallback(
     async (tabId: string) => {
       if (!spaceId) return;
+      const targetTab = tabs.find((tab) => tab.id === tabId);
+      if (targetTab && isProtectedMemberTab(targetTab)) {
+        setError("기본 탭은 삭제할 수 없습니다.");
+        return;
+      }
       setError(null);
       const prev = tabs;
       setTabs((t) => t.filter((tab) => tab.id !== tabId));
@@ -225,6 +258,10 @@ export function useSpaceSettings(
   const createField = useCallback(
     async (tabId: string, name: string, fieldType: FieldType) => {
       if (!spaceId) return;
+      if (tabId === SYNTHETIC_STUDENT_BOARD_TAB_ID) {
+        setError("출석·과제 탭은 필드를 직접 추가할 수 없습니다.");
+        return;
+      }
       setError(null);
       try {
         const data = await createSpaceField(spaceId, tabId, name, fieldType);

@@ -20,11 +20,17 @@ const { responses, chain } = vi.hoisted(() => {
 vi.mock("@/server/db", () => ({ getDb: () => chain }));
 vi.mock("@/server/db/schema", () => ({ spaces: {} }));
 vi.mock("drizzle-orm", () => ({
+  and: (...conditions: unknown[]) => conditions,
   desc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
 }));
 
-import { createSpace, getSpaces, getSpaceById } from "../spaces-service";
+import {
+  createSpace,
+  getSpaceById,
+  getSpaces,
+  updateSpace,
+} from "../spaces-service";
 
 /* ── 헬퍼 ── */
 
@@ -97,6 +103,35 @@ describe("createSpace", () => {
     });
     expect(result.description).toBeNull();
   });
+
+  it("진행기간을 함께 입력하면 그대로 저장한다", async () => {
+    const space = makeSpace({
+      startDate: "2026-04-01",
+      endDate: "2026-10-31",
+    });
+    responses.push([space]);
+
+    const result = await createSpace("user-1", {
+      name: "백엔드 7기",
+      startDate: "2026-04-01",
+      endDate: "2026-10-31",
+    });
+
+    expect(result.startDate).toBe("2026-04-01");
+    expect(result.endDate).toBe("2026-10-31");
+  });
+
+  it("진행기간은 시작일과 종료일을 함께 입력해야 한다", async () => {
+    await expect(
+      createSpace("user-1", {
+        name: "백엔드 7기",
+        startDate: "2026-04-01",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "진행기간을 입력하려면 시작일과 종료일을 모두 선택해 주세요.",
+    });
+  });
 });
 
 /* ── getSpaces ── */
@@ -149,5 +184,68 @@ describe("getSpaceById", () => {
     await expect(getSpaceById("nonexistent")).rejects.toMatchObject({
       message: "스페이스를 찾지 못했습니다.",
     });
+  });
+});
+
+/* ── updateSpace ── */
+
+describe("updateSpace", () => {
+  it("진행 시작일은 변경할 수 없다", async () => {
+    responses.push([
+      makeSpace({
+        startDate: "2026-04-01",
+        endDate: "2026-10-31",
+      }),
+    ]);
+
+    await expect(
+      updateSpace("user-1", "space-1", {
+        startDate: "2026-05-01",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "진행 시작일은 변경할 수 없습니다.",
+    });
+  });
+
+  it("진행 종료일은 앞당길 수 없다", async () => {
+    responses.push([
+      makeSpace({
+        startDate: "2026-04-01",
+        endDate: "2026-10-31",
+      }),
+    ]);
+
+    await expect(
+      updateSpace("user-1", "space-1", {
+        endDate: "2026-10-01",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "진행 종료일은 앞당길 수 없습니다.",
+    });
+  });
+
+  it("진행 종료일은 뒤로 연장할 수 있다", async () => {
+    responses.push(
+      [
+        makeSpace({
+          startDate: "2026-04-01",
+          endDate: "2026-10-31",
+        }),
+      ],
+      [
+        makeSpace({
+          startDate: "2026-04-01",
+          endDate: "2026-11-30",
+        }),
+      ],
+    );
+
+    const result = await updateSpace("user-1", "space-1", {
+      endDate: "2026-11-30",
+    });
+
+    expect(result.endDate).toBe("2026-11-30");
   });
 });

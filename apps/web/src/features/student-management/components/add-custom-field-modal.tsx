@@ -108,7 +108,7 @@ export function AddCustomFieldModal({
           <div>
             <h3 className="text-[15px] font-semibold text-text">필드 추가</h3>
             <p className="mt-1 text-[12px] text-text-dim">
-              추가 정보에 표시할 새 필드를 만듭니다.
+              현재 탭에 표시할 새 필드를 만듭니다.
             </p>
           </div>
           <button

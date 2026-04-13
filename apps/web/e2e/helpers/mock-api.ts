@@ -39,6 +39,7 @@ export function makeRecord(overrides: Record<string, unknown> = {}) {
     sessionTitle: "상담 기록",
     counselingType: "",
     status: "ready",
+    recordSource: "audio_upload",
     preview: "상담 요약입니다",
     audioDurationMs: 0,
     errorMessage: null,

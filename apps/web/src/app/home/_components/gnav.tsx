@@ -21,6 +21,8 @@ export function Gnav({ activeMenu }: GnavProps) {
     toggleSidebarCollapsed,
     studentSidebarCollapsed,
     toggleStudentSidebarCollapsed,
+    recordsSidebarToggleVisible,
+    studentSidebarToggleVisible,
   } = useHomeSidebarLayout();
   const menuRef = useClickOutside<HTMLDivElement>(
     () => setShowMenu(false),
@@ -30,39 +32,44 @@ export function Gnav({ activeMenu }: GnavProps) {
   const isCurrentSidebarCollapsed = isStudentsMenu
     ? studentSidebarCollapsed
     : sidebarCollapsed;
+  const canToggleCurrentSidebar = isStudentsMenu
+    ? studentSidebarToggleVisible
+    : recordsSidebarToggleVisible;
   const handleToggleSidebar = isStudentsMenu
     ? toggleStudentSidebarCollapsed
     : toggleSidebarCollapsed;
 
   return (
     <div className="hidden w-14 border-r border-border bg-bg py-4 md:flex md:flex-col md:items-center md:gap-1">
-      <button
-        type="button"
-        className={`mb-1 flex h-9 w-9 items-center justify-center rounded-lg border transition-colors duration-150 ${
-          isCurrentSidebarCollapsed
-            ? "border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text"
-            : "border-transparent bg-transparent text-text-dim hover:bg-surface-3 hover:text-text-secondary"
-        }`}
-        onClick={handleToggleSidebar}
-        title={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
-        aria-label={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform duration-150 ${
-            isCurrentSidebarCollapsed ? "" : "rotate-180"
+      {canToggleCurrentSidebar ? (
+        <button
+          type="button"
+          className={`mb-1 flex h-9 w-9 items-center justify-center rounded-lg border transition-colors duration-150 ${
+            isCurrentSidebarCollapsed
+              ? "border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text"
+              : "border-transparent bg-transparent text-text-dim hover:bg-surface-3 hover:text-text-secondary"
           }`}
+          onClick={handleToggleSidebar}
+          title={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
+          aria-label={isCurrentSidebarCollapsed ? "목록 펼치기" : "목록 접기"}
         >
-          <path d="m9 6 6 6-6 6" />
-        </svg>
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform duration-150 ${
+              isCurrentSidebarCollapsed ? "" : "rotate-180"
+            }`}
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      ) : null}
       <div className="mt-2">
         <Link
           href={resolveAppHref("/home")}

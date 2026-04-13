@@ -2,16 +2,11 @@
 
 import { memo, useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Mic,
-  FileText,
-  MessageSquare,
-  FolderOpen,
-  ChevronDown,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { DevLoginOption } from "@/lib/auth/dev-login-options";
 import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
+import { FEATURES, FLOW_STEPS, STATS } from "./landing-constants";
 import { LoginModal } from "./login-modal";
 import styles from "./landing-home.module.css";
 
@@ -31,86 +26,6 @@ const LANDING_VARS = {
   "--text-muted": "rgba(255,255,255,0.38)",
 } as React.CSSProperties;
 
-/* ── Data ── */
-
-const STATS = [
-  {
-    label: "원문 끝까지 확인",
-    value: 100,
-    suffix: "%",
-    description: "요약만 보지 않고 원문 전체를 그대로 확인합니다.",
-  },
-  {
-    label: "바로 읽히는 요약",
-    value: 4,
-    suffix: "개",
-    description: "핵심 내용, 문제 포인트, 요청, 다음 액션만 바로 봅니다.",
-  },
-  {
-    label: "끊기지 않는 작업 흐름",
-    value: 3,
-    suffix: "영역",
-    description: "원문, 요약, AI 채팅을 한 화면에서 바로 이어 봅니다.",
-  },
-] as const;
-
-const FEATURES = [
-  {
-    icon: Mic,
-    title: "고품질 STT 원문",
-    description:
-      "긴 상담 녹음도 흐름이 끊기지 않게 텍스트로 펼쳐 보여줍니다. 요약 전에 원문을 먼저 확인할 수 있습니다.",
-    accent: "accent" as const,
-  },
-  {
-    icon: FileText,
-    title: "구조화 상담 요약",
-    description:
-      "핵심 상담 내용, 수강생 이슈 포인트, 다음 액션을 실무형 구조로 나눠 정리합니다.",
-    accent: "blue" as const,
-  },
-  {
-    icon: MessageSquare,
-    title: "원문 기반 AI 채팅",
-    description:
-      "선택한 상담 원문을 기준으로 요청사항 추출, 다음 상담 준비, 특정 주제 검색을 빠르게 처리합니다.",
-    accent: "green" as const,
-  },
-  {
-    icon: FolderOpen,
-    title: "수강생별 상담 히스토리",
-    description:
-      "상담 기록이 수강생 단위로 쌓여 이전 약속, 후속 액션, 멘토링 맥락을 이어서 볼 수 있습니다.",
-    accent: "purple" as const,
-  },
-] as const;
-
-const FLOW_STEPS = [
-  {
-    number: "01",
-    title: "데모 보기 또는 로그인",
-    description:
-      "평가용 데모로 바로 들어가거나 소셜 로그인으로 실제 작업 화면을 엽니다.",
-  },
-  {
-    number: "02",
-    title: "상담 선택 또는 업로드",
-    description: "왼쪽 리스트에서 기존 상담을 고르거나 새 녹음본을 올립니다.",
-  },
-  {
-    number: "03",
-    title: "원문과 요약 생성",
-    description:
-      "STT가 전체 원문을 만들고 AI가 핵심 상담 내용과 다음 액션 초안을 정리합니다.",
-  },
-  {
-    number: "04",
-    title: "다음 상담 준비",
-    description:
-      "가운데 원문을 검토하고 오른쪽 AI 채팅으로 필요한 부분만 다시 묻고 저장합니다.",
-  },
-] as const;
-
 const HeroSection = memo(function HeroSection({
   paused,
   onOpenLogin,
@@ -122,7 +37,7 @@ const HeroSection = memo(function HeroSection({
 }) {
   return (
     <section className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end">
-      <div className="pointer-events-none absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0">
         <SplineHero paused={paused} />
       </div>
 
@@ -136,35 +51,35 @@ const HeroSection = memo(function HeroSection({
           YEON
         </p>
 
+        <p className="m-0 inline-flex w-fit items-center rounded-full border border-[rgba(129,140,248,0.22)] bg-[rgba(129,140,248,0.08)] px-3 py-1 text-[11px] font-semibold tracking-[-0.01em] text-[rgba(255,255,255,0.82)] md:px-3.5 md:py-1.5 md:text-[12px]">
+          교육기관 운영자와 멘토를 위한 상담 기록 워크스페이스
+        </p>
+
         <h1 className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]">
           <span className="md:hidden">
-            <span className="block">상담기록을</span>
-            <span className="relative block text-[var(--accent)]">
-              YEON으로
-            </span>
-            <span className="block">정리하세요</span>
+            <span className="block">상담기록부터</span>
+            <span className="block">수강생 관리 보고까지</span>
+            <span className="relative block text-[var(--accent)]">한 번에</span>
           </span>
           <span className="hidden md:inline">
-            좋은 상담은
+            상담기록부터
             <br />
-            기억에만
+            수강생 관리 보고까지
             <br />
-            <span className="text-[var(--accent)] relative">
-              남기기 아깝습니다
-            </span>
+            <span className="text-[var(--accent)] relative">한 번에</span>
           </span>
         </h1>
 
         <p className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]">
           <span className="md:hidden">
-            <span className="block">원문,</span>
-            <span className="block">요약, 액션을</span>
-            <span className="block">한 화면에서</span>
+            <span className="block">녹음하면 원문이 남고,</span>
+            <span className="block">AI가 수강생 정보를 정리하고,</span>
+            <span className="block">보고서까지 바로 이어집니다</span>
           </span>
           <span className="hidden md:inline">
-            전사부터 요약, 다음 액션까지.
+            녹음하면 원문이 남고, AI가 핵심을 정리하고,
             <br className="hidden md:block" />
-            녹음 하나로 이어지는 상담 기록 워크스페이스입니다.
+            수강생 정보 추출과 엑셀·워드 보고서까지 바로 이어집니다.
           </span>
         </p>
 
@@ -275,8 +190,9 @@ const FeaturesSection = memo(function FeaturesSection() {
             핵심 기능
           </p>
           <h2 className="m-0 max-w-[11ch] text-[clamp(28px,9vw,48px)] font-black leading-[1.08] tracking-[-0.04em] md:max-w-none md:text-[clamp(28px,4vw,48px)] md:leading-[1.15] md:tracking-[-0.025em]">
-            원문, 요약, 액션을
-            <br />한 화면에서
+            상담기록이 관리와 보고로
+            <br />
+            바로 이어집니다
           </h2>
         </div>
 

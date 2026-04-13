@@ -93,24 +93,31 @@ export function FieldRenderer({
 
     case "multi_select": {
       const options = Array.isArray(value)
-        ? (value as { value: string; color?: string }[])
+        ? (value as Array<string | { value: string; color?: string }>)
         : [];
       if (options.length === 0) return <EmptyValue />;
       return (
         <div className="flex flex-wrap gap-1">
-          {options.map((opt, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-              style={{
-                background: opt.color ? `${opt.color}20` : "var(--surface3)",
-                color: opt.color ?? "var(--text)",
-                border: `1px solid ${opt.color ? `${opt.color}40` : "var(--border)"}`,
-              }}
-            >
-              {opt.value}
-            </span>
-          ))}
+          {options.map((opt, i) => {
+            const normalized =
+              typeof opt === "string" ? { value: opt, color: undefined } : opt;
+
+            return (
+              <span
+                key={i}
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{
+                  background: normalized.color
+                    ? `${normalized.color}20`
+                    : "var(--surface3)",
+                  color: normalized.color ?? "var(--text)",
+                  border: `1px solid ${normalized.color ? `${normalized.color}40` : "var(--border)"}`,
+                }}
+              >
+                {normalized.value}
+              </span>
+            );
+          })}
         </div>
       );
     }

@@ -64,6 +64,19 @@ export function RecordDetailHeader({
   const isAnalysisProcessing =
     selectedRecord.analysisStatus === "queued" ||
     selectedRecord.analysisStatus === "processing";
+  const isAudioUploadRecord = selectedRecord.recordSource === "audio_upload";
+  const isTextMemoRecord = selectedRecord.recordSource === "text_memo";
+  const isPartialTranscriptReady =
+    selectedRecord.status === "processing" &&
+    selectedRecord.processingStage === "partial_transcript_ready";
+  const analysisStatusLabel =
+    selectedRecord.analysisStatus === "error"
+      ? "AI 분석 실패"
+      : selectedRecord.analysisStatus === "ready"
+        ? "AI 분석 완료"
+        : selectedRecord.analysisStatus === "idle"
+          ? "AI 분석 대기"
+          : "AI 분석 진행 중";
 
   return (
     <header
@@ -110,20 +123,20 @@ export function RecordDetailHeader({
                     ? "rgba(191,51,61,0.08)"
                     : selectedRecord.analysisStatus === "ready"
                       ? "rgba(17,132,91,0.08)"
-                      : "rgba(99,102,241,0.1)",
+                      : selectedRecord.analysisStatus === "idle"
+                        ? "var(--surface-secondary)"
+                        : "rgba(99,102,241,0.1)",
                 color:
                   selectedRecord.analysisStatus === "error"
                     ? "var(--danger-text)"
                     : selectedRecord.analysisStatus === "ready"
                       ? "var(--success-text)"
-                      : "var(--accent)",
+                      : selectedRecord.analysisStatus === "idle"
+                        ? "var(--text-secondary)"
+                        : "var(--accent)",
               }}
             >
-              {selectedRecord.analysisStatus === "error"
-                ? "AI 분석 실패"
-                : selectedRecord.analysisStatus === "ready"
-                  ? "AI 분석 완료"
-                  : "AI 분석 진행 중"}
+              {analysisStatusLabel}
             </span>
           ) : null}
           <button
@@ -339,9 +352,11 @@ export function RecordDetailHeader({
           className="m-0 text-xs leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap"
           style={{ color: "var(--text-muted)" }}
         >
-          {selectedRecord.audioOriginalName}
-          <span className="mx-1 opacity-50">·</span>
-          {formatFileSize(selectedRecord.audioByteSize)}
+          {isTextMemoRecord
+            ? "텍스트 메모 · 원본 음성 없음"
+            : `${selectedRecord.audioOriginalName} · ${formatFileSize(
+                selectedRecord.audioByteSize,
+              )}`}
         </p>
 
         {selectedRecordDetail?.audioUrl ? (
@@ -364,7 +379,9 @@ export function RecordDetailHeader({
             className="m-0 text-[13px] leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
-            원본 음성을 불러오는 중입니다.
+            {isAudioUploadRecord
+              ? "원본 음성을 불러오는 중입니다."
+              : "텍스트 메모에는 재생할 원본 음성이 없습니다."}
           </p>
         )}
 
@@ -435,6 +452,32 @@ export function RecordDetailHeader({
             </button>
           ) : null}
 
+          {isPartialTranscriptReady && isAudioUploadRecord ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border-none rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{ background: "var(--accent)", color: "#ffffff" }}
+              onClick={() => retryTranscription(selectedRecord.id)}
+              disabled={retryState.isSubmitting}
+            >
+              {retryState.isSubmitting ? (
+                <>
+                  <LoaderCircle
+                    size={16}
+                    strokeWidth={2.1}
+                    className={styles.spinningIcon}
+                  />
+                  누락 구간 재시도 중
+                </>
+              ) : (
+                <>
+                  <RefreshCcw size={16} strokeWidth={2.1} />
+                  누락 구간 다시 시도
+                </>
+              )}
+            </button>
+          ) : null}
+
           {isAnalysisProcessing ? (
             <button
               type="button"
@@ -452,7 +495,7 @@ export function RecordDetailHeader({
             </button>
           ) : null}
 
-          {selectedRecord.status === "error" ? (
+          {selectedRecord.status === "error" && isAudioUploadRecord ? (
             <button
               type="button"
               className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border-none rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"

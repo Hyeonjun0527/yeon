@@ -284,6 +284,168 @@ export function CenterPanel({
     );
   }
 
+  const isPartialTranscriptReady =
+    selected.status === "processing" &&
+    selected.processingStage === "partial_transcript_ready";
+
+  if (isPartialTranscriptReady) {
+    return (
+      <div
+        key={selected.id}
+        className={`flex-1 flex flex-col overflow-hidden ${styles.centerFadeIn}`}
+      >
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <h1 className="text-[15px] font-semibold tracking-[-0.3px] truncate">
+              {selected.title}
+            </h1>
+            <div className="text-[11px] text-text-dim flex items-center gap-1.5 flex-wrap">
+              <span>{selected.studentName || "수강생 미지정"}</span>
+              <span>·</span>
+              <span>{selected.type}</span>
+              <span>·</span>
+              <span>{selected.duration}</span>
+              <span>·</span>
+              <span>부분 원문 준비</span>
+            </div>
+          </div>
+        </div>
+
+        {selected.recordSource === "audio_upload" ? (
+          <div className="flex items-center gap-[10px] bg-surface-2 border border-border rounded-lg px-[14px] py-2 mb-4 mx-5 mt-4">
+            <button
+              className="w-[30px] h-[30px] rounded-full bg-text text-bg flex items-center justify-center border-none cursor-pointer flex-shrink-0"
+              onClick={onTogglePlay}
+            >
+              {isPlaying ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <rect x="2" y="1" width="4" height="12" rx="1" />
+                  <rect x="8" y="1" width="4" height="12" rx="1" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <path d="M3 1.5L12 7L3 12.5V1.5Z" />
+                </svg>
+              )}
+            </button>
+            <span className="font-mono text-[11px] text-text-secondary">
+              {fmtTime(audioPosition)}
+            </span>
+            <div
+              className="flex-1 h-[3px] bg-surface-4 rounded-[2px] relative cursor-pointer"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                onSeek(pct);
+              }}
+            >
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-accent rounded-[2px]"
+                style={{
+                  width: `${totalSeconds > 0 ? (audioPosition / totalSeconds) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <span className="font-mono text-[11px] text-text-secondary">
+              {fmtTime(totalSeconds)}
+            </span>
+          </div>
+        ) : null}
+
+        <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
+          <div className="mb-4 rounded-lg border border-amber/30 bg-amber/10 px-4 py-3">
+            <p className="m-0 text-[13px] font-semibold text-amber">
+              원문 일부만 먼저 복구되었습니다
+            </p>
+            <p className="mt-1 mb-0 text-[12px] leading-relaxed text-text-secondary">
+              {selected.processingMessage ||
+                "누락된 전사 구간을 다시 시도해야 AI 분석을 시작할 수 있습니다."}
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onRetryFailedRecord}
+                disabled={retryPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-accent-border bg-accent-dim px-4 py-2 text-[13px] font-semibold text-accent transition-colors hover:border-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {retryPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : null}
+                {retryPending
+                  ? "누락 구간 재시도 중..."
+                  : "누락 구간 다시 시도"}
+              </button>
+              <span className="text-[11px] text-text-dim">
+                전사 구간 {selected.processingProgress}%
+              </span>
+            </div>
+            {retryFeedback.message ? (
+              <p
+                className={`mt-3 mb-0 text-[12px] leading-relaxed ${
+                  retryFeedback.tone === "error"
+                    ? "text-red"
+                    : retryFeedback.tone === "success"
+                      ? "text-accent"
+                      : "text-text-dim"
+                }`}
+              >
+                {retryFeedback.message}
+              </p>
+            ) : null}
+          </div>
+
+          <details className="mt-4" open>
+            <summary className="text-[13px] font-semibold text-text-secondary cursor-pointer select-none mb-3 hover:text-text transition-colors">
+              전사 원문{" "}
+              {selected.transcript.length > 0 &&
+                `(${selected.transcript.length}개 세그먼트)`}
+            </summary>
+            {transcriptLoading ? (
+              <div className="text-text-dim text-[13px] py-6">
+                전사 내용을 불러오는 중...
+              </div>
+            ) : selected.transcript.length === 0 ? (
+              <div className="text-text-dim text-[13px] py-6">
+                부분 원문이 아직 준비되지 않았습니다.
+              </div>
+            ) : (
+              selected.transcript.map((seg, i) => (
+                <div
+                  key={seg.id ?? i}
+                  className="flex gap-[10px] py-2 border-b border-[rgba(255,255,255,0.03)] text-[13px]"
+                >
+                  <span className="font-mono text-[10px] text-text-dim min-w-[38px] pt-[3px]">
+                    {fmtMs(seg.startMs)}
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold min-w-[32px] pt-[3px] ${
+                      seg.speakerTone === "teacher"
+                        ? "text-[#60a5fa]"
+                        : "text-green"
+                    }`}
+                  >
+                    {seg.speakerLabel}
+                  </span>
+                  <span className="flex-1 text-text">{seg.text}</span>
+                </div>
+              ))
+            )}
+          </details>
+        </div>
+      </div>
+    );
+  }
+
   /* 처리 중 */
   if (selected.status === "processing") {
     const resolvedProcessingStep = getProcessingChecklistStep({
@@ -399,54 +561,60 @@ export function CenterPanel({
         )}
 
         {/* 오디오 플레이어 */}
-        <div className="flex items-center gap-[10px] bg-surface-2 border border-border rounded-lg px-[14px] py-2 mb-4 mx-5 mt-4">
-          <button
-            className="w-[30px] h-[30px] rounded-full bg-text text-bg flex items-center justify-center border-none cursor-pointer flex-shrink-0"
-            onClick={onTogglePlay}
-          >
-            {isPlaying ? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="currentColor"
-              >
-                <rect x="2" y="1" width="4" height="12" rx="1" />
-                <rect x="8" y="1" width="4" height="12" rx="1" />
-              </svg>
-            ) : (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="currentColor"
-              >
-                <path d="M3 1.5L12 7L3 12.5V1.5Z" />
-              </svg>
-            )}
-          </button>
-          <span className="font-mono text-[11px] text-text-secondary">
-            {fmtTime(audioPosition)}
-          </span>
-          <div
-            className="flex-1 h-[3px] bg-surface-4 rounded-[2px] relative cursor-pointer"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const pct = (e.clientX - rect.left) / rect.width;
-              onSeek(pct);
-            }}
-          >
+        {selected.recordSource === "audio_upload" ? (
+          <div className="flex items-center gap-[10px] bg-surface-2 border border-border rounded-lg px-[14px] py-2 mb-4 mx-5 mt-4">
+            <button
+              className="w-[30px] h-[30px] rounded-full bg-text text-bg flex items-center justify-center border-none cursor-pointer flex-shrink-0"
+              onClick={onTogglePlay}
+            >
+              {isPlaying ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <rect x="2" y="1" width="4" height="12" rx="1" />
+                  <rect x="8" y="1" width="4" height="12" rx="1" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <path d="M3 1.5L12 7L3 12.5V1.5Z" />
+                </svg>
+              )}
+            </button>
+            <span className="font-mono text-[11px] text-text-secondary">
+              {fmtTime(audioPosition)}
+            </span>
             <div
-              className="absolute left-0 top-0 bottom-0 bg-accent rounded-[2px]"
-              style={{
-                width: `${totalSeconds > 0 ? (audioPosition / totalSeconds) * 100 : 0}%`,
+              className="flex-1 h-[3px] bg-surface-4 rounded-[2px] relative cursor-pointer"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                onSeek(pct);
               }}
-            />
+            >
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-accent rounded-[2px]"
+                style={{
+                  width: `${totalSeconds > 0 ? (audioPosition / totalSeconds) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <span className="font-mono text-[11px] text-text-secondary">
+              {fmtTime(totalSeconds)}
+            </span>
           </div>
-          <span className="font-mono text-[11px] text-text-secondary">
-            {fmtTime(totalSeconds)}
-          </span>
-        </div>
+        ) : (
+          <div className="bg-surface-2 border border-border rounded-lg px-[14px] py-3 mb-4 mx-5 mt-4 text-[13px] text-text-secondary">
+            텍스트 메모에는 재생할 원본 음성이 없습니다.
+          </div>
+        )}
 
         {/* AI 분석 결과 */}
         <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">

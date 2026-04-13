@@ -14,8 +14,9 @@ export function LandingFeaturesSection() {
             핵심 기능
           </p>
           <h2 className="m-0 text-[clamp(28px,4vw,48px)] font-black leading-[1.15] tracking-[-0.025em]">
-            원문, 요약, 액션을
-            <br />한 화면에서
+            상담기록이 관리와 보고로
+            <br />
+            바로 이어집니다
           </h2>
         </motion.div>
 

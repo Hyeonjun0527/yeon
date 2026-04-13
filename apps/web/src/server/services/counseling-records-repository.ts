@@ -4,6 +4,7 @@ import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
   CounselingRecordProcessingStage,
+  CounselingRecordSource,
   CounselingTranscriptSegment,
 } from "@yeon/api-contract/counseling-records";
 import {
@@ -25,10 +26,20 @@ import { uploadCounselingAudioObject } from "./counseling-record-audio-storage";
 
 export const MAX_AUDIO_UPLOAD_BYTES = 128 * 1024 * 1024;
 const DEFAULT_COUNSELING_TYPE = "대면 상담";
-export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES = [
+export const COUNSELING_RECORD_SOURCE = {
+  AUDIO_UPLOAD: "audio_upload",
+  TEXT_MEMO: "text_memo",
+  DEMO_PLACEHOLDER: "demo_placeholder",
+} as const;
+export const DEMO_PLACEHOLDER_AUDIO_STORAGE_PREFIXES = [
   "local://demo/",
-  "text_memo://",
 ] as const;
+export const TEXT_MEMO_AUDIO_STORAGE_PREFIX = "text_memo://";
+export const PLACEHOLDER_AUDIO_STORAGE_PREFIXES =
+  DEMO_PLACEHOLDER_AUDIO_STORAGE_PREFIXES;
+const VALID_RECORD_SOURCES = new Set<CounselingRecordSource>(
+  Object.values(COUNSELING_RECORD_SOURCE),
+);
 
 export type CounselingRecordRow = typeof counselingRecords.$inferSelect;
 type CounselingTranscriptSegmentRow =
@@ -43,6 +54,7 @@ export type CounselingRecordListRow = Pick<
   | "counselingType"
   | "counselorName"
   | "status"
+  | "recordSource"
   | "audioOriginalName"
   | "audioMimeType"
   | "audioByteSize"
@@ -73,7 +85,11 @@ export type CounselingRecordListRow = Pick<
 
 export type MemberRiskRecordRow = Pick<
   CounselingRecordRow,
-  "memberId" | "analysisResult" | "audioStoragePath" | "createdAt"
+  | "memberId"
+  | "analysisResult"
+  | "recordSource"
+  | "audioStoragePath"
+  | "createdAt"
 >;
 
 export type CounselingRecordListQueryOptions = {
@@ -101,6 +117,7 @@ const counselingRecordListSelection = {
   counselingType: counselingRecords.counselingType,
   counselorName: counselingRecords.counselorName,
   status: counselingRecords.status,
+  recordSource: counselingRecords.recordSource,
   audioOriginalName: counselingRecords.audioOriginalName,
   audioMimeType: counselingRecords.audioMimeType,
   audioByteSize: counselingRecords.audioByteSize,
@@ -164,6 +181,7 @@ const VALID_PROCESSING_STAGES = new Set<CounselingRecordProcessingStage>([
   "downloading",
   "chunking",
   "transcribing",
+  "partial_transcript_ready",
   "resolving_speakers",
   "transcript_ready",
   "analyzing",
@@ -270,9 +288,70 @@ export function sanitizeRequiredValue(
   return normalized;
 }
 
+export function inferCounselingRecordSourceFromStoragePath(
+  storagePath: string,
+): CounselingRecordSource {
+  if (
+    DEMO_PLACEHOLDER_AUDIO_STORAGE_PREFIXES.some((prefix) =>
+      storagePath.startsWith(prefix),
+    )
+  ) {
+    return COUNSELING_RECORD_SOURCE.DEMO_PLACEHOLDER;
+  }
+
+  if (storagePath.startsWith(TEXT_MEMO_AUDIO_STORAGE_PREFIX)) {
+    return COUNSELING_RECORD_SOURCE.TEXT_MEMO;
+  }
+
+  return COUNSELING_RECORD_SOURCE.AUDIO_UPLOAD;
+}
+
+export function getCounselingRecordSource(record: {
+  recordSource?: string | null;
+  audioStoragePath: string;
+}): CounselingRecordSource {
+  if (
+    record.recordSource &&
+    VALID_RECORD_SOURCES.has(record.recordSource as CounselingRecordSource)
+  ) {
+    return record.recordSource as CounselingRecordSource;
+  }
+
+  return inferCounselingRecordSourceFromStoragePath(record.audioStoragePath);
+}
+
 export function isPlaceholderAudioStoragePath(storagePath: string) {
-  return PLACEHOLDER_AUDIO_STORAGE_PREFIXES.some((prefix) =>
-    storagePath.startsWith(prefix),
+  return (
+    inferCounselingRecordSourceFromStoragePath(storagePath) ===
+    COUNSELING_RECORD_SOURCE.DEMO_PLACEHOLDER
+  );
+}
+
+export function isDemoPlaceholderRecord(record: {
+  recordSource?: string | null;
+  audioStoragePath: string;
+}) {
+  return (
+    getCounselingRecordSource(record) ===
+    COUNSELING_RECORD_SOURCE.DEMO_PLACEHOLDER
+  );
+}
+
+export function isTextMemoRecord(record: {
+  recordSource?: string | null;
+  audioStoragePath: string;
+}) {
+  return (
+    getCounselingRecordSource(record) === COUNSELING_RECORD_SOURCE.TEXT_MEMO
+  );
+}
+
+export function hasPlayableAudio(record: {
+  recordSource?: string | null;
+  audioStoragePath: string;
+}) {
+  return (
+    getCounselingRecordSource(record) === COUNSELING_RECORD_SOURCE.AUDIO_UPLOAD
   );
 }
 
@@ -404,6 +483,7 @@ export function mapRecordListItem(
     counselingType: record.counselingType,
     counselorName: record.counselorName,
     status: toRecordStatus(record.status),
+    recordSource: getCounselingRecordSource(record),
     preview: buildPreviewText(record),
     tags: buildRecordTags(record),
     audioOriginalName: record.audioOriginalName,
@@ -464,9 +544,9 @@ export function mapRecordDetail(
     ...mapRecordListItem(record),
     transcriptText: record.transcriptText,
     transcriptSegments: segments.map(mapSegmentRow),
-    audioUrl: isPlaceholderAudioStoragePath(record.audioStoragePath)
-      ? null
-      : `/api/v1/counseling-records/${record.id}/audio`,
+    audioUrl: hasPlayableAudio(record)
+      ? `/api/v1/counseling-records/${record.id}/audio`
+      : null,
     analysisResult: (() => {
       const parsed = analysisResultSchema.safeParse(record.analysisResult);
       return parsed.success ? parsed.data : null;
@@ -667,6 +747,7 @@ export async function findRiskRecordsByMemberIds(
     .select({
       memberId: counselingRecords.memberId,
       analysisResult: counselingRecords.analysisResult,
+      recordSource: counselingRecords.recordSource,
       audioStoragePath: counselingRecords.audioStoragePath,
       createdAt: counselingRecords.createdAt,
       rowNumber:
@@ -687,6 +768,7 @@ export async function findRiskRecordsByMemberIds(
     .select({
       memberId: rankedRiskRecords.memberId,
       analysisResult: rankedRiskRecords.analysisResult,
+      recordSource: rankedRiskRecords.recordSource,
       audioStoragePath: rankedRiskRecords.audioStoragePath,
       createdAt: rankedRiskRecords.createdAt,
     })
@@ -709,8 +791,7 @@ export async function summarizeStudentsByName(
     .where(
       and(
         eq(counselingRecords.createdByUserId, userId),
-        sql`${counselingRecords.audioStoragePath} not like 'local://demo/%'`,
-        sql`${counselingRecords.audioStoragePath} not like 'text_memo://%'`,
+        sql`${counselingRecords.recordSource} <> 'demo_placeholder'`,
       ),
     )
     .groupBy(counselingRecords.studentName)

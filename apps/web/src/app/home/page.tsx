@@ -19,6 +19,7 @@ import {
 } from "./_hooks";
 import { useExport } from "./_lib/export-context";
 import { detectRecordMemberMismatch } from "./_lib/record-member-mismatch";
+import { getHomeWorkspaceUiPolicy } from "./_lib/home-workspace-ui-policy";
 import { exportRecordDocx, exportMemberReportDocx } from "./_lib/export-docx";
 import {
   EmptyState,
@@ -33,6 +34,10 @@ import {
   InsightBanner,
   NewRecordEntryModal,
 } from "./_components";
+import {
+  useRegisterTutorialPolicy,
+  useSidebarToggleVisibility,
+} from "./_components/home-sidebar-layout-context";
 import { HomeTutorial } from "@/components/tutorial";
 import { StudentSpaceCreateModal } from "@/features/student-management/components/space-create-modal";
 import { useAppRoute } from "@/lib/app-route-context";
@@ -236,6 +241,20 @@ function MockV2WorkspaceInner() {
     [addSpace, redirectToStudentManagementSpace, selection.clearAll],
   );
 
+  const handleImportedSpaceCreated = useCallback(
+    (spaceId: string | null) => {
+      if (!spaceId) {
+        setShowSpaceGateModal(null);
+        return;
+      }
+
+      selection.clearAll();
+      setShowSpaceGateModal(null);
+      redirectToStudentManagementSpace(spaceId);
+    },
+    [redirectToStudentManagementSpace, selection.clearAll],
+  );
+
   // ── 삭제 핸들러 ───────────────────────────────────────────────
   const handleDeleteRecord = useCallback(
     async (recordId: string) => {
@@ -318,21 +337,20 @@ function MockV2WorkspaceInner() {
     records.selected?.memberId ?? null,
   );
 
-  const showMemberPanel =
-    selectedMember !== null &&
-    records.viewState.kind !== "recording" &&
-    records.viewState.kind !== "empty" &&
-    records.viewState.kind !== "loading";
+  const homeUiPolicy = getHomeWorkspaceUiPolicy({
+    spacesLoading,
+    spaceCount: spaces.length,
+    viewStateKind: records.viewState.kind,
+    hasSelectedMember: selectedMember !== null,
+    selectedRecordStatus: records.selected?.status ?? null,
+  });
 
-  const showCenterPanel =
-    !showMemberPanel &&
-    (records.viewState.kind === "processing" ||
-      records.viewState.kind === "ready");
-  const showSpaceFirstGate = !spacesLoading && spaces.length === 0;
+  useSidebarToggleVisibility("records", homeUiPolicy.canToggleSidebar);
+  useRegisterTutorialPolicy("home", homeUiPolicy.tutorial);
 
   // ── 내보내기 등록 ──────────────────────────────────────────────
   useEffect(() => {
-    if (showMemberPanel && selectedMember) {
+    if (homeUiPolicy.showMemberPanel && selectedMember) {
       register(() => exportMemberReportDocx(selectedMember, records.records));
     } else if (records.selected?.status === "ready") {
       const sel = records.selected;
@@ -341,7 +359,7 @@ function MockV2WorkspaceInner() {
       register(null);
     }
   }, [
-    showMemberPanel,
+    homeUiPolicy.showMemberPanel,
     selectedMember,
     records.selected,
     records.records,
@@ -365,7 +383,7 @@ function MockV2WorkspaceInner() {
         onChange={fileUpload.handleInputChange}
       />
 
-      {showSpaceFirstGate ? (
+      {homeUiPolicy.surface === "space-gate" ? (
         <>
           <HomeSpaceGate
             onCreateBlankSpace={() => setShowSpaceGateModal("blank")}
@@ -380,7 +398,9 @@ function MockV2WorkspaceInner() {
                 handleSpaceCreated(space);
                 setShowSpaceGateModal(null);
               }}
-              onImported={() => setShowSpaceGateModal(null)}
+              onImported={(result) => {
+                handleImportedSpaceCreated(result.spaceIds[0] ?? null);
+              }}
             />
           ) : null}
         </>
@@ -400,24 +420,22 @@ function MockV2WorkspaceInner() {
             </div>
           )}
 
-          {records.viewState.kind === "empty" && !selectedMember && (
+          {homeUiPolicy.surface === "empty" ? (
             <EmptyState
               onStartRecording={() => entry.handleStartRecording()}
               onFileUpload={entry.handleOpenFileUpload}
             />
-          )}
+          ) : null}
 
-          {records.viewState.kind === "recording" && (
+          {homeUiPolicy.surface === "recording" ? (
             <RecordingState
               elapsed={recording.elapsed}
               onStop={entry.handleStopRecording}
               onCancel={entry.handleCancelRecording}
             />
-          )}
+          ) : null}
 
-          {(records.viewState.kind === "processing" ||
-            records.viewState.kind === "ready" ||
-            showMemberPanel) && (
+          {homeUiPolicy.showSidebar ? (
             <Sidebar
               records={records.records}
               selectedId={selection.selectedRecordId}
@@ -437,9 +455,9 @@ function MockV2WorkspaceInner() {
               onExportRecord={handleExportRecord}
               onExportMember={handleExportMember}
             />
-          )}
+          ) : null}
 
-          {showMemberPanel && selectedMember && (
+          {homeUiPolicy.showMemberPanel && selectedMember ? (
             <div className="flex flex-1 overflow-hidden">
               <MemberPanel
                 member={selectedMember}
@@ -453,17 +471,21 @@ function MockV2WorkspaceInner() {
                 }
               />
             </div>
-          )}
+          ) : null}
 
-          {showCenterPanel && (
+          {homeUiPolicy.showCenterPanel ? (
             <div className="flex flex-1 overflow-hidden">
               <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <InsightBanner
                   members={members}
                   onHighlightWarning={() => {
-                    const target =
-                      members.find((m) => m.indicator === "warning") ??
-                      members.find((m) => m.indicator === "none");
+                    const target = members.find(
+                      (m) => m.indicator === "warning",
+                    );
+                    if (target) selection.handleSelectMember(target.id);
+                  }}
+                  onHighlightNone={() => {
+                    const target = members.find((m) => m.indicator === "none");
                     if (target) selection.handleSelectMember(target.id);
                   }}
                 />
@@ -525,7 +547,7 @@ function MockV2WorkspaceInner() {
                 imageInputRef={aiChat.imageInputRef}
               />
             </div>
-          )}
+          ) : null}
 
           {entry.newRecordEntryOpen && (
             <NewRecordEntryModal

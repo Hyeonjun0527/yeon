@@ -16,7 +16,14 @@ export const studentBoardSourceValues = [
   "public_location",
 ] as const;
 export const publicCheckMethodValues = ["qr", "location"] as const;
+export const publicCheckEntryValues = ["qr", "location"] as const;
 export const publicCheckSessionStatusValues = ["active", "closed"] as const;
+export const studentBoardHistoryPeriodValues = [
+  "space",
+  "7d",
+  "30d",
+  "365d",
+] as const;
 export const publicCheckSessionModeValues = [
   "attendance_only",
   "assignment_only",
@@ -38,6 +45,10 @@ export const studentAssignmentStatusSchema = z.enum(
 );
 export const studentBoardSourceSchema = z.enum(studentBoardSourceValues);
 export const publicCheckMethodSchema = z.enum(publicCheckMethodValues);
+export const publicCheckEntrySchema = z.enum(publicCheckEntryValues);
+export const studentBoardHistoryPeriodSchema = z.enum(
+  studentBoardHistoryPeriodValues,
+);
 export const publicCheckSessionStatusSchema = z.enum(
   publicCheckSessionStatusValues,
 );
@@ -47,6 +58,7 @@ export const publicCheckSessionModeSchema = z.enum(
 export const publicCheckVerificationStatusSchema = z.enum(
   publicCheckVerificationStatusValues,
 );
+export const studentBoardDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const studentBoardRowSchema = z.object({
   memberId: z.string().uuid(),
@@ -59,6 +71,28 @@ export const studentBoardRowSchema = z.object({
   assignmentMarkedSource: studentBoardSourceSchema.nullable(),
   lastPublicCheckAt: z.string().datetime().nullable(),
   isSelfCheckReady: z.boolean(),
+  dailyCells: z.array(
+    z.object({
+      date: studentBoardDateSchema,
+      attendanceStatus: studentAttendanceStatusSchema,
+      assignmentStatus: studentAssignmentStatusSchema,
+      assignmentLink: z.string().max(1000).nullable(),
+      occurredAt: z.string().datetime().nullable(),
+      source: studentBoardSourceSchema.nullable(),
+    }),
+  ),
+});
+
+export const studentBoardHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  memberId: z.string().uuid(),
+  memberName: z.string().min(1),
+  historyDate: studentBoardDateSchema,
+  occurredAt: z.string().datetime(),
+  attendanceStatus: studentAttendanceStatusSchema,
+  assignmentStatus: studentAssignmentStatusSchema,
+  assignmentLink: z.string().max(1000).nullable(),
+  source: studentBoardSourceSchema,
 });
 
 export const updateStudentBoardBodySchema = z.object({
@@ -81,9 +115,36 @@ export const publicCheckSessionSummarySchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const publicCheckLocationSearchSourceSchema = z.enum([
+  "keyword",
+  "address",
+]);
+
+export const publicCheckLocationSearchResultSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  placeName: z.string().nullable(),
+  roadAddressName: z.string().nullable(),
+  addressName: z.string().nullable(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  source: publicCheckLocationSearchSourceSchema,
+});
+
+export const publicCheckLocationSearchResponseSchema = z.object({
+  results: z.array(publicCheckLocationSearchResultSchema),
+});
+
 export const studentBoardResponseSchema = z.object({
   rows: z.array(studentBoardRowSchema),
   sessions: z.array(publicCheckSessionSummarySchema),
+  historyPeriod: studentBoardHistoryPeriodSchema,
+});
+
+export const memberStudentBoardResponseSchema = z.object({
+  period: studentBoardHistoryPeriodSchema,
+  dailyCells: studentBoardRowSchema.shape.dailyCells,
+  history: z.array(studentBoardHistoryItemSchema),
 });
 
 export const createPublicCheckSessionBodySchema = z.object({
@@ -95,7 +156,7 @@ export const createPublicCheckSessionBodySchema = z.object({
   locationLabel: z.string().max(120).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
-  radiusMeters: z.number().int().min(10).max(1000).nullable().optional(),
+  radiusMeters: z.number().int().min(50).max(300).nullable().optional(),
 });
 
 export const updatePublicCheckSessionBodySchema = z.object({
@@ -109,16 +170,32 @@ export const publicCheckSessionPublicSchema = z.object({
   enabledMethods: z.array(publicCheckMethodSchema).min(1),
   locationLabel: z.string().nullable(),
   requiresPhoneLast4: z.boolean(),
+  rememberedMemberName: z.string().nullable(),
 });
 
 export const submitPublicCheckBodySchema = z.object({
   method: publicCheckMethodSchema,
-  name: z.string().min(1).max(100),
-  phoneLast4: z.string().regex(/^\d{4}$/),
+  name: z.string().min(1).max(100).nullable().optional(),
+  phoneLast4: z
+    .string()
+    .regex(/^\d{4}$/)
+    .nullable()
+    .optional(),
   assignmentStatus: studentAssignmentStatusSchema.optional(),
   assignmentLink: z.string().max(1000).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
+});
+
+export const verifyPublicCheckIdentityBodySchema = z.object({
+  name: z.string().min(1).max(100),
+  phoneLast4: z.string().regex(/^\d{4}$/),
+});
+
+export const verifyPublicCheckIdentityResultSchema = z.object({
+  verificationStatus: publicCheckVerificationStatusSchema,
+  message: z.string(),
+  matchedMemberName: z.string().nullable(),
 });
 
 export const submitPublicCheckResultSchema = z.object({
@@ -135,10 +212,18 @@ export type StudentAssignmentStatus = z.infer<
 >;
 export type StudentBoardSource = z.infer<typeof studentBoardSourceSchema>;
 export type StudentBoardRow = z.infer<typeof studentBoardRowSchema>;
+export type StudentBoardDailyCell = StudentBoardRow["dailyCells"][number];
+export type StudentBoardHistoryPeriod = z.infer<
+  typeof studentBoardHistoryPeriodSchema
+>;
+export type StudentBoardHistoryItem = z.infer<
+  typeof studentBoardHistoryItemSchema
+>;
 export type UpdateStudentBoardBody = z.infer<
   typeof updateStudentBoardBodySchema
 >;
 export type PublicCheckMethod = z.infer<typeof publicCheckMethodSchema>;
+export type PublicCheckEntry = z.infer<typeof publicCheckEntrySchema>;
 export type PublicCheckSessionStatus = z.infer<
   typeof publicCheckSessionStatusSchema
 >;
@@ -151,7 +236,19 @@ export type PublicCheckVerificationStatus = z.infer<
 export type PublicCheckSessionSummary = z.infer<
   typeof publicCheckSessionSummarySchema
 >;
+export type PublicCheckLocationSearchSource = z.infer<
+  typeof publicCheckLocationSearchSourceSchema
+>;
+export type PublicCheckLocationSearchResult = z.infer<
+  typeof publicCheckLocationSearchResultSchema
+>;
+export type PublicCheckLocationSearchResponse = z.infer<
+  typeof publicCheckLocationSearchResponseSchema
+>;
 export type StudentBoardResponse = z.infer<typeof studentBoardResponseSchema>;
+export type MemberStudentBoardResponse = z.infer<
+  typeof memberStudentBoardResponseSchema
+>;
 export type CreatePublicCheckSessionBody = z.infer<
   typeof createPublicCheckSessionBodySchema
 >;
@@ -164,4 +261,10 @@ export type PublicCheckSessionPublic = z.infer<
 export type SubmitPublicCheckBody = z.infer<typeof submitPublicCheckBodySchema>;
 export type SubmitPublicCheckResult = z.infer<
   typeof submitPublicCheckResultSchema
+>;
+export type VerifyPublicCheckIdentityBody = z.infer<
+  typeof verifyPublicCheckIdentityBodySchema
+>;
+export type VerifyPublicCheckIdentityResult = z.infer<
+  typeof verifyPublicCheckIdentityResultSchema
 >;

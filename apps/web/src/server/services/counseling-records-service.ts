@@ -28,6 +28,7 @@ import {
   resolveSpeakerNames,
 } from "./counseling-ai-service";
 import {
+  COUNSELING_RECORD_SOURCE,
   type CounselingRecordDetailSource,
   type CounselingRecordListQueryOptions,
   type CounselingRecordListRow,
@@ -40,7 +41,9 @@ import {
   findRecordsBySpaceId,
   findRecordsByUserId,
   findUnlinkedRecords,
-  isPlaceholderAudioStoragePath,
+  hasPlayableAudio,
+  isDemoPlaceholderRecord,
+  isTextMemoRecord,
   linkRecordToMember,
   mapRecordDetail,
   mapRecordListItem,
@@ -63,12 +66,21 @@ const scheduledTranscriptionJobs = new Map<string, Promise<void>>();
 
 // ── 분석 중복 방지 ──
 const scheduledAnalysisJobs = new Map<string, Promise<void>>();
+const PARTIAL_TRANSCRIPT_READY_STAGE = "partial_transcript_ready";
+const AUTO_TRANSCRIPTION_STAGES = new Set([
+  "queued",
+  "downloading",
+  "chunking",
+  "transcribing",
+  "resolving_speakers",
+]);
 
 const PROCESSING_STAGE_PROGRESS: Record<string, number> = {
   queued: 5,
   downloading: 10,
   chunking: 15,
   transcribing: 20,
+  partial_transcript_ready: 60,
   resolving_speakers: 85,
   transcript_ready: 100,
   analyzing: 100,
@@ -89,7 +101,13 @@ type CreateCounselingRecordInput = {
 
 type SchedulableReadRecord = Pick<
   CounselingRecordListRow,
-  "id" | "status" | "audioStoragePath" | "analysisStatus" | "createdByUserId"
+  | "id"
+  | "status"
+  | "processingStage"
+  | "recordSource"
+  | "audioStoragePath"
+  | "analysisStatus"
+  | "createdByUserId"
 >;
 
 function isChunkSnapshot(
@@ -115,6 +133,117 @@ function readTranscriptionChunks(record: CounselingRecordRow) {
         .filter(isChunkSnapshot)
         .sort((a, b) => a.index - b.index)
     : [];
+}
+
+function resolvePersistedChunkCount(params: {
+  recordedChunkCount: number;
+  chunks: PersistedTranscriptionChunkSnapshot[];
+}) {
+  return Math.max(
+    params.recordedChunkCount,
+    params.chunks.reduce((max, chunk) => Math.max(max, chunk.index + 1), 0),
+  );
+}
+
+function buildPartialTranscriptProgress(
+  chunkCount: number,
+  completedChunkCount: number,
+) {
+  if (chunkCount <= 0) {
+    return PROCESSING_STAGE_PROGRESS.partial_transcript_ready;
+  }
+
+  return Math.max(
+    PROCESSING_STAGE_PROGRESS.transcribing,
+    Math.min(95, Math.round((completedChunkCount / chunkCount) * 100)),
+  );
+}
+
+function buildPartialTranscriptMessage(params: {
+  chunkCount: number;
+  completedChunkCount: number;
+  errorMessage: string;
+}) {
+  const missingChunkCount = Math.max(
+    params.chunkCount - params.completedChunkCount,
+    0,
+  );
+  const baseMessage =
+    missingChunkCount > 0
+      ? `원문 일부가 준비되었습니다. 전사 구간 ${params.completedChunkCount}/${params.chunkCount}개를 저장했고 누락 ${missingChunkCount}개 구간만 다시 시도하면 AI 분석을 시작할 수 있습니다.`
+      : "원문 일부가 준비되었습니다. 누락 구간 재시도 후 AI 분석을 시작할 수 있습니다.";
+
+  return `${baseMessage} 마지막 오류: ${params.errorMessage}`;
+}
+
+function buildTranscriptFromChunkSnapshots(
+  chunks: PersistedTranscriptionChunkSnapshot[],
+) {
+  const transcriptParts: string[] = [];
+  const segments: {
+    id: string;
+    segmentIndex: number;
+    startMs: number | null;
+    endMs: number | null;
+    speakerLabel: string;
+    speakerTone: CounselingRecordSpeakerTone;
+    text: string;
+  }[] = [];
+  const modelNames = new Set<string>();
+  let language: string | null = null;
+  let durationMs: number | null = null;
+  let segmentIndex = 0;
+
+  for (const chunk of chunks) {
+    const transcriptText = chunk.transcriptText.trim();
+
+    if (transcriptText) {
+      transcriptParts.push(transcriptText);
+    }
+
+    if (!language && chunk.language?.trim()) {
+      language = chunk.language.trim();
+    }
+
+    if (chunk.model.trim()) {
+      modelNames.add(chunk.model.trim());
+    }
+
+    if (typeof chunk.durationMs === "number" && chunk.durationMs > 0) {
+      const candidateDurationMs = chunk.offsetMs + chunk.durationMs;
+      durationMs =
+        durationMs === null
+          ? candidateDurationMs
+          : Math.max(durationMs, candidateDurationMs);
+    }
+
+    for (const segment of chunk.segments) {
+      const text = segment.text.trim();
+
+      if (!text) {
+        continue;
+      }
+
+      segments.push({
+        id: randomUUID(),
+        segmentIndex,
+        startMs: segment.startMs,
+        endMs: segment.endMs,
+        speakerLabel: segment.speakerLabel,
+        speakerTone: segment.speakerTone,
+        text,
+      });
+      segmentIndex += 1;
+    }
+  }
+
+  return {
+    transcriptText: transcriptParts.join("\n\n"),
+    language,
+    durationMs,
+    model: modelNames.size > 0 ? Array.from(modelNames).join("+") : null,
+    segments,
+  };
 }
 
 function buildTranscriptionProgress(
@@ -170,7 +299,7 @@ function scheduleCounselingRecordTranscription(params: {
   const job = (async () => {
     const record = await findOwnedRecord(params.userId, params.recordId);
 
-    if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+    if (!hasPlayableAudio(record)) {
       return;
     }
 
@@ -229,13 +358,22 @@ function scheduleCounselingRecordAnalysis(params: {
 function ensureCounselingRecordTranscriptionScheduled(
   record: Pick<
     CounselingRecordListRow,
-    "id" | "status" | "audioStoragePath" | "createdByUserId"
+    | "id"
+    | "status"
+    | "processingStage"
+    | "recordSource"
+    | "audioStoragePath"
+    | "createdByUserId"
   >,
   options?: {
     clientRequestId?: string | null;
   },
 ) {
-  if (record.status !== "processing") {
+  if (
+    record.status !== "processing" ||
+    !hasPlayableAudio(record) ||
+    !AUTO_TRANSCRIPTION_STAGES.has(record.processingStage)
+  ) {
     return false;
   }
 
@@ -303,17 +441,15 @@ async function queueAnalysisAfterTranscriptMutation(params: {
 
 // ── 내부 헬퍼 ──
 
-/** placeholder 기록을 제외한 실제 음성 기록만 반환 */
-function filterRealRecords<T extends { audioStoragePath: string }>(
-  records: T[],
-): T[] {
-  return records.filter(
-    (r) => !isPlaceholderAudioStoragePath(r.audioStoragePath),
-  );
+/** demo placeholder 기록만 제외하고 실제 상담 기록 + 텍스트 메모를 반환 */
+function filterVisibleRecords<
+  T extends { recordSource?: string | null; audioStoragePath: string },
+>(records: T[]): T[] {
+  return records.filter((record) => !isDemoPlaceholderRecord(record));
 }
 
-function assertPlayableRecord(record: CounselingRecordRow) {
-  if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+function assertViewableRecord(record: CounselingRecordRow) {
+  if (isDemoPlaceholderRecord(record)) {
     throw new ServiceError(
       404,
       "이 상담 기록은 실제 원본 음성이 없는 데모 데이터라 더 이상 열 수 없습니다.",
@@ -324,9 +460,9 @@ function assertPlayableRecord(record: CounselingRecordRow) {
 }
 
 function mapReadyRecordListItems(records: CounselingRecordListRow[]) {
-  const realRecords = filterRealRecords(records);
-  ensureRecordProcessingScheduledForList(realRecords);
-  return realRecords.map(mapRecordListItem);
+  const visibleRecords = filterVisibleRecords(records);
+  ensureRecordProcessingScheduledForList(visibleRecords);
+  return visibleRecords.map(mapRecordListItem);
 }
 
 function mapRequestedRecordDetails(params: {
@@ -340,10 +476,7 @@ function mapRequestedRecordDetails(params: {
   return params.recordIds.flatMap((recordId) => {
     const source = detailSourceById.get(recordId);
 
-    if (
-      !source ||
-      isPlaceholderAudioStoragePath(source.record.audioStoragePath)
-    ) {
+    if (!source || isDemoPlaceholderRecord(source.record)) {
       return [];
     }
 
@@ -532,6 +665,80 @@ async function persistTranscriptResult(params: {
   });
 }
 
+async function persistPartialTranscriptResult(params: {
+  recordId: string;
+  chunkSnapshots: PersistedTranscriptionChunkSnapshot[];
+  originalAudioDurationMs: number | null;
+  processingChunkCount: number;
+  errorMessage: string;
+}): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+  const partialTranscript = buildTranscriptFromChunkSnapshots(
+    params.chunkSnapshots,
+  );
+  const processingChunkCount = resolvePersistedChunkCount({
+    recordedChunkCount: params.processingChunkCount,
+    chunks: params.chunkSnapshots,
+  });
+  const completedChunkCount = params.chunkSnapshots.length;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(counselingRecords)
+      .set({
+        status: "processing",
+        transcriptText: partialTranscript.transcriptText,
+        transcriptSegmentCount: partialTranscript.segments.length,
+        language: partialTranscript.language,
+        sttModel: partialTranscript.model,
+        audioDurationMs:
+          partialTranscript.durationMs ?? params.originalAudioDurationMs,
+        errorMessage: params.errorMessage,
+        processingStage: PARTIAL_TRANSCRIPT_READY_STAGE,
+        processingProgress: buildPartialTranscriptProgress(
+          processingChunkCount,
+          completedChunkCount,
+        ),
+        processingMessage: buildPartialTranscriptMessage({
+          chunkCount: processingChunkCount,
+          completedChunkCount,
+          errorMessage: params.errorMessage,
+        }),
+        processingChunkCount,
+        processingChunkCompletedCount: completedChunkCount,
+        transcriptionChunks: params.chunkSnapshots,
+        analysisResult: null,
+        analysisStatus: "idle",
+        analysisProgress: 0,
+        analysisErrorMessage: null,
+        analysisCompletedAt: null,
+        transcriptionCompletedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(counselingRecords.id, params.recordId));
+
+    await tx
+      .delete(counselingTranscriptSegments)
+      .where(eq(counselingTranscriptSegments.recordId, params.recordId));
+
+    if (partialTranscript.segments.length > 0) {
+      await tx.insert(counselingTranscriptSegments).values(
+        partialTranscript.segments.map((segment) => ({
+          id: segment.id,
+          recordId: params.recordId,
+          segmentIndex: segment.segmentIndex,
+          startMs: segment.startMs,
+          endMs: segment.endMs,
+          speakerLabel: segment.speakerLabel,
+          speakerTone: segment.speakerTone,
+          text: segment.text,
+        })),
+      );
+    }
+  });
+}
+
 async function runTranscriptionForRecord(params: {
   record: CounselingRecordRow;
   clientRequestId?: string | null;
@@ -581,6 +788,29 @@ async function runTranscriptionForRecord(params: {
       error instanceof ServiceError
         ? error.message
         : "음성 전사 처리 중 알 수 없는 오류가 발생했습니다.";
+    const latestRecord = await findOwnedRecord(
+      params.record.createdByUserId,
+      params.record.id,
+    );
+    const partialChunks = readTranscriptionChunks(latestRecord);
+
+    if (partialChunks.length > 0) {
+      console.warn("counseling-record-transcription-partial", {
+        recordId: params.record.id,
+        completedChunkCount: partialChunks.length,
+        processingChunkCount: latestRecord.processingChunkCount,
+        error: message,
+      });
+
+      await persistPartialTranscriptResult({
+        recordId: params.record.id,
+        chunkSnapshots: partialChunks,
+        originalAudioDurationMs: params.record.audioDurationMs,
+        processingChunkCount: latestRecord.processingChunkCount,
+        errorMessage: message,
+      });
+      return;
+    }
 
     await updateTranscriptionState(params.record.id, {
       status: "error",
@@ -721,7 +951,7 @@ export async function getCounselingRecordDetail(
   recordId: string,
 ) {
   const source = await findOwnedRecordDetailSource(userId, recordId);
-  const record = assertPlayableRecord(source.record);
+  const record = assertViewableRecord(source.record);
 
   ensureRecordProcessingScheduled(record);
 
@@ -827,6 +1057,7 @@ export async function createCounselingRecordAndQueueTranscription(
       studentName: resolvedStudentName,
       sessionTitle,
       counselingType,
+      recordSource: COUNSELING_RECORD_SOURCE.AUDIO_UPLOAD,
       counselorName:
         sanitizeOptionalValue(input.currentUser.displayName, 80) ??
         sanitizeOptionalValue(input.currentUser.email, 80),
@@ -882,6 +1113,7 @@ export async function createTextMemoRecord(input: {
 }): Promise<CounselingRecordDetail> {
   const db = getDb();
   const recordId = randomUUID();
+  const segmentId = randomUUID();
   let linkedMemberId: string | null = null;
   let linkedSpaceId: string | null = null;
   let resolvedStudentName = sanitizeOptionalValue(input.studentName, 80) ?? "";
@@ -906,33 +1138,47 @@ export async function createTextMemoRecord(input: {
     sanitizeOptionalValue(input.counselingType, 40) ?? "텍스트 메모";
   const now = new Date();
 
-  await db.insert(counselingRecords).values({
-    id: recordId,
-    createdByUserId: input.currentUser.id,
-    memberId: linkedMemberId,
-    spaceId: linkedSpaceId,
-    studentName: resolvedStudentName,
-    sessionTitle,
-    counselingType,
-    counselorName:
-      sanitizeOptionalValue(input.currentUser.displayName, 80) ??
-      sanitizeOptionalValue(input.currentUser.email, 80),
-    status: "ready",
-    audioOriginalName: "text_memo",
-    audioMimeType: "text/plain",
-    audioByteSize: 0,
-    audioDurationMs: null,
-    audioStoragePath: `text_memo://${recordId}`,
-    audioSha256: "",
-    transcriptText: content,
-    transcriptSegmentCount: 0,
-    language: "ko",
-    processingStage: "completed",
-    processingProgress: 100,
-    processingMessage: "텍스트 메모는 즉시 준비됩니다.",
-    analysisStatus: "idle",
-    analysisProgress: 0,
-    updatedAt: now,
+  await db.transaction(async (tx) => {
+    await tx.insert(counselingRecords).values({
+      id: recordId,
+      createdByUserId: input.currentUser.id,
+      memberId: linkedMemberId,
+      spaceId: linkedSpaceId,
+      studentName: resolvedStudentName,
+      sessionTitle,
+      counselingType,
+      recordSource: COUNSELING_RECORD_SOURCE.TEXT_MEMO,
+      counselorName:
+        sanitizeOptionalValue(input.currentUser.displayName, 80) ??
+        sanitizeOptionalValue(input.currentUser.email, 80),
+      status: "ready",
+      audioOriginalName: "텍스트 메모",
+      audioMimeType: "text/plain",
+      audioByteSize: 0,
+      audioDurationMs: null,
+      audioStoragePath: `text_memo://${recordId}`,
+      audioSha256: "",
+      transcriptText: content,
+      transcriptSegmentCount: 1,
+      language: "ko",
+      processingStage: "completed",
+      processingProgress: 100,
+      processingMessage: "텍스트 메모 원문이 즉시 준비되었습니다.",
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      updatedAt: now,
+    });
+
+    await tx.insert(counselingTranscriptSegments).values({
+      id: segmentId,
+      recordId,
+      segmentIndex: 0,
+      startMs: null,
+      endMs: null,
+      speakerLabel: "메모",
+      speakerTone: "unknown",
+      text: content,
+    });
   });
 
   return getCounselingRecordDetail(input.currentUser.id, recordId);
@@ -945,8 +1191,20 @@ export async function retryCounselingRecordTranscription(
 ) {
   const db = getDb();
   const existingRecord = await findOwnedRecord(currentUser.id, recordId);
+  const preservedChunks =
+    existingRecord.processingStage === PARTIAL_TRANSCRIPT_READY_STAGE
+      ? readTranscriptionChunks(existingRecord)
+      : [];
+  const shouldRetryMissingChunks = preservedChunks.length > 0;
 
-  if (isPlaceholderAudioStoragePath(existingRecord.audioStoragePath)) {
+  if (isTextMemoRecord(existingRecord)) {
+    throw new ServiceError(
+      400,
+      "텍스트 메모는 재전사할 수 없습니다. 원문 내용을 직접 수정해 주세요.",
+    );
+  }
+
+  if (isDemoPlaceholderRecord(existingRecord)) {
     throw new ServiceError(
       400,
       "데모 placeholder 기록은 재전사할 수 없습니다. 새 음성 기록을 업로드해 주세요.",
@@ -969,13 +1227,24 @@ export async function retryCounselingRecordTranscription(
       errorMessage: null,
       processingStage: "queued",
       processingProgress: PROCESSING_STAGE_PROGRESS.queued,
-      processingMessage: "백그라운드 전사를 다시 준비하고 있습니다.",
-      processingChunkCount: 0,
-      processingChunkCompletedCount: 0,
-      transcriptionChunks: null,
+      processingMessage: shouldRetryMissingChunks
+        ? "누락된 전사 구간만 다시 준비하고 있습니다. 이미 저장된 원문은 유지됩니다."
+        : "백그라운드 전사를 다시 준비하고 있습니다.",
+      processingChunkCount: shouldRetryMissingChunks
+        ? resolvePersistedChunkCount({
+            recordedChunkCount: existingRecord.processingChunkCount,
+            chunks: preservedChunks,
+          })
+        : 0,
+      processingChunkCompletedCount: shouldRetryMissingChunks
+        ? preservedChunks.length
+        : 0,
+      transcriptionChunks: shouldRetryMissingChunks ? preservedChunks : null,
       analysisStatus: "idle",
       analysisProgress: 0,
       analysisErrorMessage: null,
+      analysisResult: null,
+      analysisCompletedAt: null,
       updatedAt: now,
     })
     .where(eq(counselingRecords.id, existingRecord.id));
@@ -996,7 +1265,11 @@ export async function getCounselingRecordAudio(
 ) {
   const record = await findOwnedRecord(userId, recordId);
 
-  if (isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+  if (isTextMemoRecord(record)) {
+    throw new ServiceError(404, "텍스트 메모에는 재생할 원본 음성이 없습니다.");
+  }
+
+  if (isDemoPlaceholderRecord(record)) {
     throw new ServiceError(
       404,
       "이 상담 기록은 실제 원본 음성이 없는 데모 데이터라 재생할 수 없습니다.",
@@ -1127,7 +1400,7 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
 
   await db.delete(counselingRecords).where(eq(counselingRecords.id, record.id));
 
-  if (!isPlaceholderAudioStoragePath(record.audioStoragePath)) {
+  if (hasPlayableAudio(record)) {
     try {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
@@ -1152,6 +1425,13 @@ export async function updateTranscriptSegment(
 ) {
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
+
+  if (record.status !== "ready") {
+    throw new ServiceError(
+      400,
+      "원문 전사가 모두 준비된 기록만 편집할 수 있습니다. 누락 구간 복구 후 다시 시도해 주세요.",
+    );
+  }
 
   const [segment] = await db
     .select()
@@ -1216,6 +1496,13 @@ export async function bulkUpdateSpeakerLabel(
 ) {
   const record = await findOwnedRecord(userId, recordId);
   const db = getDb();
+
+  if (record.status !== "ready") {
+    throw new ServiceError(
+      400,
+      "원문 전사가 모두 준비된 기록만 화자 정보를 수정할 수 있습니다. 누락 구간 복구 후 다시 시도해 주세요.",
+    );
+  }
 
   const updateFields: Partial<
     typeof counselingTranscriptSegments.$inferInsert

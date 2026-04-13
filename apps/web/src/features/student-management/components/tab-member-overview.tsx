@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { HelpCircle, Pencil, Trash2 } from "lucide-react";
-import {
-  deleteSpaceField,
-  updateSpaceField,
-} from "../../space-settings/space-settings-api";
+import { HelpCircle } from "lucide-react";
 import {
   OVERVIEW_FIELD_META_BY_SOURCE_KEY,
   OVERVIEW_FIELD_SOURCE_KEY_SET,
@@ -15,14 +10,27 @@ import {
   type OverviewFieldSourceKey,
 } from "@/lib/member-overview-fields";
 import {
+  MEMBER_STATUS_OPTIONS,
+  canManageActionTarget,
+  getFieldChoiceOptions,
+  getOverviewMemberPatchKey,
+  isInlineEditableMemberActionTarget,
+  type MemberFieldActionTarget,
+} from "../member-field-edit-policy";
+import {
   useCustomTabFields,
   customTabFieldsQueryKey,
-  type CustomTabFieldsQueryData,
   type FieldDef,
 } from "../hooks/use-custom-tab-fields";
 import type { Member, Memo } from "../types";
+import { useMemberFieldActions } from "../hooks/use-member-field-actions";
 import { fmtDate, fmtRelative } from "../utils";
 import { CustomTabContent } from "./custom-tab-content";
+import {
+  MemberFieldContextMenu,
+  MemberFieldDeleteModal,
+  MemberFieldEditModal,
+} from "./member-field-action-overlays";
 
 interface TabMemberOverviewProps {
   member: Member;
@@ -34,12 +42,6 @@ interface TabMemberOverviewProps {
   totalMemoCount?: number;
   onAddField?: () => void;
 }
-
-type ContextMenuState = {
-  field: FieldDef;
-  x: number;
-  y: number;
-};
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   active: { label: "수강중", color: "var(--accent)" },
@@ -97,7 +99,18 @@ function OverviewFieldRow({
   note,
   valueColor,
   labelSuffix,
+  interactive = true,
+  clickMode = "button",
+  onClick,
   onContextMenu,
+  isEditing = false,
+  editingValue,
+  onEditingValueChange,
+  onSubmitEdit,
+  onCancelEdit,
+  isSaving = false,
+  editErrorMessage,
+  inputType = "text",
 }: {
   field: FieldDef;
   value: string;
@@ -105,11 +118,30 @@ function OverviewFieldRow({
   note?: string;
   valueColor?: string;
   labelSuffix?: React.ReactNode;
-  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
+  interactive?: boolean;
+  clickMode?: "text" | "button";
+  onClick?: () => void;
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  isEditing?: boolean;
+  editingValue?: string;
+  onEditingValueChange?: (value: string) => void;
+  onSubmitEdit?: () => void;
+  onCancelEdit?: () => void;
+  isSaving?: boolean;
+  editErrorMessage?: string | null;
+  inputType?: React.HTMLInputTypeAttribute;
 }) {
+  const isClickable = interactive && Boolean(onClick);
+  const rowIsInteractive =
+    interactive && (Boolean(onClick) || Boolean(onContextMenu));
+
   return (
     <div
-      className="group -mx-2 flex items-center gap-3.5 rounded-lg border-b border-[rgba(255,255,255,0.04)] px-2 py-3 transition-colors last:border-0 hover:bg-surface-3/40"
+      className={`group -mx-2 flex items-center gap-3.5 rounded-lg border-b border-[rgba(255,255,255,0.04)] px-2 py-3 transition-colors last:border-0 ${
+        rowIsInteractive || isEditing
+          ? "hover:bg-surface-3/40"
+          : "cursor-not-allowed opacity-80"
+      }`}
       onContextMenu={onContextMenu}
     >
       <div
@@ -125,17 +157,85 @@ function OverviewFieldRow({
         </span>
         {labelSuffix}
       </div>
-      <span
-        className="min-w-0 flex-1 truncate text-[13px] leading-[1.35]"
-        style={{
-          color: filled
-            ? (valueColor ?? "var(--text)")
-            : "rgba(255,255,255,0.2)",
-        }}
-      >
-        {filled ? value : "─ 미입력"}
-      </span>
-      {note && filled ? (
+      <div className="min-w-0 flex-1">
+        {isEditing ? (
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <input
+                autoFocus
+                className="min-w-0 flex-1 rounded-lg border border-accent bg-surface-3 px-3 py-[7px] text-[13px] text-text outline-none transition-colors"
+                value={editingValue ?? ""}
+                onChange={(event) => onEditingValueChange?.(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    onSubmitEdit?.();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    onCancelEdit?.();
+                  }
+                }}
+                type={inputType}
+              />
+              <button
+                type="button"
+                className="border-none bg-transparent p-0 text-[13px] font-medium text-accent transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={onSubmitEdit}
+                disabled={isSaving}
+              >
+                {isSaving ? "저장 중..." : "저장"}
+              </button>
+              <button
+                type="button"
+                className="border-none bg-transparent p-0 text-[13px] font-medium text-text-dim transition-colors hover:text-text-secondary disabled:opacity-50"
+                onClick={onCancelEdit}
+                disabled={isSaving}
+              >
+                취소
+              </button>
+            </div>
+            {editErrorMessage ? (
+              <div className="text-[12px] leading-[1.4] text-red">
+                {editErrorMessage}
+              </div>
+            ) : null}
+          </div>
+        ) : isClickable ? (
+          <button
+            type="button"
+            className={`w-full min-w-0 border-none bg-transparent p-0 text-left ${
+              clickMode === "text"
+                ? "cursor-text transition-opacity group-hover:opacity-90"
+                : "cursor-pointer transition-opacity group-hover:opacity-90"
+            }`}
+            onClick={onClick}
+          >
+            <span
+              className="block min-w-0 truncate text-[13px] leading-[1.35]"
+              style={{
+                color: filled
+                  ? (valueColor ?? "var(--text)")
+                  : "rgba(255,255,255,0.2)",
+              }}
+            >
+              {filled ? value : "─ 미입력"}
+            </span>
+          </button>
+        ) : (
+          <span
+            className="block min-w-0 truncate text-[13px] leading-[1.35]"
+            style={{
+              color: filled
+                ? (valueColor ?? "var(--text)")
+                : "rgba(255,255,255,0.2)",
+            }}
+          >
+            {filled ? value : "─ 미입력"}
+          </span>
+        )}
+      </div>
+      {note && filled && !isEditing ? (
         <span className="flex-shrink-0 text-[11px] text-text-dim">{note}</span>
       ) : null}
     </div>
@@ -191,14 +291,6 @@ export function TabMemberOverview({
   totalMemoCount = memos.length,
   onAddField,
 }: TabMemberOverviewProps) {
-  const queryClient = useQueryClient();
-  const [contextMenu, setContextMenu] = React.useState<ContextMenuState | null>(
-    null,
-  );
-  const [renameTarget, setRenameTarget] = React.useState<FieldDef | null>(null);
-  const [renameValue, setRenameValue] = React.useState("");
-  const [deleteTarget, setDeleteTarget] = React.useState<FieldDef | null>(null);
-
   const overviewQuery = useCustomTabFields(
     member.spaceId,
     member.id,
@@ -207,6 +299,10 @@ export function TabMemberOverview({
   const overviewQueryKey = overviewTabId
     ? customTabFieldsQueryKey(member.spaceId, member.id, overviewTabId)
     : null;
+  const fieldActions = useMemberFieldActions({
+    member,
+    queryKey: overviewQueryKey,
+  });
 
   const statusMeta = STATUS_LABEL[member.status] ?? {
     label: member.status,
@@ -215,6 +311,14 @@ export function TabMemberOverview({
   const latestMemo = memos[0] ?? null;
   const counselingCount = member.counselingRecordCount ?? 0;
   const lastCounselingAt = member.lastCounselingAt ?? null;
+  const [editingFieldId, setEditingFieldId] = React.useState<string | null>(
+    null,
+  );
+  const [editingValue, setEditingValue] = React.useState("");
+  const [inlineErrorMessage, setInlineErrorMessage] = React.useState<
+    string | null
+  >(null);
+  const [savingFieldId, setSavingFieldId] = React.useState<string | null>(null);
 
   const sectionFields = React.useMemo(() => {
     const next: Record<OverviewSectionKey, FieldDef[]> = {
@@ -242,109 +346,71 @@ export function TabMemberOverview({
   }, [overviewQuery.fields]);
 
   React.useEffect(() => {
-    if (!contextMenu) return;
-    const handleScroll = () => setContextMenu(null);
+    setEditingFieldId(null);
+    setEditingValue("");
+    setInlineErrorMessage(null);
+    setSavingFieldId(null);
+  }, [member.id]);
 
-    function handleClose(event: MouseEvent) {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-overview-field-menu='true']")) {
-        return;
-      }
-      setContextMenu(null);
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setContextMenu(null);
-      }
-    }
-
-    window.addEventListener("mousedown", handleClose);
-    window.addEventListener("keydown", handleEscape);
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.removeEventListener("mousedown", handleClose);
-      window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("scroll", handleScroll, true);
-    };
-  }, [contextMenu]);
-
-  const renameMutation = useMutation({
-    mutationFn: async ({ fieldId, name }: { fieldId: string; name: string }) =>
-      updateSpaceField(member.spaceId, fieldId, { name }),
-    onSuccess: async ({ field }) => {
-      if (overviewQueryKey) {
-        queryClient.setQueryData<CustomTabFieldsQueryData | undefined>(
-          overviewQueryKey,
-          (current) => {
-            if (!current) return current;
-            return {
-              ...current,
-              fields: current.fields.map((item) =>
-                item.id === field.id ? { ...item, name: field.name } : item,
-              ),
-            };
-          },
-        );
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["custom-tab-fields", member.spaceId],
-      });
-
-      setRenameTarget(null);
-      setRenameValue("");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (fieldId: string) =>
-      deleteSpaceField(member.spaceId, fieldId),
-    onSuccess: async (_data, fieldId) => {
-      if (overviewQueryKey) {
-        queryClient.setQueryData<CustomTabFieldsQueryData | undefined>(
-          overviewQueryKey,
-          (current) => {
-            if (!current) return current;
-            return {
-              ...current,
-              fields: current.fields.filter((item) => item.id !== fieldId),
-              values: current.values.filter(
-                (item) => item.fieldDefinitionId !== fieldId,
-              ),
-            };
-          },
-        );
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["custom-tab-fields", member.spaceId],
-      });
-
-      setDeleteTarget(null);
-    },
-  });
-  const isRenaming = renameMutation.isPending;
-  const isDeleting = deleteMutation.isPending;
-
-  function openFieldMenu(field: FieldDef, position: { x: number; y: number }) {
-    setContextMenu({
-      field,
-      x: position.x,
-      y: position.y,
-    });
+  function beginInlineEdit(target: MemberFieldActionTarget) {
+    fieldActions.resetEditFeedback();
+    setInlineErrorMessage(null);
+    setEditingFieldId(target.field.id);
+    setEditingValue(target.value == null ? "" : String(target.value));
   }
 
-  function openRenameModal(field: FieldDef) {
-    setRenameTarget(field);
-    setRenameValue(field.name);
-    setContextMenu(null);
+  function cancelInlineEdit() {
+    setEditingFieldId(null);
+    setEditingValue("");
+    setInlineErrorMessage(null);
+    fieldActions.resetEditFeedback();
   }
 
-  function openDeleteModal(field: FieldDef) {
-    setDeleteTarget(field);
-    setContextMenu(null);
+  async function saveInlineEdit(target: MemberFieldActionTarget) {
+    const nextValue = editingValue.trim();
+    const currentValue =
+      target.value == null ? "" : String(target.value).trim();
+
+    if (target.memberPatchKey === "name" && !nextValue) {
+      setInlineErrorMessage("이름은 비워둘 수 없습니다.");
+      return;
+    }
+
+    if (nextValue === currentValue) {
+      setEditingFieldId(null);
+      setEditingValue("");
+      setInlineErrorMessage(null);
+      return;
+    }
+
+    setSavingFieldId(target.field.id);
+    setInlineErrorMessage(null);
+    fieldActions.resetEditFeedback();
+
+    try {
+      await fieldActions.submitValueEdit(target, nextValue ? nextValue : null);
+      setEditingFieldId(null);
+      setEditingValue("");
+    } catch (error) {
+      setInlineErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "기본 정보를 저장하지 못했습니다.",
+      );
+    } finally {
+      setSavingFieldId(null);
+    }
+  }
+
+  function getInlineInputType(target: MemberFieldActionTarget) {
+    switch (target.memberPatchKey) {
+      case "email":
+        return "email" as const;
+      case "phone":
+        return "tel" as const;
+      default:
+        return "text" as const;
+    }
   }
 
   function resolveFieldPresentation(field: FieldDef) {
@@ -354,16 +420,54 @@ export function TabMemberOverview({
 
     switch (field.sourceKey) {
       case "member_name":
-        return { value: member.name, filled: !!member.name };
+        return {
+          value: member.name,
+          filled: !!member.name,
+          actionTarget: {
+            field,
+            value: member.name,
+            valueFieldType: field.fieldType,
+            valueScope: "member",
+            memberPatchKey: getOverviewMemberPatchKey(field) ?? undefined,
+          } satisfies MemberFieldActionTarget,
+        };
       case "member_email":
-        return { value: member.email ?? "", filled: !!member.email };
+        return {
+          value: member.email ?? "",
+          filled: !!member.email,
+          actionTarget: {
+            field,
+            value: member.email ?? "",
+            valueFieldType: field.fieldType,
+            valueScope: "member",
+            memberPatchKey: getOverviewMemberPatchKey(field) ?? undefined,
+          } satisfies MemberFieldActionTarget,
+        };
       case "member_phone":
-        return { value: member.phone ?? "", filled: !!member.phone };
+        return {
+          value: member.phone ?? "",
+          filled: !!member.phone,
+          actionTarget: {
+            field,
+            value: member.phone ?? "",
+            valueFieldType: field.fieldType,
+            valueScope: "member",
+            memberPatchKey: getOverviewMemberPatchKey(field) ?? undefined,
+          } satisfies MemberFieldActionTarget,
+        };
       case "member_status":
         return {
           value: statusMeta.label,
           filled: !!member.status,
           valueColor: statusMeta.color,
+          actionTarget: {
+            field,
+            value: member.status,
+            valueFieldType: "select",
+            valueOptions: MEMBER_STATUS_OPTIONS,
+            valueScope: "member",
+            memberPatchKey: getOverviewMemberPatchKey(field) ?? undefined,
+          } satisfies MemberFieldActionTarget,
         };
       case "member_created_at":
         return {
@@ -442,13 +546,52 @@ export function TabMemberOverview({
                     note={presentation.note}
                     valueColor={presentation.valueColor}
                     labelSuffix={presentation.labelSuffix}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      openFieldMenu(field, {
-                        x: event.clientX,
-                        y: event.clientY,
-                      });
+                    interactive={Boolean(presentation.actionTarget)}
+                    clickMode={
+                      presentation.actionTarget &&
+                      isInlineEditableMemberActionTarget(
+                        presentation.actionTarget,
+                      )
+                        ? "text"
+                        : "button"
+                    }
+                    onClick={() => {
+                      if (!presentation.actionTarget) {
+                        return;
+                      }
+
+                      if (
+                        isInlineEditableMemberActionTarget(
+                          presentation.actionTarget,
+                        )
+                      ) {
+                        beginInlineEdit(presentation.actionTarget);
+                        return;
+                      }
+
+                      if (presentation.actionTarget.valueScope === "member") {
+                        fieldActions.openEditModal(presentation.actionTarget);
+                      }
                     }}
+                    isEditing={editingFieldId === field.id}
+                    editingValue={editingValue}
+                    onEditingValueChange={setEditingValue}
+                    onSubmitEdit={() => {
+                      if (!presentation.actionTarget) {
+                        return;
+                      }
+                      void saveInlineEdit(presentation.actionTarget);
+                    }}
+                    onCancelEdit={cancelInlineEdit}
+                    isSaving={savingFieldId === field.id}
+                    editErrorMessage={
+                      editingFieldId === field.id ? inlineErrorMessage : null
+                    }
+                    inputType={
+                      presentation.actionTarget
+                        ? getInlineInputType(presentation.actionTarget)
+                        : "text"
+                    }
                   />
                 );
               })}
@@ -496,8 +639,20 @@ export function TabMemberOverview({
             memberId={member.id}
             tabId={overviewTabId}
             emptyHint="상단의 필드 추가 버튼으로 항목을 만들어 주세요."
-            onRequestFieldMenu={(field, position) =>
-              openFieldMenu(field, position)
+            onRequestFieldMenu={({ field, value, position }) =>
+              fieldActions.openFieldMenu(
+                {
+                  field,
+                  value,
+                  valueFieldType: field.fieldType,
+                  valueOptions: getFieldChoiceOptions(
+                    field.fieldType,
+                    field.options,
+                  ),
+                  valueScope: "fieldValue",
+                },
+                position,
+              )
             }
           />
         </Section>
@@ -511,181 +666,35 @@ export function TabMemberOverview({
         />
       ) : null}
 
-      {contextMenu ? (
-        <div
-          data-overview-field-menu="true"
-          className="fixed z-[340] min-w-[168px] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_18px_48px_rgba(0,0,0,0.38)]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 border-none bg-transparent px-3 py-2 text-left text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-4 hover:text-text"
-            onClick={() => openRenameModal(contextMenu.field)}
-          >
-            <Pencil size={14} />
-            이름 변경
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 border-none bg-transparent px-3 py-2 text-left text-[12px] font-medium text-red transition-colors hover:bg-surface-4"
-            onClick={() => openDeleteModal(contextMenu.field)}
-          >
-            <Trash2 size={14} />
-            삭제
-          </button>
-        </div>
+      {fieldActions.contextMenu &&
+      canManageActionTarget(fieldActions.contextMenu.target) ? (
+        <MemberFieldContextMenu
+          x={fieldActions.contextMenu.x}
+          y={fieldActions.contextMenu.y}
+          onRename={() =>
+            fieldActions.openEditModal(fieldActions.contextMenu!.target)
+          }
+          onDelete={() =>
+            fieldActions.openDeleteModal(fieldActions.contextMenu!.target)
+          }
+        />
       ) : null}
 
-      {renameTarget ? (
-        <div
-          className="fixed inset-0 z-[330] flex items-center justify-center bg-[rgba(0,0,0,0.62)] p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !isRenaming) {
-              setRenameTarget(null);
-            }
-          }}
-        >
-          <div className="flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-            <div className="border-b border-border px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-dim">
-                항목 이름 변경
-              </p>
-              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
-                현재 스페이스 전체에 반영됩니다
-              </h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                이 변경은{" "}
-                <span className="font-semibold text-text">
-                  현재 선택한 스페이스
-                </span>
-                의 모든 학생 상세 항목명에 바로 반영됩니다.
-              </p>
-            </div>
+      <MemberFieldEditModal
+        target={fieldActions.editTarget}
+        isSubmitting={fieldActions.isEditing}
+        errorMessage={fieldActions.editErrorMessage}
+        onClose={fieldActions.closeEditModal}
+        onSubmit={fieldActions.submitEdit}
+      />
 
-            <div className="space-y-4 px-5 py-5">
-              <div className="rounded-xl border border-border bg-surface-2/70 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-dim">
-                  현재 항목명
-                </p>
-                <p className="mt-1 text-sm font-semibold text-text">
-                  {renameTarget.name}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-[12px] leading-relaxed text-text-secondary">
-                스페이스 안에서 쓰는 공통 항목명이 바뀝니다. 다른 학생
-                상세에서도 같은 이름으로 보입니다.
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-[12px] font-medium text-text-secondary">
-                  새 항목 이름
-                </label>
-                <input
-                  className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent-border"
-                  placeholder="예: 연락처 이메일, 최근 멘토 메모"
-                  value={renameValue}
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  autoFocus
-                  maxLength={80}
-                />
-              </div>
-
-              {renameMutation.error instanceof Error ? (
-                <div className="rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] text-red">
-                  {renameMutation.error.message}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text disabled:opacity-50"
-                onClick={() => setRenameTarget(null)}
-                disabled={isRenaming}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() =>
-                  renameMutation.mutate({
-                    fieldId: renameTarget.id,
-                    name: renameValue.trim(),
-                  })
-                }
-                disabled={!renameValue.trim() || isRenaming}
-              >
-                <Pencil size={14} />
-                {isRenaming ? "변경 중..." : "이름 변경"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {deleteTarget ? (
-        <div
-          className="fixed inset-0 z-[330] flex items-center justify-center bg-[rgba(0,0,0,0.62)] p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !isDeleting) {
-              setDeleteTarget(null);
-            }
-          }}
-        >
-          <div className="flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-red/20 bg-surface shadow-2xl">
-            <div className="border-b border-border px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-red/80">
-                항목 삭제
-              </p>
-              <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-text">
-                이 항목을 삭제할까요?
-              </h2>
-              <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                <span className="font-semibold text-text">
-                  {deleteTarget.name}
-                </span>
-                은 현재 스페이스의 모든 학생 상세에서 사라집니다.
-              </p>
-            </div>
-
-            <div className="space-y-3 px-5 py-5">
-              <div className="rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] leading-relaxed text-red">
-                사용자에게는 삭제로 보이지만, 내부적으로는 소프트 딜리트로
-                처리해 복구 가능성을 남깁니다.
-              </div>
-
-              {deleteMutation.error instanceof Error ? (
-                <div className="rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] text-red">
-                  {deleteMutation.error.message}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-surface-3 px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-4 hover:text-text disabled:opacity-50"
-                onClick={() => setDeleteTarget(null)}
-                disabled={isDeleting}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                disabled={isDeleting}
-              >
-                <Trash2 size={14} />
-                {isDeleting ? "삭제 중..." : "삭제하기"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <MemberFieldDeleteModal
+        target={fieldActions.deleteTarget}
+        isDeleting={fieldActions.isDeleting}
+        errorMessage={fieldActions.deleteErrorMessage}
+        onClose={fieldActions.closeDeleteModal}
+        onDelete={fieldActions.confirmDelete}
+      />
     </div>
   );
 }

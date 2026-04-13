@@ -1,24 +1,62 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/server/db";
 
-const mocks = vi.hoisted(() => ({
-  summarizeStudentsByName: vi.fn(),
-  findOwnedRecordDetailSource: vi.fn(),
-  findOwnedRecordDetailSourcesByIds: vi.fn(),
-  findRecordsByUserId: vi.fn(),
-  findRecordsBySpaceId: vi.fn(),
-  findUnlinkedRecords: vi.fn(),
-  findRecordsByMemberId: vi.fn(),
-  findOwnedRecord: vi.fn(),
-  mapRecordDetail: vi.fn(),
-  mapRecordListItem: vi.fn(),
-  mapSegmentRow: vi.fn(),
-  rebuildTranscriptText: vi.fn(),
-  isPlaceholderAudioStoragePath: vi.fn(
-    (path: string) =>
-      path.startsWith("local://demo/") || path.startsWith("text_memo://"),
-  ),
-}));
+const mocks = vi.hoisted(() => {
+  const resolveRecordSource = (record: {
+    recordSource?: string | null;
+    audioStoragePath: string;
+  }) => {
+    if (record.recordSource) {
+      return record.recordSource;
+    }
+
+    if (record.audioStoragePath.startsWith("local://demo/")) {
+      return "demo_placeholder";
+    }
+
+    if (record.audioStoragePath.startsWith("text_memo://")) {
+      return "text_memo";
+    }
+
+    return "audio_upload";
+  };
+
+  return {
+    summarizeStudentsByName: vi.fn(),
+    findOwnedRecordDetailSource: vi.fn(),
+    findOwnedRecordDetailSourcesByIds: vi.fn(),
+    findRecordsByUserId: vi.fn(),
+    findRecordsBySpaceId: vi.fn(),
+    findUnlinkedRecords: vi.fn(),
+    findRecordsByMemberId: vi.fn(),
+    findOwnedRecord: vi.fn(),
+    mapRecordDetail: vi.fn(),
+    mapRecordListItem: vi.fn(),
+    mapSegmentRow: vi.fn(),
+    rebuildTranscriptText: vi.fn(),
+    getCounselingRecordSource: vi.fn(resolveRecordSource),
+    hasPlayableAudio: vi.fn(
+      (record) => resolveRecordSource(record) === "audio_upload",
+    ),
+    isDemoPlaceholderRecord: vi.fn(
+      (record) => resolveRecordSource(record) === "demo_placeholder",
+    ),
+    isTextMemoRecord: vi.fn(
+      (record) => resolveRecordSource(record) === "text_memo",
+    ),
+    sanitizeOptionalValue: vi.fn(),
+    sanitizeRequiredValue: vi.fn(),
+    parseSingleAudioRange: vi.fn(),
+    persistAudioFile: vi.fn(),
+    replaceAssistantMessages: vi.fn(),
+    linkRecordToMember: vi.fn(),
+    COUNSELING_RECORD_SOURCE: {
+      AUDIO_UPLOAD: "audio_upload",
+      TEXT_MEMO: "text_memo",
+      DEMO_PLACEHOLDER: "demo_placeholder",
+    },
+  };
+});
 
 vi.mock("@/server/db", () => ({ getDb: vi.fn() }));
 vi.mock("@/server/db/schema", () => ({
@@ -46,6 +84,7 @@ vi.mock("../members-service", () => ({
   getMemberByIdForUser: vi.fn(),
 }));
 vi.mock("../counseling-records-repository", () => ({
+  COUNSELING_RECORD_SOURCE: mocks.COUNSELING_RECORD_SOURCE,
   DEFAULT_COUNSELING_TYPE: "대면 상담",
   findOwnedRecord: mocks.findOwnedRecord,
   findOwnedRecordDetailSource: mocks.findOwnedRecordDetailSource,
@@ -54,20 +93,25 @@ vi.mock("../counseling-records-repository", () => ({
   findRecordsByMemberId: mocks.findRecordsByMemberId,
   findRecordsBySpaceId: mocks.findRecordsBySpaceId,
   findUnlinkedRecords: mocks.findUnlinkedRecords,
-  isPlaceholderAudioStoragePath: mocks.isPlaceholderAudioStoragePath,
-  linkRecordToMember: vi.fn(),
+  getCounselingRecordSource: mocks.getCounselingRecordSource,
+  hasPlayableAudio: mocks.hasPlayableAudio,
+  isDemoPlaceholderRecord: mocks.isDemoPlaceholderRecord,
+  isTextMemoRecord: mocks.isTextMemoRecord,
+  linkRecordToMember: mocks.linkRecordToMember,
   mapRecordDetail: mocks.mapRecordDetail,
   mapRecordListItem: mocks.mapRecordListItem,
   mapSegmentRow: mocks.mapSegmentRow,
-  parseSingleAudioRange: vi.fn(),
-  persistAudioFile: vi.fn(),
+  parseSingleAudioRange: mocks.parseSingleAudioRange,
+  persistAudioFile: mocks.persistAudioFile,
+  replaceAssistantMessages: mocks.replaceAssistantMessages,
   rebuildTranscriptText: mocks.rebuildTranscriptText,
-  sanitizeOptionalValue: vi.fn(),
-  sanitizeRequiredValue: vi.fn(),
+  sanitizeOptionalValue: mocks.sanitizeOptionalValue,
+  sanitizeRequiredValue: mocks.sanitizeRequiredValue,
   summarizeStudentsByName: mocks.summarizeStudentsByName,
 }));
 
 import {
+  getCounselingRecordAudio,
   getMultipleCounselingRecordDetails,
   getCounselingRecordDetail,
   listCounselingRecords,
@@ -76,6 +120,7 @@ import {
   getMultipleRecordsWithSegments,
   listUnlinkedCounselingRecords,
   listStudentSummaries,
+  retryCounselingRecordTranscription,
   updateTranscriptSegment,
   bulkUpdateSpeakerLabel,
 } from "../counseling-records-service";
@@ -168,6 +213,7 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-1",
         studentName: "홍길동",
         status: "ready",
+        recordSource: "audio_upload",
         analysisStatus: "ready",
         createdByUserId: "user-1",
         audioStoragePath: "record-1/audio.webm",
@@ -176,9 +222,19 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-2",
         studentName: "데모",
         status: "ready",
+        recordSource: "demo_placeholder",
         analysisStatus: "ready",
         createdByUserId: "user-1",
         audioStoragePath: "local://demo/record-2",
+      },
+      {
+        id: "record-3",
+        studentName: "텍스트 메모",
+        status: "ready",
+        recordSource: "text_memo",
+        analysisStatus: "idle",
+        createdByUserId: "user-1",
+        audioStoragePath: "text_memo://record-3",
       },
     ]);
 
@@ -188,6 +244,11 @@ describe("counseling-records-service bulk optimizations", () => {
       {
         id: "record-1",
         studentName: "홍길동",
+        status: "ready",
+      },
+      {
+        id: "record-3",
+        studentName: "텍스트 메모",
         status: "ready",
       },
     ]);
@@ -207,6 +268,7 @@ describe("counseling-records-service bulk optimizations", () => {
           counselingType: "대면 상담",
           createdByUserId: "user-1",
           audioStoragePath: "record-2/audio.webm",
+          recordSource: "audio_upload",
           status: "ready",
           analysisStatus: "ready",
         },
@@ -229,6 +291,7 @@ describe("counseling-records-service bulk optimizations", () => {
           counselingType: "대면 상담",
           createdByUserId: "user-1",
           audioStoragePath: "local://demo/record-1",
+          recordSource: "demo_placeholder",
           status: "ready",
           analysisStatus: "ready",
         },
@@ -284,6 +347,7 @@ describe("counseling-records-service bulk optimizations", () => {
           counselingType: "대면 상담",
           createdByUserId: "user-1",
           audioStoragePath: "record-1/audio.webm",
+          recordSource: "audio_upload",
           status: "ready",
           analysisStatus: "ready",
         },
@@ -297,6 +361,7 @@ describe("counseling-records-service bulk optimizations", () => {
           counselingType: "대면 상담",
           createdByUserId: "user-1",
           audioStoragePath: "record-2/audio.webm",
+          recordSource: "audio_upload",
           status: "ready",
           analysisStatus: "ready",
         },
@@ -327,6 +392,7 @@ describe("counseling-records-service bulk optimizations", () => {
         counselingType: "대면 상담",
         createdByUserId: "user-1",
         audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
         status: "ready",
         analysisStatus: "ready",
       },
@@ -364,6 +430,7 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-1",
         createdByUserId: "user-1",
         audioStoragePath: "local://demo/record-1",
+        recordSource: "demo_placeholder",
         status: "ready",
         analysisStatus: "ready",
       },
@@ -379,12 +446,48 @@ describe("counseling-records-service bulk optimizations", () => {
     expect(mocks.mapRecordDetail).not.toHaveBeenCalled();
   });
 
+  it("getCounselingRecordDetail는 텍스트 메모를 정상 상세 DTO로 반환한다", async () => {
+    mocks.findOwnedRecordDetailSource.mockResolvedValue({
+      record: {
+        id: "record-1",
+        studentName: "홍길동",
+        sessionTitle: "텍스트 메모",
+        counselingType: "텍스트 메모",
+        createdByUserId: "user-1",
+        audioStoragePath: "text_memo://record-1",
+        recordSource: "text_memo",
+        status: "ready",
+        analysisStatus: "idle",
+      },
+      segments: [
+        {
+          id: "seg-1",
+          recordId: "record-1",
+          segmentIndex: 0,
+          text: "메모 내용",
+        },
+      ],
+    });
+    mocks.mapRecordDetail.mockReturnValue({
+      id: "record-1",
+      transcriptSegments: [{ id: "seg-1", text: "메모 내용" }],
+    });
+
+    await expect(
+      getCounselingRecordDetail("user-1", "record-1"),
+    ).resolves.toEqual({
+      id: "record-1",
+      transcriptSegments: [{ id: "seg-1", text: "메모 내용" }],
+    });
+  });
+
   it("listCounselingRecordsBySpace는 placeholder를 제외하고 목록 DTO로 매핑한다", async () => {
     mocks.findRecordsBySpaceId.mockResolvedValue([
       {
         id: "record-1",
         studentName: "홍길동",
         status: "ready",
+        recordSource: "audio_upload",
         analysisStatus: "ready",
         createdByUserId: "user-1",
         audioStoragePath: "record-1/audio.webm",
@@ -393,9 +496,19 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-2",
         studentName: "데모",
         status: "ready",
+        recordSource: "demo_placeholder",
         analysisStatus: "idle",
         createdByUserId: "user-1",
         audioStoragePath: "local://demo/record-2",
+      },
+      {
+        id: "record-3",
+        studentName: "메모",
+        status: "ready",
+        recordSource: "text_memo",
+        analysisStatus: "idle",
+        createdByUserId: "user-1",
+        audioStoragePath: "text_memo://record-3",
       },
     ]);
 
@@ -407,6 +520,11 @@ describe("counseling-records-service bulk optimizations", () => {
         studentName: "홍길동",
         status: "ready",
       },
+      {
+        id: "record-3",
+        studentName: "메모",
+        status: "ready",
+      },
     ]);
 
     expect(mocks.findRecordsBySpaceId).toHaveBeenCalledWith(
@@ -414,7 +532,7 @@ describe("counseling-records-service bulk optimizations", () => {
       "space-1",
       undefined,
     );
-    expect(mocks.mapRecordListItem).toHaveBeenCalledTimes(1);
+    expect(mocks.mapRecordListItem).toHaveBeenCalledTimes(2);
   });
 
   it("listUnlinkedCounselingRecords와 listCounselingRecordsByMember도 동일한 필터링 규칙을 유지한다", async () => {
@@ -423,14 +541,16 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-a",
         studentName: "김영희",
         status: "ready",
+        recordSource: "audio_upload",
         analysisStatus: "ready",
         createdByUserId: "user-1",
         audioStoragePath: "record-a/audio.webm",
       },
       {
         id: "record-b",
-        studentName: "placeholder",
-        status: "processing",
+        studentName: "텍스트 메모",
+        status: "ready",
+        recordSource: "text_memo",
         analysisStatus: "idle",
         createdByUserId: "user-1",
         audioStoragePath: "text_memo://record-b",
@@ -441,6 +561,7 @@ describe("counseling-records-service bulk optimizations", () => {
         id: "record-c",
         studentName: "박민수",
         status: "ready",
+        recordSource: "audio_upload",
         analysisStatus: "ready",
         createdByUserId: "user-1",
         audioStoragePath: "record-c/audio.webm",
@@ -451,6 +572,11 @@ describe("counseling-records-service bulk optimizations", () => {
       {
         id: "record-a",
         studentName: "김영희",
+        status: "ready",
+      },
+      {
+        id: "record-b",
+        studentName: "텍스트 메모",
         status: "ready",
       },
     ]);
@@ -471,7 +597,154 @@ describe("counseling-records-service bulk optimizations", () => {
       "member-1",
       undefined,
     );
-    expect(mocks.mapRecordListItem).toHaveBeenCalledTimes(2);
+    expect(mocks.mapRecordListItem).toHaveBeenCalledTimes(3);
+  });
+
+  it("retryCounselingRecordTranscription는 텍스트 메모면 400을 던진다", async () => {
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      createdByUserId: "user-1",
+      audioStoragePath: "text_memo://record-1",
+      recordSource: "text_memo",
+      status: "ready",
+      analysisStatus: "idle",
+    });
+
+    await expect(
+      retryCounselingRecordTranscription(
+        { id: "user-1", email: "mentor@example.com" } as never,
+        "record-1",
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        "텍스트 메모는 재전사할 수 없습니다. 원문 내용을 직접 수정해 주세요.",
+    });
+  });
+
+  it("retryCounselingRecordTranscription는 partial transcript 상태면 기존 chunk를 유지한 채 누락 구간만 다시 시도한다", async () => {
+    const dbMock = createDbMock({});
+    const preservedChunks = [
+      {
+        index: 0,
+        offsetMs: 0,
+        transcriptText: "첫 번째 구간",
+        language: "ko",
+        durationMs: 30_000,
+        model: "gpt-4o-transcribe-diarize",
+        segments: [
+          {
+            startMs: 0,
+            endMs: 15_000,
+            speakerLabel: "화자 1",
+            speakerTone: "unknown",
+            text: "첫 번째 구간",
+          },
+        ],
+      },
+      {
+        index: 2,
+        offsetMs: 60_000,
+        transcriptText: "세 번째 구간",
+        language: "ko",
+        durationMs: 30_000,
+        model: "gpt-4o-transcribe-diarize",
+        segments: [
+          {
+            startMs: 60_000,
+            endMs: 75_000,
+            speakerLabel: "화자 2",
+            speakerTone: "unknown",
+            text: "세 번째 구간",
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(getDb).mockReturnValue(dbMock.db as never);
+    mocks.findOwnedRecord
+      .mockResolvedValueOnce({
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "processing",
+        processingStage: "partial_transcript_ready",
+        processingChunkCount: 3,
+        transcriptionChunks: preservedChunks,
+        analysisStatus: "idle",
+      })
+      .mockResolvedValue({
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "ready",
+        analysisStatus: "idle",
+      });
+    mocks.findOwnedRecordDetailSource.mockResolvedValue({
+      record: {
+        id: "record-1",
+        createdByUserId: "user-1",
+        audioStoragePath: "record-1/audio.webm",
+        recordSource: "audio_upload",
+        status: "processing",
+        analysisStatus: "idle",
+        processingStage: "queued",
+      },
+      segments: [],
+    });
+    mocks.mapRecordDetail.mockReturnValue({
+      id: "record-1",
+      status: "processing",
+      processingStage: "queued",
+      transcriptSegments: [],
+    });
+
+    await expect(
+      retryCounselingRecordTranscription(
+        { id: "user-1", email: "mentor@example.com" } as never,
+        "record-1",
+      ),
+    ).resolves.toEqual({
+      id: "record-1",
+      status: "processing",
+      processingStage: "queued",
+      transcriptSegments: [],
+    });
+
+    expect(dbMock.updateSetPayloads[0]).toMatchObject({
+      status: "processing",
+      processingStage: "queued",
+      processingChunkCount: 3,
+      processingChunkCompletedCount: 2,
+      transcriptionChunks: preservedChunks,
+      processingMessage:
+        "누락된 전사 구간만 다시 준비하고 있습니다. 이미 저장된 원문은 유지됩니다.",
+      analysisStatus: "idle",
+      analysisProgress: 0,
+      analysisErrorMessage: null,
+      analysisResult: null,
+      analysisCompletedAt: null,
+    });
+  });
+
+  it("getCounselingRecordAudio는 텍스트 메모면 404를 던진다", async () => {
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      createdByUserId: "user-1",
+      audioStoragePath: "text_memo://record-1",
+      recordSource: "text_memo",
+      status: "ready",
+      analysisStatus: "idle",
+    });
+
+    await expect(
+      getCounselingRecordAudio("user-1", "record-1"),
+    ).rejects.toMatchObject({
+      status: 404,
+      message: "텍스트 메모에는 재생할 원본 음성이 없습니다.",
+    });
   });
 
   it("updateTranscriptSegment는 수정 필드가 없으면 기존 segment를 그대로 반환한다", async () => {
@@ -487,7 +760,10 @@ describe("counseling-records-service bulk optimizations", () => {
       ],
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
-    mocks.findOwnedRecord.mockResolvedValue({ id: "record-1" });
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "ready",
+    });
     mocks.mapSegmentRow.mockReturnValue({ id: "segment-1", text: "기존 문장" });
 
     await expect(
@@ -513,7 +789,7 @@ describe("counseling-records-service bulk optimizations", () => {
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
     mocks.findOwnedRecord
-      .mockResolvedValueOnce({ id: "record-1" })
+      .mockResolvedValueOnce({ id: "record-1", status: "ready" })
       .mockResolvedValueOnce({
         id: "record-1",
         status: "ready",
@@ -552,7 +828,10 @@ describe("counseling-records-service bulk optimizations", () => {
   it("bulkUpdateSpeakerLabel는 변경된 segment가 없으면 분석 상태를 초기화하지 않는다", async () => {
     const dbMock = createDbMock({ updateReturning: [[]] });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
-    mocks.findOwnedRecord.mockResolvedValue({ id: "record-1" });
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "ready",
+    });
 
     await expect(
       bulkUpdateSpeakerLabel("user-1", "record-1", "화자 A", "멘토"),
@@ -568,7 +847,7 @@ describe("counseling-records-service bulk optimizations", () => {
     });
     vi.mocked(getDb).mockReturnValue(dbMock.db as never);
     mocks.findOwnedRecord
-      .mockResolvedValueOnce({ id: "record-1" })
+      .mockResolvedValueOnce({ id: "record-1", status: "ready" })
       .mockResolvedValueOnce({
         id: "record-1",
         status: "ready",
@@ -599,5 +878,23 @@ describe("counseling-records-service bulk optimizations", () => {
       "user-1",
       "record-1",
     );
+  });
+
+  it("updateTranscriptSegment는 partial transcript 상태면 400을 던진다", async () => {
+    mocks.findOwnedRecord.mockResolvedValue({
+      id: "record-1",
+      status: "processing",
+      processingStage: "partial_transcript_ready",
+    });
+
+    await expect(
+      updateTranscriptSegment("user-1", "record-1", "segment-1", {
+        text: "수정된 문장",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        "원문 전사가 모두 준비된 기록만 편집할 수 있습니다. 누락 구간 복구 후 다시 시도해 주세요.",
+    });
   });
 });

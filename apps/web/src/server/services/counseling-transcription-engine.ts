@@ -1,7 +1,7 @@
 import type { CounselingRecordSpeakerTone } from "@yeon/api-contract/counseling-records";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -14,6 +14,8 @@ const MAX_OPENAI_TRANSCRIPTION_BYTES = 24 * 1024 * 1024;
 const MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS = 23 * 60;
 const MAX_DIARIZE_CHUNK_DURATION_SECONDS = 120;
 const LONG_AUDIO_NON_DIARIZE_THRESHOLD_SECONDS = 20 * 60;
+const LONG_AUDIO_NON_DIARIZE_CHUNK_DURATION_SECONDS = 4 * 60;
+const MAX_RECOVERABLE_EMPTY_CHUNK_BYTES = 4 * 1024;
 const DEFAULT_TRANSCRIPTION_MODEL =
   process.env.OPENAI_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-transcribe-diarize";
 const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = (
@@ -64,6 +66,14 @@ type TranscriptionSource = {
   originalName: string;
   mimeType: string;
   offsetMs: number;
+};
+
+type ChunkCandidate = {
+  absolutePath: string;
+  byteSize: number;
+  durationMs: number | null;
+  fileName: string;
+  originalIndex: number;
 };
 
 type OpenAiTranscriptionSegment = {
@@ -167,7 +177,7 @@ function getPreferredTranscriptionStrategy(
   if (shouldPreferNonDiarization) {
     return {
       modelCandidates: [...nonDiarizationCandidates, ...diarizationCandidates],
-      chunkDurationSeconds: MAX_TRANSCRIPTION_CHUNK_DURATION_SECONDS,
+      chunkDurationSeconds: LONG_AUDIO_NON_DIARIZE_CHUNK_DURATION_SECONDS,
       preferNonDiarization: true,
     };
   }
@@ -234,6 +244,16 @@ async function probeDurationMs(filePath: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+function isRecoverableEmptyChunk(candidate: {
+  byteSize: number;
+  durationMs: number | null;
+}) {
+  return (
+    candidate.durationMs === null &&
+    candidate.byteSize <= MAX_RECOVERABLE_EMPTY_CHUNK_BYTES
+  );
 }
 
 async function buildTranscriptionSources(params: {
@@ -336,14 +356,53 @@ async function buildTranscriptionSources(params: {
     );
   }
 
+  const chunkCandidates = await Promise.all(
+    chunkFiles.map(async (fileName, index) => {
+      const absolutePath = path.join(chunkDirectory, fileName);
+      const [chunkDurationMs, chunkStats] = await Promise.all([
+        probeDurationMs(absolutePath),
+        stat(absolutePath),
+      ]);
+
+      return {
+        absolutePath,
+        byteSize: chunkStats.size,
+        durationMs: chunkDurationMs,
+        fileName,
+        originalIndex: index,
+      } satisfies ChunkCandidate;
+    }),
+  );
+
+  const validChunkCandidates = chunkCandidates.filter((candidate) => {
+    if (!isRecoverableEmptyChunk(candidate)) {
+      return true;
+    }
+
+    console.warn("전사 chunk 자동 폐기: 실제 오디오 프레임이 없는 빈 조각", {
+      byteSize: candidate.byteSize,
+      durationMs: candidate.durationMs,
+      fileName: candidate.fileName,
+      recordId: params.recordId,
+    });
+    return false;
+  });
+
+  if (validChunkCandidates.length === 0) {
+    throw new ServiceError(
+      500,
+      "긴 상담 음성을 분할했지만 실제 오디오가 있는 chunk 파일을 만들지 못했습니다.",
+    );
+  }
+
   return {
     resolvedDurationMs,
     strategy,
-    sources: chunkFiles.map((fileName, index) => ({
-      absolutePath: path.join(chunkDirectory, fileName),
+    sources: validChunkCandidates.map((candidate, index) => ({
+      absolutePath: candidate.absolutePath,
       originalName: `${path.basename(params.originalName, path.extname(params.originalName))}-part-${String(index + 1).padStart(2, "0")}.mp3`,
       mimeType: "audio/mpeg",
-      offsetMs: index * chunkDurationSeconds * 1000,
+      offsetMs: candidate.originalIndex * chunkDurationSeconds * 1000,
     })),
     cleanup: async () => {
       await rm(sourceDirectory, { force: true, recursive: true });
@@ -701,10 +760,16 @@ export async function transcribeStoredAudio(params: {
 
       let transcriptionResult: OpenAiTranscriptionSuccess | null = null;
       let lastError: ServiceError | null = null;
+      const candidateModels = resolvedModel
+        ? [
+            resolvedModel,
+            ...modelCandidates.filter(
+              (candidate) => candidate !== resolvedModel,
+            ),
+          ]
+        : modelCandidates;
 
-      for (const candidateModel of resolvedModel
-        ? [resolvedModel]
-        : modelCandidates) {
+      for (const candidateModel of candidateModels) {
         try {
           transcriptionResult = await requestOpenAiTranscription({
             apiKey,
@@ -724,9 +789,8 @@ export async function transcribeStoredAudio(params: {
           lastError = error;
 
           const shouldFallback =
-            !resolvedModel &&
             [400, 403, 404].includes(error.status) &&
-            candidateModel !== modelCandidates[modelCandidates.length - 1];
+            candidateModel !== candidateModels[candidateModels.length - 1];
 
           if (shouldFallback) {
             console.warn(
@@ -821,4 +885,5 @@ export const _testing = {
   mapOpenAiSegments,
   shouldChunkTranscription,
   getPreferredTranscriptionStrategy,
+  isRecoverableEmptyChunk,
 };

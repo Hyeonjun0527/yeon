@@ -41,6 +41,11 @@ export function useRecordDetail(
   const selectedRecordDetail = selectedRecordId
     ? (recordDetails[selectedRecordId] ?? null)
     : null;
+  const shouldPollRecord =
+    !!selectedRecord &&
+    ((selectedRecord.status === "processing" &&
+      selectedRecord.processingStage !== "partial_transcript_ready") ||
+      ["queued", "processing"].includes(selectedRecord.analysisStatus));
 
   // 상세 로드
   useEffect(() => {
@@ -157,12 +162,7 @@ export function useRecordDetail(
 
   // processing 상태 자동 갱신 폴링 (5s)
   useEffect(() => {
-    if (
-      !selectedRecordId ||
-      !selectedRecord ||
-      (selectedRecord.status !== "processing" &&
-        !["queued", "processing"].includes(selectedRecord.analysisStatus))
-    ) {
+    if (!selectedRecordId || !shouldPollRecord) {
       return;
     }
 
@@ -173,7 +173,7 @@ export function useRecordDetail(
     return () => {
       window.clearInterval(timer);
     };
-  }, [selectedRecord?.status, selectedRecordId, refreshRecordDetail]);
+  }, [selectedRecordId, refreshRecordDetail, shouldPollRecord]);
 
   async function retryTranscription(recordId: string) {
     setRetryState({

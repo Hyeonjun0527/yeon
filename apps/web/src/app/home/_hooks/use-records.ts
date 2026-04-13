@@ -21,6 +21,7 @@ import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
 const POLL_INTERVAL_MS = 3000;
 const BOOSTED_POLL_INTERVAL_MS = 1000;
 const BOOSTED_POLL_WINDOW_MS = 15000;
+const PARTIAL_TRANSCRIPT_READY_STAGE = "partial_transcript_ready";
 
 function mapAssistantMessages(messages: CounselingChatMessage[]): AiMessage[] {
   return messages.map((message) => ({
@@ -45,6 +46,7 @@ function listItemToRecordItem(item: CounselingRecordListItem): RecordItem {
     durationMs: item.audioDurationMs ?? 0,
     studentName: item.studentName || "",
     type: item.counselingType || "",
+    recordSource: item.recordSource,
     audioUrl: null,
     transcript: [],
     aiSummary: item.preview || "",
@@ -96,6 +98,7 @@ function detailToRecordPatch(
     durationMs: detail.audioDurationMs ?? 0,
     studentName: detail.studentName || "",
     type: detail.counselingType || "",
+    recordSource: detail.recordSource,
     audioUrl: detail.audioUrl || null,
     transcript: detailToTranscript(detail),
     aiSummary: detail.preview || "",
@@ -108,6 +111,28 @@ function detailToRecordPatch(
     analysisStatus: detail.analysisStatus,
     analysisProgress: detail.analysisProgress,
   };
+}
+
+function isPartialTranscriptReady(record: {
+  status: RecordItem["status"];
+  processingStage?: RecordItem["processingStage"];
+}) {
+  return (
+    record.status === "processing" &&
+    record.processingStage === PARTIAL_TRANSCRIPT_READY_STAGE
+  );
+}
+
+function needsBackgroundPolling(record: {
+  status: RecordItem["status"];
+  processingStage?: RecordItem["processingStage"];
+  analysisStatus?: RecordItem["analysisStatus"];
+}) {
+  return (
+    (record.status === "processing" &&
+      record.processingStage !== PARTIAL_TRANSCRIPT_READY_STAGE) ||
+    ["queued", "processing"].includes(record.analysisStatus ?? "")
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +161,7 @@ export function useRecords(selectedRecordId: string | null) {
     },
     refetchInterval: (query) => {
       const items = query.state.data?.records || [];
-      if (!items.some((r) => r.status === "processing")) {
+      if (!items.some((record) => needsBackgroundPolling(record))) {
         return false;
       }
 
@@ -444,7 +469,7 @@ export function useRecords(selectedRecordId: string | null) {
         record: detail,
       });
       queryClient.invalidateQueries({ queryKey: ["counseling-records"] });
-      if (detail.status === "processing") {
+      if (needsBackgroundPolling(detail)) {
         boostPolling();
       }
       // 선택 변경은 호출자가 필요하면 selection.selectRecord(detail.id)로 처리
@@ -457,10 +482,13 @@ export function useRecords(selectedRecordId: string | null) {
     if (isRecording) return { kind: "recording" };
     if (isPending) return { kind: "loading" };
     if (records.length === 0) return { kind: "empty" };
-    if (selected?.status === "processing")
+    if (
+      selected?.status === "processing" &&
+      !isPartialTranscriptReady(selected)
+    )
       return { kind: "processing", step: processingStep };
     return { kind: "ready", records };
-  }, [isRecording, processingStep, isPending, records, selected?.status]);
+  }, [isRecording, processingStep, isPending, records, selected]);
 
   const startRecording = useCallback(() => {
     setIsRecording(true);

@@ -22,6 +22,8 @@ const ImportPreviewSchema = z.object({
   cohorts: z.array(
     z.object({
       name: z.string(),
+      startDate: z.string().nullish(),
+      endDate: z.string().nullish(),
       students: z.array(StudentSchema),
     }),
   ),
@@ -49,9 +51,16 @@ function coerceImportPreviewPayload(parsed: unknown): unknown {
 
   return {
     cohorts: data.cohorts.map((cohort) => {
-      const cohortData = cohort as { name?: unknown; students?: unknown[] };
+      const cohortData = cohort as {
+        name?: unknown;
+        startDate?: unknown;
+        endDate?: unknown;
+        students?: unknown[];
+      };
       return {
         name: normalizeLooseString(cohortData.name) ?? "",
+        startDate: normalizeLooseString(cohortData.startDate),
+        endDate: normalizeLooseString(cohortData.endDate),
         students: Array.isArray(cohortData.students)
           ? cohortData.students.map((student) => {
               const studentData = student as {
@@ -141,6 +150,8 @@ export interface FieldSchemaHint {
 export interface ImportPreview {
   cohorts: Array<{
     name: string;
+    startDate?: string | null;
+    endDate?: string | null;
     students: Array<{
       name: string;
       email?: string | null;
@@ -376,6 +387,14 @@ function normalizeImportPreview(preview: ImportPreview): ImportPreview {
   for (const cohort of preview.cohorts) {
     const normalizedName = normalizeCohortName(cohort.name, fallbackOrder);
     fallbackOrder += 1;
+    const normalizedStartDate =
+      typeof cohort.startDate === "string"
+        ? normalizeWhitespace(cohort.startDate) || null
+        : (cohort.startDate ?? null);
+    const normalizedEndDate =
+      typeof cohort.endDate === "string"
+        ? normalizeWhitespace(cohort.endDate) || null
+        : (cohort.endDate ?? null);
 
     const normalizedStudents = cohort.students.map((student) => {
       const customFields = Object.entries(student.customFields ?? {}).reduce<
@@ -413,12 +432,16 @@ function normalizeImportPreview(preview: ImportPreview): ImportPreview {
 
     const existing = cohortMap.get(normalizedName);
     if (existing) {
+      existing.startDate ??= normalizedStartDate;
+      existing.endDate ??= normalizedEndDate;
       existing.students.push(...normalizedStudents);
       continue;
     }
 
     cohortMap.set(normalizedName, {
       name: normalizedName,
+      startDate: normalizedStartDate,
+      endDate: normalizedEndDate,
       students: normalizedStudents,
     });
   }
@@ -729,9 +752,10 @@ async function refineStructuredPreviewWithAI(
         {
           role: "system",
           content: `너는 이미 구조화된 수강생 가져오기 미리보기를 후처리하는 편집기이자 정책 안내 도우미다.
-JSON 형식으로만 반환: { "message": "사용자에게 보여줄 한국어 답변", "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
+JSON 형식으로만 반환: { "message": "사용자에게 보여줄 한국어 답변", "cohorts": [{ "name": "코호트명", "startDate": "YYYY-MM-DD 또는 null", "endDate": "YYYY-MM-DD 또는 null", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
 - source of truth는 현재 미리보기 JSON이다. 사용자의 수정 요청을 이 JSON에 반영한 결과와 함께 답변 메시지를 반환해라.
 - 요청과 무관한 수강생/코호트는 임의로 추가, 삭제, 재정렬하지 마라.
+- startDate/endDate는 진행기간 정보다. 사용자가 기간 수정 요청을 하지 않았다면 현재 값을 유지해라.
 - 컬럼 제거 요청이면 해당 필드를 모든 수강생에서 제거해라. 고정 필드(email/phone/status) 제거 요청이면 값을 null로 비우고, 답변 메시지에 "고정 컬럼 구조는 유지되고 값만 비워진다"고 설명해라.
 - 이름 필드는 수강생 식별에 필요하므로 제거할 수 없다. 사용자가 이름 컬럼 제거 가능 여부를 물으면 불가능하다고 명확히 답하고 cohorts는 그대로 유지해라.
 - 컬럼명 변경 요청이면 값은 유지하고 새 이름으로 옮겨라. 고정 필드를 임의 이름으로 바꾸라는 요청이면 해당 값을 customFields의 새 키로 옮기고 원래 고정 필드는 null로 둬라.
@@ -1228,7 +1252,7 @@ ${fieldHints.map((f) => `- ${f.name} (타입: ${f.fieldType})`).join("\n")}
       : "";
 
   const systemPrompt = `아래 스프레드시트 데이터에서 코호트/기수 정보와 수강생 목록을 추출해라.
-JSON 형식으로 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated", "customFields": {} }] }] }
+JSON 형식으로 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "startDate": null, "endDate": null, "students": [{ "name": "이름", "email": "이메일", "phone": "전화번호", "status": "active|withdrawn|graduated", "customFields": {} }] }] }
 - status 기본값은 "active"
 - 이메일, 전화번호 없으면 null
 - 하나의 코호트면 배열에 하나만 넣어라
@@ -1330,7 +1354,7 @@ export async function analyzeImageWithAI(
 모든 customFields 값은 반드시 문자열 또는 null로 반환해라. 숫자를 그대로 number로 내보내지 마라.`;
 
   const basePrompt = `너는 스크린샷/이미지 형태의 표에서 수강생 데이터를 복원하는 추출기다.
-JSON 형식으로만 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
+JSON 형식으로만 반환: { "message": ${refine ? '"사용자에게 보여줄 한국어 답변",' : "null,"} "cohorts": [{ "name": "코호트명", "startDate": null, "endDate": null, "students": [{ "name": "이름", "email": "이메일 또는 null", "phone": "전화번호 또는 null", "status": "active|withdrawn|graduated 또는 null", "customFields": {} 또는 null }] }] }
 - source of truth는 원본 이미지와 OCR 텍스트다.
 - 이전 분석 결과는 힌트일 뿐이며, 누락된 이름/열이 보이면 원본을 다시 읽어 보강해라.
 - 이름, 등록일, 기수, 성별, 전공, github id, 면접점수처럼 표에 보이는 열을 누락하지 말아라.

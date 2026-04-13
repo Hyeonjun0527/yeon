@@ -93,6 +93,7 @@ const makeRecord = (overrides: Record<string, unknown> = {}) => ({
   counselingType: "대면 상담",
   counselorName: "김멘토",
   status: "ready",
+  recordSource: "audio_upload",
   audioOriginalName: "recording.webm",
   audioMimeType: "audio/webm",
   audioByteSize: 1024,
@@ -230,8 +231,8 @@ describe("isPlaceholderAudioStoragePath", () => {
     expect(isPlaceholderAudioStoragePath("local://demo/test.webm")).toBe(true);
   });
 
-  it("text_memo:// 접두어는 placeholder로 판별한다", () => {
-    expect(isPlaceholderAudioStoragePath("text_memo://some-id")).toBe(true);
+  it("text_memo:// 접두어는 더 이상 placeholder로 판별하지 않는다", () => {
+    expect(isPlaceholderAudioStoragePath("text_memo://some-id")).toBe(false);
   });
 
   it("일반 storage 경로는 placeholder가 아니다", () => {
@@ -240,8 +241,8 @@ describe("isPlaceholderAudioStoragePath", () => {
     );
   });
 
-  it("PLACEHOLDER_AUDIO_STORAGE_PREFIXES 상수가 두 항목을 포함한다", () => {
-    expect(PLACEHOLDER_AUDIO_STORAGE_PREFIXES).toHaveLength(2);
+  it("PLACEHOLDER_AUDIO_STORAGE_PREFIXES 상수는 demo prefix만 포함한다", () => {
+    expect(PLACEHOLDER_AUDIO_STORAGE_PREFIXES).toEqual(["local://demo/"]);
   });
 });
 
@@ -366,7 +367,22 @@ describe("mapRecordDetail", () => {
   });
 
   it("placeholder audio path이면 audioUrl이 null이다", () => {
-    const record = makeRecord({ audioStoragePath: "local://demo/test.webm" });
+    const record = makeRecord({
+      recordSource: "demo_placeholder",
+      audioStoragePath: "local://demo/test.webm",
+    });
+    const result = mapRecordDetail(
+      record as unknown as Parameters<typeof mapRecordDetail>[0],
+      [],
+    );
+    expect(result.audioUrl).toBeNull();
+  });
+
+  it("text memo record이면 audioUrl이 null이다", () => {
+    const record = makeRecord({
+      recordSource: "text_memo",
+      audioStoragePath: "text_memo://record-1",
+    });
     const result = mapRecordDetail(
       record as unknown as Parameters<typeof mapRecordDetail>[0],
       [],

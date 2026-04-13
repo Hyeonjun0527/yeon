@@ -6,6 +6,7 @@ import { useClickOutside } from "@/app/home/_hooks";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { TutorialTriggerButton } from "@/components/tutorial";
+import { useTutorialPolicy } from "./home-sidebar-layout-context";
 import { useAppRoute } from "@/lib/app-route-context";
 
 const SECTION_LABELS: Record<string, string> = {
@@ -101,10 +102,13 @@ export function TopNav({ section }: TopNavProps) {
       : section === "students"
         ? "student"
         : "home";
-  const canShowTutorialTrigger =
+  const tutorialPolicy = useTutorialPolicy(tutorialKey);
+  const canResolveTutorialRoute =
     normalizedPathname === "/home" ||
     normalizedPathname === "/home/student-management" ||
     normalizedPathname === "/home/student-management/check-board";
+  const canShowTutorialTrigger =
+    canResolveTutorialRoute && tutorialPolicy.showTrigger;
 
   return (
     <div className="sticky top-0 z-[100] bg-[rgba(9,9,11,0.85)] backdrop-blur-[16px] border-b border-border flex items-center px-4 h-12 gap-3">

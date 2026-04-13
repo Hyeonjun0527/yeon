@@ -7,6 +7,7 @@ import type {
   UpdateMemberTabBody,
 } from "@yeon/api-contract/spaces";
 
+import { isProtectedMemberTabSystemKey } from "@/lib/member-tab-policy";
 import { getDb } from "@/server/db";
 import { memberTabDefinitions } from "@/server/db/schema";
 
@@ -25,7 +26,7 @@ export type CreateCustomTabInput = CreateMemberTabBody;
 
 export type UpdateTabInput = UpdateMemberTabBody;
 
-/* ── 기본 시스템 탭 4개 ── */
+/* ── 기본 시스템 탭 5개 ── */
 
 const DEFAULT_SYSTEM_TABS: {
   systemKey: SystemKey;
@@ -33,9 +34,10 @@ const DEFAULT_SYSTEM_TABS: {
   displayOrder: number;
 }[] = [
   { systemKey: "overview", name: "개요", displayOrder: 0 },
-  { systemKey: "counseling", name: "상담기록", displayOrder: 1 },
-  { systemKey: "memos", name: "메모", displayOrder: 2 },
-  { systemKey: "report", name: "리포트", displayOrder: 3 },
+  { systemKey: "student_board", name: "출석·과제", displayOrder: 1 },
+  { systemKey: "counseling", name: "상담기록", displayOrder: 2 },
+  { systemKey: "memos", name: "메모", displayOrder: 3 },
+  { systemKey: "report", name: "리포트", displayOrder: 4 },
 ];
 
 /* ── 서비스 함수 ── */
@@ -178,9 +180,8 @@ export async function updateTab(
 
   if (!existing) throw new ServiceError(404, "탭을 찾지 못했습니다.");
 
-  // overview 탭 숨김 불가
-  if (existing.systemKey === "overview" && data.isVisible === false) {
-    throw new ServiceError(403, "개요 탭은 숨길 수 없습니다.");
+  if (isProtectedMemberTabSystemKey(existing.systemKey)) {
+    throw new ServiceError(403, "기본 탭은 수정할 수 없습니다.");
   }
 
   const patch: Record<string, unknown> = { updatedAt: new Date() };
@@ -225,6 +226,10 @@ export async function deleteCustomTab(
     .limit(1);
 
   if (!existing) throw new ServiceError(404, "탭을 찾지 못했습니다.");
+
+  if (isProtectedMemberTabSystemKey(existing.systemKey)) {
+    throw new ServiceError(403, "기본 탭은 삭제할 수 없습니다.");
+  }
 
   if (existing.tabType === "system") {
     throw new ServiceError(403, "시스템 탭은 삭제할 수 없습니다.");

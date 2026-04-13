@@ -40,6 +40,11 @@ export function useTranscriptEditor(
   }
 
   function startEditingSegment(segmentId: string, currentText: string) {
+    if (selectedRecord?.status !== "ready") {
+      setSaveToast("누락 구간 복구가 끝난 뒤에만 원문을 편집할 수 있습니다.");
+      return;
+    }
+
     setEditingSegmentId(segmentId);
     setEditingSegmentText(currentText);
   }
@@ -51,6 +56,11 @@ export function useTranscriptEditor(
 
   async function saveEditingSegment() {
     if (!selectedRecord || !editingSegmentId || editingSegmentSaving) {
+      return;
+    }
+
+    if (selectedRecord.status !== "ready") {
+      setSaveToast("누락 구간 복구가 끝난 뒤에만 원문을 편집할 수 있습니다.");
       return;
     }
 
@@ -110,6 +120,13 @@ export function useTranscriptEditor(
     newTone: string,
   ) {
     if (!selectedRecord) {
+      return;
+    }
+
+    if (selectedRecord.status !== "ready") {
+      setSaveToast(
+        "누락 구간 복구가 끝난 뒤에만 화자 정보를 수정할 수 있습니다.",
+      );
       return;
     }
 

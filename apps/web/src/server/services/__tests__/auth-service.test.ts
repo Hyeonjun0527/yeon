@@ -87,7 +87,10 @@ function createTx(sequence: TxSequence) {
 describe("auth-service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockToAuthUserDto.mockReturnValue({ id: "user-1", providers: ["google"] });
+    mockToAuthUserDto.mockImplementation((user: { id: string }) => ({
+      id: user.id,
+      providers: ["google"],
+    }));
   });
 
   it("이메일이 없으면 emailRequired 오류를 던진다", async () => {
@@ -130,7 +133,7 @@ describe("auth-service", () => {
     });
   });
 
-  it("기존 동일 공급자 identity가 다른 providerUserId면 providerConflict를 던진다", async () => {
+  it("같은 이메일에 동일 공급자의 다른 providerUserId가 오면 별도 user를 만든다", async () => {
     mockTransaction.mockImplementation(
       async (callback: (tx: ReturnType<typeof createTx>) => Promise<unknown>) =>
         callback(
@@ -148,21 +151,31 @@ describe("auth-service", () => {
               [
                 {
                   id: "identity-1",
+                  provider: "google",
                   providerUserId: "other-provider-user",
                 },
               ],
-            ],
-            update: [
+              [],
               [
                 {
-                  id: "user-1",
+                  id: "identity-2",
+                  provider: "google",
+                  providerUserId: "provider-user-1",
+                },
+              ],
+            ],
+            update: [],
+            insert: [
+              [
+                {
+                  id: "user-2",
                   email: "user@yeon.world",
                   displayName: "유저",
                   avatarUrl: null,
                 },
               ],
+              undefined,
             ],
-            insert: [],
           }),
         ),
     );
@@ -176,8 +189,9 @@ describe("auth-service", () => {
         displayName: "유저",
         avatarUrl: null,
       }),
-    ).rejects.toMatchObject({
-      code: authErrorCodes.providerConflict,
+    ).resolves.toEqual({
+      id: "user-2",
+      providers: ["google"],
     });
   });
 
@@ -204,7 +218,6 @@ describe("auth-service", () => {
                   avatarUrl: null,
                 },
               ],
-              [],
               [
                 {
                   id: "identity-1",
@@ -240,5 +253,66 @@ describe("auth-service", () => {
 
     expect(result).toEqual({ id: "user-1", providers: ["google"] });
     expect(mockToAuthUserDto).toHaveBeenCalledTimes(1);
+  });
+
+  it("같은 이메일 user가 여러 명이면 기존 user를 고르지 않고 새 user를 만든다", async () => {
+    mockTransaction.mockImplementation(
+      async (callback: (tx: ReturnType<typeof createTx>) => Promise<unknown>) =>
+        callback(
+          createTx({
+            select: [
+              [],
+              [
+                {
+                  id: "user-1",
+                  email: "user@yeon.world",
+                  displayName: "첫 번째 유저",
+                  avatarUrl: null,
+                },
+                {
+                  id: "user-2",
+                  email: "user@yeon.world",
+                  displayName: "두 번째 유저",
+                  avatarUrl: null,
+                },
+              ],
+              [],
+              [
+                {
+                  id: "identity-3",
+                  provider: "google",
+                  providerUserId: "provider-user-3",
+                },
+              ],
+            ],
+            update: [],
+            insert: [
+              [
+                {
+                  id: "user-3",
+                  email: "user@yeon.world",
+                  displayName: "세 번째 유저",
+                  avatarUrl: null,
+                },
+              ],
+              undefined,
+            ],
+          }),
+        ),
+    );
+
+    await expect(
+      upsertSocialLogin({
+        provider: "google",
+        providerUserId: "provider-user-3",
+        email: "user@yeon.world",
+        emailVerified: true,
+        displayName: "세 번째 유저",
+        avatarUrl: null,
+      }),
+    ).resolves.toEqual({
+      id: "user-3",
+      providers: ["google"],
+    });
   });
 });

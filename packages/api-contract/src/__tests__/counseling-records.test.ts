@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   counselingRecordStatusSchema,
+  counselingRecordProcessingStageSchema,
   counselingRecordSpeakerToneSchema,
   counselingTranscriptSegmentSchema,
   counselingChatMessageSchema,
@@ -35,6 +36,7 @@ const validListItem = {
   counselingType: "1:1",
   counselorName: "김멘토",
   status: "ready" as const,
+  recordSource: "audio_upload" as const,
   preview: "오늘 진행 상황을 공유했습니다.",
   tags: ["진도", "피드백"],
   audioOriginalName: "recording.webm",
@@ -43,12 +45,23 @@ const validListItem = {
   audioDurationMs: 600000,
   transcriptSegmentCount: 10,
   transcriptTextLength: 500,
+  processingStage: "completed" as const,
+  processingProgress: 100,
+  processingMessage: "원문과 분석이 준비되었습니다.",
+  processingChunkCount: 1,
+  processingChunkCompletedCount: 1,
+  transcriptionAttemptCount: 1,
+  analysisStatus: "ready" as const,
+  analysisProgress: 100,
+  analysisErrorMessage: null,
+  analysisAttemptCount: 1,
   language: "ko",
   sttModel: "whisper-1",
   errorMessage: null,
   createdAt: "2024-01-01T00:00:00.000Z",
   updatedAt: "2024-01-01T01:00:00.000Z",
   transcriptionCompletedAt: "2024-01-01T00:30:00.000Z",
+  analysisCompletedAt: "2024-01-01T00:45:00.000Z",
 };
 
 const validAnalysisResult = {
@@ -101,6 +114,21 @@ describe("counselingRecordStatusSchema", () => {
     expect(counselingRecordStatusSchema.safeParse("pending").success).toBe(
       false,
     );
+  });
+});
+
+describe("counselingRecordProcessingStageSchema", () => {
+  it("partial_transcript_ready 를 유효한 값으로 통과시킨다", () => {
+    expect(
+      counselingRecordProcessingStageSchema.parse("partial_transcript_ready"),
+    ).toBe("partial_transcript_ready");
+  });
+
+  it("정의되지 않은 처리 단계는 실패한다", () => {
+    expect(
+      counselingRecordProcessingStageSchema.safeParse("transcript_partial")
+        .success,
+    ).toBe(false);
   });
 });
 

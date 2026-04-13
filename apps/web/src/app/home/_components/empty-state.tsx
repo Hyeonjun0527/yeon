@@ -1,4 +1,5 @@
-import { MicIcon, UploadIcon } from "./icons";
+import { DownloadIcon, MicIcon, UploadIcon } from "./icons";
+import { AUDIO_SAMPLE_TEST_DATA } from "@/lib/test-data-downloads";
 
 export interface EmptyStateProps {
   onStartRecording: () => void;
@@ -21,21 +22,31 @@ export function EmptyState({
         <p className="m-0 text-sm leading-relaxed text-text-secondary">
           음성 파일을 업로드하거나 브라우저에서 바로 녹음할 수 있습니다.
         </p>
-        <div className="grid grid-cols-2 gap-3 mt-2">
-          <button
-            className="flex items-center justify-center gap-2 px-7 py-[14px] border border-transparent rounded-xl text-[15px] font-bold cursor-pointer font-[inherit] transition-[opacity,box-shadow,background,border-color] duration-150 bg-accent text-white hover:opacity-90 hover:shadow-[0_8px_32px_rgba(129,140,248,0.25)]"
-            onClick={onFileUpload}
+        <div className="grid gap-3 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              className="flex items-center justify-center gap-2 px-7 py-[14px] border border-transparent rounded-xl text-[15px] font-bold cursor-pointer font-[inherit] transition-[opacity,box-shadow,background,border-color] duration-150 bg-accent text-white hover:opacity-90 hover:shadow-[0_8px_32px_rgba(129,140,248,0.25)]"
+              onClick={onFileUpload}
+            >
+              <UploadIcon />
+              파일 업로드
+            </button>
+            <button
+              className="flex items-center justify-center gap-2 px-7 py-[14px] border rounded-xl text-[15px] font-bold cursor-pointer font-[inherit] transition-[opacity,box-shadow,background,border-color] duration-150 border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.06)] text-text hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]"
+              onClick={onStartRecording}
+            >
+              <MicIcon />
+              바로 녹음하기
+            </button>
+          </div>
+          <a
+            href={AUDIO_SAMPLE_TEST_DATA.href}
+            download={AUDIO_SAMPLE_TEST_DATA.downloadName}
+            className="flex items-center justify-center gap-2 px-7 py-[13px] border rounded-xl text-[14px] font-semibold transition-[background,border-color,color] duration-150 border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] text-text-secondary hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.24)]"
           >
-            <UploadIcon />
-            파일 업로드
-          </button>
-          <button
-            className="flex items-center justify-center gap-2 px-7 py-[14px] border rounded-xl text-[15px] font-bold cursor-pointer font-[inherit] transition-[opacity,box-shadow,background,border-color] duration-150 border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.06)] text-text hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]"
-            onClick={onStartRecording}
-          >
-            <MicIcon />
-            바로 녹음하기
-          </button>
+            <DownloadIcon size={16} />
+            {AUDIO_SAMPLE_TEST_DATA.label}
+          </a>
         </div>
         <p className="text-xs text-text-dim mt-1">
           또는 오디오 파일을 여기에 드래그 앤 드롭

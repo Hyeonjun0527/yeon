@@ -102,10 +102,22 @@ type DemoStore = {
   boardRows: Array<{
     memberId: string;
     attendanceStatus: "unknown" | "present" | "absent";
+    attendanceMarkedAt: string | null;
+    attendanceMarkedSource: "manual" | "public_qr" | "public_location" | null;
     assignmentStatus: "unknown" | "done" | "not_done";
     assignmentLink: string | null;
+    assignmentMarkedAt: string | null;
+    assignmentMarkedSource: "manual" | "public_qr" | "public_location" | null;
     isSelfCheckReady: boolean;
     lastPublicCheckAt: string | null;
+    dailyCells: Array<{
+      date: string;
+      attendanceStatus: "unknown" | "present" | "absent";
+      assignmentStatus: "unknown" | "done" | "not_done";
+      assignmentLink: string | null;
+      occurredAt: string | null;
+      source: "manual" | "public_qr" | "public_location" | null;
+    }>;
   }>;
   boardSessions: Array<{
     id: string;
@@ -146,6 +158,38 @@ type DemoStore = {
 
 const DEMO_SPACE_ID = demoSpaces[0]?.id ?? "space-7";
 const nowIso = "2026-04-12T14:10:00.000Z";
+const demoLocationSearchResults = [
+  {
+    id: "keyword:demo-1",
+    label: "패스트캠퍼스 강남캠퍼스 · 서울 강남구 테헤란로 231",
+    placeName: "패스트캠퍼스 강남캠퍼스",
+    roadAddressName: "서울 강남구 테헤란로 231",
+    addressName: "서울 강남구 역삼동 647-3",
+    latitude: 37.5012,
+    longitude: 127.0396,
+    source: "keyword" as const,
+  },
+  {
+    id: "address:서울 강남구 테헤란로 427:127.056:37.504",
+    label: "위워크타워 · 서울 강남구 테헤란로 427",
+    placeName: "위워크타워",
+    roadAddressName: "서울 강남구 테헤란로 427",
+    addressName: "서울 강남구 삼성동 142-43",
+    latitude: 37.504,
+    longitude: 127.056,
+    source: "address" as const,
+  },
+  {
+    id: "keyword:demo-2",
+    label: "마루180 · 서울 강남구 역삼로 180",
+    placeName: "마루180",
+    roadAddressName: "서울 강남구 역삼로 180",
+    addressName: "서울 강남구 역삼동 702-10",
+    latitude: 37.4967,
+    longitude: 127.0386,
+    source: "keyword" as const,
+  },
+];
 
 function createJsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -294,11 +338,18 @@ function createInitialStore(): DemoStore {
     memberId: member.id,
     attendanceStatus:
       demoBoardRows[index]?.attendance === "출석" ? "present" : "unknown",
+    attendanceMarkedAt: index < 3 ? nowIso : null,
+    attendanceMarkedSource: index < 3 ? "manual" : null,
     assignmentStatus:
       demoBoardRows[index]?.assignment === "완료" ? "done" : "unknown",
     assignmentLink: demoBoardRows[index]?.link || null,
+    assignmentMarkedAt:
+      demoBoardRows[index]?.assignment === "완료" ? nowIso : null,
+    assignmentMarkedSource:
+      demoBoardRows[index]?.assignment === "완료" ? "manual" : null,
     isSelfCheckReady: !!member.phone,
     lastPublicCheckAt: index < 3 ? nowIso : null,
+    dailyCells: [],
   }));
 
   const boardSessions: DemoStore["boardSessions"] = demoCheckSessions.map(
@@ -567,10 +618,15 @@ async function handleMockApi(request: Request): Promise<Response | null> {
         {
           memberId: member.id,
           attendanceStatus: "unknown",
+          attendanceMarkedAt: null,
+          attendanceMarkedSource: null,
           assignmentStatus: "unknown",
           assignmentLink: null,
+          assignmentMarkedAt: null,
+          assignmentMarkedSource: null,
           isSelfCheckReady: !!member.phone,
           lastPublicCheckAt: null,
+          dailyCells: [],
         },
         ...demoStore.boardRows,
       ],
@@ -639,11 +695,35 @@ async function handleMockApi(request: Request): Promise<Response | null> {
     return createJsonResponse({ log }, 201);
   }
 
+  const publicCheckLocationMatch = path.match(
+    /^\/api\/v1\/spaces\/([^/]+)\/public-check-locations$/,
+  );
+  if (publicCheckLocationMatch && method === "GET") {
+    const query = url.searchParams.get("query")?.trim() ?? "";
+    const loweredQuery = query.toLowerCase();
+    const results =
+      query.length < 2
+        ? []
+        : demoLocationSearchResults.filter((result) =>
+            [
+              result.label,
+              result.placeName,
+              result.roadAddressName,
+              result.addressName,
+            ]
+              .filter(Boolean)
+              .some((value) => value!.toLowerCase().includes(loweredQuery)),
+          );
+
+    return createJsonResponse({ results });
+  }
+
   const boardMatch = path.match(/^\/api\/v1\/spaces\/([^/]+)\/student-board$/);
   if (boardMatch && method === "GET") {
     return createJsonResponse({
       rows: demoStore.boardRows,
       sessions: demoStore.boardSessions,
+      historyPeriod: "space",
     });
   }
 
@@ -697,6 +777,7 @@ async function handleMockApi(request: Request): Promise<Response | null> {
     return createJsonResponse({
       rows: demoStore.boardRows,
       sessions: demoStore.boardSessions,
+      historyPeriod: "space",
     });
   }
 

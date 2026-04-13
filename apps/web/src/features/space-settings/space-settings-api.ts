@@ -4,6 +4,7 @@ import type {
   SpaceTab,
   SpaceTemplateSummary,
 } from "./types";
+import type { Space } from "@/features/student-management/types";
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -27,6 +28,16 @@ export async function fetchSpaceTabs(spaceId: string) {
   return apiFetch<{ tabs: SpaceTab[] }>(
     `/api/v1/spaces/${spaceId}/member-tabs`,
   );
+}
+
+export async function patchSpace(
+  spaceId: string,
+  input: { name?: string; startDate?: string | null; endDate?: string | null },
+) {
+  return apiFetch<{ space: Space }>(`/api/v1/spaces/${spaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function fetchSpaceFields(spaceId: string, tabId: string) {
