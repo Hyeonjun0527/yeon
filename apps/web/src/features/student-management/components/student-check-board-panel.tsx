@@ -1,24 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
   Copy,
   ExternalLink,
   Link2,
+  LoaderCircle,
   MapPin,
   QrCode,
+  Search,
 } from "lucide-react";
 import type {
   CreatePublicCheckSessionBody,
+  PublicCheckLocationSearchResponse,
+  PublicCheckLocationSearchResult,
   StudentBoardResponse,
   StudentAssignmentStatus,
   StudentAttendanceStatus,
 } from "@yeon/api-contract";
 
 import type { Member } from "../types";
-import { useSpaceStudentBoard } from "../hooks/use-space-student-board";
+import {
+  usePublicCheckLocationSearch,
+  useSpaceStudentBoard,
+} from "../hooks/use-space-student-board";
 
 interface StudentCheckBoardPanelProps {
   spaceId: string;
@@ -30,6 +37,10 @@ type DraftRow = {
   assignmentStatus: StudentAssignmentStatus;
   assignmentLink: string;
 };
+
+const DEFAULT_LOCATION_RADIUS_METERS = 150;
+const MIN_LOCATION_RADIUS_METERS = 50;
+const MAX_LOCATION_RADIUS_METERS = 300;
 
 function getCheckModeLabel(mode: CreatePublicCheckSessionBody["checkMode"]) {
   switch (mode) {
@@ -53,6 +64,27 @@ function getCheckModeActionDescription(
     case "attendance_and_assignment":
       return "출석·과제 제출";
   }
+}
+
+function clampLocationRadius(value: number) {
+  return Math.min(
+    MAX_LOCATION_RADIUS_METERS,
+    Math.max(MIN_LOCATION_RADIUS_METERS, value),
+  );
+}
+
+function getLocationResultMeta(result: PublicCheckLocationSearchResult) {
+  return result.roadAddressName ?? result.addressName ?? "주소 정보 없음";
+}
+
+function toLocationSearchResults(
+  data: PublicCheckLocationSearchResponse | undefined,
+) {
+  if (!data) {
+    return [];
+  }
+
+  return data.results;
 }
 
 function buildAbsoluteUrl(publicPath: string) {
@@ -149,8 +181,29 @@ export function StudentCheckBoardPanel({
     locationLabel: null,
     latitude: null,
     longitude: null,
-    radiusMeters: 100,
+    radiusMeters: DEFAULT_LOCATION_RADIUS_METERS,
   });
+  const [locationQuery, setLocationQuery] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    null,
+  );
+  const deferredLocationQuery = useDeferredValue(locationQuery.trim());
+  const isLocationMethodEnabled =
+    sessionForm.enabledMethods.includes("location");
+  const {
+    data: locationSearchData,
+    error: rawLocationSearchError,
+    status: locationSearchStatus,
+  } = usePublicCheckLocationSearch(
+    spaceId,
+    deferredLocationQuery,
+    isLocationMethodEnabled && selectedLocationId === null,
+  );
+  const locationResults = toLocationSearchResults(locationSearchData);
+  const isLocationSearchPending = locationSearchStatus === "pending";
+  const locationSearchError =
+    rawLocationSearchError instanceof Error ? rawLocationSearchError : null;
+  const sessionRadiusMeters = sessionForm.radiusMeters ?? null;
 
   useEffect(() => {
     if (boardRows.length === 0) return;
@@ -182,6 +235,25 @@ export function StudentCheckBoardPanel({
   const checkModeActionDescription = getCheckModeActionDescription(
     sessionForm.checkMode,
   );
+  const trimmedLocationQuery = locationQuery.trim();
+  const shouldPromptLocationQuery =
+    isLocationMethodEnabled &&
+    trimmedLocationQuery.length > 0 &&
+    trimmedLocationQuery.length < 2;
+  const shouldShowLocationResults =
+    isLocationMethodEnabled &&
+    trimmedLocationQuery.length >= 2 &&
+    selectedLocationId === null;
+  const isLocationConfigured =
+    !isLocationMethodEnabled ||
+    Boolean(
+      sessionForm.locationLabel?.trim() &&
+      sessionForm.latitude !== null &&
+      sessionForm.longitude !== null &&
+      sessionRadiusMeters !== null &&
+      sessionRadiusMeters >= MIN_LOCATION_RADIUS_METERS &&
+      sessionRadiusMeters <= MAX_LOCATION_RADIUS_METERS,
+    );
 
   const handleDraftChange = (memberId: string, patch: Partial<DraftRow>) => {
     setDrafts((prev) => ({
@@ -195,15 +267,49 @@ export function StudentCheckBoardPanel({
     }));
   };
 
+  const handleLocationQueryChange = (value: string) => {
+    setLocationQuery(value);
+    setSelectedLocationId(null);
+    setSessionForm((prev) => ({
+      ...prev,
+      locationLabel: null,
+      latitude: null,
+      longitude: null,
+    }));
+  };
+
+  const handleLocationSelect = (result: PublicCheckLocationSearchResult) => {
+    const normalizedLabel = result.label.slice(0, 120);
+    setLocationQuery(normalizedLabel);
+    setSelectedLocationId(result.id);
+    setSessionForm((prev) => ({
+      ...prev,
+      locationLabel: normalizedLabel,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      radiusMeters: clampLocationRadius(
+        prev.radiusMeters ?? DEFAULT_LOCATION_RADIUS_METERS,
+      ),
+    }));
+  };
+
   const toggleEnabledMethod = (
     method: CreatePublicCheckSessionBody["enabledMethods"][number],
   ) => {
-    setSessionForm((prev) => ({
-      ...prev,
-      enabledMethods: prev.enabledMethods.includes(method)
+    setSessionForm((prev) => {
+      const nextEnabledMethods = prev.enabledMethods.includes(method)
         ? prev.enabledMethods.filter((item) => item !== method)
-        : [...prev.enabledMethods, method],
-    }));
+        : [...prev.enabledMethods, method];
+
+      return {
+        ...prev,
+        enabledMethods: nextEnabledMethods,
+        radiusMeters:
+          nextEnabledMethods.includes("location") && prev.radiusMeters === null
+            ? DEFAULT_LOCATION_RADIUS_METERS
+            : prev.radiusMeters,
+      };
+    });
   };
 
   return (
@@ -405,58 +511,160 @@ export function StudentCheckBoardPanel({
                   </button>
                 </div>
 
-                {sessionForm.enabledMethods.includes("location") ? (
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    <input
-                      className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-none"
-                      value={sessionForm.locationLabel ?? ""}
-                      onChange={(event) =>
-                        setSessionForm((prev) => ({
-                          ...prev,
-                          locationLabel: event.target.value || null,
-                        }))
-                      }
-                      placeholder="위치명"
-                    />
-                    <input
-                      className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-none"
-                      value={sessionForm.latitude ?? ""}
-                      onChange={(event) =>
-                        setSessionForm((prev) => ({
-                          ...prev,
-                          latitude: event.target.value
-                            ? Number(event.target.value)
-                            : null,
-                        }))
-                      }
-                      placeholder="위도"
-                    />
-                    <input
-                      className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-none"
-                      value={sessionForm.longitude ?? ""}
-                      onChange={(event) =>
-                        setSessionForm((prev) => ({
-                          ...prev,
-                          longitude: event.target.value
-                            ? Number(event.target.value)
-                            : null,
-                        }))
-                      }
-                      placeholder="경도"
-                    />
-                    <input
-                      className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-none"
-                      value={sessionForm.radiusMeters ?? ""}
-                      onChange={(event) =>
-                        setSessionForm((prev) => ({
-                          ...prev,
-                          radiusMeters: event.target.value
-                            ? Number(event.target.value)
-                            : null,
-                        }))
-                      }
-                      placeholder="반경(m)"
-                    />
+                {isLocationMethodEnabled ? (
+                  <div className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_180px]">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-text-secondary">
+                          <Search size={13} className="text-text-dim" />
+                          기준 위치 검색
+                        </div>
+                        <input
+                          className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm text-text outline-none transition-colors focus:border-accent/60"
+                          value={locationQuery}
+                          onChange={(event) =>
+                            handleLocationQueryChange(event.target.value)
+                          }
+                          placeholder="건물명 또는 도로명 주소 검색"
+                        />
+                        <p className="text-[11px] text-text-dim">
+                          운영자는 위치를 검색 결과에서 고르고, 좌표는 시스템이
+                          내부에 저장합니다.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-medium text-text-secondary">
+                          허용 반경
+                        </div>
+                        <input
+                          type="number"
+                          min={MIN_LOCATION_RADIUS_METERS}
+                          max={MAX_LOCATION_RADIUS_METERS}
+                          step={10}
+                          inputMode="numeric"
+                          className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm text-text outline-none transition-colors focus:border-accent/60"
+                          value={sessionRadiusMeters ?? ""}
+                          onChange={(event) =>
+                            setSessionForm((prev) => ({
+                              ...prev,
+                              radiusMeters: event.target.value
+                                ? Number(event.target.value)
+                                : null,
+                            }))
+                          }
+                        />
+                        <p className="text-[11px] text-text-dim">
+                          기본 150m · 조정 범위 50~300m
+                        </p>
+                        {sessionRadiusMeters !== null &&
+                        (sessionRadiusMeters < MIN_LOCATION_RADIUS_METERS ||
+                          sessionRadiusMeters > MAX_LOCATION_RADIUS_METERS) ? (
+                          <p className="text-[11px] text-amber-300">
+                            반경은 50m에서 300m 사이로 입력해 주세요.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {sessionForm.locationLabel ? (
+                      <div className="mt-3 rounded-xl border border-accent/20 bg-accent/10 px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent/80">
+                              선택된 위치
+                            </div>
+                            <div className="mt-1 truncate text-sm font-semibold text-text">
+                              {sessionForm.locationLabel}
+                            </div>
+                            <div className="mt-1 text-[11px] text-text-secondary">
+                              반경{" "}
+                              {sessionRadiusMeters ??
+                                DEFAULT_LOCATION_RADIUS_METERS}
+                              m 안에서 체크인 허용
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
+                            onClick={() => handleLocationQueryChange("")}
+                          >
+                            다시 선택
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {shouldPromptLocationQuery ? (
+                      <p className="mt-3 text-[11px] text-text-dim">
+                        두 글자 이상 입력하면 위치 검색 결과를 보여줍니다.
+                      </p>
+                    ) : null}
+
+                    {shouldShowLocationResults ? (
+                      <div className="mt-3 rounded-xl border border-border bg-surface-2">
+                        {isLocationSearchPending ? (
+                          <div className="flex items-center gap-2 px-3 py-3 text-sm text-text-secondary">
+                            <LoaderCircle
+                              size={14}
+                              className="animate-spin text-text-dim"
+                            />
+                            위치 검색 중...
+                          </div>
+                        ) : null}
+
+                        {!isLocationSearchPending && locationSearchError ? (
+                          <p className="px-3 py-3 text-sm text-red-300">
+                            {locationSearchError.message}
+                          </p>
+                        ) : null}
+
+                        {!isLocationSearchPending &&
+                        !locationSearchError &&
+                        locationResults.length === 0 ? (
+                          <p className="px-3 py-3 text-sm text-text-secondary">
+                            검색 결과가 없습니다. 건물명이나 도로명 주소를 더
+                            구체적으로 입력해 주세요.
+                          </p>
+                        ) : null}
+
+                        {!isLocationSearchPending &&
+                        !locationSearchError &&
+                        locationResults.length > 0 ? (
+                          <div className="divide-y divide-border">
+                            {locationResults.map((result) => (
+                              <button
+                                key={result.id}
+                                type="button"
+                                className="flex w-full items-start justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-white/5"
+                                onClick={() => handleLocationSelect(result)}
+                              >
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-medium text-text">
+                                    {result.label}
+                                  </div>
+                                  <div className="mt-1 truncate text-[11px] text-text-secondary">
+                                    {getLocationResultMeta(result)}
+                                  </div>
+                                </div>
+                                <div className="shrink-0 rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-text-dim">
+                                  {result.source === "keyword"
+                                    ? "장소"
+                                    : "주소"}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {!sessionForm.locationLabel ? (
+                      <p className="mt-3 text-[11px] text-amber-300">
+                        위치 인증을 쓰려면 검색 결과에서 기준 위치를 하나
+                        선택해야 합니다.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -465,7 +673,8 @@ export function StudentCheckBoardPanel({
                     className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     disabled={
                       isCreatingSession ||
-                      sessionForm.enabledMethods.length === 0
+                      sessionForm.enabledMethods.length === 0 ||
+                      !isLocationConfigured
                     }
                     onClick={() => createSession.mutate(sessionForm)}
                   >
