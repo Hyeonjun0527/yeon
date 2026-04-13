@@ -73,22 +73,7 @@ async function performSocialLoginUpsert(
           );
         }
 
-        let nextEmail = existingUser.email;
-
-        if (
-          normalizedVerifiedEmail &&
-          normalizedVerifiedEmail !== existingUser.email
-        ) {
-          const [emailOwner] = await tx
-            .select({ id: users.id })
-            .from(users)
-            .where(eq(users.email, normalizedVerifiedEmail))
-            .limit(1);
-
-          if (!emailOwner || emailOwner.id === existingUser.id) {
-            nextEmail = normalizedVerifiedEmail;
-          }
-        }
+        const nextEmail = normalizedVerifiedEmail ?? existingUser.email;
 
         const [updatedUser] = await tx
           .update(users)
@@ -134,24 +119,43 @@ async function performSocialLoginUpsert(
         );
       }
 
-      const [existingUserByEmail] = await tx
+      const existingUsersByEmail = await tx
         .select()
         .from(users)
-        .where(eq(users.email, normalizedVerifiedEmail))
-        .limit(1);
+        .where(eq(users.email, normalizedVerifiedEmail));
 
-      const targetUser = existingUserByEmail
+      let reusableUser: typeof users.$inferSelect | null = null;
+
+      if (existingUsersByEmail.length === 1) {
+        const [candidateUser] = existingUsersByEmail;
+        const candidateIdentities = await tx
+          .select()
+          .from(userIdentities)
+          .where(eq(userIdentities.userId, candidateUser.id));
+        const sameProviderIdentity = candidateIdentities.find(
+          (identity) => identity.provider === profile.provider,
+        );
+
+        if (
+          !sameProviderIdentity ||
+          sameProviderIdentity.providerUserId === profile.providerUserId
+        ) {
+          reusableUser = candidateUser;
+        }
+      }
+
+      const targetUser = reusableUser
         ? (
             await tx
               .update(users)
               .set({
-                displayName:
-                  normalizedDisplayName ?? existingUserByEmail.displayName,
-                avatarUrl: normalizedAvatarUrl ?? existingUserByEmail.avatarUrl,
+                email: normalizedVerifiedEmail,
+                displayName: normalizedDisplayName ?? reusableUser.displayName,
+                avatarUrl: normalizedAvatarUrl ?? reusableUser.avatarUrl,
                 lastLoginAt: now,
                 updatedAt: now,
               })
-              .where(eq(users.id, existingUserByEmail.id))
+              .where(eq(users.id, reusableUser.id))
               .returning()
           )[0]
         : (
@@ -177,16 +181,6 @@ async function performSocialLoginUpsert(
           ),
         )
         .limit(1);
-
-      if (
-        sameProviderIdentity &&
-        sameProviderIdentity.providerUserId !== profile.providerUserId
-      ) {
-        throw new AuthFlowError(
-          authErrorCodes.providerConflict,
-          "동일 공급자에 다른 계정이 이미 연결되어 있습니다.",
-        );
-      }
 
       if (!sameProviderIdentity) {
         await tx.insert(userIdentities).values({
