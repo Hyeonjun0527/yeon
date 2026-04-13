@@ -16,6 +16,7 @@ import type {
   CreatePublicCheckSessionBody,
   PublicCheckLocationSearchResponse,
   PublicCheckLocationSearchResult,
+  StudentBoardHistoryPeriod,
   StudentBoardResponse,
   StudentAssignmentStatus,
   StudentAttendanceStatus,
@@ -26,6 +27,7 @@ import {
   usePublicCheckLocationSearch,
   useSpaceStudentBoard,
 } from "../hooks/use-space-student-board";
+import { StudentBoardHistoryList } from "./student-board-history-list";
 
 interface StudentCheckBoardPanelProps {
   spaceId: string;
@@ -73,8 +75,21 @@ function clampLocationRadius(value: number) {
   );
 }
 
-function getLocationResultMeta(result: PublicCheckLocationSearchResult) {
-  return result.roadAddressName ?? result.addressName ?? "주소 정보 없음";
+function getLocationResultTitle(result: PublicCheckLocationSearchResult) {
+  return (
+    result.placeName?.trim() ||
+    result.roadAddressName?.trim() ||
+    result.addressName?.trim() ||
+    "주소 검색 결과"
+  );
+}
+
+function getLocationResultLine(
+  label: string,
+  value: string | null,
+  fallback: string,
+) {
+  return `${label}: ${value?.trim() || fallback}`;
 }
 
 function toLocationSearchResults(
@@ -95,6 +110,23 @@ function buildAbsoluteUrl(publicPath: string) {
   return `${window.location.origin}${publicPath}`;
 }
 
+function buildPublicCheckEntryUrl(
+  publicPath: string,
+  entry: "qr" | "location",
+) {
+  return `${buildAbsoluteUrl(publicPath)}?entry=${entry}`;
+}
+
+function buildPublicCheckQrDownloadUrl(publicPath: string) {
+  const publicToken = publicPath.split("/").filter(Boolean).at(-1);
+
+  if (!publicToken) {
+    return null;
+  }
+
+  return `/api/v1/public-check-sessions/${publicToken}/qr?entry=qr`;
+}
+
 function toBoardRows(data: StudentBoardResponse | undefined) {
   if (!data) {
     return [];
@@ -109,6 +141,14 @@ function toBoardSessions(data: StudentBoardResponse | undefined) {
   }
 
   return data.sessions;
+}
+
+function toBoardHistory(data: StudentBoardResponse | undefined) {
+  if (!data) {
+    return [];
+  }
+
+  return data.history;
 }
 
 function formatLastPublicCheckAt(value: string | null | undefined) {
@@ -153,6 +193,8 @@ export function StudentCheckBoardPanel({
   spaceId,
   members,
 }: StudentCheckBoardPanelProps) {
+  const [historyPeriod, setHistoryPeriod] =
+    useState<StudentBoardHistoryPeriod>("7d");
   const {
     data,
     loading,
@@ -160,9 +202,10 @@ export function StudentCheckBoardPanel({
     updateMemberBoard,
     createSession,
     updateSession,
-  } = useSpaceStudentBoard(spaceId);
+  } = useSpaceStudentBoard(spaceId, historyPeriod);
   const boardRows = useMemo(() => toBoardRows(data), [data]);
   const boardSessions = useMemo(() => toBoardSessions(data), [data]);
+  const boardHistory = useMemo(() => toBoardHistory(data), [data]);
   const rowMap = useMemo(
     () => new Map(boardRows.map((row) => [row.memberId, row])),
     [boardRows],
@@ -187,6 +230,8 @@ export function StudentCheckBoardPanel({
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null,
   );
+  const [selectedLocationResult, setSelectedLocationResult] =
+    useState<PublicCheckLocationSearchResult | null>(null);
   const deferredLocationQuery = useDeferredValue(locationQuery.trim());
   const isLocationMethodEnabled =
     sessionForm.enabledMethods.includes("location");
@@ -221,7 +266,6 @@ export function StudentCheckBoardPanel({
     });
   }, [boardRows]);
 
-  const readyCount = boardRows.filter((row) => row.isSelfCheckReady).length;
   const presentCount = boardRows.filter(
     (row) => row.attendanceStatus === "present",
   ).length;
@@ -270,6 +314,7 @@ export function StudentCheckBoardPanel({
   const handleLocationQueryChange = (value: string) => {
     setLocationQuery(value);
     setSelectedLocationId(null);
+    setSelectedLocationResult(null);
     setSessionForm((prev) => ({
       ...prev,
       locationLabel: null,
@@ -282,6 +327,7 @@ export function StudentCheckBoardPanel({
     const normalizedLabel = result.label.slice(0, 120);
     setLocationQuery(normalizedLabel);
     setSelectedLocationId(result.id);
+    setSelectedLocationResult(result);
     setSessionForm((prev) => ({
       ...prev,
       locationLabel: normalizedLabel,
@@ -335,7 +381,7 @@ export function StudentCheckBoardPanel({
       </div>
 
       <div
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-3 gap-2"
         data-tutorial="check-board-summary"
       >
         <div className="rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
@@ -344,14 +390,6 @@ export function StudentCheckBoardPanel({
           </div>
           <div className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text">
             {members.length}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-text-dim">
-            셀프체크 준비
-          </div>
-          <div className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text">
-            {readyCount}
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
@@ -370,18 +408,6 @@ export function StudentCheckBoardPanel({
             {assignmentDoneCount}
           </div>
         </div>
-        <div className="col-span-2 rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(129,140,248,0.08),rgba(129,140,248,0.02))] px-3 py-3 sm:col-span-1 xl:col-span-2">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-text-dim">
-            활성 세션
-          </div>
-          <div className="mt-2 text-xl font-semibold tracking-[-0.03em] text-text">
-            {
-              boardSessions.filter((session) => session.status === "active")
-                .length
-            }
-            개 열림
-          </div>
-        </div>
       </div>
 
       {isExpanded ? (
@@ -396,7 +422,12 @@ export function StudentCheckBoardPanel({
                   공개 체크인 세션
                 </div>
                 <p className="mt-1 text-[11px] text-text-dim">
-                  QR / 위치 기반 세션 운영
+                  QR / 위치 기반 세션 운영 · 현재{" "}
+                  {
+                    boardSessions.filter((session) => session.status === "active")
+                      .length
+                  }
+                  개 활성
                 </p>
               </div>
               <button
@@ -574,10 +605,30 @@ export function StudentCheckBoardPanel({
                             <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent/80">
                               선택된 위치
                             </div>
-                            <div className="mt-1 truncate text-sm font-semibold text-text">
-                              {sessionForm.locationLabel}
+                            <div className="mt-1 break-words text-sm font-semibold leading-relaxed text-text">
+                              {selectedLocationResult
+                                ? getLocationResultTitle(selectedLocationResult)
+                                : sessionForm.locationLabel}
                             </div>
-                            <div className="mt-1 text-[11px] text-text-secondary">
+                            {selectedLocationResult ? (
+                              <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-text-secondary">
+                                <div className="break-words">
+                                  {getLocationResultLine(
+                                    "도로명",
+                                    selectedLocationResult.roadAddressName,
+                                    "정보 없음",
+                                  )}
+                                </div>
+                                <div className="break-words text-text-dim">
+                                  {getLocationResultLine(
+                                    "지번",
+                                    selectedLocationResult.addressName,
+                                    "정보 없음",
+                                  )}
+                                </div>
+                              </div>
+                            ) : null}
+                            <div className="mt-2 text-[11px] text-text-secondary">
                               반경{" "}
                               {sessionRadiusMeters ??
                                 DEFAULT_LOCATION_RADIUS_METERS}
@@ -639,12 +690,23 @@ export function StudentCheckBoardPanel({
                                 className="flex w-full items-start justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-white/5"
                                 onClick={() => handleLocationSelect(result)}
                               >
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-medium text-text">
-                                    {result.label}
+                                <div className="min-w-0 flex-1">
+                                  <div className="break-words text-sm font-semibold leading-relaxed text-text">
+                                    {getLocationResultTitle(result)}
                                   </div>
-                                  <div className="mt-1 truncate text-[11px] text-text-secondary">
-                                    {getLocationResultMeta(result)}
+                                  <div className="mt-1 break-words text-[11px] leading-relaxed text-text-secondary">
+                                    {getLocationResultLine(
+                                      "도로명",
+                                      result.roadAddressName,
+                                      "정보 없음",
+                                    )}
+                                  </div>
+                                  <div className="mt-1 break-words text-[11px] leading-relaxed text-text-dim">
+                                    {getLocationResultLine(
+                                      "지번",
+                                      result.addressName,
+                                      "정보 없음",
+                                    )}
                                   </div>
                                 </div>
                                 <div className="shrink-0 rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-text-dim">
@@ -692,7 +754,17 @@ export function StudentCheckBoardPanel({
             {boardSessions.length > 0 ? (
               <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-1">
                 {boardSessions.map((session) => {
-                  const publicUrl = buildAbsoluteUrl(session.publicPath);
+                  const qrEntryUrl = buildPublicCheckEntryUrl(
+                    session.publicPath,
+                    "qr",
+                  );
+                  const locationEntryUrl = buildPublicCheckEntryUrl(
+                    session.publicPath,
+                    "location",
+                  );
+                  const qrDownloadUrl = buildPublicCheckQrDownloadUrl(
+                    session.publicPath,
+                  );
                   return (
                     <div
                       key={session.id}
@@ -729,9 +801,68 @@ export function StudentCheckBoardPanel({
                       </div>
 
                       <div className="mt-3 min-w-0 flex-1 space-y-2">
-                        <div className="break-all rounded-xl bg-surface-2 px-2.5 py-2 text-[11px] text-text-secondary">
-                          {publicUrl}
-                        </div>
+                        {session.enabledMethods.includes("qr") ? (
+                          <div className="rounded-xl bg-surface-2 px-2.5 py-2">
+                            <div className="text-[11px] font-medium text-text">
+                              QR 체크인
+                            </div>
+                            <div className="mt-1 break-all text-[11px] text-text-secondary">
+                              {qrEntryUrl}
+                            </div>
+                            <div className="mt-2 flex gap-2">
+                              {qrDownloadUrl ? (
+                                <a
+                                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
+                                  href={qrDownloadUrl}
+                                  download={`${session.title}-qr.svg`}
+                                >
+                                  <QrCode size={12} /> QR 다운로드
+                                </a>
+                              ) : null}
+                              <a
+                                className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
+                                href={qrEntryUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <ExternalLink size={12} /> QR 열기
+                              </a>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {session.enabledMethods.includes("location") ? (
+                          <div className="rounded-xl bg-surface-2 px-2.5 py-2">
+                            <div className="text-[11px] font-medium text-text">
+                              위치 기반체크인
+                            </div>
+                            <div className="mt-1 break-all text-[11px] text-text-secondary">
+                              {locationEntryUrl}
+                            </div>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
+                                onClick={() =>
+                                  void navigator.clipboard.writeText(
+                                    locationEntryUrl,
+                                  )
+                                }
+                              >
+                                <Copy size={12} /> 링크 복사
+                              </button>
+                              <a
+                                className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
+                                href={locationEntryUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <ExternalLink size={12} /> 열기
+                              </a>
+                            </div>
+                          </div>
+                        ) : null}
+
                         {session.locationLabel ? (
                           <div className="text-[11px] text-text-secondary">
                             위치 기준: {session.locationLabel}
@@ -740,25 +871,6 @@ export function StudentCheckBoardPanel({
                               : ""}
                           </div>
                         ) : null}
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
-                            onClick={() =>
-                              void navigator.clipboard.writeText(publicUrl)
-                            }
-                          >
-                            <Copy size={12} /> 링크
-                          </button>
-                          <a
-                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-secondary"
-                            href={publicUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <ExternalLink size={12} /> 열기
-                          </a>
-                        </div>
                       </div>
                     </div>
                   );
@@ -775,133 +887,32 @@ export function StudentCheckBoardPanel({
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           {!loading && !error ? (
-            <div
-              className="space-y-3 sm:hidden"
-              data-tutorial="check-board-member-board-mobile"
-            >
-              {members.map((member) => {
-                const row = rowMap.get(member.id);
-                const draft = drafts[member.id] ?? {
-                  attendanceStatus: "unknown",
-                  assignmentStatus: "unknown",
-                  assignmentLink: "",
-                };
-
-                return (
-                  <article
-                    key={member.id}
-                    className="rounded-2xl border border-border bg-surface-2 p-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-text">
-                          {member.name}
-                        </div>
-                        <div className="mt-1 text-[11px] text-text-dim">
-                          {member.phone ?? "전화번호 없음"}
-                        </div>
-                      </div>
-                      <SelfCheckReadyBadge
-                        ready={Boolean(row?.isSelfCheckReady)}
-                      />
-                    </div>
-
-                    <div className="mt-3 grid gap-2">
-                      <select
-                        className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-                        value={draft.attendanceStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            attendanceStatus: event.target
-                              .value as StudentAttendanceStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">출석 상태 · 미정</option>
-                        <option value="present">출석</option>
-                        <option value="absent">미출석</option>
-                      </select>
-                      <select
-                        className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-                        value={draft.assignmentStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            assignmentStatus: event.target
-                              .value as StudentAssignmentStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">과제 상태 · 미정</option>
-                        <option value="done">과제 완료</option>
-                        <option value="not_done">과제 미완료</option>
-                      </select>
-                      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-                        <Link2 size={14} className="shrink-0 text-text-dim" />
-                        <input
-                          className="w-full bg-transparent text-sm text-text outline-none"
-                          value={draft.assignmentLink}
-                          onChange={(event) =>
-                            handleDraftChange(member.id, {
-                              assignmentLink: event.target.value,
-                            })
-                          }
-                          placeholder="과제 링크"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-text-secondary">
-                      <span>
-                        최근 공개체크:{" "}
-                        {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
-                      </span>
-                      <button
-                        className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-text-secondary disabled:opacity-50"
-                        disabled={isUpdatingBoard}
-                        onClick={() =>
-                          updateMemberBoard.mutate({
-                            memberId: member.id,
-                            body: {
-                              attendanceStatus: draft.attendanceStatus,
-                              assignmentStatus: draft.assignmentStatus,
-                              assignmentLink: draft.assignmentLink || null,
-                            },
-                          })
-                        }
-                      >
-                        저장
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <StudentBoardHistoryList
+              title="날짜별 출석 · 과제 이력"
+              description="기간 안에서 날짜별 최종 상태를 밀도 높게 확인합니다."
+              period={historyPeriod}
+              history={boardHistory}
+              onPeriodChange={setHistoryPeriod}
+              emptyMessage="선택한 기간에는 출석·과제 이력이 없습니다."
+            />
           ) : null}
 
           {!loading && !error ? (
-            <div
-              className="hidden overflow-hidden rounded-2xl border border-border bg-surface-2 xl:block"
-              data-tutorial="check-board-member-board-desktop"
-            >
-              <div className="border-b border-border bg-surface px-4 py-2 text-[11px] font-medium tracking-[0.04em] text-text-dim">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="min-w-0 flex-[1.8] truncate">수강생</span>
-                  <span className="w-[64px] shrink-0 text-center">
-                    셀프체크
-                  </span>
-                  <span className="w-[92px] shrink-0">출석</span>
-                  <span className="w-[92px] shrink-0">과제</span>
-                  <span className="min-w-0 flex-[1.35] truncate">
-                    과제 링크
-                  </span>
-                  <span className="w-[112px] shrink-0 truncate text-right">
-                    최근 공개체크
-                  </span>
-                  <span className="w-[72px] shrink-0 text-center">저장</span>
+            <div className="space-y-3 rounded-2xl border border-border bg-surface-2 p-3 sm:p-4">
+              <div>
+                <div className="text-sm font-semibold text-text">
+                  현재 상태 빠른 수정
                 </div>
+                <p className="mt-1 text-[11px] text-text-dim">
+                  최신 보드는 계속 유지하고, 실제 변경이 있을 때만 날짜 이력도
+                  함께 남깁니다.
+                </p>
               </div>
 
-              <div className="divide-y divide-border">
+              <div
+                className="space-y-3 sm:hidden"
+                data-tutorial="check-board-member-board-mobile"
+              >
                 {members.map((member) => {
                   const row = rowMap.get(member.id);
                   const draft = drafts[member.id] ?? {
@@ -911,198 +922,319 @@ export function StudentCheckBoardPanel({
                   };
 
                   return (
-                    <div
+                    <article
                       key={member.id}
-                      className="flex min-w-0 items-center gap-2.5 px-4 py-2.5"
+                      className="rounded-xl border border-border bg-surface p-2.5"
                     >
-                      <div className="min-w-0 flex-[1.8]">
-                        <div className="truncate text-[13px] font-semibold tracking-[-0.02em] text-text">
-                          {member.name}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold tracking-[-0.02em] text-text">
+                            {member.name}
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-text-dim">
+                            {member.phone ?? "전화번호 없음"}
+                          </div>
                         </div>
-                        <div className="mt-0.5 truncate text-[11px] leading-none text-text-dim">
-                          {member.phone ?? "전화번호 없음"}
-                        </div>
-                      </div>
-
-                      <div className="flex w-[64px] shrink-0 justify-center">
                         <SelfCheckReadyBadge
                           ready={Boolean(row?.isSelfCheckReady)}
                         />
                       </div>
 
-                      <select
-                        className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
-                        value={draft.attendanceStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            attendanceStatus: event.target
-                              .value as StudentAttendanceStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">미정</option>
-                        <option value="present">출석</option>
-                        <option value="absent">미출석</option>
-                      </select>
-
-                      <select
-                        className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
-                        value={draft.assignmentStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            assignmentStatus: event.target
-                              .value as StudentAssignmentStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">미정</option>
-                        <option value="done">완료</option>
-                        <option value="not_done">미완료</option>
-                      </select>
-
-                      <div className="flex h-9 min-w-0 flex-[1.35] items-center gap-2 rounded-lg border border-border bg-surface px-3 transition-colors hover:border-border-light">
-                        <Link2 size={13} className="shrink-0 text-text-dim" />
-                        <input
-                          className="w-full min-w-0 bg-transparent text-[13px] text-text outline-none placeholder:text-text-dim"
-                          value={draft.assignmentLink}
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <select
+                          className="h-11 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text"
+                          value={draft.attendanceStatus}
                           onChange={(event) =>
                             handleDraftChange(member.id, {
-                              assignmentLink: event.target.value,
+                              attendanceStatus: event.target
+                                .value as StudentAttendanceStatus,
                             })
                           }
-                          placeholder="과제 링크"
+                        >
+                          <option value="unknown">출석 · 미정</option>
+                          <option value="present">출석</option>
+                          <option value="absent">미출석</option>
+                        </select>
+                        <select
+                          className="h-11 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text"
+                          value={draft.assignmentStatus}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              assignmentStatus: event.target
+                                .value as StudentAssignmentStatus,
+                            })
+                          }
+                        >
+                          <option value="unknown">과제 · 미정</option>
+                          <option value="done">과제 완료</option>
+                          <option value="not_done">과제 미완료</option>
+                        </select>
+                        <div className="col-span-2 flex h-11 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3">
+                          <Link2 size={14} className="shrink-0 text-text-dim" />
+                          <input
+                            className="w-full min-w-0 bg-transparent text-[13px] text-text outline-none"
+                            value={draft.assignmentLink}
+                            onChange={(event) =>
+                              handleDraftChange(member.id, {
+                                assignmentLink: event.target.value,
+                              })
+                            }
+                            placeholder="과제 링크"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="min-w-0 flex-1 text-[10px] leading-relaxed text-text-secondary">
+                          최근 공개체크:{" "}
+                          {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                        </span>
+                        <button
+                          className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 px-3 text-[12px] font-medium text-text-secondary disabled:opacity-50"
+                          disabled={isUpdatingBoard}
+                          onClick={() =>
+                            updateMemberBoard.mutate({
+                              memberId: member.id,
+                              body: {
+                                attendanceStatus: draft.attendanceStatus,
+                                assignmentStatus: draft.assignmentStatus,
+                                assignmentLink: draft.assignmentLink || null,
+                              },
+                            })
+                          }
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div
+                className="hidden overflow-hidden rounded-2xl border border-border bg-surface xl:block"
+                data-tutorial="check-board-member-board-desktop"
+              >
+                <div className="border-b border-border bg-surface-2 px-4 py-2 text-[11px] font-medium tracking-[0.04em] text-text-dim">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="min-w-0 flex-[1.8] truncate">수강생</span>
+                    <span className="w-[64px] shrink-0 text-center">
+                      셀프체크
+                    </span>
+                    <span className="w-[92px] shrink-0">출석</span>
+                    <span className="w-[92px] shrink-0">과제</span>
+                    <span className="min-w-0 flex-[1.35] truncate">
+                      과제 링크
+                    </span>
+                    <span className="w-[112px] shrink-0 truncate text-right">
+                      최근 공개체크
+                    </span>
+                    <span className="w-[72px] shrink-0 text-center">저장</span>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-border">
+                  {members.map((member) => {
+                    const row = rowMap.get(member.id);
+                    const draft = drafts[member.id] ?? {
+                      attendanceStatus: "unknown",
+                      assignmentStatus: "unknown",
+                      assignmentLink: "",
+                    };
+
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex min-w-0 items-center gap-2.5 px-4 py-2.5"
+                      >
+                        <div className="min-w-0 flex-[1.8]">
+                          <div className="truncate text-[13px] font-semibold tracking-[-0.02em] text-text">
+                            {member.name}
+                          </div>
+                          <div className="mt-0.5 truncate text-[11px] leading-none text-text-dim">
+                            {member.phone ?? "전화번호 없음"}
+                          </div>
+                        </div>
+
+                        <div className="flex w-[64px] shrink-0 justify-center">
+                          <SelfCheckReadyBadge
+                            ready={Boolean(row?.isSelfCheckReady)}
+                          />
+                        </div>
+
+                        <select
+                          className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
+                          value={draft.attendanceStatus}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              attendanceStatus: event.target
+                                .value as StudentAttendanceStatus,
+                            })
+                          }
+                        >
+                          <option value="unknown">미정</option>
+                          <option value="present">출석</option>
+                          <option value="absent">미출석</option>
+                        </select>
+
+                        <select
+                          className="h-9 w-[92px] shrink-0 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-text outline-none transition-colors hover:border-border-light"
+                          value={draft.assignmentStatus}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              assignmentStatus: event.target
+                                .value as StudentAssignmentStatus,
+                            })
+                          }
+                        >
+                          <option value="unknown">미정</option>
+                          <option value="done">완료</option>
+                          <option value="not_done">미완료</option>
+                        </select>
+
+                        <div className="flex h-9 min-w-0 flex-[1.35] items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 transition-colors hover:border-border-light">
+                          <Link2 size={13} className="shrink-0 text-text-dim" />
+                          <input
+                            className="w-full min-w-0 bg-transparent text-[13px] text-text outline-none placeholder:text-text-dim"
+                            value={draft.assignmentLink}
+                            onChange={(event) =>
+                              handleDraftChange(member.id, {
+                                assignmentLink: event.target.value,
+                              })
+                            }
+                            placeholder="과제 링크"
+                          />
+                        </div>
+
+                        <div className="w-[112px] shrink-0 truncate text-right text-[11px] text-text-secondary">
+                          {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                        </div>
+
+                        <button
+                          className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
+                          disabled={isUpdatingBoard}
+                          onClick={() =>
+                            updateMemberBoard.mutate({
+                              memberId: member.id,
+                              body: {
+                                attendanceStatus: draft.attendanceStatus,
+                                assignmentStatus: draft.assignmentStatus,
+                                assignmentLink: draft.assignmentLink || null,
+                              },
+                            })
+                          }
+                        >
+                          저장
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="hidden gap-3 sm:grid xl:hidden">
+                {members.map((member) => {
+                  const row = rowMap.get(member.id);
+                  const draft = drafts[member.id] ?? {
+                    attendanceStatus: "unknown",
+                    assignmentStatus: "unknown",
+                    assignmentLink: "",
+                  };
+
+                  return (
+                    <article
+                      key={member.id}
+                      className="rounded-2xl border border-border bg-surface px-4 py-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold tracking-[-0.02em] text-text">
+                            {member.name}
+                          </div>
+                          <div className="mt-1 truncate text-[12px] text-text-dim">
+                            {member.phone ?? "전화번호 없음"}
+                          </div>
+                        </div>
+
+                        <SelfCheckReadyBadge
+                          ready={Boolean(row?.isSelfCheckReady)}
                         />
                       </div>
 
-                      <div className="w-[112px] shrink-0 truncate text-right text-[11px] text-text-secondary">
-                        {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[96px_96px_minmax(0,1fr)_88px]">
+                        <select
+                          className="h-10 rounded-xl border border-border bg-surface-2 px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
+                          value={draft.attendanceStatus}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              attendanceStatus: event.target
+                                .value as StudentAttendanceStatus,
+                            })
+                          }
+                        >
+                          <option value="unknown">출석 · 미정</option>
+                          <option value="present">출석</option>
+                          <option value="absent">미출석</option>
+                        </select>
+
+                        <select
+                          className="h-10 rounded-xl border border-border bg-surface-2 px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
+                          value={draft.assignmentStatus}
+                          onChange={(event) =>
+                            handleDraftChange(member.id, {
+                              assignmentStatus: event.target
+                                .value as StudentAssignmentStatus,
+                            })
+                          }
+                        >
+                          <option value="unknown">과제 · 미정</option>
+                          <option value="done">완료</option>
+                          <option value="not_done">미완료</option>
+                        </select>
+
+                        <div className="flex h-10 min-w-0 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 transition-colors hover:border-border-light">
+                          <Link2 size={14} className="shrink-0 text-text-dim" />
+                          <input
+                            className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
+                            value={draft.assignmentLink}
+                            onChange={(event) =>
+                              handleDraftChange(member.id, {
+                                assignmentLink: event.target.value,
+                              })
+                            }
+                            placeholder="과제 링크"
+                          />
+                        </div>
+
+                        <button
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-surface-2 px-3 text-sm font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
+                          disabled={isUpdatingBoard}
+                          onClick={() =>
+                            updateMemberBoard.mutate({
+                              memberId: member.id,
+                              body: {
+                                attendanceStatus: draft.attendanceStatus,
+                                assignmentStatus: draft.assignmentStatus,
+                                assignmentLink: draft.assignmentLink || null,
+                              },
+                            })
+                          }
+                        >
+                          저장
+                        </button>
                       </div>
 
-                      <button
-                        className="inline-flex h-9 w-[72px] shrink-0 items-center justify-center rounded-lg border border-border bg-surface px-2.5 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
-                        disabled={isUpdatingBoard}
-                        onClick={() =>
-                          updateMemberBoard.mutate({
-                            memberId: member.id,
-                            body: {
-                              attendanceStatus: draft.attendanceStatus,
-                              assignmentStatus: draft.assignmentStatus,
-                              assignmentLink: draft.assignmentLink || null,
-                            },
-                          })
-                        }
-                      >
-                        저장
-                      </button>
-                    </div>
+                      <div className="mt-2 text-[11px] text-text-secondary">
+                        최근 공개체크:{" "}
+                        {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
+                      </div>
+                    </article>
                   );
                 })}
               </div>
             </div>
           ) : null}
 
-          {!loading && !error ? (
-            <div className="hidden gap-3 sm:grid xl:hidden">
-              {members.map((member) => {
-                const row = rowMap.get(member.id);
-                const draft = drafts[member.id] ?? {
-                  attendanceStatus: "unknown",
-                  assignmentStatus: "unknown",
-                  assignmentLink: "",
-                };
-
-                return (
-                  <article
-                    key={member.id}
-                    className="rounded-2xl border border-border bg-surface-2 px-4 py-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold tracking-[-0.02em] text-text">
-                          {member.name}
-                        </div>
-                        <div className="mt-1 truncate text-[12px] text-text-dim">
-                          {member.phone ?? "전화번호 없음"}
-                        </div>
-                      </div>
-
-                      <SelfCheckReadyBadge
-                        ready={Boolean(row?.isSelfCheckReady)}
-                      />
-                    </div>
-
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[96px_96px_minmax(0,1fr)_88px]">
-                      <select
-                        className="h-10 rounded-xl border border-border bg-surface px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
-                        value={draft.attendanceStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            attendanceStatus: event.target
-                              .value as StudentAttendanceStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">출석 · 미정</option>
-                        <option value="present">출석</option>
-                        <option value="absent">미출석</option>
-                      </select>
-
-                      <select
-                        className="h-10 rounded-xl border border-border bg-surface px-3 text-sm text-text outline-none transition-colors hover:border-border-light"
-                        value={draft.assignmentStatus}
-                        onChange={(event) =>
-                          handleDraftChange(member.id, {
-                            assignmentStatus: event.target
-                              .value as StudentAssignmentStatus,
-                          })
-                        }
-                      >
-                        <option value="unknown">과제 · 미정</option>
-                        <option value="done">완료</option>
-                        <option value="not_done">미완료</option>
-                      </select>
-
-                      <div className="flex h-10 min-w-0 items-center gap-2 rounded-xl border border-border bg-surface px-3 transition-colors hover:border-border-light">
-                        <Link2 size={14} className="shrink-0 text-text-dim" />
-                        <input
-                          className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
-                          value={draft.assignmentLink}
-                          onChange={(event) =>
-                            handleDraftChange(member.id, {
-                              assignmentLink: event.target.value,
-                            })
-                          }
-                          placeholder="과제 링크"
-                        />
-                      </div>
-
-                      <button
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text disabled:opacity-50"
-                        disabled={isUpdatingBoard}
-                        onClick={() =>
-                          updateMemberBoard.mutate({
-                            memberId: member.id,
-                            body: {
-                              attendanceStatus: draft.attendanceStatus,
-                              assignmentStatus: draft.assignmentStatus,
-                              assignmentLink: draft.assignmentLink || null,
-                            },
-                          })
-                        }
-                      >
-                        저장
-                      </button>
-                    </div>
-
-                    <div className="mt-2 text-[11px] text-text-secondary">
-                      최근 공개체크:{" "}
-                      {formatLastPublicCheckAt(row?.lastPublicCheckAt)}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
         </div>
       ) : null}
 

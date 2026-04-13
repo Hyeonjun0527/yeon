@@ -17,13 +17,16 @@ vi.mock("drizzle-orm", () => ({
   eq: (left: unknown, right: unknown) => ({ left, right }),
   sql: (strings: TemplateStringsArray) => strings.join(""),
 }));
-vi.mock("../student-board-service", () => ({
+vi.mock("@/server/services/student-board-service", () => ({
   assertSpaceOwnedByUser: vi.fn(),
+  persistMemberBoardSnapshot: vi.fn(),
 }));
 
+import { persistMemberBoardSnapshot } from "@/server/services/student-board-service";
 import {
   getPublicCheckSessionByToken,
   submitPublicCheck,
+  verifyPublicCheckIdentity,
 } from "../public-check-service";
 
 function createDbMock(selectResults: unknown[][]) {
@@ -66,11 +69,12 @@ describe("public-check-service", () => {
     vi.clearAllMocks();
   });
 
-  it("공개 체크인 세션 정보를 반환한다", async () => {
+  it("QR entry에서 기억된 수강생이 있으면 이름 입력을 다시 요구하지 않는다", async () => {
     const { db } = createDbMock([
       [
         {
           id: "session-1",
+          spaceId: "space-1",
           title: "오늘 출석 체크",
           status: "active",
           checkMode: "attendance_and_assignment",
@@ -80,19 +84,81 @@ describe("public-check-service", () => {
           closesAt: null,
         },
       ],
+      [
+        {
+          id: "member-1",
+          spaceId: "space-1",
+          name: "홍길동",
+          phone: "010-1111-1234",
+        },
+      ],
     ]);
     getDbMock.mockReturnValue(db);
 
-    await expect(getPublicCheckSessionByToken("token-1")).resolves.toEqual({
-      title: "오늘 출석 체크",
-      checkMode: "attendance_and_assignment",
-      enabledMethods: ["qr", "location"],
-      locationLabel: "강남 강의실",
-      requiresPhoneLast4: true,
+    await expect(
+      getPublicCheckSessionByToken({
+        token: "token-1",
+        entry: "qr",
+        rememberedIdentities: [{ spaceId: "space-1", memberId: "member-1" }],
+      }),
+    ).resolves.toEqual({
+      spaceId: "space-1",
+      session: {
+        title: "오늘 출석 체크",
+        checkMode: "attendance_and_assignment",
+        enabledMethods: ["qr", "location"],
+        locationLabel: "강남 강의실",
+        requiresPhoneLast4: false,
+        rememberedMemberName: "홍길동",
+      },
+      shouldClearRememberedIdentity: false,
     });
   });
 
-  it("일치하는 수강생이 없으면 not_found submission을 남긴다", async () => {
+  it("QR 첫 인증은 verify 경로에서 수강생을 확인하고 remember용 memberId를 돌려준다", async () => {
+    const { db } = createDbMock([
+      [
+        {
+          id: "session-1",
+          spaceId: "space-1",
+          status: "active",
+          checkMode: "attendance_and_assignment",
+          enabledMethods: ["qr"],
+          opensAt: null,
+          closesAt: null,
+        },
+      ],
+      [
+        {
+          id: "member-1",
+          spaceId: "space-1",
+          name: "홍길동",
+          phone: "010-1111-1234",
+        },
+      ],
+    ]);
+    getDbMock.mockReturnValue(db);
+
+    await expect(
+      verifyPublicCheckIdentity({
+        token: "token-1",
+        body: {
+          name: "홍길동",
+          phoneLast4: "1234",
+        },
+      }),
+    ).resolves.toEqual({
+      spaceId: "space-1",
+      result: {
+        verificationStatus: "matched",
+        message: "본인 확인이 완료되었습니다.",
+        matchedMemberName: "홍길동",
+      },
+      rememberedMemberId: "member-1",
+    });
+  });
+
+  it("QR 체크인이 일치하면 출석 보드와 submission을 함께 남기고 remember memberId를 돌려준다", async () => {
     const { db, insertedPayloads } = createDbMock([
       [
         {
@@ -105,7 +171,14 @@ describe("public-check-service", () => {
           closesAt: null,
         },
       ],
-      [],
+      [
+        {
+          id: "member-1",
+          spaceId: "space-1",
+          name: "홍길동",
+          phone: "010-1111-1234",
+        },
+      ],
     ]);
     getDbMock.mockReturnValue(db);
 
@@ -123,28 +196,48 @@ describe("public-check-service", () => {
         },
       }),
     ).resolves.toEqual({
-      verificationStatus: "not_found",
-      message: "일치하는 수강생을 찾지 못했습니다.",
-      matchedMemberName: null,
+      spaceId: "space-1",
+      result: {
+        verificationStatus: "matched",
+        message: "출석과 과제 체크가 완료되었습니다.",
+        matchedMemberName: "홍길동",
+      },
+      rememberedMemberId: "member-1",
+      shouldClearRememberedIdentity: false,
     });
 
+    expect(vi.mocked(persistMemberBoardSnapshot)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0]).toMatchObject(
+      {
+        memberId: "member-1",
+        spaceId: "space-1",
+        attendanceStatus: "present",
+        assignmentStatus: "done",
+        assignmentLink: "https://example.com/homework",
+        source: "public_qr",
+        sessionId: "session-1",
+      },
+    );
     expect(insertedPayloads[0]).toMatchObject({
+      memberId: "member-1",
       sessionId: "session-1",
       spaceId: "space-1",
-      verificationStatus: "not_found",
+      assignmentStatus: "done",
+      assignmentLink: "https://example.com/homework",
+      verificationStatus: "matched",
       submittedName: "홍길동",
       submittedPhoneLast4: "1234",
     });
   });
 
-  it("QR 체크인이 일치하면 출석 보드와 submission을 함께 남긴다", async () => {
+  it("기억된 수강생이 있는 QR 체크인은 이름과 전화번호 없이도 제출된다", async () => {
     const { db, insertedPayloads } = createDbMock([
       [
         {
           id: "session-1",
           spaceId: "space-1",
           status: "active",
-          checkMode: "attendance_and_assignment",
+          checkMode: "attendance_only",
           enabledMethods: ["qr"],
           opensAt: null,
           closesAt: null,
@@ -153,68 +246,11 @@ describe("public-check-service", () => {
       [
         {
           id: "member-1",
-          name: "홍길동",
-          phone: "010-1111-1234",
-        },
-      ],
-      [],
-    ]);
-    getDbMock.mockReturnValue(db);
-
-    await expect(
-      submitPublicCheck({
-        token: "token-1",
-        body: {
-          method: "qr",
-          name: "홍길동",
-          phoneLast4: "1234",
-          assignmentStatus: "done",
-          assignmentLink: "https://example.com/homework",
-          latitude: null,
-          longitude: null,
-        },
-      }),
-    ).resolves.toEqual({
-      verificationStatus: "matched",
-      message: "출석과 과제 체크가 완료되었습니다.",
-      matchedMemberName: "홍길동",
-    });
-
-    expect(insertedPayloads[0]).toMatchObject({
-      memberId: "member-1",
-      spaceId: "space-1",
-      attendanceStatus: "present",
-      attendanceMarkedSource: "public_qr",
-      assignmentStatus: "done",
-    });
-    expect(insertedPayloads[1]).toMatchObject({
-      memberId: "member-1",
-      sessionId: "session-1",
-      verificationStatus: "matched",
-    });
-  });
-
-  it("과제 전용 체크인이 일치하면 과제만 기록한다", async () => {
-    const { db, insertedPayloads } = createDbMock([
-      [
-        {
-          id: "session-1",
           spaceId: "space-1",
-          status: "active",
-          checkMode: "assignment_only",
-          enabledMethods: ["qr"],
-          opensAt: null,
-          closesAt: null,
-        },
-      ],
-      [
-        {
-          id: "member-1",
           name: "홍길동",
           phone: "010-1111-1234",
         },
       ],
-      [],
     ]);
     getDbMock.mockReturnValue(db);
 
@@ -223,31 +259,40 @@ describe("public-check-service", () => {
         token: "token-1",
         body: {
           method: "qr",
-          name: "홍길동",
-          phoneLast4: "1234",
-          assignmentStatus: "done",
-          assignmentLink: "https://example.com/homework",
+          assignmentStatus: undefined,
+          assignmentLink: undefined,
           latitude: null,
           longitude: null,
         },
+        rememberedIdentities: [{ spaceId: "space-1", memberId: "member-1" }],
       }),
     ).resolves.toEqual({
-      verificationStatus: "matched",
-      message: "과제 체크가 완료되었습니다.",
-      matchedMemberName: "홍길동",
+      spaceId: "space-1",
+      result: {
+        verificationStatus: "matched",
+        message: "출석 체크가 완료되었습니다.",
+        matchedMemberName: "홍길동",
+      },
+      rememberedMemberId: "member-1",
+      shouldClearRememberedIdentity: false,
     });
 
+    expect(vi.mocked(persistMemberBoardSnapshot)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(persistMemberBoardSnapshot).mock.calls[0]?.[0]).toMatchObject(
+      {
+        memberId: "member-1",
+        spaceId: "space-1",
+        attendanceStatus: "present",
+        source: "public_qr",
+        sessionId: "session-1",
+      },
+    );
     expect(insertedPayloads[0]).toMatchObject({
-      memberId: "member-1",
-      spaceId: "space-1",
-      attendanceStatus: "unknown",
-      assignmentStatus: "done",
-      assignmentMarkedSource: "public_qr",
-    });
-    expect(insertedPayloads[1]).toMatchObject({
       memberId: "member-1",
       sessionId: "session-1",
       verificationStatus: "matched",
+      submittedName: "홍길동",
+      submittedPhoneLast4: "1234",
     });
   });
 });

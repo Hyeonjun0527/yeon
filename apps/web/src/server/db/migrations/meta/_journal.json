@@ -148,6 +148,13 @@
       "when": 1776081600000,
       "tag": "0020_clammy_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1776085200000,
+      "tag": "0021_student_board_history",
+      "breakpoints": true
     }
   ]
 }
