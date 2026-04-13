@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import { CheckBoardTutorial } from "@/components/tutorial";
+import { useRegisterTutorialPolicy } from "@/app/home/_components/home-sidebar-layout-context";
 import { useAppRoute } from "@/lib/app-route-context";
 
 import { useStudentManagement } from "../student-management-provider";
@@ -12,6 +13,13 @@ export function StudentCheckBoardScreen() {
   const { resolveAppHref } = useAppRoute();
   const { selectedSpaceId, members, membersLoading, membersError } =
     useStudentManagement();
+  const checkBoardTutorialPolicy = !selectedSpaceId
+    ? { mode: "empty" as const, showTrigger: false }
+    : !membersLoading && !membersError
+      ? { mode: "full" as const, showTrigger: true }
+      : { mode: "disabled" as const, showTrigger: false };
+
+  useRegisterTutorialPolicy("check-board", checkBoardTutorialPolicy);
 
   if (!selectedSpaceId) {
     return (

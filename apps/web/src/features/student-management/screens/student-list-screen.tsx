@@ -31,7 +31,9 @@ import type { RiskLevel } from "../types";
 import { SheetExportPanel } from "../components/sheet-export-panel";
 import { useSpaceSettingsDrawer } from "../../space-settings";
 import { StudentTutorial } from "@/components/tutorial";
+import { useRegisterTutorialPolicy } from "@/app/home/_components/home-sidebar-layout-context";
 import { useAppRoute } from "@/lib/app-route-context";
+import { formatSpacePeriodLabel } from "@/lib/space-period";
 
 function getMemberContact(member: {
   email?: string | null;
@@ -73,6 +75,10 @@ export function StudentListScreen() {
 
   const currentSpace = spaces.find((s) => s.id === selectedSpaceId) ?? null;
   const spaceName = currentSpace?.name ?? null;
+  const spacePeriodLabel = formatSpacePeriodLabel(
+    currentSpace?.startDate ?? null,
+    currentSpace?.endDate ?? null,
+  );
   const noSpaces = !spacesLoading && spaces.length === 0;
   const detailBaseHref = selectedSpaceId
     ? (memberId: string) =>
@@ -110,6 +116,15 @@ export function StudentListScreen() {
   const hasMembers = !loading && !error && filteredMembers.length > 0;
   const isFilteredEmpty =
     !loading && !error && rawMemberCount > 0 && filteredMembers.length === 0;
+  const studentTutorialPolicy = !selectedSpaceId
+    ? { mode: "disabled" as const, showTrigger: false }
+    : hasMembers
+      ? { mode: "full" as const, showTrigger: true }
+      : isEmpty && !isFilteredEmpty
+        ? { mode: "empty" as const, showTrigger: false }
+        : { mode: "disabled" as const, showTrigger: false };
+
+  useRegisterTutorialPolicy("student", studentTutorialPolicy);
 
   // dense view만 가상 스크롤을 사용한다. 카드 뷰는 자연스러운 CSS grid를 유지해야
   // 기존 디자인과 간격이 보존되고, row-based virtualization으로 인한 레이아웃 왜곡을 피할 수 있다.
@@ -456,9 +471,13 @@ export function StudentListScreen() {
               {spaceName}
             </h2>
             {!loading && (
-              <p className="mt-0.5 text-sm text-text-secondary">
-                {filteredMembers.length}명
-              </p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-secondary">
+                <span>{filteredMembers.length}명</span>
+                <span className="text-text-dim">·</span>
+                <span className="text-text-dim">
+                  {spacePeriodLabel ?? "진행기간 미설정"}
+                </span>
+              </div>
             )}
           </div>
 
@@ -470,7 +489,7 @@ export function StudentListScreen() {
                   selectedSpaceId &&
                   openSpaceSettings({ spaceId: selectedSpaceId })
                 }
-                title="수강생 탭·항목 설정"
+                title="진행기간과 수강생 정보 구성 설정"
               >
                 <Settings size={14} />
                 스페이스 설정

@@ -60,6 +60,8 @@ function previewFingerprint(preview: ImportPreview): string {
   return JSON.stringify(
     preview.cohorts.map((cohort) => ({
       name: cohort.name,
+      startDate: cohort.startDate ?? null,
+      endDate: cohort.endDate ?? null,
       students: cohort.students.map((student) => ({
         name: student.name,
         email: student.email ?? null,

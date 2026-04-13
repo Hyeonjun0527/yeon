@@ -3,6 +3,7 @@ import { z } from "zod";
 export const memberTabTypeValues = ["system", "custom"] as const;
 export const memberTabSystemKeyValues = [
   "overview",
+  "student_board",
   "counseling",
   "memos",
   "report",
@@ -38,6 +39,8 @@ export const createSpaceBodySchema = z.object({
 
 export const updateSpaceBodySchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
 });
 
 export const createMemberBodySchema = z.object({

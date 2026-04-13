@@ -66,6 +66,9 @@ export function RecordDetailHeader({
     selectedRecord.analysisStatus === "processing";
   const isAudioUploadRecord = selectedRecord.recordSource === "audio_upload";
   const isTextMemoRecord = selectedRecord.recordSource === "text_memo";
+  const isPartialTranscriptReady =
+    selectedRecord.status === "processing" &&
+    selectedRecord.processingStage === "partial_transcript_ready";
   const analysisStatusLabel =
     selectedRecord.analysisStatus === "error"
       ? "AI 분석 실패"
@@ -446,6 +449,32 @@ export function RecordDetailHeader({
                 <RefreshCcw size={16} strokeWidth={2.1} />
               )}
               최신 상태 확인
+            </button>
+          ) : null}
+
+          {isPartialTranscriptReady && isAudioUploadRecord ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 border-none rounded-[10px] font-bold cursor-pointer transition-[transform,opacity,background-color] duration-[180ms] hover:enabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.62]"
+              style={{ background: "var(--accent)", color: "#ffffff" }}
+              onClick={() => retryTranscription(selectedRecord.id)}
+              disabled={retryState.isSubmitting}
+            >
+              {retryState.isSubmitting ? (
+                <>
+                  <LoaderCircle
+                    size={16}
+                    strokeWidth={2.1}
+                    className={styles.spinningIcon}
+                  />
+                  누락 구간 재시도 중
+                </>
+              ) : (
+                <>
+                  <RefreshCcw size={16} strokeWidth={2.1} />
+                  누락 구간 다시 시도
+                </>
+              )}
             </button>
           ) : null}
 

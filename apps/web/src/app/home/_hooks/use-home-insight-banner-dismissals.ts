@@ -31,9 +31,10 @@ function applyDismissalToState(
   nextDismissal: HomeInsightBannerDismissal,
 ): HomeInsightBannerStateResponse {
   const existing = current ? current.dismissals : [];
-  const nextDismissals = new Map<HomeInsightBannerKey, HomeInsightBannerDismissal>(
-    existing.map((dismissal) => [dismissal.bannerKey, dismissal]),
-  );
+  const nextDismissals = new Map<
+    HomeInsightBannerKey,
+    HomeInsightBannerDismissal
+  >(existing.map((dismissal) => [dismissal.bannerKey, dismissal]));
 
   nextDismissals.set(nextDismissal.bannerKey, nextDismissal);
 
@@ -64,26 +65,22 @@ export function useHomeInsightBannerDismissals() {
   });
   const dismissals = query.data ? query.data.dismissals : null;
 
-  const hiddenUntilByBanner = useMemo(
-    () => {
-      if (!dismissals) {
-        return new Map<HomeInsightBannerKey, number>();
-      }
+  const hiddenUntilByBanner = useMemo(() => {
+    if (!dismissals) {
+      return new Map<HomeInsightBannerKey, number>();
+    }
 
-      return new Map<HomeInsightBannerKey, number>(
-        dismissals
-          .map((dismissal) => [
-            dismissal.bannerKey,
-            toTimestamp(dismissal.hiddenUntil),
-          ])
-          .filter(
-            (entry): entry is [HomeInsightBannerKey, number] =>
-              entry[1] !== null,
-          ),
-      );
-    },
-    [dismissals],
-  );
+    return new Map<HomeInsightBannerKey, number>(
+      dismissals
+        .map((dismissal) => [
+          dismissal.bannerKey,
+          toTimestamp(dismissal.hiddenUntil),
+        ])
+        .filter(
+          (entry): entry is [HomeInsightBannerKey, number] => entry[1] !== null,
+        ),
+    );
+  }, [dismissals]);
 
   useEffect(() => {
     const nextVisibleAt = Math.min(
@@ -96,9 +93,12 @@ export function useHomeInsightBannerDismissals() {
       return;
     }
 
-    const timeout = window.setTimeout(() => {
-      setNowTimestamp(Date.now());
-    }, Math.max(0, nextVisibleAt - nowTimestamp) + 50);
+    const timeout = window.setTimeout(
+      () => {
+        setNowTimestamp(Date.now());
+      },
+      Math.max(0, nextVisibleAt - nowTimestamp) + 50,
+    );
 
     return () => window.clearTimeout(timeout);
   }, [hiddenUntilByBanner, nowTimestamp]);

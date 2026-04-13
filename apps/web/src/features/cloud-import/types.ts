@@ -27,6 +27,8 @@ export interface ImportStudent {
 
 export interface ImportCohort {
   name: string;
+  startDate?: string | null;
+  endDate?: string | null;
   students: ImportStudent[];
 }
 

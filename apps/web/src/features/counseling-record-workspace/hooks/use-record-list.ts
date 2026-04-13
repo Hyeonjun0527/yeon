@@ -21,6 +21,8 @@ import {
   serializeCsvParam,
 } from "@/lib/route-state/search-params";
 
+const PARTIAL_TRANSCRIPT_READY_STAGE = "partial_transcript_ready";
+
 export function useRecordList() {
   const router = useRouter();
   const pathname = usePathname();
@@ -179,7 +181,8 @@ export function useRecordList() {
     if (
       !records.some(
         (record) =>
-          record.status === "processing" ||
+          (record.status === "processing" &&
+            record.processingStage !== PARTIAL_TRANSCRIPT_READY_STAGE) ||
           ["queued", "processing"].includes(record.analysisStatus),
       )
     ) {

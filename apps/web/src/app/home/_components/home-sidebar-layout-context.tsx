@@ -1,12 +1,28 @@
 "use client";
 
 import {
+  useEffect,
+  useCallback,
   createContext,
   useContext,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+
+type HomeSidebarSection = "records" | "students";
+type HomeTutorialKey = "home" | "student" | "check-board";
+export type HomeTutorialMode = "disabled" | "empty" | "full";
+
+type HomeTutorialPolicy = {
+  mode: HomeTutorialMode;
+  showTrigger: boolean;
+};
+
+const DEFAULT_TUTORIAL_POLICY: HomeTutorialPolicy = {
+  mode: "disabled",
+  showTrigger: false,
+};
 
 type HomeSidebarLayoutContextValue = {
   sidebarCollapsed: boolean;
@@ -15,6 +31,14 @@ type HomeSidebarLayoutContextValue = {
   studentSidebarCollapsed: boolean;
   setStudentSidebarCollapsed: (next: boolean) => void;
   toggleStudentSidebarCollapsed: () => void;
+  recordsSidebarToggleVisible: boolean;
+  studentSidebarToggleVisible: boolean;
+  setSidebarToggleVisibility: (
+    section: HomeSidebarSection,
+    next: boolean,
+  ) => void;
+  tutorialPolicies: Record<HomeTutorialKey, HomeTutorialPolicy>;
+  setTutorialPolicy: (key: HomeTutorialKey, policy: HomeTutorialPolicy) => void;
 };
 
 const HomeSidebarLayoutContext =
@@ -27,21 +51,76 @@ export function HomeSidebarLayoutProvider({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [studentSidebarCollapsed, setStudentSidebarCollapsed] = useState(false);
+  const [recordsSidebarToggleVisible, setRecordsSidebarToggleVisible] =
+    useState(false);
+  const [studentSidebarToggleVisible, setStudentSidebarToggleVisible] =
+    useState(false);
+  const [tutorialPolicies, setTutorialPolicies] = useState<
+    Record<HomeTutorialKey, HomeTutorialPolicy>
+  >({
+    home: DEFAULT_TUTORIAL_POLICY,
+    student: DEFAULT_TUTORIAL_POLICY,
+    "check-board": DEFAULT_TUTORIAL_POLICY,
+  });
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
+  const toggleStudentSidebarCollapsed = useCallback(() => {
+    setStudentSidebarCollapsed((prev) => !prev);
+  }, []);
+  const setSidebarToggleVisibility = useCallback(
+    (section: HomeSidebarSection, next: boolean) => {
+      if (section === "records") {
+        setRecordsSidebarToggleVisible(next);
+        return;
+      }
+
+      setStudentSidebarToggleVisible(next);
+    },
+    [],
+  );
+  const setTutorialPolicy = useCallback(
+    (key: HomeTutorialKey, policy: HomeTutorialPolicy) => {
+      setTutorialPolicies((current) => {
+        const previous = current[key];
+        if (
+          previous.mode === policy.mode &&
+          previous.showTrigger === policy.showTrigger
+        ) {
+          return current;
+        }
+
+        return { ...current, [key]: policy };
+      });
+    },
+    [],
+  );
 
   const value = useMemo<HomeSidebarLayoutContextValue>(
     () => ({
       sidebarCollapsed,
       setSidebarCollapsed,
-      toggleSidebarCollapsed: () => {
-        setSidebarCollapsed((prev) => !prev);
-      },
+      toggleSidebarCollapsed,
       studentSidebarCollapsed,
       setStudentSidebarCollapsed,
-      toggleStudentSidebarCollapsed: () => {
-        setStudentSidebarCollapsed((prev) => !prev);
-      },
+      toggleStudentSidebarCollapsed,
+      recordsSidebarToggleVisible,
+      studentSidebarToggleVisible,
+      setSidebarToggleVisibility,
+      tutorialPolicies,
+      setTutorialPolicy,
     }),
-    [sidebarCollapsed, studentSidebarCollapsed],
+    [
+      recordsSidebarToggleVisible,
+      sidebarCollapsed,
+      setSidebarToggleVisibility,
+      setTutorialPolicy,
+      studentSidebarCollapsed,
+      studentSidebarToggleVisible,
+      toggleSidebarCollapsed,
+      toggleStudentSidebarCollapsed,
+      tutorialPolicies,
+    ],
   );
 
   return (
@@ -59,4 +138,39 @@ export function useHomeSidebarLayout() {
   }
 
   return context;
+}
+
+export function useSidebarToggleVisibility(
+  section: HomeSidebarSection,
+  canToggleSidebar: boolean,
+) {
+  const { setSidebarToggleVisibility } = useHomeSidebarLayout();
+
+  useEffect(() => {
+    setSidebarToggleVisibility(section, canToggleSidebar);
+
+    return () => {
+      setSidebarToggleVisibility(section, false);
+    };
+  }, [canToggleSidebar, section, setSidebarToggleVisibility]);
+}
+
+export function useTutorialPolicy(key: HomeTutorialKey): HomeTutorialPolicy {
+  const { tutorialPolicies } = useHomeSidebarLayout();
+  return tutorialPolicies[key];
+}
+
+export function useRegisterTutorialPolicy(
+  key: HomeTutorialKey,
+  policy: HomeTutorialPolicy,
+) {
+  const { setTutorialPolicy } = useHomeSidebarLayout();
+
+  useEffect(() => {
+    setTutorialPolicy(key, policy);
+
+    return () => {
+      setTutorialPolicy(key, DEFAULT_TUTORIAL_POLICY);
+    };
+  }, [key, policy.mode, policy.showTrigger, setTutorialPolicy]);
 }

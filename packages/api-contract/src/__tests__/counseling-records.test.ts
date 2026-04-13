@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   counselingRecordStatusSchema,
+  counselingRecordProcessingStageSchema,
   counselingRecordSpeakerToneSchema,
   counselingTranscriptSegmentSchema,
   counselingChatMessageSchema,
@@ -113,6 +114,21 @@ describe("counselingRecordStatusSchema", () => {
     expect(counselingRecordStatusSchema.safeParse("pending").success).toBe(
       false,
     );
+  });
+});
+
+describe("counselingRecordProcessingStageSchema", () => {
+  it("partial_transcript_ready 를 유효한 값으로 통과시킨다", () => {
+    expect(
+      counselingRecordProcessingStageSchema.parse("partial_transcript_ready"),
+    ).toBe("partial_transcript_ready");
+  });
+
+  it("정의되지 않은 처리 단계는 실패한다", () => {
+    expect(
+      counselingRecordProcessingStageSchema.safeParse("transcript_partial")
+        .success,
+    ).toBe(false);
   });
 });
 

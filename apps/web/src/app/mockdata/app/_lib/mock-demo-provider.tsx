@@ -102,10 +102,22 @@ type DemoStore = {
   boardRows: Array<{
     memberId: string;
     attendanceStatus: "unknown" | "present" | "absent";
+    attendanceMarkedAt: string | null;
+    attendanceMarkedSource: "manual" | "public_qr" | "public_location" | null;
     assignmentStatus: "unknown" | "done" | "not_done";
     assignmentLink: string | null;
+    assignmentMarkedAt: string | null;
+    assignmentMarkedSource: "manual" | "public_qr" | "public_location" | null;
     isSelfCheckReady: boolean;
     lastPublicCheckAt: string | null;
+    dailyCells: Array<{
+      date: string;
+      attendanceStatus: "unknown" | "present" | "absent";
+      assignmentStatus: "unknown" | "done" | "not_done";
+      assignmentLink: string | null;
+      occurredAt: string | null;
+      source: "manual" | "public_qr" | "public_location" | null;
+    }>;
   }>;
   boardSessions: Array<{
     id: string;
@@ -326,11 +338,18 @@ function createInitialStore(): DemoStore {
     memberId: member.id,
     attendanceStatus:
       demoBoardRows[index]?.attendance === "출석" ? "present" : "unknown",
+    attendanceMarkedAt: index < 3 ? nowIso : null,
+    attendanceMarkedSource: index < 3 ? "manual" : null,
     assignmentStatus:
       demoBoardRows[index]?.assignment === "완료" ? "done" : "unknown",
     assignmentLink: demoBoardRows[index]?.link || null,
+    assignmentMarkedAt:
+      demoBoardRows[index]?.assignment === "완료" ? nowIso : null,
+    assignmentMarkedSource:
+      demoBoardRows[index]?.assignment === "완료" ? "manual" : null,
     isSelfCheckReady: !!member.phone,
     lastPublicCheckAt: index < 3 ? nowIso : null,
+    dailyCells: [],
   }));
 
   const boardSessions: DemoStore["boardSessions"] = demoCheckSessions.map(
@@ -599,10 +618,15 @@ async function handleMockApi(request: Request): Promise<Response | null> {
         {
           memberId: member.id,
           attendanceStatus: "unknown",
+          attendanceMarkedAt: null,
+          attendanceMarkedSource: null,
           assignmentStatus: "unknown",
           assignmentLink: null,
+          assignmentMarkedAt: null,
+          assignmentMarkedSource: null,
           isSelfCheckReady: !!member.phone,
           lastPublicCheckAt: null,
+          dailyCells: [],
         },
         ...demoStore.boardRows,
       ],
@@ -699,6 +723,7 @@ async function handleMockApi(request: Request): Promise<Response | null> {
     return createJsonResponse({
       rows: demoStore.boardRows,
       sessions: demoStore.boardSessions,
+      historyPeriod: "space",
     });
   }
 
@@ -752,6 +777,7 @@ async function handleMockApi(request: Request): Promise<Response | null> {
     return createJsonResponse({
       rows: demoStore.boardRows,
       sessions: demoStore.boardSessions,
+      historyPeriod: "space",
     });
   }
 

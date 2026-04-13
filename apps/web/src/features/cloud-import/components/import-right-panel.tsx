@@ -7,6 +7,7 @@ import {
   IMPORT_ANALYSIS_CHECKLIST,
   getImportAnalysisChecklistStep,
 } from "@/lib/import-analysis-progress";
+import { getSpacePeriodInputError } from "@/lib/space-period";
 import type { ChatMessage, ImportHook, ImportPreview } from "../types";
 
 function formatImportErrorMessage(error: string) {
@@ -506,7 +507,7 @@ type AnalysisVirtualRow =
     };
 
 const ANALYSIS_ROW_HEIGHTS = {
-  cohort: 60,
+  cohort: 118,
   columns: 38,
   student: 42,
 } as const;
@@ -550,6 +551,7 @@ const PreviewAnalysisContent = memo(
     columns,
     columnSignature: _columnSignature,
     onUpdateCohortName,
+    onUpdateCohortPeriod,
     onUpdateStudent,
     onRemoveStudent,
   }: {
@@ -558,6 +560,11 @@ const PreviewAnalysisContent = memo(
     columns: PreviewColumn[];
     columnSignature: string;
     onUpdateCohortName: (ci: number, name: string) => void;
+    onUpdateCohortPeriod: (
+      ci: number,
+      field: "startDate" | "endDate",
+      value: string,
+    ) => void;
     onUpdateStudent: (
       ci: number,
       si: number,
@@ -626,6 +633,7 @@ const PreviewAnalysisContent = memo(
                     columns={columns}
                     gridTemplateColumns={gridTemplateColumns}
                     onUpdateCohortName={onUpdateCohortName}
+                    onUpdateCohortPeriod={onUpdateCohortPeriod}
                     onUpdateStudent={onUpdateStudent}
                     onRemoveStudent={onRemoveStudent}
                     style={{
@@ -646,6 +654,7 @@ const PreviewAnalysisContent = memo(
     prev.totalStudents === next.totalStudents &&
     prev.columnSignature === next.columnSignature &&
     prev.onUpdateCohortName === next.onUpdateCohortName &&
+    prev.onUpdateCohortPeriod === next.onUpdateCohortPeriod &&
     prev.onUpdateStudent === next.onUpdateStudent &&
     prev.onRemoveStudent === next.onRemoveStudent,
 );
@@ -655,6 +664,7 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
   columns,
   gridTemplateColumns,
   onUpdateCohortName,
+  onUpdateCohortPeriod,
   onUpdateStudent,
   onRemoveStudent,
   style,
@@ -663,6 +673,11 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
   columns: PreviewColumn[];
   gridTemplateColumns: string;
   onUpdateCohortName: (ci: number, name: string) => void;
+  onUpdateCohortPeriod: (
+    ci: number,
+    field: "startDate" | "endDate",
+    value: string,
+  ) => void;
   onUpdateStudent: (
     ci: number,
     si: number,
@@ -676,17 +691,62 @@ const PreviewAnalysisVirtualRow = memo(function PreviewAnalysisVirtualRow({
   };
 }) {
   if (row.type === "cohort") {
+    const periodError = getSpacePeriodInputError(
+      row.cohort.startDate ?? null,
+      row.cohort.endDate ?? null,
+    );
+
     return (
       <div
         className="absolute left-0 top-0 w-full rounded-t-2xl border-x border-t border-border bg-surface/65 px-3 pt-3"
         style={style}
       >
-        <input
-          className="block w-full rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-sm font-semibold text-text focus:outline-none focus:border-accent"
-          value={row.cohort.name}
-          onChange={(event) => onUpdateCohortName(row.ci, event.target.value)}
-          placeholder="스페이스명"
-        />
+        <div className="grid gap-2 grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="space-y-1.5">
+            <input
+              className="block w-full rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-sm font-semibold text-text focus:outline-none focus:border-accent"
+              value={row.cohort.name}
+              onChange={(event) =>
+                onUpdateCohortName(row.ci, event.target.value)
+              }
+              placeholder="스페이스명"
+            />
+            <p className="m-0 text-[11px] leading-relaxed text-text-dim">
+              각 스페이스는 진행기간을 따로 가져갑니다.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-[13px] text-text outline-none transition-colors focus:border-accent"
+                value={row.cohort.startDate ?? ""}
+                onChange={(event) =>
+                  onUpdateCohortPeriod(row.ci, "startDate", event.target.value)
+                }
+                aria-label={`${row.cohort.name || "스페이스"} 시작일`}
+              />
+              <input
+                type="date"
+                className="min-w-0 rounded-[10px] border border-border bg-[var(--surface2,var(--surface))] px-3 py-2 text-[13px] text-text outline-none transition-colors focus:border-accent"
+                value={row.cohort.endDate ?? ""}
+                onChange={(event) =>
+                  onUpdateCohortPeriod(row.ci, "endDate", event.target.value)
+                }
+                aria-label={`${row.cohort.name || "스페이스"} 종료일`}
+              />
+            </div>
+            <p
+              className={`m-0 text-[11px] leading-relaxed ${
+                periodError ? "text-red" : "text-text-dim"
+              }`}
+            >
+              {periodError ??
+                "시작일과 종료일을 함께 입력하면 가져온 뒤 바로 잔디 기간 기준이 됩니다."}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -892,6 +952,18 @@ function PreviewEditor({
     [onUpdate],
   );
 
+  const updateCohortPeriod = useCallback(
+    (ci: number, field: "startDate" | "endDate", value: string) => {
+      const nextValue = value || null;
+      const cohorts = previewRef.current.cohorts.map((cohort, index) =>
+        index === ci ? { ...cohort, [field]: nextValue } : cohort,
+      );
+      pendingColumnsRef.current = columnsRef.current;
+      onUpdate({ cohorts });
+    },
+    [onUpdate],
+  );
+
   const updateStudent = useCallback(
     (ci: number, si: number, field: PreviewColumn, value: string) => {
       let nextColumns = columnsRef.current;
@@ -992,6 +1064,7 @@ function PreviewEditor({
             columns={columns}
             columnSignature={columnSignature}
             onUpdateCohortName={updateCohortName}
+            onUpdateCohortPeriod={updateCohortPeriod}
             onUpdateStudent={updateStudent}
             onRemoveStudent={removeStudent}
           />

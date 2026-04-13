@@ -1,4 +1,7 @@
-import { publicCheckEntrySchema, publicCheckSessionPublicSchema } from "@yeon/api-contract";
+import {
+  publicCheckEntrySchema,
+  publicCheckSessionPublicSchema,
+} from "@yeon/api-contract";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

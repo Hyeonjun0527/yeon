@@ -1,8 +1,9 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type {
-  MemberStudentBoardHistoryResponse,
+  MemberStudentBoardResponse,
   StudentAssignmentStatus,
   StudentAttendanceStatus,
+  StudentBoardDailyCell,
   StudentBoardHistoryItem,
   StudentBoardHistoryPeriod,
   StudentBoardResponse,
@@ -22,7 +23,10 @@ import { getMembers } from "./members-service";
 import { ServiceError } from "./service-error";
 
 const HISTORY_TIME_ZONE = "Asia/Seoul";
-const HISTORY_PERIOD_DAY_COUNT: Record<StudentBoardHistoryPeriod, number> = {
+const HISTORY_PERIOD_DAY_COUNT: Record<
+  Exclude<StudentBoardHistoryPeriod, "space">,
+  number
+> = {
   "7d": 7,
   "30d": 30,
   "365d": 365,
@@ -49,8 +53,9 @@ function getHistoryDateKey(date: Date) {
   const parts = formatter.formatToParts(date);
   const lookup = Object.fromEntries(
     parts
-      .filter((part) =>
-        part.type === "year" || part.type === "month" || part.type === "day",
+      .filter(
+        (part) =>
+          part.type === "year" || part.type === "month" || part.type === "day",
       )
       .map((part) => [part.type, part.value]),
   ) as Record<"year" | "month" | "day", string>;
@@ -58,18 +63,63 @@ function getHistoryDateKey(date: Date) {
   return `${lookup.year}-${lookup.month}-${lookup.day}`;
 }
 
-function getHistoryWindowStart(period: StudentBoardHistoryPeriod) {
+function getHistoryWindowStart(
+  period: Exclude<StudentBoardHistoryPeriod, "space">,
+) {
   const todayKey = getHistoryDateKey(new Date());
   const start = new Date(`${todayKey}T00:00:00+09:00`);
   start.setUTCDate(start.getUTCDate() - (HISTORY_PERIOD_DAY_COUNT[period] - 1));
   return start;
 }
 
-function collapseHistoryRows(
+function toStudentBoardDailyCell(
+  row: BoardHistoryRecord,
+  date = getHistoryDateKey(row.happenedAt),
+): StudentBoardDailyCell {
+  return {
+    date,
+    attendanceStatus: row.attendanceStatus as StudentAttendanceStatus,
+    assignmentStatus: row.assignmentStatus as StudentAssignmentStatus,
+    assignmentLink: row.assignmentLink ?? null,
+    occurredAt: row.happenedAt.toISOString(),
+    source: row.source as StudentBoardSource,
+  };
+}
+
+function buildDailyCellMapByMember(rows: BoardHistoryRecord[]) {
+  const cellsByMember = new Map<string, Map<string, StudentBoardDailyCell>>();
+
+  for (const row of rows) {
+    const historyDate = getHistoryDateKey(row.happenedAt);
+    const memberCells =
+      cellsByMember.get(row.memberId) ??
+      new Map<string, StudentBoardDailyCell>();
+
+    if (!cellsByMember.has(row.memberId)) {
+      cellsByMember.set(row.memberId, memberCells);
+    }
+
+    if (memberCells.has(historyDate)) {
+      continue;
+    }
+
+    memberCells.set(historyDate, toStudentBoardDailyCell(row, historyDate));
+  }
+
+  return new Map(
+    Array.from(cellsByMember.entries()).map(([memberId, dateMap]) => [
+      memberId,
+      Array.from(dateMap.values()).sort((left, right) =>
+        left.date.localeCompare(right.date),
+      ),
+    ]),
+  );
+}
+
+function mapHistoryRows(
   rows: BoardHistoryRecord[],
   memberNameById: Map<string, string>,
 ): StudentBoardHistoryItem[] {
-  const seen = new Set<string>();
   const items: StudentBoardHistoryItem[] = [];
 
   for (const row of rows) {
@@ -79,19 +129,11 @@ function collapseHistoryRows(
       continue;
     }
 
-    const historyDate = getHistoryDateKey(row.happenedAt);
-    const dedupeKey = `${historyDate}:${row.memberId}`;
-
-    if (seen.has(dedupeKey)) {
-      continue;
-    }
-
-    seen.add(dedupeKey);
     items.push({
       id: row.id,
       memberId: row.memberId,
       memberName,
-      historyDate,
+      historyDate: getHistoryDateKey(row.happenedAt),
       occurredAt: row.happenedAt.toISOString(),
       attendanceStatus: row.attendanceStatus as StudentAttendanceStatus,
       assignmentStatus: row.assignmentStatus as StudentAssignmentStatus,
@@ -107,11 +149,27 @@ async function listBoardHistoryRows(params: {
   spaceId: string;
   period: StudentBoardHistoryPeriod;
   memberId?: string;
+  rangeStartDate?: string | null;
+  rangeEndDate?: string | null;
 }) {
   const filters = [
     eq(spaceMemberBoardHistory.spaceId, params.spaceId),
-    gte(spaceMemberBoardHistory.happenedAt, getHistoryWindowStart(params.period)),
+    gte(
+      spaceMemberBoardHistory.happenedAt,
+      params.period === "space"
+        ? new Date(`${params.rangeStartDate ?? "1970-01-01"}T00:00:00+09:00`)
+        : getHistoryWindowStart(params.period),
+    ),
   ];
+
+  if (params.period === "space" && params.rangeEndDate) {
+    filters.push(
+      lte(
+        spaceMemberBoardHistory.happenedAt,
+        new Date(`${params.rangeEndDate}T23:59:59.999+09:00`),
+      ),
+    );
+  }
 
   if (params.memberId) {
     filters.push(eq(spaceMemberBoardHistory.memberId, params.memberId));
@@ -147,7 +205,7 @@ export async function listSpaceStudentBoard(
   spaceId: string,
   historyPeriod: StudentBoardHistoryPeriod = "7d",
 ): Promise<StudentBoardResponse> {
-  await assertSpaceOwnedByUser(userId, spaceId);
+  const space = await assertSpaceOwnedByUser(userId, spaceId);
 
   const db = getDb();
   const [memberList, boardRows, sessions, historyRows] = await Promise.all([
@@ -162,11 +220,16 @@ export async function listSpaceStudentBoard(
       .where(eq(publicCheckSessions.spaceId, spaceId))
       .orderBy(desc(publicCheckSessions.createdAt))
       .limit(10),
-    listBoardHistoryRows({ spaceId, period: historyPeriod }),
+    listBoardHistoryRows({
+      spaceId,
+      period: historyPeriod,
+      rangeStartDate: space.startDate ?? null,
+      rangeEndDate: space.endDate ?? null,
+    }),
   ]);
 
   const boardByMemberId = new Map(boardRows.map((row) => [row.memberId, row]));
-  const memberNameById = new Map(memberList.map((member) => [member.id, member.name]));
+  const dailyCellsByMemberId = buildDailyCellMapByMember(historyRows);
 
   const rows: StudentBoardRow[] = memberList.map((member) => {
     const board = boardByMemberId.get(member.id);
@@ -189,6 +252,7 @@ export async function listSpaceStudentBoard(
         null,
       lastPublicCheckAt: toIso(board?.lastPublicCheckAt),
       isSelfCheckReady: !!extractPhoneLast4(member.phone),
+      dailyCells: dailyCellsByMemberId.get(member.id) ?? [],
     };
   });
 
@@ -213,7 +277,6 @@ export async function listSpaceStudentBoard(
       createdAt: session.createdAt.toISOString(),
     })),
     historyPeriod,
-    history: collapseHistoryRows(historyRows, memberNameById),
   };
 }
 
@@ -222,10 +285,10 @@ export async function listMemberStudentBoardHistory(params: {
   spaceId: string;
   memberId: string;
   period?: StudentBoardHistoryPeriod;
-}): Promise<MemberStudentBoardHistoryResponse> {
+}): Promise<MemberStudentBoardResponse> {
   const period = params.period ?? "30d";
 
-  await assertSpaceOwnedByUser(params.userId, params.spaceId);
+  const space = await assertSpaceOwnedByUser(params.userId, params.spaceId);
 
   const members = await getMembers(params.spaceId);
   const member = members.find((item) => item.id === params.memberId);
@@ -238,14 +301,15 @@ export async function listMemberStudentBoardHistory(params: {
     spaceId: params.spaceId,
     memberId: params.memberId,
     period,
+    rangeStartDate: space.startDate ?? null,
+    rangeEndDate: space.endDate ?? null,
   });
 
   return {
     period,
-    history: collapseHistoryRows(
-      historyRows,
-      new Map([[member.id, member.name]]),
-    ),
+    dailyCells:
+      buildDailyCellMapByMember(historyRows).get(params.memberId) ?? [],
+    history: mapHistoryRows(historyRows, new Map([[member.id, member.name]])),
   };
 }
 
@@ -287,8 +351,10 @@ export async function persistMemberBoardSnapshot(
     (existing?.assignmentStatus as StudentAssignmentStatus | undefined) ??
     "unknown";
   const currentAssignmentLink = existing?.assignmentLink ?? null;
-  const nextAttendanceStatus = params.attendanceStatus ?? currentAttendanceStatus;
-  const nextAssignmentStatus = params.assignmentStatus ?? currentAssignmentStatus;
+  const nextAttendanceStatus =
+    params.attendanceStatus ?? currentAttendanceStatus;
+  const nextAssignmentStatus =
+    params.assignmentStatus ?? currentAssignmentStatus;
   const nextAssignmentLink =
     params.assignmentLink !== undefined
       ? params.assignmentLink?.trim() || null
@@ -305,7 +371,8 @@ export async function persistMemberBoardSnapshot(
   const assignmentChanged = assignmentStatusChanged || assignmentLinkChanged;
   const touchedAttendance = params.attendanceStatus !== undefined;
   const touchedAssignment =
-    params.assignmentStatus !== undefined || params.assignmentLink !== undefined;
+    params.assignmentStatus !== undefined ||
+    params.assignmentLink !== undefined;
   const shouldRefreshAttendanceMark =
     attendanceChanged || (params.refreshTouchedMarks && touchedAttendance);
   const shouldRefreshAssignmentMark =

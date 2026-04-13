@@ -1,10 +1,7 @@
 import type { NextRequest, NextResponse } from "next/server";
 
 import { isSecureAuthCookie } from "@/server/auth/constants";
-import {
-  signAuthValue,
-  verifySignedAuthValue,
-} from "@/server/auth/crypto";
+import { signAuthValue, verifySignedAuthValue } from "@/server/auth/crypto";
 
 const PUBLIC_CHECK_DEVICE_COOKIE_NAME = "yeon.public-check.identities";
 const PUBLIC_CHECK_DEVICE_COOKIE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -81,9 +78,7 @@ function buildNextPayload(
   const existingIdentities = existingPayload?.identities ?? [];
   const nextIdentities = [
     identity,
-    ...existingIdentities.filter(
-      (item) => item.spaceId !== identity.spaceId,
-    ),
+    ...existingIdentities.filter((item) => item.spaceId !== identity.spaceId),
   ].slice(0, MAX_PUBLIC_CHECK_IDENTITIES);
 
   return {
@@ -111,8 +106,10 @@ export function getRememberedPublicCheckMemberId(
     request.cookies.get(PUBLIC_CHECK_DEVICE_COOKIE_NAME)?.value,
   );
 
-  return payload?.identities.find((identity) => identity.spaceId === spaceId)
-    ?.memberId ?? null;
+  return (
+    payload?.identities.find((identity) => identity.spaceId === spaceId)
+      ?.memberId ?? null
+  );
 }
 
 export function getRememberedPublicCheckIdentities(
@@ -146,7 +143,9 @@ export function applyRememberedPublicCheckIdentityCookie(
   });
 
   response.cookies.set({
-    ...buildCookieOptions(new Date(Date.now() + PUBLIC_CHECK_DEVICE_COOKIE_TTL_MS)),
+    ...buildCookieOptions(
+      new Date(Date.now() + PUBLIC_CHECK_DEVICE_COOKIE_TTL_MS),
+    ),
     value: serializeCookieValue(nextPayload),
   });
 
@@ -183,7 +182,9 @@ export function clearRememberedPublicCheckIdentityCookie(
   }
 
   response.cookies.set({
-    ...buildCookieOptions(new Date(Date.now() + PUBLIC_CHECK_DEVICE_COOKIE_TTL_MS)),
+    ...buildCookieOptions(
+      new Date(Date.now() + PUBLIC_CHECK_DEVICE_COOKIE_TTL_MS),
+    ),
     value: serializeCookieValue({
       version: PUBLIC_CHECK_DEVICE_COOKIE_VERSION,
       identities: nextIdentities,

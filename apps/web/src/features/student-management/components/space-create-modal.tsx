@@ -10,17 +10,36 @@ import {
   Sparkles,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
   CloudImportInline,
   type CloudImportEntryControls,
 } from "@/features/cloud-import/components/cloud-import-inline";
+import {
+  SPACE_FULL_TEST_DATA,
+  SPACE_LITE_TEST_DATA,
+} from "@/lib/test-data-downloads";
+import { getSpacePeriodInputError } from "@/lib/space-period";
+
+import {
+  SPACE_CREATE_CHOICES,
+  type SpaceCreateChoiceStep,
+} from "./space-create-choice-options";
 
 import type { Space } from "../types";
 import type { ImportCommitResult } from "@/features/cloud-import/types";
 
-export type StudentSpaceCreateStep = "choose" | "blank" | "import";
+export type StudentSpaceCreateStep = "choose" | SpaceCreateChoiceStep;
+
+const SPACE_CREATE_CHOICE_ICON_BY_STEP: Record<
+  SpaceCreateChoiceStep,
+  LucideIcon
+> = {
+  blank: FolderPlus,
+  import: Sparkles,
+};
 
 interface StudentSpaceCreateModalProps {
   onClose: () => void;
@@ -46,6 +65,8 @@ export function StudentSpaceCreateModal({
 }: StudentSpaceCreateModalProps) {
   const [step, setStep] = useState<StudentSpaceCreateStep>(initialStep);
   const [name, setName] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importControls, setImportControls] =
@@ -67,6 +88,15 @@ export function StudentSpaceCreateModal({
       return;
     }
 
+    const periodError = getSpacePeriodInputError(
+      startDate || null,
+      endDate || null,
+    );
+    if (periodError) {
+      setError(periodError);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -74,7 +104,11 @@ export function StudentSpaceCreateModal({
       const response = await fetch("/api/v1/spaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName }),
+        body: JSON.stringify({
+          name: trimmedName,
+          startDate: startDate || null,
+          endDate: endDate || null,
+        }),
       });
 
       if (!response.ok) {
@@ -165,14 +199,24 @@ export function StudentSpaceCreateModal({
                 >
                   <Upload size={13} />내 컴퓨터에서 파일 선택
                 </button>
-                <a
-                  href="/api/test/space-import-sample"
-                  download
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3.5 py-2 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
-                >
-                  <Download size={13} />
-                  테스트 데이터 다운로드
-                </a>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <a
+                    href={SPACE_LITE_TEST_DATA.href}
+                    download={SPACE_LITE_TEST_DATA.downloadName}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3.5 py-2 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+                  >
+                    <Download size={13} />
+                    {SPACE_LITE_TEST_DATA.label}
+                  </a>
+                  <a
+                    href={SPACE_FULL_TEST_DATA.href}
+                    download={SPACE_FULL_TEST_DATA.downloadName}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3.5 py-2 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-light hover:bg-surface-3 hover:text-text"
+                  >
+                    <Download size={13} />
+                    {SPACE_FULL_TEST_DATA.label}
+                  </a>
+                </div>
               </div>
             ) : null}
           </div>
@@ -236,55 +280,59 @@ export function StudentSpaceCreateModal({
             </div>
 
             <div className="grid gap-3">
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 rounded-xl border border-border bg-surface-2/80 px-4 py-4 text-left transition-colors hover:border-border-light hover:bg-surface-3"
-                onClick={() => setStep("blank")}
-              >
-                <FolderPlus size={18} className="mt-0.5 shrink-0 text-text" />
-                <div>
-                  <div className="text-sm font-semibold text-text">
-                    빈 스페이스 만들기
-                  </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                    수강생 없이 먼저 공간만 만들고, 이후 상단의 수강생 추가나
-                    설정에서 직접 채웁니다.
-                  </p>
-                </div>
-              </button>
+              {SPACE_CREATE_CHOICES.map((choice) => {
+                const Icon = SPACE_CREATE_CHOICE_ICON_BY_STEP[choice.step];
+                const isRecommended = choice.tone === "recommended";
 
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 rounded-xl border border-accent-border bg-accent-dim/60 px-4 py-4 text-left transition-colors hover:border-accent hover:bg-accent-dim"
-                onClick={() => setStep("import")}
-              >
-                <Sparkles size={18} className="mt-0.5 shrink-0 text-accent" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-text">
-                      AI로 파일 가져와 스페이스 만들기
-                    </span>
-                    <span className="rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-accent">
-                      권장
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                    Google Drive, OneDrive, 내 컴퓨터의 엑셀/CSV를 분석해
-                    스페이스와 수강생 초안을 함께 만듭니다.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-text-dim">
-                    <span className="rounded-full border border-border px-2 py-0.5">
-                      Google Drive
-                    </span>
-                    <span className="rounded-full border border-border px-2 py-0.5">
-                      OneDrive
-                    </span>
-                    <span className="rounded-full border border-border px-2 py-0.5">
-                      내 컴퓨터
-                    </span>
-                  </div>
-                </div>
-              </button>
+                return (
+                  <button
+                    key={choice.step}
+                    type="button"
+                    className={
+                      isRecommended
+                        ? "flex w-full items-start gap-3 rounded-xl border border-accent-border bg-accent-dim/60 px-4 py-4 text-left transition-colors hover:border-accent hover:bg-accent-dim"
+                        : "flex w-full items-start gap-3 rounded-xl border border-border bg-surface-2/80 px-4 py-4 text-left transition-colors hover:border-border-light hover:bg-surface-3"
+                    }
+                    onClick={() => setStep(choice.step)}
+                  >
+                    <Icon
+                      size={18}
+                      className={
+                        isRecommended
+                          ? "mt-0.5 shrink-0 text-accent"
+                          : "mt-0.5 shrink-0 text-text"
+                      }
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text">
+                          {choice.title}
+                        </span>
+                        {choice.badgeLabel ? (
+                          <span className="rounded-full border border-accent-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            {choice.badgeLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+                        {choice.description}
+                      </p>
+                      {choice.chips?.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-text-dim">
+                          {choice.chips.map((chip) => (
+                            <span
+                              key={chip}
+                              className="rounded-full border border-border px-2 py-0.5"
+                            >
+                              {chip}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -319,6 +367,37 @@ export function StudentSpaceCreateModal({
               <p className="text-[12px] leading-relaxed text-text-dim">
                 이름만 먼저 만들고, 필요한 탭/필드는 스페이스 설정에서 바로
                 조정할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="block text-[12px] font-medium text-text-secondary">
+                  진행기간
+                </label>
+                <span className="text-[11px] text-text-dim">
+                  나중엔 시작일 고정, 종료일 연장만 허용
+                </span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  type="date"
+                  className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-text outline-none transition-colors focus:border-accent-border"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  aria-label="스페이스 시작일"
+                />
+                <input
+                  type="date"
+                  className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-text outline-none transition-colors focus:border-accent-border"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  aria-label="스페이스 종료일"
+                />
+              </div>
+              <p className="text-[12px] leading-relaxed text-text-dim">
+                학생별 출석·과제 잔디와 운영 기간은 이 진행기간을 기준으로
+                맞춰집니다.
               </p>
             </div>
 

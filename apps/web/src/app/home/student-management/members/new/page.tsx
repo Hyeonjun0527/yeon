@@ -12,12 +12,6 @@ const STATUS_OPTIONS = [
   { value: "graduated", label: "수료" },
 ];
 
-const RISK_OPTIONS = [
-  { value: "low", label: "낮음" },
-  { value: "medium", label: "보통" },
-  { value: "high", label: "높음" },
-];
-
 export default function MemberNewPage() {
   const router = useRouter();
   const { resolveAppHref } = useAppRoute();
@@ -28,7 +22,6 @@ export default function MemberNewPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("active");
-  const [riskLevel, setRiskLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const studentManagementHref = createPatchedHref(
@@ -60,7 +53,6 @@ export default function MemberNewPage() {
           email: email.trim() || null,
           phone: phone.trim() || null,
           status: status || null,
-          initialRiskLevel: riskLevel || null,
         }),
       });
 
@@ -197,42 +189,6 @@ export default function MemberNewPage() {
               onChange={(e) => setStatus(e.target.value)}
             >
               {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <svg
-              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim"
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-            >
-              <path
-                d="M2 4l4 4 4-4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* 위험도 */}
-        <div>
-          <label className="block text-xs font-semibold text-text-secondary mb-1.5 tracking-wide uppercase">
-            위험도
-          </label>
-          <div className="relative">
-            <select
-              className="appearance-none w-full py-2 pl-3 pr-8 bg-surface-2 border border-border rounded-lg text-sm text-text outline-none focus:border-accent-border focus:shadow-[0_0_0_3px_var(--accent-dim)] transition-[border-color,box-shadow] cursor-pointer"
-              value={riskLevel}
-              onChange={(e) => setRiskLevel(e.target.value)}
-            >
-              <option value="">선택 안 함</option>
-              {RISK_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>

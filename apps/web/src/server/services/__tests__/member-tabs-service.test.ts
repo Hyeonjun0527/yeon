@@ -31,6 +31,7 @@ vi.mock("drizzle-orm", () => ({
   asc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
   isNotNull: (col: unknown) => col,
+  ne: (col: unknown, val: unknown) => ({ col, val }),
 }));
 
 import {
@@ -65,8 +66,10 @@ beforeEach(() => {
 /* ── createDefaultSystemTabs ── */
 
 describe("createDefaultSystemTabs", () => {
-  it("시스템 탭 4개를 INSERT하고 오류 없이 완료된다", async () => {
+  it("시스템 탭 5개를 INSERT하고 오류 없이 완료된다", async () => {
     responses.push(undefined); // insert.onConflictDoNothing()
+    responses.push([]); // getOverviewTab
+    responses.push(undefined); // createDefaultOverviewFields
 
     await expect(
       createDefaultSystemTabs("space-1", "user-1"),
@@ -74,6 +77,8 @@ describe("createDefaultSystemTabs", () => {
   });
 
   it("이미 존재하는 경우에도 오류 없이 완료된다 (ON CONFLICT DO NOTHING)", async () => {
+    responses.push(undefined);
+    responses.push([]);
     responses.push(undefined);
     await expect(
       createDefaultSystemTabs("space-1", "user-1"),
@@ -133,36 +138,16 @@ describe("updateTab", () => {
     ).rejects.toMatchObject({ status: 404 });
   });
 
-  it("overview 탭을 숨기려 하면 403 ServiceError를 던진다", async () => {
+  it("기본 시스템 탭을 수정하려 하면 403 ServiceError를 던진다", async () => {
     const overviewTab = makeTab({ tabType: "system", systemKey: "overview" });
     responses.push([overviewTab]);
 
     await expect(
-      updateTab("tab-1", "space-1", { isVisible: false }),
+      updateTab("tab-1", "space-1", { name: "홈" }),
     ).rejects.toMatchObject({
       status: 403,
-      message: "개요 탭은 숨길 수 없습니다.",
+      message: "기본 탭은 수정할 수 없습니다.",
     });
-  });
-
-  it("overview 탭의 이름 변경은 허용된다", async () => {
-    const overviewTab = makeTab({ tabType: "system", systemKey: "overview" });
-    const updated = { ...overviewTab, name: "홈" };
-    responses.push([overviewTab]);
-    responses.push([updated]);
-
-    const result = await updateTab("tab-1", "space-1", { name: "홈" });
-    expect(result.name).toBe("홈");
-  });
-
-  it("일반 탭 숨김은 성공한다", async () => {
-    const tab = makeTab({ tabType: "system", systemKey: "counseling" });
-    const updated = { ...tab, isVisible: false };
-    responses.push([tab]);
-    responses.push([updated]);
-
-    const result = await updateTab("tab-1", "space-1", { isVisible: false });
-    expect(result.isVisible).toBe(false);
   });
 
   it("빈 이름으로 업데이트하면 400 ServiceError를 던진다", async () => {
@@ -172,6 +157,16 @@ describe("updateTab", () => {
     await expect(
       updateTab("tab-1", "space-1", { name: "  " }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("커스텀 탭 이름 변경은 성공한다", async () => {
+    const tab = makeTab({ tabType: "custom", name: "기존 탭" });
+    const updated = { ...tab, name: "새 이름" };
+    responses.push([tab]);
+    responses.push([updated]);
+
+    const result = await updateTab("tab-1", "space-1", { name: "새 이름" });
+    expect(result.name).toBe("새 이름");
   });
 });
 
@@ -191,7 +186,7 @@ describe("deleteCustomTab", () => {
 
     await expect(deleteCustomTab("tab-1", "space-1")).rejects.toMatchObject({
       status: 403,
-      message: "시스템 탭은 삭제할 수 없습니다.",
+      message: "기본 탭은 삭제할 수 없습니다.",
     });
   });
 

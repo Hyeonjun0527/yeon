@@ -17,6 +17,7 @@ export const counselingRecordProcessingStageSchema = z.enum([
   "downloading",
   "chunking",
   "transcribing",
+  "partial_transcript_ready",
   "resolving_speakers",
   "transcript_ready",
   "analyzing",

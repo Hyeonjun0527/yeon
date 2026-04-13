@@ -464,10 +464,7 @@ export async function submitPublicCheck(params: {
   let shouldClearRememberedIdentity = false;
 
   if (shouldUseRememberedIdentity) {
-    matched = await findSpaceMemberById(
-      session.spaceId,
-      rememberedMemberId!,
-    );
+    matched = await findSpaceMemberById(session.spaceId, rememberedMemberId!);
 
     if (!matched) {
       shouldClearRememberedIdentity = true;
@@ -501,13 +498,15 @@ export async function submitPublicCheck(params: {
     };
 
     if (!match.matched) {
-      await getDb().insert(publicCheckSubmissions).values({
-        ...baseSubmission,
-        memberId: null,
-        verificationStatus: match.verificationStatus,
-        distanceMeters: null,
-        metadata: null,
-      });
+      await getDb()
+        .insert(publicCheckSubmissions)
+        .values({
+          ...baseSubmission,
+          memberId: null,
+          verificationStatus: match.verificationStatus,
+          distanceMeters: null,
+          metadata: null,
+        });
 
       return {
         spaceId: session.spaceId,
@@ -558,23 +557,25 @@ export async function submitPublicCheck(params: {
     });
 
     if (distanceMeters > session.radiusMeters) {
-      await getDb().insert(publicCheckSubmissions).values({
-        sessionId: session.id,
-        spaceId: session.spaceId,
-        memberId: matched.id,
-        checkMethod: params.body.method,
-        verificationStatus: "outside_radius",
-        submittedName: matched.name,
-        submittedPhoneLast4: matchedPhoneLast4,
-        assignmentStatus: params.body.assignmentStatus ?? null,
-        assignmentLink: params.body.assignmentLink?.trim() || null,
-        latitude: params.body.latitude ?? null,
-        longitude: params.body.longitude ?? null,
-        distanceMeters,
-        metadata: {
-          radiusMeters: session.radiusMeters,
-        },
-      });
+      await getDb()
+        .insert(publicCheckSubmissions)
+        .values({
+          sessionId: session.id,
+          spaceId: session.spaceId,
+          memberId: matched.id,
+          checkMethod: params.body.method,
+          verificationStatus: "outside_radius",
+          submittedName: matched.name,
+          submittedPhoneLast4: matchedPhoneLast4,
+          assignmentStatus: params.body.assignmentStatus ?? null,
+          assignmentLink: params.body.assignmentLink?.trim() || null,
+          latitude: params.body.latitude ?? null,
+          longitude: params.body.longitude ?? null,
+          distanceMeters,
+          metadata: {
+            radiusMeters: session.radiusMeters,
+          },
+        });
 
       return {
         spaceId: session.spaceId,
@@ -610,21 +611,23 @@ export async function submitPublicCheck(params: {
     refreshTouchedMarks: true,
   });
 
-  await getDb().insert(publicCheckSubmissions).values({
-    sessionId: session.id,
-    spaceId: session.spaceId,
-    memberId: matched.id,
-    checkMethod: params.body.method,
-    verificationStatus: "matched",
-    submittedName: matched.name,
-    submittedPhoneLast4: matchedPhoneLast4,
-    assignmentStatus: params.body.assignmentStatus ?? null,
-    assignmentLink: params.body.assignmentLink?.trim() || null,
-    latitude: params.body.latitude ?? null,
-    longitude: params.body.longitude ?? null,
-    distanceMeters,
-    metadata: null,
-  });
+  await getDb()
+    .insert(publicCheckSubmissions)
+    .values({
+      sessionId: session.id,
+      spaceId: session.spaceId,
+      memberId: matched.id,
+      checkMethod: params.body.method,
+      verificationStatus: "matched",
+      submittedName: matched.name,
+      submittedPhoneLast4: matchedPhoneLast4,
+      assignmentStatus: params.body.assignmentStatus ?? null,
+      assignmentLink: params.body.assignmentLink?.trim() || null,
+      latitude: params.body.latitude ?? null,
+      longitude: params.body.longitude ?? null,
+      distanceMeters,
+      metadata: null,
+    });
 
   return {
     spaceId: session.spaceId,
