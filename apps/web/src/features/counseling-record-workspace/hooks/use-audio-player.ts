@@ -11,7 +11,6 @@ export function useAudioPlayer(
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
 
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const activeSegmentRef = useRef<HTMLElement | null>(null);
 
   // 42차: 키보드 spacebar 재생/정지
   useEffect(() => {
@@ -52,18 +51,6 @@ export function useAudioPlayer(
     };
   }, [selectedRecordId, audioUrl]);
 
-  // 31차: 재생 중 active segment 자동 스크롤
-  useEffect(() => {
-    if (!isAutoScrollEnabled || !activeSegmentRef.current) {
-      return;
-    }
-
-    activeSegmentRef.current.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [currentAudioTimeMs, isAutoScrollEnabled]);
-
   function handleAudioTimeUpdate() {
     const player = audioPlayerRef.current;
 
@@ -92,7 +79,6 @@ export function useAudioPlayer(
     isAutoScrollEnabled,
     setIsAutoScrollEnabled,
     audioPlayerRef,
-    activeSegmentRef,
     handleAudioTimeUpdate,
     seekAudioToTime,
   };

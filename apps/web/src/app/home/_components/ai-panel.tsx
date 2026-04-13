@@ -43,11 +43,13 @@ export interface AiPanelProps {
   canExpand: boolean;
   tab: "chat" | "history";
   model: AiModelType;
+  useWebSearch: boolean;
   panelRef: React.RefObject<HTMLDivElement | null>;
   onSetTab: (tab: "chat" | "history") => void;
   onToggleCollapsed: () => void;
   onExpand: () => void;
   onToggleModel: () => void;
+  onToggleWebSearch: () => void;
   onStartResize: (e: React.MouseEvent) => void;
   /* 데이터 */
   phase: "processing" | "ready";
@@ -75,11 +77,13 @@ export function AiPanel({
   canExpand,
   tab,
   model,
+  useWebSearch,
   panelRef,
   onSetTab,
   onToggleCollapsed,
   onExpand,
   onToggleModel,
+  onToggleWebSearch,
   onStartResize,
   phase,
   selected,
@@ -368,9 +372,17 @@ export function AiPanel({
                     <PaperclipIcon size={15} />
                   </button>
                   <button
-                    className="w-7 h-7 flex items-center justify-center rounded-[6px] border-none bg-none cursor-pointer text-text-secondary text-sm transition-[background,color] duration-150 hover:bg-surface-3 hover:text-text disabled:opacity-40 disabled:cursor-default"
-                    title="웹 검색 (미구현)"
-                    disabled
+                    className={`w-7 h-7 flex items-center justify-center rounded-[6px] border cursor-pointer text-sm transition-[background,color,border-color] duration-150 disabled:opacity-40 disabled:cursor-default ${
+                      useWebSearch
+                        ? "border-accent-border bg-accent-dim text-accent hover:border-accent hover:text-accent"
+                        : "border-transparent bg-none text-text-secondary hover:bg-surface-3 hover:text-text"
+                    }`}
+                    title={
+                      useWebSearch ? "웹 검색 끄기" : "웹 검색으로 답변하기"
+                    }
+                    aria-pressed={useWebSearch}
+                    disabled={isProcessing}
+                    onClick={onToggleWebSearch}
                   >
                     <GlobeIcon size={15} />
                   </button>

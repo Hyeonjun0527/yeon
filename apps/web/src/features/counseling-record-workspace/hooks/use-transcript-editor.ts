@@ -8,7 +8,10 @@ import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
 } from "@yeon/api-contract";
-import { isTranscriptSegmentMatched } from "../utils";
+import {
+  buildTranscriptDisplayBlocks,
+  isTranscriptDisplayBlockMatched,
+} from "@/lib/counseling-transcript-display";
 
 export function useTranscriptEditor(
   selectedRecord: CounselingRecordListItem | null,
@@ -34,8 +37,9 @@ export function useTranscriptEditor(
       return 0;
     }
 
-    return detail.transcriptSegments.filter((segment) =>
-      isTranscriptSegmentMatched(segment, normalizedTranscriptQuery),
+    return buildTranscriptDisplayBlocks(detail.transcriptSegments).filter(
+      (block) =>
+        isTranscriptDisplayBlockMatched(block, normalizedTranscriptQuery),
     ).length;
   }
 

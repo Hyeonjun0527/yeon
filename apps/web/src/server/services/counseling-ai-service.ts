@@ -3,9 +3,12 @@ import { ServiceError } from "./service-error";
 
 const OPENAI_CHAT_COMPLETIONS_URL =
   "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_AI_CHAT_MODEL = "gpt-4.1-mini";
+const DEFAULT_WEB_SEARCH_MODEL = "gpt-5.4-mini";
 const MAX_DIRECT_ANALYSIS_CHARS = 14_000;
 const MAX_SECTION_ANALYSIS_CHARS = 9_000;
+const WEB_SEARCH_REQUEST_TIMEOUT_MS = 18_000;
 
 type TranscriptSegmentInput = {
   speakerLabel: string;
@@ -23,6 +26,52 @@ type RecordMetaInput = {
 type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
+};
+
+type ConversationMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type OpenAiErrorPayload = {
+  error?: {
+    message?: string;
+  };
+};
+
+type OpenAiResponseAnnotation = {
+  type?: string;
+  url?: string;
+  title?: string;
+};
+
+type OpenAiResponseContent = {
+  type?: string;
+  text?: string;
+  annotations?: OpenAiResponseAnnotation[];
+};
+
+type OpenAiResponseOutputItem = {
+  type?: string;
+  content?: OpenAiResponseContent[];
+};
+
+type OpenAiResponseSource = {
+  url?: string;
+  title?: string;
+};
+
+type OpenAiResponsesPayload = {
+  id?: string;
+  model?: string;
+  output_text?: string;
+  output?: OpenAiResponseOutputItem[];
+  sources?: OpenAiResponseSource[];
+};
+
+type UrlCitation = {
+  url: string;
+  title: string;
 };
 
 function formatTimestamp(ms: number) {
@@ -222,6 +271,202 @@ function getOpenAiApiKey() {
   }
 
   return apiKey;
+}
+
+async function extractOpenAiErrorMessage(response: Response) {
+  try {
+    const data = (await response.json()) as OpenAiErrorPayload;
+
+    return data.error?.message?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function buildGeneralAiSystemPrompt() {
+  return `당신은 한국어로 답하는 일반 AI 도우미입니다.
+
+## 역할
+- 사용자의 질문에 직접적이고 실용적으로 답합니다.
+- 웹 검색 없이도 답변 가능한 범위에서는 명확하게 설명합니다.
+- 최신 정보, 실시간 정보, 수치, 일정처럼 시점 민감한 내용은 확실하지 않으면 단정하지 않습니다.
+
+## 응답 규칙
+- 한국어로 답변합니다.
+- 핵심부터 짧고 분명하게 설명합니다.
+- 필요할 때만 리스트나 마크다운을 사용합니다.
+- 모르는 내용은 아는 척하지 말고 한계를 분명히 밝힙니다.`;
+}
+
+function buildWebSearchSystemPrompt() {
+  return `당신은 한국어로 답하는 웹 검색형 AI 도우미입니다.
+
+## 역할
+- 이번 모드에서는 반드시 웹 검색 도구를 사용한 뒤 답변합니다.
+- 사용자의 질문이 최신 정보와 직접 관련 없어 보여도 최소 1회는 웹 검색을 수행합니다.
+- 검색 결과를 바탕으로 답하되, 확실하지 않은 내용은 불확실성을 분명히 밝힙니다.
+
+## 응답 규칙
+- 한국어로 답변합니다.
+- 핵심부터 짧고 분명하게 설명합니다.
+- 불필요한 군더더기 없이 실용적으로 답합니다.
+- 답변 본문과 별도의 출처 목록은 서버가 후처리하므로, 본문은 자연스럽게 작성합니다.`;
+}
+
+function dedupeUrlCitations(citations: UrlCitation[]) {
+  const unique = new Map<string, UrlCitation>();
+
+  for (const citation of citations) {
+    const url = citation.url.trim();
+
+    if (!url || unique.has(url)) {
+      continue;
+    }
+
+    unique.set(url, {
+      url,
+      title: citation.title.trim() || url,
+    });
+  }
+
+  return [...unique.values()];
+}
+
+function extractWebSearchResult(data: OpenAiResponsesPayload) {
+  const outputTexts: string[] = [];
+  const citations: UrlCitation[] = [];
+  let hasWebSearchCall = false;
+
+  for (const item of data.output || []) {
+    if (item.type === "web_search_call") {
+      hasWebSearchCall = true;
+      continue;
+    }
+
+    if (item.type !== "message") {
+      continue;
+    }
+
+    for (const content of item.content || []) {
+      if (content.type !== "output_text") {
+        continue;
+      }
+
+      const text = content.text?.trim();
+      if (text) {
+        outputTexts.push(text);
+      }
+
+      for (const annotation of content.annotations || []) {
+        if (annotation.type !== "url_citation" || !annotation.url?.trim()) {
+          continue;
+        }
+
+        citations.push({
+          url: annotation.url,
+          title: annotation.title?.trim() || annotation.url,
+        });
+      }
+    }
+  }
+
+  for (const source of data.sources || []) {
+    if (!source.url?.trim()) {
+      continue;
+    }
+
+    citations.push({
+      url: source.url,
+      title: source.title?.trim() || source.url,
+    });
+  }
+
+  return {
+    text: (data.output_text?.trim() || outputTexts.join("\n\n").trim()) ?? "",
+    citations: dedupeUrlCitations(citations),
+    hasWebSearchCall,
+  };
+}
+
+function formatCitationsMarkdown(citations: UrlCitation[]) {
+  if (citations.length === 0) {
+    return "";
+  }
+
+  const lines = citations.map(
+    (citation) => `- [${citation.title}](${citation.url})`,
+  );
+
+  return `\n\n---\n\n**출처**\n${lines.join("\n")}`;
+}
+
+function createTextEventStream(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`),
+      );
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+}
+
+async function requestResponsesApi(params: {
+  apiKey: string;
+  model: string;
+  input: Array<{
+    role: "developer" | "user" | "assistant";
+    content: string;
+  }>;
+  tools: Array<Record<string, unknown>>;
+  toolChoice?: "auto" | "required";
+  timeoutMs?: number;
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    params.timeoutMs ?? WEB_SEARCH_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetch(OPENAI_RESPONSES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: params.model,
+        store: false,
+        input: params.input,
+        tools: params.tools,
+        tool_choice: params.toolChoice ?? "auto",
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorMessage =
+        (await extractOpenAiErrorMessage(response)) ??
+        "OpenAI Responses API가 요청을 처리하지 못했습니다.";
+
+      throw new ServiceError(
+        response.status >= 500 ? 502 : response.status,
+        errorMessage,
+      );
+    }
+
+    return (await response.json()) as OpenAiResponsesPayload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function requestChatCompletion(params: {
@@ -480,7 +725,7 @@ ${transcriptBlock}
 export async function streamCounselingAiChat(
   meta: RecordMetaInput,
   segments: TranscriptSegmentInput[],
-  conversationMessages: { role: "user" | "assistant"; content: string }[],
+  conversationMessages: ConversationMessage[],
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = getOpenAiApiKey();
   const model =
@@ -530,6 +775,110 @@ export async function streamCounselingAiChat(
   }
 
   return transformOpenAiStream(response.body);
+}
+
+async function streamGeneralAiChat(
+  conversationMessages: ConversationMessage[],
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = getOpenAiApiKey();
+  const model =
+    process.env.OPENAI_AI_CHAT_MODEL?.trim() || DEFAULT_AI_CHAT_MODEL;
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: buildGeneralAiSystemPrompt() },
+    ...conversationMessages,
+  ];
+
+  const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = "일반 AI 도우미가 응답하지 못했습니다.";
+
+    try {
+      const errorData = (await response.json()) as {
+        error?: { message?: string };
+      };
+
+      if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      }
+    } catch {
+      // 에러 파싱 실패 시 기본 메시지 사용
+    }
+
+    throw new ServiceError(
+      response.status >= 500 ? 502 : response.status,
+      errorMessage,
+    );
+  }
+
+  if (!response.body) {
+    throw new ServiceError(502, "일반 AI 응답 스트림을 받지 못했습니다.");
+  }
+
+  return transformOpenAiStream(response.body);
+}
+
+export async function streamWebSearchAiChat(
+  conversationMessages: ConversationMessage[],
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = getOpenAiApiKey();
+  const model =
+    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() || DEFAULT_WEB_SEARCH_MODEL;
+
+  try {
+    const response = await requestResponsesApi({
+      apiKey,
+      model,
+      toolChoice: "required",
+      tools: [
+        {
+          type: "web_search",
+          external_web_access: true,
+        },
+      ],
+      input: [
+        {
+          role: "developer",
+          content: buildWebSearchSystemPrompt(),
+        },
+        ...conversationMessages,
+      ],
+    });
+
+    const { text, citations, hasWebSearchCall } =
+      extractWebSearchResult(response);
+
+    if (!hasWebSearchCall || citations.length === 0 || !text) {
+      throw new ServiceError(
+        502,
+        "웹 검색 응답에서 검색 결과 또는 출처를 확인하지 못했습니다.",
+      );
+    }
+
+    return createTextEventStream(
+      `${text}${formatCitationsMarkdown(citations)}`,
+    );
+  } catch (error) {
+    if (isAbortError(error)) {
+      console.warn("web-search-ai-chat-timeout", error);
+    } else {
+      console.error("web-search-ai-chat-fallback", error);
+    }
+
+    return streamGeneralAiChat(conversationMessages);
+  }
 }
 
 // 78차: 추이 분석 시스템 프롬프트

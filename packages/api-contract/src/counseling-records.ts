@@ -58,6 +58,16 @@ export const counselingChatMessageSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const counselingChatConversationMessageSchema = z.object({
+  role: counselingChatMessageRoleSchema,
+  content: z.string(),
+});
+
+export const counselingChatRequestSchema = z.object({
+  messages: z.array(counselingChatConversationMessageSchema).nonempty(),
+  useWebSearch: z.boolean().optional().default(false),
+});
+
 export const counselingRecordListItemSchema = z.object({
   id: z.string().uuid(),
   spaceId: z.string().uuid().nullable(),
@@ -177,6 +187,10 @@ export type CounselingChatMessageRole = z.infer<
   typeof counselingChatMessageRoleSchema
 >;
 export type CounselingChatMessage = z.infer<typeof counselingChatMessageSchema>;
+export type CounselingChatConversationMessage = z.infer<
+  typeof counselingChatConversationMessageSchema
+>;
+export type CounselingChatRequest = z.infer<typeof counselingChatRequestSchema>;
 export type CounselingRecordListItem = z.infer<
   typeof counselingRecordListItemSchema
 >;
