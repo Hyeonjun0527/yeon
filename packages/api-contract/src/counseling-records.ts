@@ -6,6 +6,12 @@ export const counselingRecordStatusSchema = z.enum([
   "error",
 ]);
 
+export const counselingRecordSourceSchema = z.enum([
+  "audio_upload",
+  "text_memo",
+  "demo_placeholder",
+]);
+
 export const counselingRecordProcessingStageSchema = z.enum([
   "queued",
   "downloading",
@@ -60,6 +66,7 @@ export const counselingRecordListItemSchema = z.object({
   counselingType: z.string(),
   counselorName: z.string().nullable(),
   status: counselingRecordStatusSchema,
+  recordSource: counselingRecordSourceSchema,
   preview: z.string(),
   tags: z.array(z.string()),
   audioOriginalName: z.string(),
@@ -149,6 +156,9 @@ export const bulkCounselingRecordDetailsResponseSchema = z.object({
 
 export type CounselingRecordStatus = z.infer<
   typeof counselingRecordStatusSchema
+>;
+export type CounselingRecordSource = z.infer<
+  typeof counselingRecordSourceSchema
 >;
 export type CounselingRecordProcessingStage = z.infer<
   typeof counselingRecordProcessingStageSchema

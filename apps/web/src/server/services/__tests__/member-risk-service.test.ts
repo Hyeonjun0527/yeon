@@ -46,6 +46,7 @@ const makeRiskRecord = (overrides: Partial<RiskRecord> = {}): RiskRecord => ({
       nextSession: ["다음 주 진행 확인"],
     },
   },
+  recordSource: "audio_upload",
   audioStoragePath: "records/member-1/audio.webm",
   createdAt: new Date("2026-04-12T10:00:00.000Z"),
   ...overrides,
@@ -60,6 +61,7 @@ describe("member-risk-service", () => {
     const profile = buildMemberRiskProfile({
       records: [
         makeRiskRecord({
+          recordSource: "demo_placeholder",
           audioStoragePath: "local://demo/placeholder-record",
         }),
       ],

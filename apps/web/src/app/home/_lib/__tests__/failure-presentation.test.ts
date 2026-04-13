@@ -16,6 +16,7 @@ function makeRecord(overrides: Partial<RecordItem> = {}): RecordItem {
     durationMs: 60000,
     studentName: "홍길동",
     type: "1:1",
+    recordSource: "audio_upload",
     audioUrl: null,
     transcript: [],
     aiSummary: "",

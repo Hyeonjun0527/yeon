@@ -21,9 +21,21 @@ test.describe("텍스트 메모 빠른 입력", () => {
           body: JSON.stringify({
             record: {
               ...CREATED_MEMO,
-              transcriptSegments: [],
+              recordSource: "text_memo",
+              transcriptSegments: [
+                {
+                  id: "550e8400-e29b-41d4-a716-446655440010",
+                  segmentIndex: 0,
+                  startMs: null,
+                  endMs: null,
+                  speakerLabel: "메모",
+                  speakerTone: "unknown",
+                  text: "메모 내용입니다",
+                },
+              ],
               audioUrl: null,
               analysisResult: null,
+              assistantMessages: [],
               transcriptText: "메모 내용입니다",
             },
           }),

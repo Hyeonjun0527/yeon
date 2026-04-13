@@ -46,6 +46,7 @@ const records: CounselingRecordListItem[] = [
     processingMessage: null,
     processingChunkCount: 1,
     processingChunkCompletedCount: 1,
+    recordSource: "audio_upload",
     transcriptionAttemptCount: 1,
     analysisStatus: "ready",
     analysisProgress: 100,

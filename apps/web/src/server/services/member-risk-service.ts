@@ -5,7 +5,7 @@ import {
 
 import {
   findRiskRecordsByMemberIds,
-  isPlaceholderAudioStoragePath,
+  isDemoPlaceholderRecord,
   type MemberRiskRecordRow,
 } from "./counseling-records-repository";
 
@@ -180,7 +180,7 @@ export function buildMemberRiskProfile(options: {
   initialRiskLevel?: string | null;
 }): MemberRiskProfile {
   const realRecords = options.records.filter(
-    (record) => !isPlaceholderAudioStoragePath(record.audioStoragePath),
+    (record) => !isDemoPlaceholderRecord(record),
   );
   const sorted = [...realRecords].sort(
     (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
