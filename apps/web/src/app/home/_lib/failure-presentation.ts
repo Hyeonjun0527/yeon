@@ -10,6 +10,18 @@ function isSilentTranscriptionFailure(message: string) {
   );
 }
 
+function isMissingTranscriptionToolFailure(message: string) {
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("spawn ffmpeg enoent") ||
+    normalized.includes("spawn ffprobe enoent") ||
+    normalized.includes("서버 이미지에 없습니다") ||
+    normalized.includes("ffmpeg 패키지를 포함해 주세요") ||
+    normalized.includes("ffprobe가 서버 이미지에 없습니다")
+  );
+}
+
 export function inferFailurePresentation(selected: RecordItem) {
   const message = selected.errorMessage ?? "알 수 없는 오류가 발생했습니다.";
   const normalized = message.toLowerCase();
@@ -25,6 +37,7 @@ export function inferFailurePresentation(selected: RecordItem) {
     normalized.includes("길이") ||
     normalized.includes("duration");
   const isSilentFailure = isSilentTranscriptionFailure(message);
+  const isMissingToolFailure = isMissingTranscriptionToolFailure(message);
 
   if (isAnalysisFailure) {
     return {
@@ -35,6 +48,19 @@ export function inferFailurePresentation(selected: RecordItem) {
       retryLabel: "AI 분석 다시 시도",
       toneClass: "text-accent",
       isAnalysisFailure: true,
+      canRetry: true,
+    };
+  }
+
+  if (isMissingToolFailure) {
+    return {
+      badge: "전사 환경 오류",
+      title: "긴 음성 전사 도구가 서버에 없습니다",
+      description:
+        "배포 컨테이너에 ffmpeg와 ffprobe가 포함되어야 합니다. 이미지 반영 후 재전사를 다시 시도해 주세요.",
+      retryLabel: "재전사 다시 시도",
+      toneClass: "text-red",
+      isAnalysisFailure: false,
       canRetry: true,
     };
   }

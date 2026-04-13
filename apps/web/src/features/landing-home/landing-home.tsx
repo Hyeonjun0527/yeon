@@ -4,6 +4,13 @@ import { memo, useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { DevLoginOption } from "@/lib/auth/dev-login-options";
+import {
+  BRAND_REVIEW_CONTACT_DESCRIPTION,
+  GOOGLE_ACCOUNT_DATA_USAGE_DESCRIPTION,
+  SITE_BRAND_NAME,
+  SITE_PURPOSE_DESCRIPTION,
+  SITE_SUPPORT_EMAIL,
+} from "@/lib/site-brand";
 import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
 import { FEATURES, FLOW_STEPS, STATS } from "./landing-constants";
@@ -56,7 +63,7 @@ const HeroSection = memo(function HeroSection({
         } relative z-[3] mt-12 grid w-full max-w-[820px] gap-4 px-5 pb-8 pt-6 md:mt-0 md:gap-5 md:bg-transparent md:px-12 md:pb-[100px] md:pt-0`}
       >
         <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] font-mono md:text-[13px] md:tracking-[0.2em]">
-          YEON
+          {SITE_BRAND_NAME}
         </p>
 
         <p className="m-0 inline-flex w-fit items-center rounded-full border border-[rgba(129,140,248,0.22)] bg-[rgba(129,140,248,0.08)] px-3 py-1 text-[11px] font-semibold tracking-[-0.01em] text-[rgba(255,255,255,0.82)] md:px-3.5 md:py-1.5 md:text-[12px]">
@@ -244,7 +251,7 @@ const PhilosophySection = memo(function PhilosophySection() {
           AI를 믿을 수 없습니다&rdquo;
         </blockquote>
         <p className="m-0 max-w-[34ch] text-[15px] leading-[1.78] text-[rgba(255,255,255,0.68)] md:max-w-none md:text-[17px] md:leading-[1.85] md:text-[var(--text-muted)]">
-          YEON은 요약보다 먼저 원문을 보여줍니다.
+          {SITE_BRAND_NAME}은 요약보다 먼저 원문을 보여줍니다.
           <br />
           상담 기록이 다음 대화와 후속 관리로 이어지게 설계합니다.
         </p>
@@ -312,7 +319,8 @@ const CtaSection = memo(function CtaSection({
           <h2 className="m-0 max-w-[11ch] text-[clamp(30px,10vw,60px)] font-black leading-[1.05] tracking-[-0.05em] md:max-w-none md:text-[clamp(34px,5.5vw,60px)] md:leading-[1.1] md:tracking-[-0.035em]">
             상담 기록을
             <br />
-            <span className="text-[var(--accent)]">YEON</span>으로 정리하세요
+            <span className="text-[var(--accent)]">{SITE_BRAND_NAME}</span>
+            으로 정리하세요
           </h2>
           <p className="m-0 max-w-[32ch] text-[15px] leading-[1.72] text-[rgba(255,255,255,0.78)] md:max-w-none md:text-[18px] md:text-[var(--text-secondary)]">
             녹음, 원문, 요약, AI 질의를 하나의 흐름으로 연결합니다.
@@ -338,15 +346,13 @@ const FooterSection = memo(function FooterSection() {
   return (
     <footer className="relative z-[1] border-t border-[var(--dark-border)] bg-[var(--dark-bg)] px-5 py-8 md:px-12 md:py-9">
       <div className="mx-auto grid max-w-[1100px] gap-6 md:gap-7">
-        <div className="grid gap-4 rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[0_14px_34px_rgba(0,0,0,0.14)] md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] md:gap-6 md:px-6">
+        <div className="grid gap-4 rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[0_14px_34px_rgba(0,0,0,0.14)] md:grid-cols-2 md:gap-6 md:px-6 lg:grid-cols-3">
           <div className="grid gap-2">
             <p className="m-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">
               앱 목적
             </p>
             <p className="m-0 text-[14px] leading-[1.8] text-[rgba(255,255,255,0.82)] md:text-[15px]">
-              YEON은 교육기관 운영자와 멘토가 상담 녹음, 전사 원문, 구조화 요약,
-              후속 액션을 한 워크스페이스에서 관리하도록 돕는 상담 기록
-              서비스입니다.
+              {SITE_PURPOSE_DESCRIPTION}
             </p>
           </div>
           <div className="grid gap-2">
@@ -354,19 +360,34 @@ const FooterSection = memo(function FooterSection() {
               Google 계정 정보 사용 안내
             </p>
             <p className="m-0 text-[13px] leading-[1.75] text-[var(--text-muted)] md:text-[14px]">
-              Google 로그인 시 이름, 이메일, 프로필 이미지는 회원 식별과 로그인
-              유지에만 사용합니다. 사용자가 직접 Google Drive 연동을 시작한
-              경우에만 파일 가져오기를 위해 추가 권한을 요청합니다.
+              {GOOGLE_ACCOUNT_DATA_USAGE_DESCRIPTION}
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <p className="m-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+              브랜드 및 문의
+            </p>
+            <p className="m-0 text-[13px] leading-[1.75] text-[var(--text-muted)] md:text-[14px]">
+              {BRAND_REVIEW_CONTACT_DESCRIPTION}
+            </p>
+            <a
+              href={`mailto:${SITE_SUPPORT_EMAIL}`}
+              className="text-[13px] font-medium text-[var(--text-primary)] no-underline transition-colors duration-150 hover:text-[var(--accent)]"
+            >
+              {SITE_SUPPORT_EMAIL}
+            </a>
+            <p className="m-0 text-[12px] leading-[1.6] text-[var(--text-muted)]">
+              서비스명: {SITE_BRAND_NAME}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col items-start gap-4 text-left md:flex-row md:items-center md:justify-between md:gap-3 md:text-center">
           <span className="text-[20px] font-black tracking-[-0.03em] md:text-[22px]">
-            YEON
+            {SITE_BRAND_NAME}
           </span>
           <span className="text-[12px] leading-[1.6] text-[var(--text-muted)] md:text-[13px]">
-            &copy; 2026 YEON. All rights reserved.
+            &copy; 2026 {SITE_BRAND_NAME}. All rights reserved.
           </span>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <a

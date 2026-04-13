@@ -3,6 +3,11 @@ export interface MemberSelectionState {
   anchorId: string | null;
 }
 
+export type MemberCardPrimaryAction =
+  | "open-detail"
+  | "toggle-select"
+  | "range-select";
+
 export function pruneMemberSelection(
   prev: MemberSelectionState,
   visibleMemberIds: string[],
@@ -67,6 +72,69 @@ export function resolveMemberSelection(
 
   return {
     selectedIds: nextSelectedIds,
+    anchorId: memberId,
+  };
+}
+
+export function resolveMemberCardPrimaryAction(options: {
+  selectedCount: number;
+  shiftKey?: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+}): MemberCardPrimaryAction {
+  const {
+    selectedCount,
+    shiftKey = false,
+    metaKey = false,
+    ctrlKey = false,
+  } = options;
+
+  if (metaKey || ctrlKey) {
+    return "toggle-select";
+  }
+
+  if (shiftKey) {
+    return selectedCount > 0 ? "range-select" : "open-detail";
+  }
+
+  return "open-detail";
+}
+
+export function getOrderedSelectedMemberIds(
+  visibleMemberIds: string[],
+  selectedIds: Set<string>,
+) {
+  return visibleMemberIds.filter((memberId) => selectedIds.has(memberId));
+}
+
+export function resolveMemberContextSelection(
+  prev: MemberSelectionState,
+  options: {
+    memberId: string;
+    visibleMemberIds: string[];
+  },
+): MemberSelectionState {
+  const { memberId, visibleMemberIds } = options;
+
+  if (prev.selectedIds.has(memberId) && prev.selectedIds.size > 0) {
+    const orderedIds = getOrderedSelectedMemberIds(
+      visibleMemberIds,
+      prev.selectedIds,
+    );
+    const nextSelectedIds = new Set(orderedIds);
+    const nextAnchorId =
+      prev.anchorId && nextSelectedIds.has(prev.anchorId)
+        ? prev.anchorId
+        : memberId;
+
+    return {
+      selectedIds: nextSelectedIds,
+      anchorId: nextAnchorId,
+    };
+  }
+
+  return {
+    selectedIds: new Set([memberId]),
     anchorId: memberId,
   };
 }

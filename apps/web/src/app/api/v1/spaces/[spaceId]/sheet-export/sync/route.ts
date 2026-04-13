@@ -56,6 +56,6 @@ export async function POST(
       return jsonError(error.message, error.status);
     }
     console.error(error);
-    return jsonError("시트 익스포트 동기화에 실패했습니다.", 500);
+    return jsonError("시트에 반영하지 못했습니다.", 500);
   }
 }

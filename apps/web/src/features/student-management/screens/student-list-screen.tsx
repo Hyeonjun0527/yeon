@@ -25,6 +25,11 @@ import {
 import { useMemberList } from "../hooks/use-member-list";
 import { useBulkMemberDelete } from "../hooks/use-bulk-member-delete";
 import { useMemberSelection } from "../hooks/use-member-selection";
+import {
+  getOrderedSelectedMemberIds,
+  resolveMemberCardPrimaryAction,
+  resolveMemberContextSelection,
+} from "../member-selection-utils";
 import { useStudentManagement } from "../student-management-provider";
 import { MEMBER_STATUS_META, RISK_LEVEL_META } from "../constants";
 import type { RiskLevel } from "../types";
@@ -55,6 +60,13 @@ function getRiskSignalsSummary(signals?: string[]) {
 }
 
 const CARD_PAGE_SIZE = 24;
+
+type MemberContextMenuState = {
+  ids: string[];
+  primaryId: string;
+  x: number;
+  y: number;
+};
 
 export function StudentListScreen() {
   const { spaces, spacesLoading, selectedSpaceId, refetchMembers } =
@@ -94,9 +106,13 @@ export function StudentListScreen() {
   const {
     selectedIds,
     selectedCount,
+    selectionAnchorId,
     handleSelectMember,
+    replaceSelection,
     clearSelection: handleClearSelection,
   } = useMemberSelection(visibleMemberIds);
+  const [memberContextMenu, setMemberContextMenu] =
+    useState<MemberContextMenuState | null>(null);
 
   const {
     isDeletingSelected,
@@ -111,6 +127,62 @@ export function StudentListScreen() {
       refetchMembers();
     },
   });
+
+  useEffect(() => {
+    if (!memberContextMenu) {
+      return;
+    }
+
+    const primaryVisible = visibleMemberIds.includes(
+      memberContextMenu.primaryId,
+    );
+    if (!primaryVisible) {
+      setMemberContextMenu(null);
+    }
+  }, [memberContextMenu, visibleMemberIds]);
+
+  useEffect(() => {
+    if (!memberContextMenu) {
+      return;
+    }
+
+    const handleClose = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-member-card-context-menu='true']")) {
+        return;
+      }
+      setMemberContextMenu(null);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMemberContextMenu(null);
+      }
+    };
+
+    const handleScroll = () => {
+      setMemberContextMenu(null);
+    };
+
+    window.addEventListener("mousedown", handleClose);
+    window.addEventListener("keydown", handleEscape);
+    window.addEventListener("scroll", handleScroll, true);
+
+    return () => {
+      window.removeEventListener("mousedown", handleClose);
+      window.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [memberContextMenu]);
+
+  const handleMemberCardMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.button === 0 && event.shiftKey) {
+        event.preventDefault();
+      }
+    },
+    [],
+  );
 
   const isEmpty = !loading && !error && filteredMembers.length === 0;
   const hasMembers = !loading && !error && filteredMembers.length > 0;
@@ -237,8 +309,16 @@ export function StudentListScreen() {
   const handleMemberCardClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>, memberId: string) => {
       clearDeleteError();
+      setMemberContextMenu(null);
 
-      if (event.shiftKey) {
+      const primaryAction = resolveMemberCardPrimaryAction({
+        selectedCount,
+        shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+      });
+
+      if (primaryAction === "range-select") {
         event.preventDefault();
         handleSelectMember(memberId, {
           shiftKey: true,
@@ -247,7 +327,7 @@ export function StudentListScreen() {
         return;
       }
 
-      if (event.metaKey || event.ctrlKey) {
+      if (primaryAction === "toggle-select") {
         event.preventDefault();
         handleSelectMember(memberId, {
           shouldSelect: !selectedIds.has(memberId),
@@ -257,7 +337,14 @@ export function StudentListScreen() {
 
       router.push(detailBaseHref(memberId));
     },
-    [clearDeleteError, detailBaseHref, handleSelectMember, router, selectedIds],
+    [
+      clearDeleteError,
+      detailBaseHref,
+      handleSelectMember,
+      router,
+      selectedCount,
+      selectedIds,
+    ],
   );
 
   const handleMemberCardKeyDown = useCallback(
@@ -268,9 +355,23 @@ export function StudentListScreen() {
 
       event.preventDefault();
 
-      if (event.shiftKey || event.metaKey || event.ctrlKey) {
+      const primaryAction = resolveMemberCardPrimaryAction({
+        selectedCount,
+        shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+      });
+
+      if (primaryAction === "range-select") {
         handleSelectMember(memberId, {
-          shiftKey: event.shiftKey,
+          shiftKey: true,
+          shouldSelect: true,
+        });
+        return;
+      }
+
+      if (primaryAction === "toggle-select") {
+        handleSelectMember(memberId, {
           shouldSelect: !selectedIds.has(memberId),
         });
         return;
@@ -278,8 +379,56 @@ export function StudentListScreen() {
 
       router.push(detailBaseHref(memberId));
     },
-    [detailBaseHref, handleSelectMember, router, selectedIds],
+    [detailBaseHref, handleSelectMember, router, selectedCount, selectedIds],
   );
+
+  const handleMemberCardContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, member: { id: string }) => {
+      clearDeleteError();
+      event.preventDefault();
+      event.stopPropagation();
+
+      const nextSelection = resolveMemberContextSelection(
+        {
+          selectedIds,
+          anchorId: selectionAnchorId,
+        },
+        {
+          memberId: member.id,
+          visibleMemberIds,
+        },
+      );
+
+      const orderedIds = getOrderedSelectedMemberIds(
+        visibleMemberIds,
+        nextSelection.selectedIds,
+      );
+
+      replaceSelection(orderedIds, nextSelection.anchorId);
+      setMemberContextMenu({
+        ids: orderedIds,
+        primaryId: member.id,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    [
+      clearDeleteError,
+      replaceSelection,
+      selectedIds,
+      selectionAnchorId,
+      visibleMemberIds,
+    ],
+  );
+
+  const handleContextDelete = useCallback(async () => {
+    if (!memberContextMenu) {
+      return;
+    }
+
+    setMemberContextMenu(null);
+    await handleBulkDelete(memberContextMenu.ids);
+  }, [handleBulkDelete, memberContextMenu]);
 
   const renderMemberCard = useCallback(
     (member: (typeof filteredMembers)[number], index: number) => {
@@ -300,7 +449,7 @@ export function StudentListScreen() {
           tabIndex={0}
           aria-pressed={isSelected}
           aria-label={`${member.name} ${isSelected ? "선택됨" : "선택 안 됨"}`}
-          className={`relative border transition-all duration-150 ${
+          className={`relative select-none border transition-all duration-150 ${
             isDenseView
               ? `rounded-lg px-3 py-2 ${
                   isSelected
@@ -313,7 +462,9 @@ export function StudentListScreen() {
                     : "border-border bg-surface-2 hover:border-border-light hover:bg-surface-3"
                 } rounded p-5`
           }`}
+          onMouseDown={handleMemberCardMouseDown}
           onClick={(event) => handleMemberCardClick(event, member.id)}
+          onContextMenu={(event) => handleMemberCardContextMenu(event, member)}
           onKeyDown={(event) => handleMemberCardKeyDown(event, member.id)}
         >
           {isSelected ? (
@@ -424,7 +575,14 @@ export function StudentListScreen() {
         </div>
       );
     },
-    [handleMemberCardClick, handleMemberCardKeyDown, isDenseView, selectedIds],
+    [
+      handleMemberCardClick,
+      handleMemberCardContextMenu,
+      handleMemberCardKeyDown,
+      handleMemberCardMouseDown,
+      isDenseView,
+      selectedIds,
+    ],
   );
 
   if (spacesLoading) {
@@ -669,6 +827,27 @@ export function StudentListScreen() {
           <div className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[12px] text-text-dim">
             아래로 스크롤하면 더 불러옵니다
           </div>
+        </div>
+      ) : null}
+      {memberContextMenu ? (
+        <div
+          data-member-card-context-menu="true"
+          className="fixed z-[340] min-w-[180px] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_18px_48px_rgba(0,0,0,0.38)]"
+          style={{ left: memberContextMenu.x, top: memberContextMenu.y }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 border-none bg-transparent px-3 py-2 text-left text-[12px] font-medium text-red transition-colors hover:bg-surface-4"
+            onClick={() => void handleContextDelete()}
+            disabled={isDeletingSelected}
+          >
+            <Trash2 size={14} />
+            {isDeletingSelected
+              ? "삭제 중..."
+              : memberContextMenu.ids.length > 1
+                ? `선택한 ${memberContextMenu.ids.length}명 삭제`
+                : "1명 삭제"}
+          </button>
         </div>
       ) : null}
       <StudentTutorial />

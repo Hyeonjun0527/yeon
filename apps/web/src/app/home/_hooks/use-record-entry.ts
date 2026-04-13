@@ -30,6 +30,8 @@ interface RecordEntryDeps {
   recordingCancel: () => void;
   /** useFileUpload.openFilePicker */
   openFilePicker: () => void;
+  /** 준비된 오디오 파일 업로드 */
+  uploadPreparedFile: (file: File) => Promise<void>;
 }
 
 export function useRecordEntry(deps: RecordEntryDeps) {
@@ -100,6 +102,14 @@ export function useRecordEntry(deps: RecordEntryDeps) {
     handleOpenFileUpload();
   }, [handleOpenFileUpload]);
 
+  const handleChoosePreparedUploadEntry = useCallback(
+    (file: File) => {
+      setNewRecordEntryOpen(false);
+      void deps.uploadPreparedFile(file);
+    },
+    [deps.uploadPreparedFile],
+  );
+
   const handleChooseTextEntry = useCallback(() => {
     setNewRecordEntryOpen(false);
     setQuickMemoOpen(true);
@@ -139,6 +149,7 @@ export function useRecordEntry(deps: RecordEntryDeps) {
     handleOpenNewRecordEntry,
     handleChooseRecordingEntry,
     handleChooseUploadEntry,
+    handleChoosePreparedUploadEntry,
     handleChooseTextEntry,
     handleQuickMemoClose,
     handleQuickMemoCreated,

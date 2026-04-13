@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 
+import {
+  SITE_BRAND_NAME,
+  SITE_SUPPORT_EMAIL,
+} from "@/lib/site-brand";
+
 export const metadata: Metadata = {
-  title: "서비스 이용약관 | Yeon",
+  title: `서비스 이용약관 | ${SITE_BRAND_NAME}`,
 };
 
 export default function TermsPage() {
@@ -25,17 +30,17 @@ export default function TermsPage() {
 
       <Section title="제1조 (목적)">
         <p>
-          본 약관은 Yeon(이하 "서비스")이 제공하는 교육기관 관리 플랫폼의 이용과
-          관련하여 서비스와 이용자 간의 권리, 의무 및 책임 사항을 규정함을
-          목적으로 합니다.
+          본 약관은 {SITE_BRAND_NAME}(이하 "서비스")이 제공하는 교육기관 관리
+          플랫폼의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임
+          사항을 규정함을 목적으로 합니다.
         </p>
       </Section>
 
       <Section title="제2조 (정의)">
         <ul style={ulStyle}>
           <li>
-            <strong>"서비스"</strong>란 Yeon이 제공하는 수강생 관리, 멘토링
-            기록, AI 분석 등 일체의 서비스를 말합니다.
+            <strong>"서비스"</strong>란 {SITE_BRAND_NAME}이 제공하는 수강생
+            관리, 멘토링 기록, AI 분석 등 일체의 서비스를 말합니다.
           </li>
           <li>
             <strong>"이용자"</strong>란 본 약관에 동의하고 서비스를 이용하는
@@ -117,8 +122,16 @@ export default function TermsPage() {
 
       <Section title="문의">
         <ul style={ulStyle}>
-          <li>서비스명: Yeon</li>
-          <li>이메일: wschoi809@naver.com</li>
+          <li>서비스명: {SITE_BRAND_NAME}</li>
+          <li>
+            이메일:{" "}
+            <a
+              href={`mailto:${SITE_SUPPORT_EMAIL}`}
+              style={{ color: "#2563eb", textDecoration: "underline" }}
+            >
+              {SITE_SUPPORT_EMAIL}
+            </a>
+          </li>
         </ul>
       </Section>
     </div>

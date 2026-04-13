@@ -117,7 +117,7 @@ export function Gnav({ activeMenu }: GnavProps) {
           >
             <button className="flex items-center gap-2 w-full px-3 py-2 bg-none border-none text-text text-xs font-[inherit] cursor-pointer text-left hover:bg-surface-4">
               <SettingsIcon size={14} />
-              설정
+              설정(추후기능)
             </button>
             <button
               type="button"

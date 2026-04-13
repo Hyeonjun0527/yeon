@@ -417,6 +417,10 @@ export function StudentCheckBoardPanel({
                   공개 체크인 세션
                 </div>
                 <p className="mt-1 text-[11px] text-text-dim">
+                  세션을 열고 QR 또는 링크를 수강생에게 제공하면, 수강생이 직접
+                  출석과 과제를 체크할 수 있습니다.
+                </p>
+                <p className="mt-1 text-[11px] text-text-dim">
                   QR / 위치 기반 세션 운영 · 현재{" "}
                   {
                     boardSessions.filter(
@@ -889,10 +893,6 @@ export function StudentCheckBoardPanel({
                   <div className="text-sm font-semibold text-text">
                     진행기간 잔디 보기
                   </div>
-                  <p className="mt-1 text-[11px] text-text-dim">
-                    빠른 수정은 그대로 두고, 필요할 때만 전체 기간 잔디를
-                    펼칩니다.
-                  </p>
                 </div>
                 <button
                   type="button"

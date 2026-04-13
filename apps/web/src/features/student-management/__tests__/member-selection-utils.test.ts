@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   createSelectAllState,
+  getOrderedSelectedMemberIds,
   pruneMemberSelection,
+  resolveMemberCardPrimaryAction,
+  resolveMemberContextSelection,
   resolveMemberSelection,
 } from "../member-selection-utils";
 
@@ -99,5 +102,82 @@ describe("createSelectAllState", () => {
 
     expect(Array.from(result.selectedIds)).toEqual([]);
     expect(result.anchorId).toBeNull();
+  });
+});
+
+describe("resolveMemberCardPrimaryAction", () => {
+  it("선택 모드가 아니면 shift 클릭도 상세 열람으로 본다", () => {
+    expect(
+      resolveMemberCardPrimaryAction({
+        selectedCount: 0,
+        shiftKey: true,
+      }),
+    ).toBe("open-detail");
+  });
+
+  it("선택 모드에서는 shift 클릭을 범위 선택으로 본다", () => {
+    expect(
+      resolveMemberCardPrimaryAction({
+        selectedCount: 2,
+        shiftKey: true,
+      }),
+    ).toBe("range-select");
+  });
+
+  it("ctrl/cmd 클릭은 항상 토글 선택으로 본다", () => {
+    expect(
+      resolveMemberCardPrimaryAction({
+        selectedCount: 0,
+        ctrlKey: true,
+      }),
+    ).toBe("toggle-select");
+    expect(
+      resolveMemberCardPrimaryAction({
+        selectedCount: 3,
+        metaKey: true,
+      }),
+    ).toBe("toggle-select");
+  });
+});
+
+describe("getOrderedSelectedMemberIds", () => {
+  it("현재 화면 순서대로 선택된 수강생 id를 반환한다", () => {
+    expect(
+      getOrderedSelectedMemberIds(["c", "a", "b", "d"], new Set(["b", "c"])),
+    ).toEqual(["c", "b"]);
+  });
+});
+
+describe("resolveMemberContextSelection", () => {
+  it("현재 선택 안의 항목을 우클릭하면 기존 선택을 유지한다", () => {
+    const result = resolveMemberContextSelection(
+      {
+        selectedIds: new Set(["b", "d"]),
+        anchorId: "b",
+      },
+      {
+        memberId: "d",
+        visibleMemberIds: ["a", "b", "c", "d"],
+      },
+    );
+
+    expect(Array.from(result.selectedIds)).toEqual(["b", "d"]);
+    expect(result.anchorId).toBe("b");
+  });
+
+  it("선택 밖 항목을 우클릭하면 그 항목 1명만 선택으로 바꾼다", () => {
+    const result = resolveMemberContextSelection(
+      {
+        selectedIds: new Set(["b", "d"]),
+        anchorId: "b",
+      },
+      {
+        memberId: "c",
+        visibleMemberIds: ["a", "b", "c", "d"],
+      },
+    );
+
+    expect(Array.from(result.selectedIds)).toEqual(["c"]);
+    expect(result.anchorId).toBe("c");
   });
 });

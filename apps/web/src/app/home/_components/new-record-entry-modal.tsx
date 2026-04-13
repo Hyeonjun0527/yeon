@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { FileText, Link2, Mic, Upload, X } from "lucide-react";
+
+import { COUNSELING_AUDIO_TEST_DATA } from "@/lib/counseling-audio-test-data";
 
 interface NewRecordEntryModalProps {
   onClose: () => void;
   onChooseRecording: () => void;
   onChooseUpload: () => void;
+  onChoosePreparedUpload: (file: File) => void | Promise<void>;
   onChooseText: () => void;
   linkedStudentName?: string;
 }
@@ -49,9 +52,48 @@ export function NewRecordEntryModal({
   onClose,
   onChooseRecording,
   onChooseUpload,
+  onChoosePreparedUpload,
   onChooseText,
   linkedStudentName,
 }: NewRecordEntryModalProps) {
+  const [pendingSampleId, setPendingSampleId] = useState<string | null>(null);
+  const [sampleError, setSampleError] = useState<string | null>(null);
+
+  async function handleChooseTestSample(sample: (typeof COUNSELING_AUDIO_TEST_DATA)[number]) {
+    setPendingSampleId(sample.id);
+    setSampleError(null);
+
+    try {
+      const response = await fetch(sample.href, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { message?: string }
+          | null;
+        throw new Error(
+          payload?.message ?? "테스트 음성 파일을 불러오지 못했습니다.",
+        );
+      }
+
+      const blob = await response.blob();
+      const file = new File([blob], sample.fileName, {
+        type: blob.type || "audio/mpeg",
+      });
+
+      await onChoosePreparedUpload(file);
+    } catch (error) {
+      setSampleError(
+        error instanceof Error
+          ? error.message
+          : "테스트 음성 파일을 불러오지 못했습니다.",
+      );
+      setPendingSampleId(null);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-[220] flex items-center justify-center bg-[rgba(5,5,8,0.72)] p-4 backdrop-blur-[10px]"
@@ -80,6 +122,34 @@ export function NewRecordEntryModal({
         </div>
 
         <div className="grid gap-2.5 p-4">
+          <div className="grid gap-1.5">
+            <div className="text-[11px] font-medium text-text-dim">
+              테스트 음성
+            </div>
+            <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5">
+              {COUNSELING_AUDIO_TEST_DATA.map((sample) => {
+                const isPending = pendingSampleId === sample.id;
+
+                return (
+                  <button
+                    key={sample.id}
+                    type="button"
+                    className="inline-flex h-7 shrink-0 items-center rounded-full border border-border bg-surface-2 px-2.5 text-[11px] font-medium text-text-secondary transition-[border-color,background-color,color] duration-150 hover:border-accent-border hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void handleChooseTestSample(sample)}
+                    disabled={pendingSampleId !== null}
+                    title={`${sample.label} · ${sample.description}`}
+                  >
+                    {isPending ? `${sample.shortLabel}...` : sample.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {sampleError ? (
+            <p className="-mt-1 text-[11px] leading-relaxed text-red">
+              {sampleError}
+            </p>
+          ) : null}
           {linkedStudentName ? (
             <div className="flex items-start gap-3 rounded-xl border border-accent-border bg-accent-dim px-4 py-3 text-[12px] text-accent">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-surface/70">
