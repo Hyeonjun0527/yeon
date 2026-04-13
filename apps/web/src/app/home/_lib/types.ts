@@ -3,6 +3,7 @@ import type {
   CounselingRecordAnalysisStatus,
   CounselingRecordProcessingStage,
   CounselingRecordSource,
+  CounselingTranscriptSegment,
 } from "@yeon/api-contract/counseling-records";
 export type { AnalysisResult };
 
@@ -32,15 +33,7 @@ export interface AiMessage {
 }
 
 /** 실제 API CounselingTranscriptSegment와 동일한 형태 */
-export interface TranscriptSegment {
-  id: string;
-  segmentIndex: number;
-  startMs: number | null;
-  endMs: number | null;
-  speakerLabel: string;
-  speakerTone: "teacher" | "student" | "unknown";
-  text: string;
-}
+export type TranscriptSegment = CounselingTranscriptSegment;
 
 export interface RecordItem {
   id: string;

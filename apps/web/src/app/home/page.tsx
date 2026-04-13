@@ -178,16 +178,17 @@ function MockV2WorkspaceInner() {
   }, [entry.handleOpenNewRecordEntry]);
 
   // ── AI 채팅 / 패널 ────────────────────────────────────────────
+  const aiPanel = useAiPanel({
+    hasSelectedRecord: selection.selectedRecordId !== null,
+  });
   const aiChat = useAiChat({
     selectedId: selection.selectedRecordId,
     selectedMessages: records.selected?.aiMessages || [],
     selectedStatus: records.selected?.status ?? null,
     selectedAnalysisResult: records.selected?.analysisResult ?? null,
+    useWebSearch: aiPanel.useWebSearch,
     onUpdateMessages: records.updateMessages,
     onUpdateAnalysisResult: records.updateAnalysisResult,
-  });
-  const aiPanel = useAiPanel({
-    hasSelectedRecord: selection.selectedRecordId !== null,
   });
 
   // ── 재시도 ─────────────────────────────────────────────────────
@@ -525,10 +526,12 @@ function MockV2WorkspaceInner() {
                 tab={aiPanel.tab}
                 panelRef={aiPanel.panelRef}
                 model={aiPanel.model}
+                useWebSearch={aiPanel.useWebSearch}
                 onSetTab={aiPanel.setTab}
                 onToggleCollapsed={aiPanel.toggleCollapsed}
                 onExpand={aiPanel.expand}
                 onToggleModel={aiPanel.toggleModel}
+                onToggleWebSearch={aiPanel.toggleWebSearch}
                 onStartResize={aiPanel.startResize}
                 phase={records.viewState.kind as "processing" | "ready"}
                 selected={records.selected}

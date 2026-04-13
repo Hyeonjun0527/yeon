@@ -35,17 +35,25 @@ const HeroSection = memo(function HeroSection({
   onOpenLogin: () => void;
   onScrollToStats: () => void;
 }) {
+  const [isSplineLive, setIsSplineLive] = useState(false);
+
   return (
     <section className="relative flex min-h-[560px] items-start justify-start overflow-hidden md:min-h-screen md:items-end">
       <div className="absolute inset-0 z-0">
-        <SplineHero paused={paused} />
+        <SplineHero paused={paused} onLiveSceneChange={setIsSplineLive} />
       </div>
 
-      <div className={styles.heroGradient} />
+      <div
+        className={`${styles.heroGradient} ${
+          isSplineLive ? styles.heroGradientLive : ""
+        }`}
+      />
       <div className={styles.heroMobileScrim} />
 
       <div
-        className={`${styles.heroCopyShell} relative z-[3] mt-12 grid w-full max-w-[820px] gap-4 px-5 pb-8 pt-6 md:mt-0 md:gap-5 md:bg-transparent md:px-12 md:pb-[100px] md:pt-0`}
+        className={`${styles.heroCopyShell} ${
+          isSplineLive ? styles.heroCopyShellLive : ""
+        } relative z-[3] mt-12 grid w-full max-w-[820px] gap-4 px-5 pb-8 pt-6 md:mt-0 md:gap-5 md:bg-transparent md:px-12 md:pb-[100px] md:pt-0`}
       >
         <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)] font-mono md:text-[13px] md:tracking-[0.2em]">
           YEON

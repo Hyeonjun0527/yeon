@@ -1,4 +1,13 @@
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Check, ClipboardCopy, Search, X } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   CounselingRecordDetail,
   CounselingRecordListItem,
@@ -8,10 +17,22 @@ import {
   getNextSpeaker,
   getSpeakerToneClass,
   isTranscriptSegmentActive,
-  isTranscriptSegmentMatched,
   renderHighlightedText,
 } from "../utils";
 import styles from "../counseling-record-workspace.module.css";
+import {
+  buildTranscriptDisplayBlocks,
+  isTranscriptDisplayBlockMatched,
+} from "@/lib/counseling-transcript-display";
+
+const EMPTY_TRANSCRIPT_DISPLAY_BLOCKS: ReturnType<
+  typeof buildTranscriptDisplayBlocks
+> = [];
+const DISPLAY_BLOCK_ROW_GAP = 10;
+const DISPLAY_BLOCK_BASE_HEIGHT = 84;
+const DISPLAY_BLOCK_CHUNK_HEIGHT = 42;
+const DISPLAY_BLOCK_RAW_SEGMENT_HEIGHT = 92;
+const DISPLAY_BLOCK_EDITING_BONUS_HEIGHT = 56;
 
 export interface TranscriptViewerProps {
   selectedRecord: CounselingRecordListItem;
@@ -22,7 +43,7 @@ export interface TranscriptViewerProps {
   normalizedTranscriptQuery: string;
   transcriptMatchCount: number;
   isAutoScrollEnabled: boolean;
-  setIsAutoScrollEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsAutoScrollEnabled: Dispatch<SetStateAction<boolean>>;
   handleExportClipboard: () => void;
   editingSegmentId: string | null;
   editingSegmentText: string;
@@ -37,8 +58,44 @@ export interface TranscriptViewerProps {
     newTone: string,
   ) => void;
   currentAudioTimeMs: number | null;
-  activeSegmentRef: React.RefObject<HTMLElement | null>;
   seekAudioToTime: (startMs: number | null) => void;
+}
+
+function isDisplayBlockActive(
+  block: (typeof EMPTY_TRANSCRIPT_DISPLAY_BLOCKS)[number],
+  currentAudioTimeMs: number | null,
+) {
+  return block.segments.some((segment, index, segments) =>
+    isTranscriptSegmentActive({
+      currentTimeMs: currentAudioTimeMs,
+      startMs: segment.startMs,
+      endMs: segment.endMs,
+      nextStartMs: segments[index + 1]?.startMs ?? null,
+    }),
+  );
+}
+
+function estimateDisplayBlockSize(
+  block: (typeof EMPTY_TRANSCRIPT_DISPLAY_BLOCKS)[number] | undefined,
+  isExpanded: boolean,
+  editingSegmentId: string | null,
+) {
+  if (!block) {
+    return DISPLAY_BLOCK_BASE_HEIGHT;
+  }
+
+  const isEditingInsideBlock = block.segments.some(
+    (segment) => segment.id === editingSegmentId,
+  );
+
+  return (
+    DISPLAY_BLOCK_BASE_HEIGHT +
+    block.chunks.length * DISPLAY_BLOCK_CHUNK_HEIGHT +
+    (isExpanded ? block.segmentCount * DISPLAY_BLOCK_RAW_SEGMENT_HEIGHT : 0) +
+    (isExpanded && isEditingInsideBlock
+      ? DISPLAY_BLOCK_EDITING_BONUS_HEIGHT
+      : 0)
+  );
 }
 
 export function TranscriptViewer({
@@ -61,9 +118,75 @@ export function TranscriptViewer({
   saveEditingSegment,
   handleSpeakerLabelChange,
   currentAudioTimeMs,
-  activeSegmentRef,
   seekAudioToTime,
 }: TranscriptViewerProps) {
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setExpandedBlockId(null);
+  }, [selectedRecordDetail?.id]);
+
+  const transcriptDisplayBlocks = useMemo(
+    () =>
+      selectedRecordDetail
+        ? buildTranscriptDisplayBlocks(selectedRecordDetail.transcriptSegments)
+        : EMPTY_TRANSCRIPT_DISPLAY_BLOCKS,
+    [selectedRecordDetail],
+  );
+  const transcriptSegmentCount =
+    selectedRecordDetail?.transcriptSegments.length ??
+    selectedRecord.transcriptSegmentCount;
+  const transcriptSummaryText =
+    transcriptDisplayBlocks.length > 0
+      ? `화자 턴 ${transcriptDisplayBlocks.length}개 · 구간 ${transcriptSegmentCount}개`
+      : `구간 ${transcriptSegmentCount}개`;
+  const activeBlockIndex = useMemo(
+    () =>
+      transcriptDisplayBlocks.findIndex((block) =>
+        isDisplayBlockActive(block, currentAudioTimeMs),
+      ),
+    [currentAudioTimeMs, transcriptDisplayBlocks],
+  );
+  const rowVirtualizer = useVirtualizer({
+    count: transcriptDisplayBlocks.length,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: (index) => {
+      const block = transcriptDisplayBlocks[index];
+      const isExpanded =
+        expandedBlockId === block?.id ||
+        block?.segments.some((segment) => segment.id === editingSegmentId) ||
+        false;
+
+      return (
+        estimateDisplayBlockSize(block, isExpanded, editingSegmentId) +
+        DISPLAY_BLOCK_ROW_GAP
+      );
+    },
+    getItemKey: (index) =>
+      transcriptDisplayBlocks[index]?.id ?? `transcript-block-${index}`,
+    overscan: 10,
+  });
+
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [
+    expandedBlockId,
+    editingSegmentId,
+    rowVirtualizer,
+    transcriptDisplayBlocks,
+  ]);
+
+  useEffect(() => {
+    if (!isAutoScrollEnabled || activeBlockIndex < 0) {
+      return;
+    }
+
+    rowVirtualizer.scrollToIndex(activeBlockIndex, {
+      align: "auto",
+    });
+  }, [activeBlockIndex, isAutoScrollEnabled, rowVirtualizer]);
+
   return (
     <section className={styles.viewerPanel}>
       <div className={styles.viewerToolbar}>
@@ -72,7 +195,7 @@ export function TranscriptViewer({
             className="text-xs whitespace-nowrap"
             style={{ color: "var(--text-muted)" }}
           >
-            {`구간 ${selectedRecordDetail ? selectedRecordDetail.transcriptSegments.length : selectedRecord.transcriptSegmentCount}개${normalizedTranscriptQuery ? ` · 일치 ${transcriptMatchCount}개` : ""}`}
+            {`${transcriptSummaryText}${normalizedTranscriptQuery ? ` · 일치 ${transcriptMatchCount}개` : ""}`}
           </span>
 
           <label
@@ -133,7 +256,10 @@ export function TranscriptViewer({
         </div>
       </div>
 
-      <div className={`scrollbar-subtle ${styles.transcriptViewport}`}>
+      <div
+        ref={viewportRef}
+        className={`scrollbar-subtle ${styles.transcriptViewport}`}
+      >
         {isLoadingDetail && !selectedRecordDetail ? (
           <div className="grid gap-4 p-5">
             {Array.from({ length: 5 }, (_, i) => (
@@ -155,165 +281,250 @@ export function TranscriptViewer({
           </div>
         ) : selectedRecordDetail &&
           selectedRecordDetail.transcriptSegments.length > 0 ? (
-          selectedRecordDetail.transcriptSegments.map(
-            (segment, index, segments) => {
-              const isMatched = isTranscriptSegmentMatched(
-                segment,
-                normalizedTranscriptQuery,
-              );
-              const isActive = isTranscriptSegmentActive({
-                currentTimeMs: currentAudioTimeMs,
-                startMs: segment.startMs,
-                endMs: segment.endMs,
-                nextStartMs: segments[index + 1]?.startMs ?? null,
-              });
-              const isSeekable =
-                Boolean(selectedRecordDetail.audioUrl) &&
-                segment.startMs !== null;
-              const segmentClassName = `${styles.segmentRow} ${
-                isMatched ? styles.segmentMatched : ""
-              } ${isActive ? styles.segmentActive : ""} ${
-                isSeekable ? styles.segmentSeekable : styles.segmentStatic
-              }`;
-              const isEditing = editingSegmentId === segment.id;
-              const segmentContent = isEditing ? (
-                <>
-                  <div className={styles.segmentTime}>
-                    {formatTranscriptTime(segment.startMs)}
-                  </div>
-                  <div
-                    className={`${styles.segmentSpeaker} ${getSpeakerToneClass(segment.speakerTone, styles)}`}
-                  >
-                    {segment.speakerLabel}
-                  </div>
-                  <div className={styles.segmentEditArea}>
-                    <textarea
-                      className={styles.segmentEditInput}
-                      value={editingSegmentText}
-                      onChange={(e) => setEditingSegmentText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          saveEditingSegment();
-                        }
-                        if (e.key === "Escape") {
-                          cancelEditingSegment();
-                        }
-                      }}
-                      rows={2}
-                      autoFocus
-                      disabled={editingSegmentSaving}
-                    />
-                    <div className={styles.segmentEditActions}>
-                      <button
-                        type="button"
-                        className={styles.segmentEditSave}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          saveEditingSegment();
-                        }}
-                        disabled={editingSegmentSaving}
-                        aria-label="저장"
-                      >
-                        <Check size={14} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.segmentEditCancel}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          cancelEditingSegment();
-                        }}
-                        disabled={editingSegmentSaving}
-                        aria-label="취소"
-                      >
-                        <X size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.segmentTime}>
-                    {formatTranscriptTime(segment.startMs)}
-                  </div>
-                  <div
-                    className={`${styles.segmentSpeaker} ${styles.segmentSpeakerClickable} ${getSpeakerToneClass(segment.speakerTone, styles)}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const next = getNextSpeaker(segment.speakerTone);
-                      handleSpeakerLabelChange(
-                        segment.id,
-                        next.label,
-                        next.tone,
-                      );
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.stopPropagation();
-                        const next = getNextSpeaker(segment.speakerTone);
-                        handleSpeakerLabelChange(
-                          segment.id,
-                          next.label,
-                          next.tone,
-                        );
-                      }
-                    }}
-                    title="클릭하여 화자 변경"
-                  >
-                    {segment.speakerLabel}
-                  </div>
-                  <p
-                    className={styles.segmentText}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      startEditingSegment(segment.id, segment.text);
-                    }}
-                  >
-                    {renderHighlightedText(
-                      segment.text,
-                      normalizedTranscriptQuery,
-                      styles,
-                    )}
-                  </p>
-                </>
-              );
+          <div
+            className={styles.transcriptVirtualList}
+            style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const block = transcriptDisplayBlocks[virtualRow.index];
 
-              if (isSeekable && !isEditing) {
-                return (
-                  <button
-                    key={segment.id}
-                    ref={
-                      isActive
-                        ? (activeSegmentRef as React.RefObject<HTMLButtonElement>)
-                        : undefined
-                    }
-                    type="button"
-                    className={segmentClassName}
-                    onClick={() => seekAudioToTime(segment.startMs)}
-                  >
-                    {segmentContent}
-                  </button>
-                );
+              if (!block) {
+                return null;
               }
 
-              return (
-                <article
-                  key={segment.id}
-                  ref={
-                    isActive
-                      ? (activeSegmentRef as React.RefObject<HTMLElement>)
-                      : undefined
-                  }
-                  className={segmentClassName}
-                >
-                  {segmentContent}
-                </article>
+              const isMatched = isTranscriptDisplayBlockMatched(
+                block,
+                normalizedTranscriptQuery,
               );
-            },
-          )
+              const isActive = activeBlockIndex === virtualRow.index;
+              const isSeekable =
+                Boolean(selectedRecordDetail.audioUrl) &&
+                block.startMs !== null;
+              const blockClassName = `${styles.displayBlock} ${
+                isMatched ? styles.displayBlockMatched : ""
+              } ${isActive ? styles.displayBlockActive : ""} ${
+                isSeekable
+                  ? styles.displayBlockSeekable
+                  : styles.displayBlockStatic
+              }`;
+              const isExpanded =
+                expandedBlockId === block.id ||
+                block.segments.some(
+                  (segment) => segment.id === editingSegmentId,
+                );
+              const blockBody = (
+                <>
+                  <div className={styles.displayBlockHeader}>
+                    <div className={styles.displayBlockMeta}>
+                      <div className={styles.displayBlockTime}>
+                        {formatTranscriptTime(block.startMs)}
+                      </div>
+                      <div
+                        className={`${styles.displayBlockSpeaker} ${getSpeakerToneClass(block.speakerTone, styles)}`}
+                      >
+                        {block.speakerLabel}
+                      </div>
+                      <span className={styles.displayBlockCount}>
+                        원본 {block.segmentCount}개
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.displayBlockAction}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setExpandedBlockId((current) =>
+                          current === block.id ? null : block.id,
+                        );
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      {isExpanded ? "원본 닫기" : "원본 수정"}
+                    </button>
+                  </div>
+                  <div className={styles.displayBlockChunks}>
+                    {block.chunks.map((chunk) => (
+                      <p key={chunk.id} className={styles.displayBlockChunk}>
+                        {renderHighlightedText(
+                          chunk.text,
+                          normalizedTranscriptQuery,
+                          styles,
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                  {isExpanded ? (
+                    <div
+                      className={styles.rawSegmentPanel}
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      {block.segments.map((segment, index, segments) => {
+                        const rawIsMatched = isTranscriptDisplayBlockMatched(
+                          {
+                            ...block,
+                            segments: [segment],
+                          },
+                          normalizedTranscriptQuery,
+                        );
+                        const rawIsActive = isTranscriptSegmentActive({
+                          currentTimeMs: currentAudioTimeMs,
+                          startMs: segment.startMs,
+                          endMs: segment.endMs,
+                          nextStartMs: segments[index + 1]?.startMs ?? null,
+                        });
+                        const rawIsEditing = editingSegmentId === segment.id;
+                        const rawRowClassName = `${styles.rawSegmentRow} ${
+                          rawIsMatched ? styles.rawSegmentMatched : ""
+                        } ${rawIsActive ? styles.rawSegmentActive : ""}`;
+
+                        return (
+                          <article key={segment.id} className={rawRowClassName}>
+                            <div className={styles.rawSegmentHeader}>
+                              <div className={styles.rawSegmentMeta}>
+                                <div className={styles.segmentTime}>
+                                  {formatTranscriptTime(segment.startMs)}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`${styles.segmentSpeaker} ${styles.segmentSpeakerClickable} ${getSpeakerToneClass(segment.speakerTone, styles)}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    const next = getNextSpeaker(
+                                      segment.speakerTone,
+                                    );
+                                    handleSpeakerLabelChange(
+                                      segment.id,
+                                      next.label,
+                                      next.tone,
+                                    );
+                                  }}
+                                  title="원본 세그먼트 화자 변경"
+                                >
+                                  {segment.speakerLabel}
+                                </button>
+                              </div>
+                              {!rawIsEditing ? (
+                                <button
+                                  type="button"
+                                  className={styles.rawSegmentEditTrigger}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    startEditingSegment(
+                                      segment.id,
+                                      segment.text,
+                                    );
+                                  }}
+                                >
+                                  수정
+                                </button>
+                              ) : null}
+                            </div>
+                            {rawIsEditing ? (
+                              <div className={styles.segmentEditArea}>
+                                <textarea
+                                  className={styles.segmentEditInput}
+                                  value={editingSegmentText}
+                                  onChange={(event) =>
+                                    setEditingSegmentText(event.target.value)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === "Enter" &&
+                                      !event.shiftKey
+                                    ) {
+                                      event.preventDefault();
+                                      saveEditingSegment();
+                                    }
+                                    if (event.key === "Escape") {
+                                      cancelEditingSegment();
+                                    }
+                                  }}
+                                  rows={2}
+                                  autoFocus
+                                  disabled={editingSegmentSaving}
+                                />
+                                <div className={styles.segmentEditActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.segmentEditSave}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      saveEditingSegment();
+                                    }}
+                                    disabled={editingSegmentSaving}
+                                    aria-label="저장"
+                                  >
+                                    <Check size={14} strokeWidth={2.5} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.segmentEditCancel}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      cancelEditingSegment();
+                                    }}
+                                    disabled={editingSegmentSaving}
+                                    aria-label="취소"
+                                  >
+                                    <X size={14} strokeWidth={2.5} />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p
+                                className={styles.rawSegmentText}
+                                onDoubleClick={() =>
+                                  startEditingSegment(segment.id, segment.text)
+                                }
+                              >
+                                {renderHighlightedText(
+                                  segment.text,
+                                  normalizedTranscriptQuery,
+                                  styles,
+                                )}
+                              </p>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </>
+              );
+
+              return (
+                <div
+                  key={virtualRow.key}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  className={styles.transcriptVirtualRow}
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {isSeekable ? (
+                    <article
+                      className={blockClassName}
+                      onClick={() => seekAudioToTime(block.startMs)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          seekAudioToTime(block.startMs);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {blockBody}
+                    </article>
+                  ) : (
+                    <article className={blockClassName}>{blockBody}</article>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : selectedRecord.status === "processing" ? (
           <div className="grid place-items-center content-center gap-[6px] min-h-[160px] p-5 text-center">
             <p className="m-0 text-[15px] font-bold leading-[1.4]">
