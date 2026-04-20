@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
-import { DEFAULT_PLATFORM_SERVICE_HREF } from "@/lib/platform-services";
+import { DEFAULT_COUNSELING_SERVICE_HREF } from "@/lib/platform-services";
 import { getDb } from "@/server/db";
 import { onedriveTokens } from "@/server/db/schema";
 
@@ -35,7 +35,7 @@ function getClientSecret(): string {
 function getRedirectUri(): string {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const callbackPath = resolveApiHrefForBasePath(
-    DEFAULT_PLATFORM_SERVICE_HREF,
+    DEFAULT_COUNSELING_SERVICE_HREF,
     "/api/v1/integrations/onedrive/auth/callback",
   );
 
