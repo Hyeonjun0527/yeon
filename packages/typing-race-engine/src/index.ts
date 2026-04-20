@@ -93,6 +93,7 @@ function createStartLineScene(
     private currentSnapshot = initialSnapshot;
     private detachSnapshot?: () => void;
     private lanesCreated = false;
+    private previousStage?: string;
 
     constructor() {
       super("typing-race-start-line");
@@ -128,16 +129,16 @@ function createStartLineScene(
         });
       }
 
-      // 카운트다운 (하늘 영역)
-      this.countdownLabel = this.add.text(width / 2, 36, "", {
+      // 카운트다운 (캔버스 중앙)
+      this.countdownLabel = this.add.text(width / 2, height / 2, "", {
         color: "#ffffff",
         fontFamily: "monospace",
-        fontSize: "42px",
+        fontSize: "96px",
         fontStyle: "900",
         stroke: "#000000",
-        strokeThickness: 6,
+        strokeThickness: 10,
       });
-      this.countdownLabel.setOrigin(0.5, 0);
+      this.countdownLabel.setOrigin(0.5, 0.5);
       this.countdownLabel.setDepth(10);
 
       this.renderSnapshot(this.currentSnapshot);
@@ -158,15 +159,35 @@ function createStartLineScene(
     }
 
     private renderSnapshot(snapshot: TypingRaceSnapshot) {
-      this.countdownLabel?.setText(
-        snapshot.stage === TYPING_RACE_STAGE.COUNTDOWN
-          ? `${snapshot.countdownRemaining}`
-          : snapshot.stage === TYPING_RACE_STAGE.FINISHED
-            ? "FINISH"
-            : "",
-      );
+      const wasCountdown = this.previousStage === TYPING_RACE_STAGE.COUNTDOWN;
+      const isNowLive = snapshot.stage === TYPING_RACE_STAGE.LIVE;
 
+      if (wasCountdown && isNowLive) {
+        this.countdownLabel?.setText("START!");
+        this.time.delayedCall(900, () => {
+          if (this.countdownLabel?.text === "START!") {
+            this.countdownLabel.setText("");
+          }
+        });
+      } else if (snapshot.stage === TYPING_RACE_STAGE.COUNTDOWN) {
+        this.countdownLabel?.setText(`${snapshot.countdownRemaining}`);
+      } else if (snapshot.stage === TYPING_RACE_STAGE.FINISHED) {
+        this.countdownLabel?.setText("FINISH");
+      } else if (!wasCountdown) {
+        this.countdownLabel?.setText("");
+      }
+
+      this.previousStage = snapshot.stage;
       this.syncLanes(snapshot.lanes);
+
+      // 레이스 시작 시 낙타 애니메이션 보장
+      if (snapshot.stage !== TYPING_RACE_STAGE.COUNTDOWN) {
+        for (const visual of this.laneVisuals.values()) {
+          if (!visual.car.anims.isPlaying) {
+            visual.car.play("camel-run");
+          }
+        }
+      }
     }
 
     private syncLanes(lanes: readonly TypingRaceLaneSnapshot[]) {
