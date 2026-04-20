@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
 
-import {
-  SITE_BRAND_NAME,
-  SITE_SUPPORT_EMAIL,
-} from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_SUPPORT_EMAIL } from "@/lib/site-brand";
 
 export const metadata: Metadata = {
   title: `서비스 이용약관 | ${SITE_BRAND_NAME}`,
+  description:
+    "YEON 서비스 이용약관과 서비스 제공 범위, 이용자 의무, 면책 조항, 분쟁 해결 기준을 안내합니다.",
+  alternates: {
+    canonical: "/terms",
+  },
+  openGraph: {
+    title: `서비스 이용약관 | ${SITE_BRAND_NAME}`,
+    description:
+      "YEON 서비스 이용약관과 서비스 제공 범위, 이용자 의무, 면책 조항, 분쟁 해결 기준을 안내합니다.",
+    url: "/terms",
+    type: "article",
+  },
 };
 
 export default function TermsPage() {

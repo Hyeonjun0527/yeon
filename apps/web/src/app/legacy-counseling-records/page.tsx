@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { NON_INDEXABLE_ROBOTS } from "@/lib/seo";
 import { CounselingRecordWorkspace } from "@/features/counseling-record-workspace";
 import {
   AUTH_SESSION_COOKIE_NAME,
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   title: "YEON | 상담 기록 워크스페이스",
   description:
     "상담 녹음 기록, 원문 전체 텍스트, 구조화 요약, 원문 기반 AI 대화를 한 화면에서 다루는 교육 운영용 워크스페이스",
+  robots: NON_INDEXABLE_ROBOTS,
 };
 
 function getLoginRedirectHref() {
