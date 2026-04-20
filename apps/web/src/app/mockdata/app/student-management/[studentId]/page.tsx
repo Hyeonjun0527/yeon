@@ -1,1 +1,1 @@
-export { default } from "@/app/home/student-management/[studentId]/page";
+export { default } from "@/app/counseling-service/student-management/[studentId]/page";

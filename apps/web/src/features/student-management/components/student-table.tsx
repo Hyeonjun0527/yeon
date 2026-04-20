@@ -58,7 +58,9 @@ export function StudentTable({
             </td>
             <td className="py-3 px-4 text-sm text-text-secondary border-b border-border">
               <Link
-                href={resolveAppHref(`/home/student-management/${student.id}`)}
+                href={resolveAppHref(
+                  `/counseling-service/student-management/${student.id}`,
+                )}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <div className="flex items-center gap-[10px]">

@@ -9,7 +9,7 @@ import { useStudentManagementApiState } from "./use-student-management-api-state
 
 const replaceMock = vi.fn();
 const pathnameState = {
-  value: "/home/student-management",
+  value: "/counseling-service/student-management",
 };
 const searchState = {
   value: "spaceId=space-2",
@@ -60,7 +60,7 @@ function createJsonResponse(payload: unknown) {
 describe("useStudentManagementApiState", () => {
   beforeEach(() => {
     replaceMock.mockReset();
-    pathnameState.value = "/home/student-management";
+    pathnameState.value = "/counseling-service/student-management";
     searchState.value = "spaceId=space-2";
 
     vi.stubGlobal(
@@ -133,7 +133,7 @@ describe("useStudentManagementApiState", () => {
 
     expect(result.current.selectedSpaceId).toBe("space-3");
     expect(replaceMock).toHaveBeenCalledWith(
-      "/home/student-management?spaceId=space-3",
+      "/counseling-service/student-management?spaceId=space-3",
     );
   });
 
@@ -149,7 +149,7 @@ describe("useStudentManagementApiState", () => {
     });
 
     expect(replaceMock).toHaveBeenCalledWith(
-      "/home/student-management?spaceId=space-1",
+      "/counseling-service/student-management?spaceId=space-1",
     );
   });
 
@@ -167,7 +167,7 @@ describe("useStudentManagementApiState", () => {
       expect(result.current.selectedSpaceId).toBe("space-3");
     });
 
-    pathnameState.value = "/home/student-management/members/new";
+    pathnameState.value = "/counseling-service/student-management/members/new";
     searchState.value = "";
     rerender();
 
@@ -176,12 +176,12 @@ describe("useStudentManagementApiState", () => {
     });
 
     expect(replaceMock).toHaveBeenLastCalledWith(
-      "/home/student-management/members/new?spaceId=space-3",
+      "/counseling-service/student-management/members/new?spaceId=space-3",
     );
   });
 
   it("상세 route에서 query가 없으면 첫 스페이스로 섣불리 보정하지 않는다", async () => {
-    pathnameState.value = "/home/student-management/member-1";
+    pathnameState.value = "/counseling-service/student-management/member-1";
     searchState.value = "";
 
     const { result } = renderHook(() => useStudentManagementApiState(), {

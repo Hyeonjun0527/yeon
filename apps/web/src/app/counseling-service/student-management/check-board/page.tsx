@@ -1,1 +1,5 @@
-export { default } from "@/app/home/student-management/check-board/page";
+import { StudentCheckBoardScreen } from "@/features/student-management/screens/student-check-board-screen";
+
+export default function StudentCheckBoardPage() {
+  return <StudentCheckBoardScreen />;
+}

@@ -16,12 +16,19 @@ export const AUTH_OAUTH_STATE_TTL_SECONDS = 60 * 10;
 
 const REDIRECT_PATH_BASE_URL = "https://yeon.world";
 
-function isAllowedAuthRedirectPath(path: string) {
+function isLegacyHomePath(pathname: string) {
+  return pathname === "/home" || pathname.startsWith("/home/");
+}
+
+function isAllowedAuthRedirectPath(url: URL) {
+  const pathname = url.pathname;
+
   return (
-    path.startsWith("/") &&
-    !path.startsWith("//") &&
-    !path.startsWith("/api/") &&
-    path !== "/auth/error"
+    pathname.startsWith("/") &&
+    !pathname.startsWith("//") &&
+    !pathname.startsWith("/api/") &&
+    pathname !== "/auth/error" &&
+    !isLegacyHomePath(pathname)
   );
 }
 
@@ -41,7 +48,7 @@ export function normalizeAuthRedirectPath(
 
     const normalizedPath = `${url.pathname}${url.search}${url.hash}`;
 
-    return isAllowedAuthRedirectPath(normalizedPath)
+    return isAllowedAuthRedirectPath(url)
       ? normalizedPath
       : DEFAULT_POST_LOGIN_PATH;
   } catch {

@@ -47,7 +47,7 @@ describe("api/auth/dev-login route", () => {
     expect(mockIsDevLoginAllowed).toHaveBeenCalledWith("localhost");
   });
 
-  it("account가 없으면 기본 개발자 계정으로 /home에 리다이렉트한다", async () => {
+  it("account가 없으면 기본 개발자 계정으로 상담 서비스에 리다이렉트한다", async () => {
     mockResolveDevLoginUserId.mockResolvedValue("default-user-id");
 
     const response = await GET(
@@ -59,7 +59,9 @@ describe("api/auth/dev-login route", () => {
     expect(mockCreateAuthSession).toHaveBeenCalledWith("default-user-id");
     expect(mockApplyAuthSessionCookie).toHaveBeenCalledTimes(1);
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("http://localhost/home");
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/counseling-service",
+    );
   });
 
   it("선택한 account가 있으면 해당 계정으로 next 경로에 리다이렉트한다", async () => {
@@ -75,7 +77,7 @@ describe("api/auth/dev-login route", () => {
     expect(mockResolveDevLoginUserId).toHaveBeenCalledWith("user-1");
     expect(mockCreateAuthSession).toHaveBeenCalledWith("selected-user-id");
     expect(response.headers.get("location")).toBe(
-      "http://localhost/home?tab=records",
+      "http://localhost/counseling-service",
     );
   });
 
@@ -91,7 +93,7 @@ describe("api/auth/dev-login route", () => {
     expect(mockResolveDevLoginUserId).not.toHaveBeenCalled();
     expect(mockCreateAuthSession).toHaveBeenCalledWith("new-dev-user-id");
     expect(response.headers.get("location")).toBe(
-      "http://localhost/home?tab=spaces",
+      "http://localhost/counseling-service",
     );
   });
 

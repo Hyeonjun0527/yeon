@@ -17,7 +17,7 @@
 | 루트 소셜 로그인 시작         | `/api/auth/google`, `/api/auth/kakao`                                   | `/api/auth/*`                                   | 플랫폼             | `next` 파라미터로 서비스 이동만 위임                    |
 | 루트 소셜 로그인 callback     | `/api/auth/google/callback`, `/api/auth/kakao/callback`                 | `/api/auth/*/callback`                          | 플랫폼             | 카카오/구글 계정 연결과 글로벌 세션 발급                |
 | 루트 세션 관리                | `/api/auth/logout`, `/api/auth/session/cleanup`, `/api/v1/auth/session` | 동일                                            | 플랫폼             | 서비스 공통 세션 정리                                   |
-| 상담 메인 화면                | `/counseling-service/...`                                               | 기존 `/home/...` 화면 재사용                    | counseling-service | 외부에서는 상담 서비스로만 노출                         |
+| 상담 메인 화면                | `/counseling-service/...`                                               | `app/counseling-service/...`                    | counseling-service | 외부와 내부 모두 상담 서비스 경로를 canonical로 사용    |
 | 상담 REST API                 | `/counseling-service/api/v1/...`                                        | `/api/v1/...`                                   | counseling-service | proxy가 `/counseling-service/api/* -> /api/*`로 rewrite |
 | 상담 전용 연동 OAuth 시작     | `/counseling-service/api/v1/integrations/<provider>/auth`               | `/api/v1/integrations/<provider>/auth`          | counseling-service | 서비스 내부 기능으로 취급                               |
 | 상담 전용 연동 OAuth callback | `/counseling-service/api/v1/integrations/<provider>/auth/callback`      | `/api/v1/integrations/<provider>/auth/callback` | counseling-service | 외부 공개 URL도 상담 서비스 기준으로 등록               |

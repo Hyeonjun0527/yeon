@@ -32,8 +32,14 @@ describe("auth constants", () => {
   });
 
   it("정상 앱 경로는 query/hash를 유지한 채 그대로 허용한다", () => {
+    expect(
+      normalizeAuthRedirectPath("/counseling-service?tab=records#section"),
+    ).toBe("/counseling-service?tab=records#section");
+  });
+
+  it("레거시 /home 경로는 기본 상담 경로로 되돌린다", () => {
     expect(normalizeAuthRedirectPath("/home?tab=records#section")).toBe(
-      "/home?tab=records#section",
+      DEFAULT_POST_LOGIN_PATH,
     );
   });
 
@@ -50,8 +56,8 @@ describe("auth constants", () => {
   });
 
   it("cleanup href는 next 파라미터를 안전하게 붙인다", () => {
-    expect(buildAuthSessionCleanupHref("/home?tab=records")).toBe(
-      "/api/auth/session/cleanup?next=%2Fhome%3Ftab%3Drecords",
+    expect(buildAuthSessionCleanupHref("/counseling-service?tab=records")).toBe(
+      "/api/auth/session/cleanup?next=%2Fcounseling-service%3Ftab%3Drecords",
     );
   });
 
