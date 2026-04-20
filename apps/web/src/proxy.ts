@@ -4,16 +4,43 @@ import {
   getPlatformServiceByPathname,
   serviceRequiresAuthentication,
 } from "@/lib/platform-services";
+import {
+  CANONICAL_SITE_URL,
+  NOINDEX_X_ROBOTS_TAG_VALUE,
+  isDevHostname,
+  isWwwHostname,
+} from "@/lib/seo";
 import { AUTH_SESSION_COOKIE_NAME } from "@/server/auth/constants";
+
 const COUNSELING_SERVICE_BASE_PATH = "/counseling-service";
 
+function withSeoHeaders(response: NextResponse, hostname: string) {
+  if (isDevHostname(hostname)) {
+    response.headers.set("X-Robots-Tag", NOINDEX_X_ROBOTS_TAG_VALUE);
+  }
+
+  return response;
+}
+
 export function proxy(request: NextRequest) {
+  const hostname = request.nextUrl.hostname;
   const { pathname } = request.nextUrl;
+
+  if (isWwwHostname(hostname)) {
+    const redirectUrl = new URL(request.url);
+    const canonicalUrl = new URL(CANONICAL_SITE_URL);
+
+    redirectUrl.protocol = canonicalUrl.protocol;
+    redirectUrl.hostname = canonicalUrl.hostname;
+    redirectUrl.port = canonicalUrl.port;
+
+    return NextResponse.redirect(redirectUrl, 308);
+  }
 
   if (pathname.startsWith(`${COUNSELING_SERVICE_BASE_PATH}/api/`)) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = pathname.slice(COUNSELING_SERVICE_BASE_PATH.length);
-    return NextResponse.rewrite(rewriteUrl);
+    return withSeoHeaders(NextResponse.rewrite(rewriteUrl), hostname);
   }
 
   const matchedService = getPlatformServiceByPathname(pathname);
@@ -37,10 +64,10 @@ export function proxy(request: NextRequest) {
       "next",
       `${pathname}${request.nextUrl.search}`,
     );
-    return NextResponse.redirect(redirectUrl);
+    return withSeoHeaders(NextResponse.redirect(redirectUrl), hostname);
   }
 
-  return NextResponse.next();
+  return withSeoHeaders(NextResponse.next(), hostname);
 }
 
 export const config = {

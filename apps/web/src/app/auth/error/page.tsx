@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
+import { NON_INDEXABLE_ROBOTS } from "@/lib/seo";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 import { getAuthErrorCopy } from "@/server/auth/auth-errors";
 import { normalizeAuthRedirectPath } from "@/server/auth/constants";
+
+export const metadata: Metadata = {
+  title: `로그인 오류 | ${SITE_BRAND_NAME}`,
+  robots: NON_INDEXABLE_ROBOTS,
+};
 
 type AuthErrorPageProps = {
   searchParams: Promise<{
