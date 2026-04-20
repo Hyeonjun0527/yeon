@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { CounselingChatRequest } from "@yeon/api-contract/counseling-records";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import type { AiMessage, AnalysisResult, AttachedImage } from "../_lib/types";
 
 interface UseAiChatParams {
@@ -169,12 +170,17 @@ export function useAiChat({
         return updated;
       });
 
-      const res = await fetch(`/api/v1/counseling-records/${recordId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: abortRef.current.signal,
-      });
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(
+          `/api/v1/counseling-records/${recordId}/chat`,
+        ),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: abortRef.current.signal,
+        },
+      );
 
       if (!res.ok || !res.body) {
         const text = await res.text().catch(() => "");
@@ -233,10 +239,15 @@ export function useAiChat({
     setAnalyzing(true);
 
     // eslint-disable-next-line no-restricted-syntax
-    fetch(`/api/v1/counseling-records/${capturedId}/analyze`, {
-      method: "POST",
-      signal: controller.signal,
-    })
+    fetch(
+      resolveApiHrefForCurrentPath(
+        `/api/v1/counseling-records/${capturedId}/analyze`,
+      ),
+      {
+        method: "POST",
+        signal: controller.signal,
+      },
+    )
       .then(async (res) => {
         if (!res.ok) throw new Error("분석 실패");
         const data = (await res.json()) as { analysisResult: AnalysisResult };

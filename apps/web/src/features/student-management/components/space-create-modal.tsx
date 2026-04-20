@@ -27,6 +27,7 @@ import {
   SPACE_CREATE_CHOICES,
   type SpaceCreateChoiceStep,
 } from "./space-create-choice-options";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 import type { Space } from "../types";
 import type { ImportCommitResult } from "@/features/cloud-import/types";
@@ -101,15 +102,18 @@ export function StudentSpaceCreateModal({
     setError(null);
 
     try {
-      const response = await fetch("/api/v1/spaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          startDate: startDate || null,
-          endDate: endDate || null,
-        }),
-      });
+      const response = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/spaces"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmedName,
+            startDate: startDate || null,
+            endDate: endDate || null,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const message = await response.text().catch(() => "");

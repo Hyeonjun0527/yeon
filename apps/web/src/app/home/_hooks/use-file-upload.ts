@@ -7,6 +7,7 @@ import {
   AUDIO_UPLOAD_ERROR_MESSAGE,
   isAcceptedAudioFile,
 } from "@/lib/audio-file";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 import type { RecordItem } from "../_lib/types";
 import { createTimestamp, fmtDurationMs } from "../_lib/utils";
@@ -100,10 +101,13 @@ export function useFileUpload({
           formData.append("audioDurationMs", String(audioDurationMs));
         }
 
-        const res = await fetch("/api/v1/counseling-records", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch(
+          resolveApiHrefForCurrentPath("/api/v1/counseling-records"),
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
 
         if (!res.ok) {
           const text = await res.text().catch(() => "");

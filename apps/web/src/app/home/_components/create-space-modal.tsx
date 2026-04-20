@@ -6,6 +6,7 @@ import { X, FolderPlus, FileUp, LayoutTemplate, Eye } from "lucide-react";
 import type { Space } from "../_hooks/use-current-space";
 import { CloudImportInline } from "@/features/cloud-import/components/cloud-import-inline";
 import { SpaceTemplatePreviewModal } from "@/features/space-settings/components/space-template-preview-modal";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 type Step =
   | { kind: "choose" }
@@ -55,7 +56,9 @@ export function CreateSpaceModal({
   const { data: templatesData, isPending: templatesLoading } = useQuery({
     queryKey: ["space-templates"],
     queryFn: async () => {
-      const r = await fetch("/api/v1/space-templates");
+      const r = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/space-templates"),
+      );
       if (!r.ok) {
         setTemplateLoadError("템플릿 목록을 불러오지 못했습니다.");
         return { templates: [] as TemplateOption[] };
@@ -83,7 +86,7 @@ export function CreateSpaceModal({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v1/spaces", {
+      const res = await fetch(resolveApiHrefForCurrentPath("/api/v1/spaces"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,11 +103,16 @@ export function CreateSpaceModal({
       const data = (await res.json()) as { space: Space };
 
       if (selectedTemplateId) {
-        await fetch(`/api/v1/spaces/${data.space.id}/apply-template`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ templateId: selectedTemplateId }),
-        }).catch(() => {});
+        await fetch(
+          resolveApiHrefForCurrentPath(
+            `/api/v1/spaces/${data.space.id}/apply-template`,
+          ),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ templateId: selectedTemplateId }),
+          },
+        ).catch(() => {});
       }
 
       onCreated(data.space);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Loader2, Search, UserPlus, Users } from "lucide-react";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 import { detectRecordMemberMismatch } from "../_lib/record-member-mismatch";
 import type { RecordItem } from "../_lib/types";
@@ -51,7 +52,7 @@ export function LinkMemberModal({
   const { data: spacesData, isPending: spacesLoading } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/spaces");
+      const res = await fetch(resolveApiHrefForCurrentPath("/api/v1/spaces"));
       if (!res.ok) return { spaces: [] as Space[] };
       return res.json() as Promise<{ spaces: Space[] }>;
     },
@@ -72,7 +73,11 @@ export function LinkMemberModal({
   const { data: membersData, isPending: membersLoading } = useQuery({
     queryKey: ["modal-space-members", selectedSpaceId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`);
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${selectedSpaceId}/members`,
+        ),
+      );
       if (!res.ok) return { members: [] as Member[] };
       return res.json() as Promise<{ members: Member[] }>;
     },
@@ -93,11 +98,14 @@ export function LinkMemberModal({
   );
 
   const patchMember = async (memberId: string | null) => {
-    const res = await fetch(`/api/v1/counseling-records/${recordId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId }),
-    });
+    const res = await fetch(
+      resolveApiHrefForCurrentPath(`/api/v1/counseling-records/${recordId}`),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      },
+    );
     if (!res.ok) throw new Error("연결에 실패했습니다.");
   };
 
@@ -125,7 +133,9 @@ export function LinkMemberModal({
     try {
       /* 수강생 생성 */
       const createRes = await fetch(
-        `/api/v1/spaces/${selectedSpaceId}/members`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${selectedSpaceId}/members`,
+        ),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

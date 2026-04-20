@@ -24,7 +24,7 @@ export function useStudentManagementApiState() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { normalizeAppPathname } = useAppRoute();
+  const { normalizeAppPathname, resolveApiHref } = useAppRoute();
   const queryClient = useQueryClient();
 
   const {
@@ -34,7 +34,7 @@ export function useStudentManagementApiState() {
   } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/spaces");
+      const res = await fetch(resolveApiHref("/api/v1/spaces"));
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "스페이스 목록을 불러오지 못했습니다.");
@@ -178,7 +178,9 @@ export function useStudentManagementApiState() {
   } = useQuery({
     queryKey: ["members", selectedSpaceId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`);
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${selectedSpaceId}/members`),
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "수강생 목록을 불러오지 못했습니다.");

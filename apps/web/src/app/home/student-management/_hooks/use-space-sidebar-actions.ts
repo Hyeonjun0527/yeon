@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { StudentSpaceCreateStep } from "@/features/student-management/components/space-create-modal";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import { createPatchedHref, isOneOf } from "@/lib/route-state/search-params";
 
 import type {
@@ -175,9 +176,12 @@ export function useSpaceSidebarActions({
 
   const deleteSpaceById = useCallback(
     async (spaceId: string) => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/spaces/${spaceId}`),
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!res.ok) {
         throw new Error(await readSpaceActionErrorMessage(res));
@@ -259,11 +263,14 @@ export function useSpaceSidebarActions({
       setSpaceActionError(null);
 
       try {
-        const res = await fetch(`/api/v1/spaces/${spaceId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: trimmedName }),
-        });
+        const res = await fetch(
+          resolveApiHrefForCurrentPath(`/api/v1/spaces/${spaceId}`),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: trimmedName }),
+          },
+        );
 
         if (!res.ok) {
           throw new Error(await readSpaceActionErrorMessage(res));

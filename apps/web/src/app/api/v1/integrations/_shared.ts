@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { resolveAppHrefForBasePath } from "@/lib/app-route-paths";
+import { DEFAULT_PLATFORM_SERVICE_HREF } from "@/lib/platform-services";
 import {
   createCloudImportDraft,
   markImportDraftAnalyzing,
@@ -148,7 +150,12 @@ function buildOAuthCookieName(
 
 function buildOAuthRedirectTarget() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${baseUrl}/home/student-management`;
+  const studentManagementPath = resolveAppHrefForBasePath(
+    DEFAULT_PLATFORM_SERVICE_HREF,
+    "/home/student-management",
+  );
+
+  return new URL(studentManagementPath, baseUrl).toString();
 }
 
 export function handleOAuthStartRoute({

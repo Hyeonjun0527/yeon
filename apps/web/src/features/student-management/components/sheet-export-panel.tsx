@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Undo2,
 } from "lucide-react";
+import { useAppRoute } from "@/lib/app-route-context";
 
 interface SheetExportPanelProps {
   spaceId: string;
@@ -63,6 +64,7 @@ async function readErrorMessage(
 }
 
 export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
+  const { resolveApiHref } = useAppRoute();
   const [state, setState] = useState<PanelState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,8 +159,8 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
 
     try {
       const [driveRes, sheetRes] = await Promise.all([
-        fetch("/api/v1/integrations/googledrive/status"),
-        fetch(`/api/v1/spaces/${spaceId}/sheet-export`),
+        fetch(resolveApiHref("/api/v1/integrations/googledrive/status")),
+        fetch(resolveApiHref(`/api/v1/spaces/${spaceId}/sheet-export`)),
       ]);
 
       if (requestId !== requestIdRef.current) {
@@ -236,11 +238,14 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     setImportConflicts([]);
 
     try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/sheet-export`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetUrl: sheetUrl.trim() }),
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${spaceId}/sheet-export`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sheetUrl: sheetUrl.trim() }),
+        },
+      );
 
       if (!res.ok) {
         throw new Error(
@@ -268,9 +273,12 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     setError(null);
 
     try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/sheet-export/sync`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${spaceId}/sheet-export/sync`),
+        {
+          method: "POST",
+        },
+      );
 
       if (!res.ok) {
         throw new Error(
@@ -304,9 +312,12 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     setImportConflicts([]);
 
     try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/sheet-export/import`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${spaceId}/sheet-export/import`),
+        {
+          method: "POST",
+        },
+      );
 
       if (res.status === 409) {
         const data = (await res.json()) as {
@@ -366,7 +377,9 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     async (format: "csv" | "xlsx") => {
       setDownloadingFormat(format);
       try {
-        const res = await fetch(`/api/v1/spaces/${spaceId}/export/${format}`);
+        const res = await fetch(
+          resolveApiHref(`/api/v1/spaces/${spaceId}/export/${format}`),
+        );
         if (!res.ok) {
           throw new Error(
             (await readErrorMessage(res, "")) ||
@@ -403,9 +416,12 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
     setSyncResult(null);
 
     try {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/sheet-export`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${spaceId}/sheet-export`),
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!res.ok) {
         throw new Error(
@@ -475,7 +491,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
           <div className="flex flex-wrap items-center gap-2">
             {isDriveDisconnected ? (
               <a
-                href="/api/v1/integrations/googledrive/auth"
+                href={resolveApiHref("/api/v1/integrations/googledrive/auth")}
                 className={`${secondaryActionClass} ${disabledLinkClass}`}
               >
                 <Link2 size={13} />
@@ -483,7 +499,7 @@ export function SheetExportPanel({ spaceId }: SheetExportPanelProps) {
               </a>
             ) : isReady && !sheetSyncReady ? (
               <a
-                href="/api/v1/integrations/googledrive/auth"
+                href={resolveApiHref("/api/v1/integrations/googledrive/auth")}
                 className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[12px] font-medium text-yellow-100 transition-colors hover:border-yellow-400/50 ${disabledLinkClass}`}
               >
                 <Link2 size={13} />

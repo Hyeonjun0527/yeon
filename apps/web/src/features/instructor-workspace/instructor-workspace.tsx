@@ -15,6 +15,7 @@ import type {
   WorkspaceStudent,
   WorkspaceStudentDetail,
 } from "@yeon/api-contract/instructor-workspace";
+import { useAppRoute } from "@/lib/app-route-context";
 
 import styles from "./instructor-workspace.module.css";
 
@@ -198,6 +199,7 @@ export function InstructorWorkspace({
   dashboard,
   workspace,
 }: InstructorWorkspaceProps) {
+  const { resolveApiHref } = useAppRoute();
   const [students, setStudents] = useState(workspace.students);
   const [studentDetails, setStudentDetails] = useState(
     workspace.studentDetails,
@@ -478,7 +480,7 @@ export function InstructorWorkspace({
             <div className={styles.heroActions}>
               <Link
                 className={styles.primaryLink}
-                href="/api/v1/instructor-workspace"
+                href={resolveApiHref("/api/v1/instructor-workspace")}
               >
                 워크스페이스 JSON 보기
               </Link>

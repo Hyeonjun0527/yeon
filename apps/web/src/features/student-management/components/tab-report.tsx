@@ -15,6 +15,7 @@ import {
 import { useMemberCounselingRecords } from "../hooks/use-member-counseling-records";
 import type { Member } from "../types";
 import { fmtDate } from "../utils";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 interface TabReportProps {
   member: Member;
@@ -65,15 +66,18 @@ export function TabReport({ member }: TabReportProps) {
     ],
     enabled: selectedRecords.length > 0,
     queryFn: async () => {
-      const res = await fetch("/api/v1/counseling-records/details", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/counseling-records/details"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            recordIds: selectedRecords.map((record) => record.id),
+          }),
         },
-        body: JSON.stringify({
-          recordIds: selectedRecords.map((record) => record.id),
-        }),
-      });
+      );
 
       if (!res.ok) {
         throw new Error("상담 상세를 불러오지 못했습니다.");

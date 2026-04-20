@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import type { RecordItem } from "../_lib/types";
 
 export interface SpaceMember {
@@ -43,7 +44,9 @@ export function useSpaceMembers(
   const { data, isPending } = useQuery({
     queryKey: ["space-members", spaceId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/members`);
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/spaces/${spaceId}/members`),
+      );
       if (!res.ok) return { members: [] as SpaceMember[] };
       return res.json() as Promise<{ members: SpaceMember[] }>;
     },

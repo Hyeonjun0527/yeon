@@ -141,7 +141,8 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
-  const { normalizeAppPathname, resolveAppHref } = useAppRoute();
+  const { normalizeAppPathname, resolveApiHref, resolveAppHref } =
+    useAppRoute();
   const normalizedPathname = normalizeAppPathname(pathname);
 
   const noSpaces = !spacesLoading && spaces.length === 0;
@@ -222,7 +223,9 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
   } = useQuery({
     queryKey: ["student-management", "local-import-drafts"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/integrations/local/drafts?limit=100");
+      const res = await fetch(
+        resolveApiHref("/api/v1/integrations/local/drafts?limit=100"),
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "임시 가져오기 초안을 불러오지 못했습니다.");

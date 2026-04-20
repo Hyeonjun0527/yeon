@@ -37,6 +37,7 @@ import {
   SPACE_FULL_TEST_DATA,
   SPACE_LITE_TEST_DATA,
 } from "@/lib/test-data-downloads";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return "-";
@@ -194,8 +195,9 @@ export function CloudImportInline({
   onEntryControlsChange,
   onWorkspaceModeChange,
 }: CloudImportInlineProps) {
-  const [activeProvider, setActiveProvider] =
-    useState<CloudProvider>(DEFAULT_CLOUD_PROVIDER);
+  const [activeProvider, setActiveProvider] = useState<CloudProvider>(
+    DEFAULT_CLOUD_PROVIDER,
+  );
   const [isDragging, setIsDragging] = useState(false);
   const [showSavedDraftsModal, setShowSavedDraftsModal] = useState(false);
   const [isSavedDraftsRefreshPending, setIsSavedDraftsRefreshPending] =
@@ -510,7 +512,11 @@ export function CloudImportInline({
   } = useQuery({
     queryKey: ["local-import-drafts", "modal"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/integrations/local/drafts?limit=20");
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(
+          "/api/v1/integrations/local/drafts?limit=20",
+        ),
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "가져오기 작업 목록을 불러오지 못했습니다.");
@@ -653,9 +659,14 @@ export function CloudImportInline({
         if (localImport.currentDraftId === draftId) {
           await localImport.discardDraft?.();
         } else {
-          await fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
-            method: "DELETE",
-          }).catch(() => {
+          await fetch(
+            resolveApiHrefForCurrentPath(
+              `/api/v1/integrations/local/drafts/${draftId}`,
+            ),
+            {
+              method: "DELETE",
+            },
+          ).catch(() => {
             // 목록 새로고침으로 상태를 다시 맞춘다.
           });
         }
