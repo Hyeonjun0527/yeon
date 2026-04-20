@@ -66,6 +66,12 @@ export async function mountTypingRaceEngine(
   };
 }
 
+// 배경 이미지 1536x1024 기준 레인 Y 비율 (캔버스 height=520 기준으로 환산)
+// 각 트랙(흙길) 중심 Y / 1024 * 520
+const LANE_Y_RATIOS = [0.303, 0.445, 0.587, 0.726] as const;
+const TRACK_START_X_RATIO = 0.075; // 깃발 오른쪽
+const TRACK_END_X_RATIO = 0.97;
+
 function createStartLineScene(
   Phaser: PhaserModule,
   snapshotBus: EventTarget,
@@ -84,22 +90,16 @@ function createStartLineScene(
     >();
 
     private countdownLabel?: Phaser.GameObjects.Text;
-
-    private headlineLabel?: Phaser.GameObjects.Text;
-
-    private subheadlineLabel?: Phaser.GameObjects.Text;
-
-    private statusPill?: Phaser.GameObjects.Text;
-
     private currentSnapshot = initialSnapshot;
-
     private detachSnapshot?: () => void;
+    private lanesCreated = false;
 
     constructor() {
       super("typing-race-start-line");
     }
 
     preload() {
+      this.load.image("race-bg", "/sprites/race-bg.png");
       this.load.spritesheet("camel-run", "/sprites/camel-run.png", {
         frameWidth: 96,
         frameHeight: 96,
@@ -107,19 +107,39 @@ function createStartLineScene(
     }
 
     create() {
-      this.cameras.main.setBackgroundColor("#07131f");
+      const width = this.scale.width;
+      const height = this.scale.height;
 
-      this.anims.create({
-        key: "camel-run",
-        frames: this.anims.generateFrameNumbers("camel-run", {
-          start: 0,
-          end: 5,
-        }),
-        frameRate: 10,
-        repeat: -1,
+      // 배경
+      const bg = this.add.image(0, 0, "race-bg");
+      bg.setOrigin(0, 0);
+      bg.setDisplaySize(width, height);
+
+      // 애니메이션 (중복 등록 방지)
+      if (!this.anims.exists("camel-run")) {
+        this.anims.create({
+          key: "camel-run",
+          frames: this.anims.generateFrameNumbers("camel-run", {
+            start: 0,
+            end: 5,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
+      }
+
+      // 카운트다운 (하늘 영역)
+      this.countdownLabel = this.add.text(width / 2, 36, "", {
+        color: "#ffffff",
+        fontFamily: "monospace",
+        fontSize: "42px",
+        fontStyle: "900",
+        stroke: "#000000",
+        strokeThickness: 6,
       });
+      this.countdownLabel.setOrigin(0.5, 0);
+      this.countdownLabel.setDepth(10);
 
-      this.drawChrome();
       this.renderSnapshot(this.currentSnapshot);
 
       const handleSnapshot = (event: Event) => {
@@ -137,115 +157,56 @@ function createStartLineScene(
       });
     }
 
-    private drawChrome() {
-      const graphics = this.add.graphics();
-      const width = this.scale.width;
-      const height = this.scale.height;
-
-      graphics.fillGradientStyle(0x081827, 0x07131f, 0x0b2134, 0x0b2134, 1);
-      graphics.fillRect(0, 0, width, height);
-
-      graphics.fillStyle(0x10263a, 0.92);
-      graphics.fillRoundedRect(32, 28, width - 64, height - 56, 32);
-
-      graphics.lineStyle(2, 0x18354d, 1);
-      graphics.strokeRoundedRect(32, 28, width - 64, height - 56, 32);
-
-      this.statusPill = this.add.text(58, 52, "START LINE", {
-        color: "#9dcfff",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "14px",
-        fontStyle: "700",
-      });
-
-      this.headlineLabel = this.add.text(56, 88, "", {
-        color: "#f3f7fb",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "38px",
-        fontStyle: "900",
-      });
-
-      this.subheadlineLabel = this.add.text(58, 134, "", {
-        color: "#90acc4",
-        fontFamily: "Pretendard, sans-serif",
-        fontSize: "16px",
-      });
-
-      this.countdownLabel = this.add.text(width - 160, 82, "", {
-        color: "#f9fbff",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "84px",
-        fontStyle: "900",
-      });
-      this.countdownLabel.setOrigin(0.5, 0);
-
-      const laneStartY = 220;
-      const laneGap = 62;
-      const trackStartX = 226;
-      const trackWidth = width - 320;
-
-      for (let index = 0; index < 6; index += 1) {
-        const y = laneStartY + index * laneGap;
-
-        graphics.lineStyle(2, 0x284663, 1);
-        graphics.strokeLineShape(
-          new Phaser.Geom.Line(trackStartX, y, trackStartX + trackWidth, y),
-        );
-      }
-
-      graphics.fillStyle(0xffda59, 0.85);
-      graphics.fillRect(trackStartX - 8, laneStartY - 32, 6, laneGap * 5 + 8);
-    }
-
     private renderSnapshot(snapshot: TypingRaceSnapshot) {
-      this.headlineLabel?.setText(snapshot.headline);
-      this.subheadlineLabel?.setText(snapshot.subheadline);
       this.countdownLabel?.setText(
         snapshot.stage === TYPING_RACE_STAGE.COUNTDOWN
-          ? `:${String(snapshot.countdownRemaining).padStart(2, "0")}`
+          ? `${snapshot.countdownRemaining}`
           : snapshot.stage === TYPING_RACE_STAGE.FINISHED
-            ? "FIN"
-            : "GO",
+            ? "FINISH"
+            : "",
       );
-      this.statusPill?.setText(snapshot.roundLabel.toUpperCase());
 
       this.syncLanes(snapshot.lanes);
     }
 
     private syncLanes(lanes: readonly TypingRaceLaneSnapshot[]) {
-      const laneStartY = 220;
-      const laneGap = 62;
-      const trackStartX = 226;
-      const trackWidth = this.scale.width - 320;
+      const width = this.scale.width;
+      const height = this.scale.height;
+      const trackStartX = width * TRACK_START_X_RATIO;
+      const trackEndX = width * TRACK_END_X_RATIO;
+      const trackWidth = trackEndX - trackStartX;
 
       lanes.forEach((lane, index) => {
-        const y = laneStartY + index * laneGap;
+        const laneY = height * (LANE_Y_RATIOS[index] ?? 0.5);
         const existing = this.laneVisuals.get(lane.id);
 
-        if (!existing) {
-          const label = this.add.text(56, y - 22, lane.label, {
-            color: lane.role === "benchmark" ? "#8bb0cd" : "#eef5ff",
-            fontFamily: "Pretendard, sans-serif",
-            fontSize: "26px",
-            fontStyle: lane.role === "local" ? "700" : "500",
+        if (!existing && !this.lanesCreated) {
+          const label = this.add.text(trackStartX - 4, laneY - 28, lane.label, {
+            color: lane.role === "local" ? "#ffffff" : "#ffe97a",
+            fontFamily: "monospace",
+            fontSize: "13px",
+            fontStyle: lane.role === "local" ? "700" : "400",
+            stroke: "#000000",
+            strokeThickness: 3,
           });
+          label.setOrigin(0, 1);
+          label.setDepth(5);
 
-          const car = this.add.sprite(trackStartX, y, "camel-run");
+          const car = this.add.sprite(trackStartX, laneY, "camel-run");
           car.setOrigin(0, 0.5);
-          car.setScale(0.52);
+          car.setScale(0.48);
+          car.setDepth(5);
           car.play("camel-run");
 
-          const speed = this.add.text(
-            trackStartX + trackWidth + 22,
-            y - 22,
-            "",
-            {
-              color: "#90acc4",
-              fontFamily: "Outfit, sans-serif",
-              fontSize: "20px",
-              fontStyle: "700",
-            },
-          );
+          const speed = this.add.text(trackEndX + 6, laneY, "", {
+            color: "#ffffff",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            stroke: "#000000",
+            strokeThickness: 3,
+          });
+          speed.setOrigin(0, 0.5);
+          speed.setDepth(5);
 
           this.laneVisuals.set(lane.id, {
             car,
@@ -257,19 +218,19 @@ function createStartLineScene(
         }
 
         const visual = this.laneVisuals.get(lane.id);
+        if (!visual) return;
 
-        if (!visual) {
-          return;
-        }
-
-        visual.label.setText(lane.label);
-        visual.speed.setText(`${lane.wpm} wpm`);
-        const spriteWidth = visual.car.displayWidth;
+        visual.speed.setText(`${lane.wpm}wpm`);
+        const spriteW = visual.car.displayWidth;
         visual.car.x =
           visual.startX +
-          (visual.trackWidth - spriteWidth) *
+          (visual.trackWidth - spriteW) *
             (clampRaceProgress(lane.progress) / 100);
       });
+
+      if (!this.lanesCreated && lanes.length > 0) {
+        this.lanesCreated = true;
+      }
     }
   };
 }
