@@ -1,6 +1,8 @@
 import {
+  bigint,
   index,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -14,11 +16,14 @@ import { users } from "./users";
 export const spaceMemberBoards = pgTable(
   "space_member_boards",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    spaceId: uuid("space_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
-    memberId: uuid("member_id")
+    memberId: bigint("member_id", { mode: "bigint" })
       .notNull()
       .references(() => members.id, { onDelete: "cascade" }),
     attendanceStatus: varchar("attendance_status", { length: 20 })

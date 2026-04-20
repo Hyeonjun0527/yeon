@@ -4,6 +4,7 @@ import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
 import { DEFAULT_COUNSELING_SERVICE_HREF } from "@/lib/platform-services";
 import { getDb } from "@/server/db";
 import { onedriveTokens } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 
@@ -145,6 +146,7 @@ export async function saveTokens(
   await db
     .insert(onedriveTokens)
     .values({
+      publicId: generatePublicId(ID_PREFIX.onedriveTokens),
       userId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,

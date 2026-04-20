@@ -1,5 +1,4 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import {
   memberFieldTypeValues,
   type CreateMemberFieldBody,
@@ -11,8 +10,11 @@ import {
 import { getDb } from "@/server/db";
 import { memberFieldDefinitions } from "@/server/db/schema";
 import { DEFAULT_OVERVIEW_FIELDS } from "@/lib/member-overview-fields";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
+import { resolveTabInternalIdByPublicId } from "./member-tabs-service";
 
 /* ── 타입 ── */
 
@@ -27,6 +29,19 @@ export type MemberFieldDefinition = typeof memberFieldDefinitions.$inferSelect;
 export type CreateFieldInput = CreateMemberFieldBody;
 
 export type UpdateFieldInput = UpdateMemberFieldBody;
+
+/* ── ID 해석 헬퍼 ── */
+
+export async function resolveFieldInternalIdByPublicId(
+  publicId: string,
+): Promise<bigint | null> {
+  const [row] = await getDb()
+    .select({ id: memberFieldDefinitions.id })
+    .from(memberFieldDefinitions)
+    .where(eq(memberFieldDefinitions.publicId, publicId))
+    .limit(1);
+  return row?.id ?? null;
+}
 
 /* ── 유효성 검사 ── */
 
@@ -45,7 +60,25 @@ function validateFieldType(fieldType: string): asserts fieldType is FieldType {
  * 스페이스 내 모든 커스텀 필드 목록 조회
  */
 export async function getFieldsForSpace(
-  spaceId: string,
+  spacePublicId: string,
+): Promise<MemberFieldDefinition[]> {
+  const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+
+  return db
+    .select()
+    .from(memberFieldDefinitions)
+    .where(
+      and(
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
+        isNull(memberFieldDefinitions.deletedAt),
+      ),
+    )
+    .orderBy(asc(memberFieldDefinitions.displayOrder));
+}
+
+export async function getFieldsForSpaceByInternalId(
+  spaceInternalId: bigint,
 ): Promise<MemberFieldDefinition[]> {
   const db = getDb();
 
@@ -54,7 +87,7 @@ export async function getFieldsForSpace(
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
         isNull(memberFieldDefinitions.deletedAt),
       ),
     )
@@ -65,8 +98,32 @@ export async function getFieldsForSpace(
  * 특정 탭의 필드 목록 조회
  */
 export async function getFieldsForTab(
-  tabId: string,
-  spaceId: string,
+  tabPublicId: string,
+  spacePublicId: string,
+): Promise<MemberFieldDefinition[]> {
+  const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+  const tabInternalId = await resolveTabInternalIdByPublicId(tabPublicId);
+  if (tabInternalId === null) {
+    return [];
+  }
+
+  return db
+    .select()
+    .from(memberFieldDefinitions)
+    .where(
+      and(
+        eq(memberFieldDefinitions.tabId, tabInternalId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
+        isNull(memberFieldDefinitions.deletedAt),
+      ),
+    )
+    .orderBy(asc(memberFieldDefinitions.displayOrder));
+}
+
+export async function getFieldsForTabByInternalIds(
+  tabInternalId: bigint,
+  spaceInternalId: bigint,
 ): Promise<MemberFieldDefinition[]> {
   const db = getDb();
 
@@ -75,8 +132,8 @@ export async function getFieldsForTab(
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.tabId, tabId),
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldDefinitions.tabId, tabInternalId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
         isNull(memberFieldDefinitions.deletedAt),
       ),
     )
@@ -84,17 +141,17 @@ export async function getFieldsForTab(
 }
 
 export async function createDefaultOverviewFields(
-  spaceId: string,
-  overviewTabId: string,
+  spaceInternalId: bigint,
+  overviewTabInternalId: bigint,
   userId: string,
 ): Promise<void> {
   const db = getDb();
   const now = new Date();
 
   const rows = DEFAULT_OVERVIEW_FIELDS.map((field) => ({
-    id: randomUUID(),
-    spaceId,
-    tabId: overviewTabId,
+    publicId: generatePublicId(ID_PREFIX.memberFields),
+    spaceId: spaceInternalId,
+    tabId: overviewTabInternalId,
     createdByUserId: userId,
     name: field.name,
     sourceKey: field.sourceKey,
@@ -113,8 +170,8 @@ export async function createDefaultOverviewFields(
  * 필드 생성
  */
 export async function createField(
-  spaceId: string,
-  tabId: string,
+  spacePublicId: string,
+  tabPublicId: string,
   userId: string,
   data: CreateFieldInput,
 ): Promise<MemberFieldDefinition> {
@@ -125,13 +182,22 @@ export async function createField(
 
   validateFieldType(data.fieldType);
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+  const tabInternalId = await resolveTabInternalIdByPublicId(tabPublicId);
+  if (tabInternalId === null) {
+    throw new ServiceError(404, "탭을 찾지 못했습니다.");
+  }
+
   // 선택 타입이 아닌데 options 주어진 경우 무시 (null 처리)
   const needsOptions =
     data.fieldType === "select" || data.fieldType === "multi_select";
   const options = needsOptions ? (data.options ?? null) : null;
 
   // 해당 탭의 현재 마지막 displayOrder 계산
-  const existing = await getFieldsForTab(tabId, spaceId);
+  const existing = await getFieldsForTabByInternalIds(
+    tabInternalId,
+    spaceInternalId,
+  );
   const maxOrder = existing.reduce(
     (acc, f) => Math.max(acc, f.displayOrder),
     -1,
@@ -142,9 +208,9 @@ export async function createField(
   const [field] = await db
     .insert(memberFieldDefinitions)
     .values({
-      id: randomUUID(),
-      spaceId,
-      tabId,
+      publicId: generatePublicId(ID_PREFIX.memberFields),
+      spaceId: spaceInternalId,
+      tabId: tabInternalId,
       createdByUserId: userId,
       name,
       sourceKey: null,
@@ -166,19 +232,20 @@ export async function createField(
  * 필드 수정 (이름 / 옵션 / 필수 여부 / 순서 / 탭 이동)
  */
 export async function updateField(
-  fieldId: string,
-  spaceId: string,
+  fieldPublicId: string,
+  spacePublicId: string,
   data: UpdateFieldInput,
 ): Promise<MemberFieldDefinition> {
   const db = getDb();
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
   const [existing] = await db
     .select()
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.id, fieldId),
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldDefinitions.publicId, fieldPublicId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
       ),
     )
     .limit(1);
@@ -187,13 +254,22 @@ export async function updateField(
     throw new ServiceError(404, "필드를 찾지 못했습니다.");
   }
 
+  let nextTabInternalId: bigint | undefined;
+  if (data.tabId !== undefined) {
+    const resolved = await resolveTabInternalIdByPublicId(data.tabId);
+    if (resolved === null) {
+      throw new ServiceError(404, "탭을 찾지 못했습니다.");
+    }
+    nextTabInternalId = resolved;
+  }
+
   if (existing.sourceKey) {
     if (
       (data.fieldType !== undefined && data.fieldType !== existing.fieldType) ||
       data.options !== undefined ||
       (data.isRequired !== undefined &&
         data.isRequired !== existing.isRequired) ||
-      (data.tabId !== undefined && data.tabId !== existing.tabId)
+      (nextTabInternalId !== undefined && nextTabInternalId !== existing.tabId)
     ) {
       throw new ServiceError(
         403,
@@ -221,12 +297,12 @@ export async function updateField(
   if (data.options !== undefined) patch.options = data.options;
   if (data.isRequired !== undefined) patch.isRequired = data.isRequired;
   if (data.displayOrder !== undefined) patch.displayOrder = data.displayOrder;
-  if (data.tabId !== undefined) patch.tabId = data.tabId;
+  if (nextTabInternalId !== undefined) patch.tabId = nextTabInternalId;
 
   const [updated] = await db
     .update(memberFieldDefinitions)
     .set(patch)
-    .where(eq(memberFieldDefinitions.id, fieldId))
+    .where(eq(memberFieldDefinitions.id, existing.id))
     .returning();
 
   if (!updated) throw new ServiceError(500, "필드를 수정하지 못했습니다.");
@@ -238,18 +314,19 @@ export async function updateField(
  * 필드 삭제 (값도 CASCADE로 함께 삭제)
  */
 export async function deleteField(
-  fieldId: string,
-  spaceId: string,
+  fieldPublicId: string,
+  spacePublicId: string,
 ): Promise<void> {
   const db = getDb();
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
   const [existing] = await db
     .select()
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.id, fieldId),
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldDefinitions.publicId, fieldPublicId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
       ),
     )
     .limit(1);
@@ -264,7 +341,7 @@ export async function deleteField(
       deletedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(memberFieldDefinitions.id, fieldId))
+    .where(eq(memberFieldDefinitions.id, existing.id))
     .returning();
 
   if (!deleted) {
@@ -274,23 +351,24 @@ export async function deleteField(
 
 /**
  * 탭 내 필드 순서 일괄 변경
- * order: fieldId 배열 (index = 새 displayOrder)
+ * order: fieldPublicId 배열 (index = 새 displayOrder)
  */
 export async function reorderFields(
-  spaceId: string,
+  spacePublicId: string,
   order: string[],
 ): Promise<void> {
   const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
 
   await Promise.all(
-    order.map((fieldId, idx) =>
+    order.map((fieldPublicId, idx) =>
       db
         .update(memberFieldDefinitions)
         .set({ displayOrder: idx, updatedAt: new Date() })
         .where(
           and(
-            eq(memberFieldDefinitions.id, fieldId),
-            eq(memberFieldDefinitions.spaceId, spaceId),
+            eq(memberFieldDefinitions.publicId, fieldPublicId),
+            eq(memberFieldDefinitions.spaceId, spaceInternalId),
           ),
         ),
     ),

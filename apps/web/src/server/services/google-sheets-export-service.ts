@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { getDb } from "@/server/db";
 import {
@@ -10,6 +10,7 @@ import {
   sheetIntegrationMemberSnapshots,
   sheetIntegrations,
 } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import {
   bulkUpsertFieldValues,
@@ -18,6 +19,7 @@ import {
 import { createMember, updateMember } from "./members-service";
 import { getValidSheetsAccessToken } from "./googledrive-service";
 import { ServiceError } from "./service-error";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
 
 const SHEETS_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 
@@ -432,8 +434,8 @@ function buildConflict(params: {
 }
 
 async function replaceMemberSnapshots(params: {
-  integrationId: string;
-  spaceId: string;
+  integrationInternalId: bigint;
+  spaceInternalId: bigint;
   exportedAt: Date;
   rows: ExportRowData[];
 }) {
@@ -442,7 +444,10 @@ async function replaceMemberSnapshots(params: {
   await db
     .delete(sheetIntegrationMemberSnapshots)
     .where(
-      eq(sheetIntegrationMemberSnapshots.integrationId, params.integrationId),
+      eq(
+        sheetIntegrationMemberSnapshots.integrationId,
+        params.integrationInternalId,
+      ),
     );
 
   if (params.rows.length === 0) {
@@ -451,9 +456,9 @@ async function replaceMemberSnapshots(params: {
 
   await db.insert(sheetIntegrationMemberSnapshots).values(
     params.rows.map((row) => ({
-      id: randomUUID(),
-      integrationId: params.integrationId,
-      spaceId: params.spaceId,
+      publicId: generatePublicId(ID_PREFIX.sheetIntegrationMemberSnapshots),
+      integrationId: params.integrationInternalId,
+      spaceId: params.spaceInternalId,
       memberId: row.memberId,
       basePayload: row.payload,
       basePayloadHash: hashPayload(row.payload),
@@ -476,13 +481,14 @@ export async function importSpaceFromLinkedSheet(
     );
   }
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
   const db = getDb();
   const [integration] = await db
     .select()
     .from(sheetIntegrations)
     .where(
       and(
-        eq(sheetIntegrations.spaceId, spaceId),
+        eq(sheetIntegrations.spaceId, spaceInternalId),
         eq(sheetIntegrations.sheetId, sheetId),
         eq(sheetIntegrations.dataType, "export"),
       ),
@@ -558,23 +564,25 @@ export async function importSpaceFromLinkedSheet(
   const existingMembers = await db
     .select()
     .from(members)
-    .where(eq(members.spaceId, spaceId));
+    .where(eq(members.spaceId, spaceInternalId));
   const definitions = await db
     .select({
       id: memberFieldDefinitions.id,
+      publicId: memberFieldDefinitions.publicId,
       name: memberFieldDefinitions.name,
     })
     .from(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.spaceId, spaceId));
+    .where(eq(memberFieldDefinitions.spaceId, spaceInternalId));
 
   const fieldDefinitions = await db
     .select({
       id: memberFieldDefinitions.id,
+      publicId: memberFieldDefinitions.publicId,
       name: memberFieldDefinitions.name,
       fieldType: memberFieldDefinitions.fieldType,
     })
     .from(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.spaceId, spaceId));
+    .where(eq(memberFieldDefinitions.spaceId, spaceInternalId));
 
   const currentFieldValuesByMemberId = new Map<
     string,
@@ -582,14 +590,14 @@ export async function importSpaceFromLinkedSheet(
   >();
   for (const member of existingMembers) {
     currentFieldValuesByMemberId.set(
-      member.id,
-      await getFieldValuesForDefinitions(member.id, spaceId),
+      member.publicId,
+      await getFieldValuesForDefinitions(member.publicId, spaceId),
     );
   }
 
   const currentPayloadByMemberId = new Map<string, MemberSyncPayload>();
   for (const member of existingMembers) {
-    const fieldValues = currentFieldValuesByMemberId.get(member.id) ?? [];
+    const fieldValues = currentFieldValuesByMemberId.get(member.publicId) ?? [];
     const customFields = Object.fromEntries(
       fieldDefinitions.map((definition) => {
         const fieldValue = fieldValues.find(
@@ -606,7 +614,7 @@ export async function importSpaceFromLinkedSheet(
     );
 
     currentPayloadByMemberId.set(
-      member.id,
+      member.publicId,
       buildCanonicalPayload({
         name: member.name,
         email: member.email,
@@ -647,7 +655,7 @@ export async function importSpaceFromLinkedSheet(
     customValues: Array<{ fieldDefinitionId: string; value: string | null }>;
   }> = [];
   const plannedUpdates: Array<{
-    memberId: string;
+    memberPublicId: string;
     payload: MemberSyncPayload;
     customValues: Array<{ fieldDefinitionId: string; value: string | null }>;
   }> = [];
@@ -669,7 +677,7 @@ export async function importSpaceFromLinkedSheet(
         const definition = definitionByName.get(header);
         if (!definition) return null;
         return {
-          fieldDefinitionId: definition.id,
+          fieldDefinitionId: definition.publicId,
           value: normalizeTextValue(row[index]),
         };
       })
@@ -688,7 +696,7 @@ export async function importSpaceFromLinkedSheet(
       customFields: Object.fromEntries(
         customValues.map((value) => [
           definitions.find(
-            (definition) => definition.id === value.fieldDefinitionId,
+            (definition) => definition.publicId === value.fieldDefinitionId,
           )?.name ?? value.fieldDefinitionId,
           value.value,
         ]),
@@ -761,7 +769,7 @@ export async function importSpaceFromLinkedSheet(
 
       if (!serverChanged && sheetChanged) {
         plannedUpdates.push({
-          memberId: managedMemberId,
+          memberPublicId: managedMemberId,
           payload: sheetPayload,
           customValues,
         });
@@ -810,11 +818,11 @@ export async function importSpaceFromLinkedSheet(
         buildConflict({
           type: "new_row_matches_existing_member",
           rowNumber,
-          memberId: matchedExistingMember.id,
+          memberId: matchedExistingMember.publicId,
           memberName: matchedExistingMember.name,
           changedFields: diffPayloadFields({
             base:
-              currentPayloadByMemberId.get(matchedExistingMember.id) ??
+              currentPayloadByMemberId.get(matchedExistingMember.publicId) ??
               buildCanonicalPayload({ name: matchedExistingMember.name }),
             next: sheetPayload,
           }),
@@ -822,7 +830,8 @@ export async function importSpaceFromLinkedSheet(
             "메타데이터가 없는 신규 row가 기존 수강생과 겹칩니다. 먼저 시트를 최신 상태로 다시 내보내 주세요.",
           sheet: sheetPayload,
           server:
-            currentPayloadByMemberId.get(matchedExistingMember.id) ?? null,
+            currentPayloadByMemberId.get(matchedExistingMember.publicId) ??
+            null,
         }),
       );
       continue;
@@ -866,14 +875,18 @@ export async function importSpaceFromLinkedSheet(
   }
 
   for (const update of plannedUpdates) {
-    await updateMember(update.memberId, {
+    await updateMember(update.memberPublicId, {
       name: update.payload.core.name,
       email: update.payload.core.email,
       phone: update.payload.core.phone,
       status: update.payload.core.status ?? undefined,
       initialRiskLevel: update.payload.core.initialRiskLevel,
     });
-    await bulkUpsertFieldValues(update.memberId, spaceId, update.customValues);
+    await bulkUpsertFieldValues(
+      update.memberPublicId,
+      spaceId,
+      update.customValues,
+    );
     summary.updated += 1;
   }
 
@@ -885,7 +898,11 @@ export async function importSpaceFromLinkedSheet(
       status: updateStatusForCreate(create.payload.core.status),
       initialRiskLevel: create.payload.core.initialRiskLevel,
     });
-    await bulkUpsertFieldValues(member.id, spaceId, create.customValues);
+    await bulkUpsertFieldValues(
+      member.publicId,
+      spaceId,
+      create.customValues,
+    );
     summary.created += 1;
   }
 
@@ -899,7 +916,7 @@ export async function importSpaceFromLinkedSheet(
   };
 }
 
-async function buildSpaceExportRows(spaceId: string): Promise<{
+async function buildSpaceExportRows(spaceInternalId: bigint): Promise<{
   fieldDefinitions: ExportFieldDefinition[];
   rows: ExportRowData[];
 }> {
@@ -908,12 +925,13 @@ async function buildSpaceExportRows(spaceId: string): Promise<{
   const memberRows = await db
     .select()
     .from(members)
-    .where(eq(members.spaceId, spaceId))
+    .where(eq(members.spaceId, spaceInternalId))
     .orderBy(asc(members.createdAt));
 
   const fieldDefRows = await db
     .select({
       id: memberFieldDefinitions.id,
+      publicId: memberFieldDefinitions.publicId,
       name: memberFieldDefinitions.name,
       fieldType: memberFieldDefinitions.fieldType,
       tabDisplayOrder: memberTabDefinitions.displayOrder,
@@ -924,7 +942,7 @@ async function buildSpaceExportRows(spaceId: string): Promise<{
       memberTabDefinitions,
       eq(memberFieldDefinitions.tabId, memberTabDefinitions.id),
     )
-    .where(eq(memberFieldDefinitions.spaceId, spaceId))
+    .where(eq(memberFieldDefinitions.spaceId, spaceInternalId))
     .orderBy(
       asc(memberTabDefinitions.displayOrder),
       asc(memberFieldDefinitions.displayOrder),
@@ -989,7 +1007,7 @@ async function buildSpaceExportRows(spaceId: string): Promise<{
     ];
 
     return {
-      memberId: member.id,
+      memberId: member.publicId,
       payload,
       values: visibleCells,
     } satisfies ExportRowData;
@@ -997,7 +1015,7 @@ async function buildSpaceExportRows(spaceId: string): Promise<{
 
   return {
     fieldDefinitions: fieldDefRows.map((field) => ({
-      id: field.id,
+      id: field.publicId,
       name: field.name,
       fieldType: field.fieldType,
     })),
@@ -1008,7 +1026,9 @@ async function buildSpaceExportRows(spaceId: string): Promise<{
 export async function buildSpaceExportData(
   spaceId: string,
 ): Promise<{ values: string[][]; memberCount: number; rows: ExportRowData[] }> {
-  const { fieldDefinitions, rows } = await buildSpaceExportRows(spaceId);
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
+  const { fieldDefinitions, rows } =
+    await buildSpaceExportRows(spaceInternalId);
   const exportedAt = new Date().toISOString();
   const header = [
     "이름",
@@ -1045,13 +1065,14 @@ export async function exportSpaceToSheet(
     );
   }
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
   const db = getDb();
   const [integration] = await db
     .select()
     .from(sheetIntegrations)
     .where(
       and(
-        eq(sheetIntegrations.spaceId, spaceId),
+        eq(sheetIntegrations.spaceId, spaceInternalId),
         eq(sheetIntegrations.sheetId, sheetId),
         eq(sheetIntegrations.dataType, "export"),
       ),
@@ -1075,15 +1096,15 @@ export async function exportSpaceToSheet(
     .set({ lastSyncedAt: now, updatedAt: now })
     .where(
       and(
-        eq(sheetIntegrations.spaceId, spaceId),
+        eq(sheetIntegrations.spaceId, spaceInternalId),
         eq(sheetIntegrations.sheetId, sheetId),
         eq(sheetIntegrations.dataType, "export"),
       ),
     );
 
   await replaceMemberSnapshots({
-    integrationId: integration.id,
-    spaceId,
+    integrationInternalId: integration.id,
+    spaceInternalId,
     exportedAt: now,
     rows,
   });

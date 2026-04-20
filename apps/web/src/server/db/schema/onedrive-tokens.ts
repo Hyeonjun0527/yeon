@@ -1,8 +1,12 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
 import { users } from "./users";
 
 export const onedriveTokens = pgTable("onedrive_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: bigint("id", { mode: "bigint" })
+    .primaryKey()
+    .generatedAlwaysAsIdentity(),
+  publicId: text("public_id").notNull().unique(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })

@@ -578,6 +578,7 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
+          export YEON_RACE_SERVER_IMAGE="ghcr.io/${owner_lower}/yeon-race-server:${IMAGE_TAG}"
           # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
           for i in 1 2 3; do
             docker compose -f "${COMPOSE_FILE}" pull && break
@@ -596,7 +597,9 @@ jobs:
 
   deploy_develop:
     if: github.ref == 'refs/heads/develop'
-    needs: publish_manifest
+    needs:
+      - publish_manifest
+      - publish_race_manifest
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DEPLOY_DIR: /srv/yeon-develop
@@ -635,6 +638,7 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
+          export YEON_RACE_SERVER_IMAGE="ghcr.io/${owner_lower}/yeon-race-server:${IMAGE_TAG}"
           # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
           for i in 1 2 3; do
             docker compose -f "${COMPOSE_FILE}" pull && break

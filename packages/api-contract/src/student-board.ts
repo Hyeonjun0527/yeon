@@ -61,7 +61,7 @@ export const publicCheckVerificationStatusSchema = z.enum(
 export const studentBoardDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const studentBoardRowSchema = z.object({
-  memberId: z.string().uuid(),
+  memberId: z.string().min(1),
   attendanceStatus: studentAttendanceStatusSchema,
   attendanceMarkedAt: z.string().datetime().nullable(),
   attendanceMarkedSource: studentBoardSourceSchema.nullable(),
@@ -84,8 +84,8 @@ export const studentBoardRowSchema = z.object({
 });
 
 export const studentBoardHistoryItemSchema = z.object({
-  id: z.string().uuid(),
-  memberId: z.string().uuid(),
+  id: z.string().min(1),
+  memberId: z.string().min(1),
   memberName: z.string().min(1),
   historyDate: studentBoardDateSchema,
   occurredAt: z.string().datetime(),
@@ -102,7 +102,7 @@ export const updateStudentBoardBodySchema = z.object({
 });
 
 export const publicCheckSessionSummarySchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   title: z.string(),
   status: publicCheckSessionStatusSchema,
   checkMode: publicCheckSessionModeSchema,

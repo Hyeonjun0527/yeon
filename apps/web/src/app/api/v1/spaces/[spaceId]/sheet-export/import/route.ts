@@ -13,6 +13,7 @@ import {
   type SheetImportResult,
 } from "@/server/services/google-sheets-export-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 
 export const runtime = "nodejs";
 
@@ -28,13 +29,14 @@ export async function POST(
   const { spaceId } = await params;
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const db = getDb();
     const [integration] = await db
       .select()
       .from(sheetIntegrations)
       .where(
         and(
-          eq(sheetIntegrations.spaceId, spaceId),
+          eq(sheetIntegrations.spaceId, spaceInternalId),
           eq(sheetIntegrations.dataType, EXPORT_DATA_TYPE),
         ),
       )

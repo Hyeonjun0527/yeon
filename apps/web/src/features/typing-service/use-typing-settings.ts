@@ -95,7 +95,15 @@ const useTypingSettingsStore = create<TypingSettingsStore>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() =>
+        typeof window === "undefined"
+          ? {
+              getItem: () => null,
+              setItem: () => undefined,
+              removeItem: () => undefined,
+            }
+          : window.localStorage,
+      ),
       partialize: (state) => ({ settings: state.settings }),
     },
   ),
@@ -105,15 +113,17 @@ export function useTypingSettings() {
   const settings = useTypingSettingsStore((s) => s.settings);
   const updateSettings = useTypingSettingsStore((s) => s.updateSettings);
 
-  // SSR/CSR hydration mismatch 방지: persist rehydrate 완료 시점을 노출
-  const [loaded, setLoaded] = useState(
-    () => useTypingSettingsStore.persist.hasHydrated(),
-  );
+  // SSR/CSR hydration mismatch 방지: persist rehydrate 완료 시점을 노출.
+  // 서버/빌드 타임에는 persist API에 접근하지 않고 false로 시작.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (loaded) return;
-    const unsub = useTypingSettingsStore.persist.onFinishHydration(() => setLoaded(true));
-    if (useTypingSettingsStore.persist.hasHydrated()) setLoaded(true);
-    return unsub;
+    const persist = useTypingSettingsStore.persist;
+    if (persist.hasHydrated()) {
+      setLoaded(true);
+      return;
+    }
+    return persist.onFinishHydration(() => setLoaded(true));
   }, [loaded]);
 
   return { settings, updateSettings, loaded };

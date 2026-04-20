@@ -4,6 +4,7 @@ import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
 import { DEFAULT_COUNSELING_SERVICE_HREF } from "@/lib/platform-services";
 import { getDb } from "@/server/db";
 import { googledriveTokens } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 import { ServiceError } from "./service-error";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -228,6 +229,7 @@ export async function saveTokens(
   await db
     .insert(googledriveTokens)
     .values({
+      publicId: generatePublicId(ID_PREFIX.googledriveTokens),
       userId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,

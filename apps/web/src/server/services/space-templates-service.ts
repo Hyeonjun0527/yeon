@@ -1,5 +1,4 @@
 import { and, asc, eq, ne } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 
 import { getDb } from "@/server/db";
 import {
@@ -7,11 +6,13 @@ import {
   memberTabDefinitions,
   spaceTemplates,
 } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 import { createDefaultSystemTabs } from "./member-tabs-service";
 import type { TabType } from "./member-tabs-service";
 import type { FieldType } from "./member-fields-service";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
 
 /* ── 타입 ── */
 
@@ -364,7 +365,7 @@ export function summarizeSpaceTemplate(
     .slice(0, 6);
 
   return {
-    id: template.id,
+    id: template.publicId,
     name: template.name,
     description: template.description ?? null,
     isSystem: template.isSystem,
@@ -386,13 +387,16 @@ export function detailSpaceTemplate(
   };
 }
 
-async function getAccessibleTemplate(templateId: string, userId: string) {
+async function getAccessibleTemplate(
+  templatePublicId: string,
+  userId: string,
+) {
   const db = getDb();
 
   const [template] = await db
     .select()
     .from(spaceTemplates)
-    .where(eq(spaceTemplates.id, templateId))
+    .where(eq(spaceTemplates.publicId, templatePublicId))
     .limit(1);
 
   if (!template) {
@@ -408,9 +412,9 @@ async function getAccessibleTemplate(templateId: string, userId: string) {
 
 /** 필드 행들을 탭에 삽입 (offsetOrder부터 순번 할당) */
 async function insertFieldRows(
-  tabId: string,
+  tabInternalId: bigint,
   fields: TemplateField[],
-  spaceId: string,
+  spaceInternalId: bigint,
   userId: string,
   db: Db,
   now: Date,
@@ -418,9 +422,9 @@ async function insertFieldRows(
 ): Promise<void> {
   for (const [i, f] of fields.entries()) {
     await db.insert(memberFieldDefinitions).values({
-      id: randomUUID(),
-      spaceId,
-      tabId,
+      publicId: generatePublicId(ID_PREFIX.memberFields),
+      spaceId: spaceInternalId,
+      tabId: tabInternalId,
       createdByUserId: userId,
       name: f.name,
       fieldType: f.fieldType,
@@ -435,9 +439,9 @@ async function insertFieldRows(
 
 /** 기존 시스템 탭에 템플릿 필드 추가 (기존 필드 순번 이후부터 삽입) */
 async function applySystemTabFields(
-  existingTabId: string,
+  existingTabInternalId: bigint,
   fields: TemplateField[],
-  spaceId: string,
+  spaceInternalId: bigint,
   userId: string,
   db: Db,
   now: Date,
@@ -445,16 +449,16 @@ async function applySystemTabFields(
   const existingFields = await db
     .select()
     .from(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.tabId, existingTabId));
+    .where(eq(memberFieldDefinitions.tabId, existingTabInternalId));
 
   const maxOrder = existingFields.reduce(
     (acc, f) => Math.max(acc, f.displayOrder),
     -1,
   );
   await insertFieldRows(
-    existingTabId,
+    existingTabInternalId,
     fields,
-    spaceId,
+    spaceInternalId,
     userId,
     db,
     now,
@@ -465,7 +469,7 @@ async function applySystemTabFields(
 /** 커스텀 탭을 새로 생성하고 필드 삽입 */
 async function createCustomTabWithFields(
   tplTab: TemplateTab,
-  spaceId: string,
+  spaceInternalId: bigint,
   userId: string,
   db: Db,
   now: Date,
@@ -473,8 +477,8 @@ async function createCustomTabWithFields(
   const [newTab] = await db
     .insert(memberTabDefinitions)
     .values({
-      id: randomUUID(),
-      spaceId,
+      publicId: generatePublicId(ID_PREFIX.memberTabs),
+      spaceId: spaceInternalId,
       createdByUserId: userId,
       tabType: "custom",
       systemKey: null,
@@ -487,7 +491,15 @@ async function createCustomTabWithFields(
     .returning();
 
   if (!newTab) return;
-  await insertFieldRows(newTab.id, tplTab.fields, spaceId, userId, db, now, 0);
+  await insertFieldRows(
+    newTab.id,
+    tplTab.fields,
+    spaceInternalId,
+    userId,
+    db,
+    now,
+    0,
+  );
 }
 
 /* ── 서비스 함수 ── */
@@ -541,7 +553,7 @@ export async function createTemplate(
   const [template] = await db
     .insert(spaceTemplates)
     .values({
-      id: randomUUID(),
+      publicId: generatePublicId(ID_PREFIX.spaceTemplates),
       createdByUserId: userId,
       name,
       description: normalizeTemplateDescription(data.description),
@@ -560,17 +572,18 @@ export async function createTemplate(
  * 현재 스페이스 구조를 스냅샷하여 사용자 템플릿으로 저장
  */
 export async function snapshotSpaceAsTemplate(
-  spaceId: string,
+  spacePublicId: string,
   userId: string,
   name: string,
   description?: string | null,
 ): Promise<SpaceTemplate> {
   const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
 
   const tabs = await db
     .select()
     .from(memberTabDefinitions)
-    .where(eq(memberTabDefinitions.spaceId, spaceId))
+    .where(eq(memberTabDefinitions.spaceId, spaceInternalId))
     .orderBy(asc(memberTabDefinitions.displayOrder));
 
   const tabsConfig: TemplateTab[] = await Promise.all(
@@ -606,14 +619,15 @@ export async function snapshotSpaceAsTemplate(
  * - 커스텀 탭: 탭 생성 후 필드 삽입
  */
 export async function applyTemplateToSpace(
-  templateId: string,
-  spaceId: string,
+  templatePublicId: string,
+  spacePublicId: string,
   userId: string,
 ): Promise<void> {
   const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
 
-  await createDefaultSystemTabs(spaceId, userId);
-  const template = await getAccessibleTemplate(templateId, userId);
+  await createDefaultSystemTabs(spaceInternalId, userId);
+  const template = await getAccessibleTemplate(templatePublicId, userId);
 
   const config = template.tabsConfig as TemplateTab[];
   const now = new Date();
@@ -621,17 +635,17 @@ export async function applyTemplateToSpace(
   const existingTabs = await db
     .select()
     .from(memberTabDefinitions)
-    .where(eq(memberTabDefinitions.spaceId, spaceId));
+    .where(eq(memberTabDefinitions.spaceId, spaceInternalId));
 
   await db
     .delete(memberFieldDefinitions)
-    .where(eq(memberFieldDefinitions.spaceId, spaceId));
+    .where(eq(memberFieldDefinitions.spaceId, spaceInternalId));
 
   await db
     .delete(memberTabDefinitions)
     .where(
       and(
-        eq(memberTabDefinitions.spaceId, spaceId),
+        eq(memberTabDefinitions.spaceId, spaceInternalId),
         ne(memberTabDefinitions.tabType, "system"),
       ),
     );
@@ -653,13 +667,19 @@ export async function applyTemplateToSpace(
       await applySystemTabFields(
         existing.id,
         tplTab.fields,
-        spaceId,
+        spaceInternalId,
         userId,
         db,
         now,
       );
     } else {
-      await createCustomTabWithFields(tplTab, spaceId, userId, db, now);
+      await createCustomTabWithFields(
+        tplTab,
+        spaceInternalId,
+        userId,
+        db,
+        now,
+      );
     }
   }
 }
@@ -667,12 +687,14 @@ export async function applyTemplateToSpace(
 /**
  * 단일 템플릿 조회
  */
-export async function getTemplate(templateId: string): Promise<SpaceTemplate> {
+export async function getTemplate(
+  templatePublicId: string,
+): Promise<SpaceTemplate> {
   const db = getDb();
   const [template] = await db
     .select()
     .from(spaceTemplates)
-    .where(eq(spaceTemplates.id, templateId))
+    .where(eq(spaceTemplates.publicId, templatePublicId))
     .limit(1);
 
   if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
@@ -680,17 +702,17 @@ export async function getTemplate(templateId: string): Promise<SpaceTemplate> {
 }
 
 export async function getTemplateForUser(
-  templateId: string,
+  templatePublicId: string,
   userId: string,
 ): Promise<SpaceTemplate> {
-  return getAccessibleTemplate(templateId, userId);
+  return getAccessibleTemplate(templatePublicId, userId);
 }
 
 /**
  * 사용자 정의 템플릿 수정
  */
 export async function updateTemplate(
-  templateId: string,
+  templatePublicId: string,
   userId: string,
   data: UpdateTemplateInput,
 ): Promise<SpaceTemplate> {
@@ -699,7 +721,7 @@ export async function updateTemplate(
   const [template] = await db
     .select()
     .from(spaceTemplates)
-    .where(eq(spaceTemplates.id, templateId))
+    .where(eq(spaceTemplates.publicId, templatePublicId))
     .limit(1);
 
   if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
@@ -723,7 +745,7 @@ export async function updateTemplate(
   const [updated] = await db
     .update(spaceTemplates)
     .set(patch)
-    .where(eq(spaceTemplates.id, templateId))
+    .where(eq(spaceTemplates.publicId, templatePublicId))
     .returning();
 
   if (!updated) throw new ServiceError(500, "템플릿을 수정하지 못했습니다.");
@@ -735,17 +757,17 @@ export async function updateTemplate(
  * 템플릿 복제 (시스템/사용자 템플릿 모두 사용자 템플릿으로 복제)
  */
 export async function duplicateTemplate(
-  templateId: string,
+  templatePublicId: string,
   userId: string,
 ): Promise<SpaceTemplate> {
   const db = getDb();
-  const template = await getAccessibleTemplate(templateId, userId);
+  const template = await getAccessibleTemplate(templatePublicId, userId);
 
   const now = new Date();
   const [duplicated] = await db
     .insert(spaceTemplates)
     .values({
-      id: randomUUID(),
+      publicId: generatePublicId(ID_PREFIX.spaceTemplates),
       createdByUserId: userId,
       name: normalizeTemplateName(`${template.name} 복사본`),
       description: normalizeTemplateDescription(template.description),
@@ -767,7 +789,7 @@ export async function duplicateTemplate(
  * 사용자 정의 템플릿 삭제 (시스템 템플릿 삭제 시도 → 403)
  */
 export async function deleteTemplate(
-  templateId: string,
+  templatePublicId: string,
   userId: string,
 ): Promise<void> {
   const db = getDb();
@@ -775,7 +797,7 @@ export async function deleteTemplate(
   const [template] = await db
     .select()
     .from(spaceTemplates)
-    .where(eq(spaceTemplates.id, templateId))
+    .where(eq(spaceTemplates.publicId, templatePublicId))
     .limit(1);
 
   if (!template) throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
@@ -784,5 +806,7 @@ export async function deleteTemplate(
   if (template.createdByUserId !== userId)
     throw new ServiceError(404, "템플릿을 찾지 못했습니다.");
 
-  await db.delete(spaceTemplates).where(eq(spaceTemplates.id, templateId));
+  await db
+    .delete(spaceTemplates)
+    .where(eq(spaceTemplates.publicId, templatePublicId));
 }

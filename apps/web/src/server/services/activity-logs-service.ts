@@ -2,14 +2,35 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/server/db";
 import { activityLogs } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { getMemberByIdForUser } from "./members-service";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
 import { ServiceError } from "./service-error";
 
 export const MEMBER_MEMO_LOG_TYPE = "coaching-note";
 
+export type ActivityLogRow = typeof activityLogs.$inferSelect;
+
 function normalizeMemoText(text: string) {
   return text.replace(/\s+/g, " ").trim().slice(0, 2000);
+}
+
+async function resolveMemberSpaceContext(params: {
+  userId: string;
+  spaceId: string;
+  memberId: string;
+}) {
+  const member = await getMemberByIdForUser(params.userId, params.memberId);
+
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(
+    params.spaceId,
+  );
+  if (member.spaceId !== spaceInternalId) {
+    throw new ServiceError(404, "해당 스페이스에 속한 수강생이 아닙니다.");
+  }
+
+  return { member, spaceInternalId };
 }
 
 export async function listActivityLogsForMember(params: {
@@ -19,11 +40,11 @@ export async function listActivityLogsForMember(params: {
   type?: string | null;
   limit?: number;
 }) {
-  const member = await getMemberByIdForUser(params.userId, params.memberId);
-
-  if (member.spaceId !== params.spaceId) {
-    throw new ServiceError(404, "해당 스페이스에 속한 수강생이 아닙니다.");
-  }
+  const { member, spaceInternalId } = await resolveMemberSpaceContext({
+    userId: params.userId,
+    spaceId: params.spaceId,
+    memberId: params.memberId,
+  });
 
   const db = getDb();
 
@@ -32,8 +53,8 @@ export async function listActivityLogsForMember(params: {
     .from(activityLogs)
     .where(
       and(
-        eq(activityLogs.memberId, params.memberId),
-        eq(activityLogs.spaceId, params.spaceId),
+        eq(activityLogs.memberId, member.id),
+        eq(activityLogs.spaceId, spaceInternalId),
         ...(params.type ? [eq(activityLogs.type, params.type)] : []),
       ),
     )
@@ -52,11 +73,11 @@ export async function countActivityLogsForMember(params: {
   memberId: string;
   type?: string | null;
 }) {
-  const member = await getMemberByIdForUser(params.userId, params.memberId);
-
-  if (member.spaceId !== params.spaceId) {
-    throw new ServiceError(404, "해당 스페이스에 속한 수강생이 아닙니다.");
-  }
+  const { member, spaceInternalId } = await resolveMemberSpaceContext({
+    userId: params.userId,
+    spaceId: params.spaceId,
+    memberId: params.memberId,
+  });
 
   const db = getDb();
   const [row] = await db
@@ -64,8 +85,8 @@ export async function countActivityLogsForMember(params: {
     .from(activityLogs)
     .where(
       and(
-        eq(activityLogs.memberId, params.memberId),
-        eq(activityLogs.spaceId, params.spaceId),
+        eq(activityLogs.memberId, member.id),
+        eq(activityLogs.spaceId, spaceInternalId),
         ...(params.type ? [eq(activityLogs.type, params.type)] : []),
       ),
     );
@@ -80,11 +101,11 @@ export async function createMemberMemoLog(params: {
   text: string;
   authorLabel?: string | null;
 }) {
-  const member = await getMemberByIdForUser(params.userId, params.memberId);
-
-  if (member.spaceId !== params.spaceId) {
-    throw new ServiceError(404, "해당 스페이스에 속한 수강생이 아닙니다.");
-  }
+  const { member, spaceInternalId } = await resolveMemberSpaceContext({
+    userId: params.userId,
+    spaceId: params.spaceId,
+    memberId: params.memberId,
+  });
 
   const noteText = normalizeMemoText(params.text);
 
@@ -98,8 +119,9 @@ export async function createMemberMemoLog(params: {
   const [created] = await db
     .insert(activityLogs)
     .values({
-      memberId: params.memberId,
-      spaceId: params.spaceId,
+      publicId: generatePublicId(ID_PREFIX.activityLogs),
+      memberId: member.id,
+      spaceId: spaceInternalId,
       type: MEMBER_MEMO_LOG_TYPE,
       status: null,
       recordedAt: now,

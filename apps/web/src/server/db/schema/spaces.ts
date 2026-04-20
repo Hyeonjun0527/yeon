@@ -1,4 +1,5 @@
 import {
+  bigint,
   date,
   pgTable,
   text,
@@ -10,7 +11,10 @@ import {
 import { users } from "./users";
 
 export const spaces = pgTable("spaces", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: bigint("id", { mode: "bigint" })
+    .primaryKey()
+    .generatedAlwaysAsIdentity(),
+  publicId: text("public_id").notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
   startDate: date("start_date"),

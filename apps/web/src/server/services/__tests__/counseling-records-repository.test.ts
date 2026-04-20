@@ -23,6 +23,8 @@ vi.mock("@/server/db", () => ({ getDb: () => chain }));
 vi.mock("@/server/db/schema", () => ({
   counselingRecords: {},
   counselingTranscriptSegments: {},
+  spaces: { id: {}, publicId: {} },
+  members: { id: {}, publicId: {} },
 }));
 vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
@@ -87,6 +89,8 @@ import {
 
 const makeRecord = (overrides: Record<string, unknown> = {}) => ({
   id: "record-1",
+  internalId: 1n,
+  publicId: "record-1",
   createdByUserId: "user-1",
   studentName: "홍길동",
   sessionTitle: "1차 상담",
@@ -127,8 +131,9 @@ const makeRecord = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const makeSegment = (overrides: Record<string, unknown> = {}) => ({
-  id: "seg-1",
-  recordId: "record-1",
+  id: 1n,
+  publicId: "seg-1",
+  recordId: 1n,
   segmentIndex: 0,
   startMs: 0,
   endMs: 3000,
@@ -444,6 +449,7 @@ describe("linkRecordToMember", () => {
 describe("findRecordsBySpaceId", () => {
   it("spaceId에 속한 레코드 목록을 반환한다", async () => {
     const records = [makeRecord(), makeRecord({ id: "record-2" })];
+    responses.push([{ id: 1n }]); // resolveSpaceInternalIdByPublicId
     responses.push(records);
 
     const result = await findRecordsBySpaceId("user-1", "space-1");
@@ -451,6 +457,7 @@ describe("findRecordsBySpaceId", () => {
   });
 
   it("레코드가 없으면 빈 배열을 반환한다", async () => {
+    responses.push([{ id: 1n }]);
     responses.push([]);
     const result = await findRecordsBySpaceId("user-1", "space-1");
     expect(result).toEqual([]);
@@ -458,6 +465,7 @@ describe("findRecordsBySpaceId", () => {
 
   it("다른 userId의 레코드는 포함하지 않는다 (쿼리 조건 검증)", async () => {
     // DB mock은 userId 필터를 실제로 적용하지 않으므로, 반환값 검증으로 커버
+    responses.push([{ id: 1n }]);
     responses.push([]);
     const result = await findRecordsBySpaceId("user-2", "space-1");
     expect(Array.isArray(result)).toBe(true);
@@ -488,6 +496,7 @@ describe("findUnlinkedRecords", () => {
 describe("findRecordsByMemberId", () => {
   it("memberId에 속한 레코드 목록을 반환한다", async () => {
     const records = [makeRecord(), makeRecord({ id: "record-2" })];
+    responses.push([{ id: 1n }]); // resolveMemberInternalIdByPublicId
     responses.push(records);
 
     const result = await findRecordsByMemberId("user-1", "member-1");
@@ -495,6 +504,7 @@ describe("findRecordsByMemberId", () => {
   });
 
   it("레코드가 없으면 빈 배열을 반환한다", async () => {
+    responses.push([{ id: 1n }]);
     responses.push([]);
     const result = await findRecordsByMemberId("user-1", "member-1");
     expect(result).toEqual([]);
@@ -506,6 +516,7 @@ describe("findRecordsByMemberId", () => {
       makeRecord({ id: "r2" }),
       makeRecord({ id: "r3" }),
     ];
+    responses.push([{ id: 1n }]);
     responses.push(records);
 
     const result = await findRecordsByMemberId("user-1", "member-1");
@@ -560,13 +571,13 @@ describe("findTranscriptSegments", () => {
     ];
     responses.push(segments);
 
-    const result = await findTranscriptSegments("record-1");
+    const result = await findTranscriptSegments(1n);
     expect(result).toHaveLength(2);
   });
 
   it("세그먼트가 없으면 빈 배열을 반환한다", async () => {
     responses.push([]);
-    const result = await findTranscriptSegments("record-1");
+    const result = await findTranscriptSegments(1n);
     expect(result).toEqual([]);
   });
 
@@ -578,7 +589,7 @@ describe("findTranscriptSegments", () => {
     ];
     responses.push(segments);
 
-    const result = await findTranscriptSegments("record-1");
+    const result = await findTranscriptSegments(1n);
     expect(result[0].segmentIndex).toBe(0);
     expect(result[1].segmentIndex).toBe(1);
     expect(result[2].segmentIndex).toBe(2);
@@ -607,19 +618,16 @@ describe("findTranscriptSegmentsByRecordIds", () => {
   it("여러 recordId의 세그먼트를 한 번에 반환한다", async () => {
     const segments = [
       makeSegment(),
-      makeSegment({ id: "seg-2", recordId: "record-2", segmentIndex: 0 }),
+      makeSegment({ id: 2n, recordId: 2n, segmentIndex: 0 }),
     ];
     responses.push(segments);
 
-    const result = await findTranscriptSegmentsByRecordIds([
-      "record-1",
-      "record-2",
-    ]);
+    const result = await findTranscriptSegmentsByRecordIds([1n, 2n]);
     expect(result).toHaveLength(2);
   });
 
   it("빈 recordIds면 즉시 빈 배열을 반환한다", async () => {
-    const result = await findTranscriptSegmentsByRecordIds([]);
+    const result = await findTranscriptSegmentsByRecordIds([] as bigint[]);
     expect(result).toEqual([]);
   });
 });
@@ -724,14 +732,14 @@ describe("rebuildTranscriptText", () => {
     responses.push(segments); // select segments
     responses.push(undefined); // update counselingRecords
 
-    await expect(rebuildTranscriptText("record-1")).resolves.toBeUndefined();
+    await expect(rebuildTranscriptText(1n)).resolves.toBeUndefined();
   });
 
   it("세그먼트가 없으면 빈 문자열로 record를 업데이트한다", async () => {
     responses.push([]); // select segments → 빈 배열
     responses.push(undefined); // update
 
-    await expect(rebuildTranscriptText("record-1")).resolves.toBeUndefined();
+    await expect(rebuildTranscriptText(1n)).resolves.toBeUndefined();
   });
 
   it("tx가 주어지면 tx를 통해 쿼리한다 (tx 파라미터 사용)", async () => {
@@ -743,7 +751,7 @@ describe("rebuildTranscriptText", () => {
     // tx로 chain을 전달해도 정상 동작해야 함
     await expect(
       rebuildTranscriptText(
-        "record-1",
+        1n,
         chain as Parameters<typeof rebuildTranscriptText>[1],
       ),
     ).resolves.toBeUndefined();

@@ -21,6 +21,9 @@ export const ID_PREFIX = {
   onedriveTokens: "odt",
   homeInsightBannerDismissals: "hbd",
   importDrafts: "idr",
+  counselingRecords: "crd",
+  counselingTranscriptSegments: "cts",
+  activityLogs: "alg",
 } as const;
 
 export type IdPrefixKey = keyof typeof ID_PREFIX;
@@ -61,4 +64,13 @@ export function parsePublicId(prefix: IdPrefix, raw: unknown): string {
     }
   }
   return raw;
+}
+
+/**
+ * 경계에서 검증 없이 raw 문자열을 그대로 publicId로 취급하는 헬퍼.
+ * - `parsePublicId`와 달리 prefix/길이 검증을 건너뛴다.
+ * - 이미 검증된 내부 값 또는 잘못된 publicId는 어차피 DB에서 매칭 실패해 404로 떨어진다.
+ */
+export function toRawPublicId(raw: unknown): string | null {
+  return typeof raw === "string" && raw.length > 0 ? raw : null;
 }

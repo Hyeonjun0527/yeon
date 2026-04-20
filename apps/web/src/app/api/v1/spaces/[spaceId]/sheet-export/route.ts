@@ -11,6 +11,8 @@ import { getDb } from "@/server/db";
 import { sheetIntegrations } from "@/server/db/schema";
 import { extractSheetId } from "@/server/services/google-sheets-export-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 export const runtime = "nodejs";
 
@@ -20,14 +22,14 @@ const createExportBodySchema = z.object({
   sheetUrl: z.string().url(),
 });
 
-async function getExportIntegration(spaceId: string) {
+async function getExportIntegration(spaceInternalId: bigint) {
   const db = getDb();
   const [row] = await db
     .select()
     .from(sheetIntegrations)
     .where(
       and(
-        eq(sheetIntegrations.spaceId, spaceId),
+        eq(sheetIntegrations.spaceId, spaceInternalId),
         eq(sheetIntegrations.dataType, EXPORT_DATA_TYPE),
       ),
     )
@@ -45,7 +47,8 @@ export async function GET(
   const { spaceId } = await params;
 
   try {
-    const integration = await getExportIntegration(spaceId);
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
+    const integration = await getExportIntegration(spaceInternalId);
     return NextResponse.json({ integration });
   } catch (error) {
     if (error instanceof ServiceError) {
@@ -78,11 +81,12 @@ export async function POST(
   }
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const sheetId = extractSheetId(parsed.data.sheetUrl);
     const db = getDb();
     const now = new Date();
 
-    const existing = await getExportIntegration(spaceId);
+    const existing = await getExportIntegration(spaceInternalId);
 
     let integration: typeof sheetIntegrations.$inferSelect;
 
@@ -97,12 +101,16 @@ export async function POST(
         })
         .where(eq(sheetIntegrations.id, existing.id))
         .returning();
+      if (!updated) {
+        throw new ServiceError(500, "시트 익스포트 연동을 갱신하지 못했습니다.");
+      }
       integration = updated;
     } else {
       const [created] = await db
         .insert(sheetIntegrations)
         .values({
-          spaceId,
+          publicId: generatePublicId(ID_PREFIX.sheetIntegrations),
+          spaceId: spaceInternalId,
           sheetUrl: parsed.data.sheetUrl,
           sheetId,
           dataType: EXPORT_DATA_TYPE,
@@ -110,6 +118,9 @@ export async function POST(
           updatedAt: now,
         })
         .returning();
+      if (!created) {
+        throw new ServiceError(500, "시트 익스포트 연동을 생성하지 못했습니다.");
+      }
       integration = created;
     }
 
@@ -133,12 +144,13 @@ export async function DELETE(
   const { spaceId } = await params;
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const db = getDb();
     await db
       .delete(sheetIntegrations)
       .where(
         and(
-          eq(sheetIntegrations.spaceId, spaceId),
+          eq(sheetIntegrations.spaceId, spaceInternalId),
           eq(sheetIntegrations.dataType, EXPORT_DATA_TYPE),
         ),
       );

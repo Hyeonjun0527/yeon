@@ -1,12 +1,22 @@
-import { index, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 import { spaces } from "./spaces";
 
 export const members = pgTable(
   "members",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    spaceId: uuid("space_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 100 }).notNull(),

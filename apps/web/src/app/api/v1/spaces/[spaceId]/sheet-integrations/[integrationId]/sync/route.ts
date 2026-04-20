@@ -6,6 +6,7 @@ import { getDb } from "@/server/db";
 import { sheetIntegrations } from "@/server/db/schema";
 import { syncSheetToActivityLogs } from "@/server/services/google-sheets-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 
 import {
   jsonError,
@@ -27,6 +28,7 @@ export async function POST(
   const { spaceId, integrationId } = await params;
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const db = getDb();
 
     const [integration] = await db
@@ -34,8 +36,8 @@ export async function POST(
       .from(sheetIntegrations)
       .where(
         and(
-          eq(sheetIntegrations.id, integrationId),
-          eq(sheetIntegrations.spaceId, spaceId),
+          eq(sheetIntegrations.publicId, integrationId),
+          eq(sheetIntegrations.spaceId, spaceInternalId),
         ),
       )
       .limit(1);

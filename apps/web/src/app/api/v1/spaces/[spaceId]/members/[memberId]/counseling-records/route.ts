@@ -2,10 +2,14 @@ import { listCounselingRecordsResponseSchema } from "@yeon/api-contract/counseli
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { eq } from "drizzle-orm";
+
 import {
   jsonError,
   requireAuthenticatedUser,
 } from "@/app/api/v1/counseling-records/_shared";
+import { getDb } from "@/server/db";
+import { spaces } from "@/server/db/schema";
 import { listCounselingRecordsByMember } from "@/server/services/counseling-records-service";
 import { getMemberByIdForUser } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
@@ -42,7 +46,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     // memberId가 spaceId에 속하며 현재 사용자 소유인지 검증
     const member = await getMemberByIdForUser(currentUser.id, memberId);
-    if (member.spaceId !== spaceId) {
+    const [memberSpace] = await getDb()
+      .select({ publicId: spaces.publicId })
+      .from(spaces)
+      .where(eq(spaces.id, member.spaceId))
+      .limit(1);
+    if (!memberSpace || memberSpace.publicId !== spaceId) {
       return jsonError("해당 스페이스에 속한 수강생이 아닙니다.", 404);
     }
 
