@@ -34,7 +34,9 @@ export function StudentCard({
       />
 
       <Link
-        href={resolveAppHref(`/home/student-management/${student.id}`)}
+        href={resolveAppHref(
+          `/counseling-service/student-management/${student.id}`,
+        )}
         style={{ display: "block", textDecoration: "none", color: "inherit" }}
       >
         <div className="flex items-center gap-3 mb-3">

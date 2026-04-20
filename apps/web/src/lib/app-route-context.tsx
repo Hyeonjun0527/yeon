@@ -7,7 +7,7 @@ import {
   useMemo,
 } from "react";
 import {
-  DEFAULT_HOME_BASE_PATH,
+  DEFAULT_COUNSELING_SERVICE_BASE_PATH,
   normalizeAppPathnameForBasePath,
   resolveApiHrefForBasePath,
   resolveAppHrefForBasePath,
@@ -21,14 +21,14 @@ type AppRouteContextValue = {
 };
 
 const AppRouteContext = createContext<AppRouteContextValue>({
-  appBasePath: DEFAULT_HOME_BASE_PATH,
+  appBasePath: DEFAULT_COUNSELING_SERVICE_BASE_PATH,
   resolveAppHref: (href) => href,
   resolveApiHref: (href) => href,
   normalizeAppPathname: (pathname) => pathname,
 });
 
 export function AppRouteProvider({
-  appBasePath = DEFAULT_HOME_BASE_PATH,
+  appBasePath = DEFAULT_COUNSELING_SERVICE_BASE_PATH,
   children,
 }: PropsWithChildren<{ appBasePath?: string }>) {
   const value = useMemo<AppRouteContextValue>(() => {

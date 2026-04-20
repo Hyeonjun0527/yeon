@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 
 import { useTutorial } from "./use-tutorial";
-import { useTutorialPolicy } from "@/app/home/_components/home-sidebar-layout-context";
+import { useTutorialPolicy } from "@/features/counseling-service-shell/counseling-sidebar-layout-context";
 
 const Joyride = dynamic(
   () => import("react-joyride").then((m) => ({ default: m.Joyride })),

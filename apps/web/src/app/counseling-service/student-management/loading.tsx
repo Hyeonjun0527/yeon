@@ -1,1 +1,3 @@
-export { default } from "@/app/home/student-management/loading";
+export default function StudentManagementLoading() {
+  return null;
+}

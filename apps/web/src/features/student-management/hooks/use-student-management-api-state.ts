@@ -9,7 +9,7 @@ import { createPatchedHref } from "@/lib/route-state/search-params";
 import { useAppRoute } from "@/lib/app-route-context";
 
 function isStudentDetailPath(pathname: string) {
-  const prefix = "/home/student-management/";
+  const prefix = "/counseling-service/student-management/";
 
   if (!pathname.startsWith(prefix)) {
     return false;

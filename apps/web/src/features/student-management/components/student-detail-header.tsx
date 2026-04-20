@@ -16,8 +16,8 @@ export function StudentDetailHeader({ student }: StudentDetailHeaderProps) {
   const { openSheet, selectedSpaceId } = useStudentManagement();
   const { resolveAppHref } = useAppRoute();
   const backHref = selectedSpaceId
-    ? `${resolveAppHref("/home/student-management")}?spaceId=${selectedSpaceId}`
-    : resolveAppHref("/home/student-management");
+    ? `${resolveAppHref("/counseling-service/student-management")}?spaceId=${selectedSpaceId}`
+    : resolveAppHref("/counseling-service/student-management");
 
   return (
     <div>

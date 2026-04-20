@@ -32,15 +32,23 @@ describe("auth-errors", () => {
     const withSafeNext = buildAuthErrorRedirectPath({
       provider: "google",
       reason: authErrorCodes.invalidState,
-      nextPath: "/home?tab=records",
+      nextPath: "/counseling-service?tab=records",
     });
     const withUnsafeNext = buildAuthErrorRedirectPath({
       provider: "google",
       reason: authErrorCodes.invalidState,
       nextPath: "https://evil.example/steal",
     });
+    const withLegacyHomeNext = buildAuthErrorRedirectPath({
+      provider: "google",
+      reason: authErrorCodes.invalidState,
+      nextPath: "/home?tab=records",
+    });
 
-    expect(withSafeNext).toContain("next=%2Fhome%3Ftab%3Drecords");
+    expect(withSafeNext).toContain(
+      "next=%2Fcounseling-service%3Ftab%3Drecords",
+    );
     expect(withUnsafeNext).not.toContain("next=");
+    expect(withLegacyHomeNext).not.toContain("next=");
   });
 });

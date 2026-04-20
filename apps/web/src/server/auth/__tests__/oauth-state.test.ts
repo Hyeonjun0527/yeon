@@ -36,7 +36,7 @@ describe("oauth-state", () => {
   it("consumeOAuthStateCookieValue는 일치하는 state를 소비하고 쿠키에서 제거한다", () => {
     const created = createOAuthStateCookieValue({
       provider: "google",
-      nextPath: "/home",
+      nextPath: "/counseling-service",
     });
 
     const consumed = consumeOAuthStateCookieValue({
@@ -45,7 +45,7 @@ describe("oauth-state", () => {
       state: created.state,
     });
 
-    expect(consumed.matchedEntry?.nextPath).toBe("/home");
+    expect(consumed.matchedEntry?.nextPath).toBe("/counseling-service");
     expect(consumed.nextCookieValue).toBeNull();
   });
 
@@ -68,7 +68,7 @@ describe("oauth-state", () => {
   it("서명이 변조된 쿠키는 무시한다", () => {
     const created = createOAuthStateCookieValue({
       provider: "google",
-      nextPath: "/home",
+      nextPath: "/counseling-service",
     });
     const tampered = `${created.cookieValue}tampered`;
 

@@ -152,7 +152,7 @@ function buildOAuthRedirectTarget() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const studentManagementPath = resolveAppHrefForBasePath(
     DEFAULT_PLATFORM_SERVICE_HREF,
-    "/home/student-management",
+    "/counseling-service/student-management",
   );
 
   return new URL(studentManagementPath, baseUrl).toString();

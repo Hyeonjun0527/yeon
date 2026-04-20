@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import HomePage from "@/app/home/page";
+import CounselingServicePage from "@/app/counseling-service/page";
 import { createPatchedHref } from "@/lib/route-state/search-params";
 
 export default function MockdataAppPage() {
@@ -25,5 +25,5 @@ export default function MockdataAppPage() {
     );
   }, [pathname, router]);
 
-  return <HomePage />;
+  return <CounselingServicePage />;
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
 import type { EventData } from "react-joyride";
 import { useTutorial } from "./use-tutorial";
 import { useTutorialPolicy } from "@/features/counseling-service-shell/counseling-sidebar-layout-context";
@@ -11,54 +10,41 @@ const Joyride = dynamic(
   { ssr: false },
 );
 
-const MEMBER_CARD_STEP = {
-  target: '[data-tutorial="member-card"]',
-  title: "수강생 상세 보기",
-  content: "카드를 클릭하면 개인 현황·상담 이력·메모를 한 번에 볼 수 있어요.",
-  placement: "bottom" as const,
-};
-
-const EMPTY_STATE_STEP = {
-  target: '[data-tutorial="member-empty-state"]',
-  title: "수강생 등록 시작하기",
-  content:
-    "아직 수강생이 없다면 이 안내 영역을 보고 상단의 수강생 추가나 외부 파일 가져오기로 시작할 수 있어요.",
-  placement: "bottom" as const,
-};
-
 const BASE_STEPS = [
   {
-    target: '[data-tutorial="space-title"]',
-    title: "스페이스란?",
+    target: '[data-tutorial="new-record-btn"]',
+    title: "녹음으로 시작하기",
     content:
-      "기수나 프로그램 단위로 수강생을 묶는 그룹이에요. 왼쪽 사이드바에서 직접 만들어 관리하세요.",
+      "버튼을 누르면 바로 녹음이 시작돼요. 멘토링·1:1 상담을 그대로 녹음하세요.",
     skipBeacon: true,
+    placement: "top" as const,
+  },
+  {
+    target: '[data-tutorial="ai-panel"]',
+    title: "AI 분석 결과",
+    content:
+      "전사가 완료되면 여기서 요약·핵심 내용·후속 조치를 확인할 수 있어요.",
+    placement: "left" as const,
+  },
+  {
+    target: '[data-tutorial="link-member-btn"]',
+    title: "수강생과 연결하기",
+    content: "상담 기록을 수강생에 연결하면 수강생별 이력이 자동으로 쌓여요.",
     placement: "bottom" as const,
   },
   {
-    target: '[data-tutorial="add-member-btn"]',
-    title: "수강생 등록하기",
-    content: "이름·연락처·상태를 입력해 수강생을 추가해요.",
-    placement: "bottom" as const,
+    target: '[data-tutorial="members-section"]',
+    title: "수강생 현황 보기",
+    content: "최근 상담일 기준으로 관리가 필요한 수강생을 한눈에 확인하세요.",
+    placement: "right" as const,
   },
 ];
 
-export function StudentTutorial() {
-  const { run, finish } = useTutorial("student");
-  const { mode } = useTutorialPolicy("student");
-  const steps = useMemo(() => {
-    if (mode === "disabled") {
-      return [];
-    }
+export function CounselingTutorial() {
+  const { run, finish } = useTutorial("home");
+  const { mode } = useTutorialPolicy("home");
 
-    if (mode === "full") {
-      return [...BASE_STEPS, MEMBER_CARD_STEP];
-    }
-
-    return [...BASE_STEPS, EMPTY_STATE_STEP];
-  }, [mode, run]);
-
-  if (mode === "disabled") {
+  if (mode !== "full") {
     return null;
   }
 
@@ -71,7 +57,7 @@ export function StudentTutorial() {
 
   return (
     <Joyride
-      steps={steps}
+      steps={BASE_STEPS}
       run={run}
       continuous
       scrollToFirstStep
