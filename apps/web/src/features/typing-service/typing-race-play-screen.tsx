@@ -183,54 +183,56 @@ export function TypingRacePlayScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-white text-[#111]">
       {/* 헤더 */}
-      <header className="flex items-center justify-between border-b border-white/8 px-6 py-3 md:px-10">
-        <Link
-          href="/typing-service"
-          className="inline-flex items-center gap-2 text-[13px] text-white/60 no-underline hover:text-white"
-        >
-          <ArrowLeft size={14} />
-          타자연습
-        </Link>
-        <span className="font-mono text-[12px] text-white/40">
-          {passage.title}
-        </span>
+      <header className="border-b border-[#e5e5e5] px-6 py-3 md:px-12">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between">
+          <Link
+            href="/typing-service"
+            className="inline-flex items-center gap-2 text-[13px] text-[#888] no-underline hover:text-[#111]"
+          >
+            <ArrowLeft size={14} />
+            타자연습
+          </Link>
+          <span className="font-mono text-[12px] text-[#aaa]">
+            {passage.title}
+          </span>
+        </div>
       </header>
 
       <div className="mx-auto max-w-[1400px] px-4 py-4 md:px-8">
         {/* 캔버스 */}
-        <div className="overflow-hidden rounded-xl">
+        <div className="overflow-hidden rounded-xl border border-[#e5e5e5]">
           <div ref={engineContainerRef} className="min-h-[520px] w-full" />
         </div>
 
         {/* 통계 바 */}
-        <div className="mt-3 flex items-center gap-6 rounded-lg border border-white/8 bg-white/[0.03] px-5 py-3 font-mono text-[13px]">
-          <span className="text-white/40">wpm</span>
-          <span className="text-[18px] font-bold text-white">{typingSpeed}</span>
-          <span className="text-white/20">·</span>
-          <span className="text-white/40">acc</span>
-          <span className="text-[18px] font-bold text-white">{accuracy}%</span>
-          <span className="text-white/20">·</span>
-          <span className="text-white/40">progress</span>
-          <span className="text-[18px] font-bold text-white">{progress}%</span>
-          <span className="text-white/20">·</span>
-          <span className="text-white/40">time</span>
-          <span className="text-[18px] font-bold text-white">{elapsedSeconds.toFixed(1)}s</span>
+        <div className="mt-3 flex items-center gap-6 rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-5 py-3 font-mono text-[13px]">
+          <span className="text-[#888]">wpm</span>
+          <span className="text-[18px] font-bold text-[#111]">{typingSpeed}</span>
+          <span className="text-[#ddd]">·</span>
+          <span className="text-[#888]">acc</span>
+          <span className="text-[18px] font-bold text-[#111]">{accuracy}%</span>
+          <span className="text-[#ddd]">·</span>
+          <span className="text-[#888]">progress</span>
+          <span className="text-[18px] font-bold text-[#111]">{progress}%</span>
+          <span className="text-[#ddd]">·</span>
+          <span className="text-[#888]">time</span>
+          <span className="text-[18px] font-bold text-[#111]">{elapsedSeconds.toFixed(1)}s</span>
         </div>
 
         {/* 완주 패널 */}
         {completed && (
-          <div className="mt-3 flex items-center justify-between rounded-lg border border-white/15 bg-white/[0.06] px-5 py-4">
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-5 py-4">
             <div className="flex items-center gap-6 font-mono text-[13px]">
-              <span className="text-white/60">결과</span>
-              <span className="text-white"><span className="text-[20px] font-bold">{typingSpeed}</span> wpm</span>
-              <span className="text-white"><span className="text-[20px] font-bold">{accuracy}</span>% 정확도</span>
-              <span className="text-white"><span className="text-[20px] font-bold">{elapsedSeconds.toFixed(1)}</span>s</span>
+              <span className="text-[#888]">결과</span>
+              <span className="text-[#111]"><span className="text-[20px] font-bold">{typingSpeed}</span> wpm</span>
+              <span className="text-[#111]"><span className="text-[20px] font-bold">{accuracy}</span>% 정확도</span>
+              <span className="text-[#111]"><span className="text-[20px] font-bold">{elapsedSeconds.toFixed(1)}</span>s</span>
             </div>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded border border-white/20 bg-white/8 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded border border-[#e5e5e5] px-5 py-2 text-[13px] font-medium text-[#555] transition-colors hover:border-[#aaa]"
               onClick={handleRestart}
             >
               <RotateCcw size={13} />
@@ -242,7 +244,7 @@ export function TypingRacePlayScreen() {
         {/* 프롬프트 + 입력 */}
         {!completed && (
           <div className="mt-3 grid gap-3">
-            <div className="rounded-lg border border-white/8 bg-[#111] px-5 py-4 font-mono text-[17px] leading-[2]">
+            <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-6 py-5 font-mono text-[19px] leading-[2] tracking-[0.01em]">
               {promptChars.map((char, index) => {
                 const typed = inputChars[index];
                 const isCurrent = index === inputChars.length;
@@ -254,12 +256,12 @@ export function TypingRacePlayScreen() {
                     key={`${passage.id}-${index}`}
                     className={
                       isMismatch
-                        ? "bg-red-900/50 text-red-400"
+                        ? "bg-red-100 text-red-500"
                         : isMatched
-                          ? "text-white"
+                          ? "text-[#111]"
                           : isCurrent
-                            ? "bg-white text-black"
-                            : "text-white/30"
+                            ? "bg-[#111] text-white"
+                            : "text-[#ccc]"
                     }
                   >
                     {char}
@@ -273,10 +275,10 @@ export function TypingRacePlayScreen() {
               value={input}
               onChange={(e) => setInput(Array.from(e.target.value).slice(0, promptChars.length).join(""))}
               disabled={countdownRemaining > 0}
-              rows={2}
+              rows={3}
               spellCheck={false}
               aria-label="타자 입력 영역"
-              className="w-full resize-none rounded-lg border border-white/10 bg-[#111] px-5 py-3 font-mono text-[15px] text-white outline-none transition-colors placeholder:text-white/20 focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full resize-none rounded-lg border border-[#e5e5e5] bg-white px-5 py-4 font-mono text-[16px] leading-[1.7] text-[#111] outline-none transition-colors placeholder:text-[#ccc] focus:border-[#111] disabled:cursor-not-allowed disabled:opacity-40"
               placeholder={countdownRemaining > 0 ? `${countdownRemaining}초 후 시작...` : "여기에 입력하세요"}
             />
           </div>
