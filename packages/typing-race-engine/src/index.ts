@@ -92,7 +92,6 @@ function createStartLineScene(
     private countdownLabel?: Phaser.GameObjects.Text;
     private currentSnapshot = initialSnapshot;
     private detachSnapshot?: () => void;
-    private lanesCreated = false;
     private previousStage?: string;
 
     constructor() {
@@ -201,7 +200,7 @@ function createStartLineScene(
         const laneY = height * (LANE_Y_RATIOS[index] ?? 0.5);
         const existing = this.laneVisuals.get(lane.id);
 
-        if (!existing && !this.lanesCreated) {
+        if (!existing) {
           const label = this.add.text(trackStartX, laneY + 26, lane.label, {
             color: lane.role === "local" ? "#ffffff" : "#ffe97a",
             fontFamily: "monospace",
@@ -249,9 +248,6 @@ function createStartLineScene(
             (clampRaceProgress(lane.progress) / 100);
       });
 
-      if (!this.lanesCreated && lanes.length > 0) {
-        this.lanesCreated = true;
-      }
     }
   };
 }
@@ -264,10 +260,10 @@ function createFallbackSnapshot(): TypingRaceSnapshot {
     subheadline: "엔진이 출발선을 구성하고 있습니다.",
     roundLabel: "Typing Race",
     lanes: [
-      createFallbackLane("local", "Guest (you)", "#f4b5ff", 0, 0),
-      createFallbackLane("bench-1", "Benchmark Guest", "#62c5ff", 0, 0),
-      createFallbackLane("bench-2", "Benchmark Guest", "#93d63f", 0, 0),
-      createFallbackLane("bench-3", "Benchmark Guest", "#ff925b", 0, 0),
+      createFallbackLane("local-player", "You", "#f4b5ff", 0, 0),
+      createFallbackLane("benchmark-1", "Guest", "#62c5ff", 0, 0),
+      createFallbackLane("benchmark-2", "Guest", "#93d63f", 0, 0),
+      createFallbackLane("benchmark-3", "Guest", "#ff925b", 0, 0),
     ],
   };
 }
