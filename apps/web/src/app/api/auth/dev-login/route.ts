@@ -2,6 +2,7 @@ import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
+  DEFAULT_POST_LOGIN_PATH,
   getAppOrigin,
   normalizeAuthRedirectPath,
 } from "@/server/auth/constants";
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
   const requestedNextPath = request.nextUrl.searchParams.get("next");
   const nextPath = requestedNextPath
     ? normalizeAuthRedirectPath(requestedNextPath)
-    : "/home";
+    : DEFAULT_POST_LOGIN_PATH;
   const shouldCreateAccount =
     request.nextUrl.searchParams.get("create") === "1";
   const userId = shouldCreateAccount

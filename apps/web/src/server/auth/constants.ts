@@ -1,3 +1,5 @@
+import { DEFAULT_PLATFORM_SERVICE_HREF } from "@/lib/platform-services";
+
 export const socialProviders = {
   google: "google",
   kakao: "kakao",
@@ -6,7 +8,7 @@ export const socialProviders = {
 export type SocialProvider =
   (typeof socialProviders)[keyof typeof socialProviders];
 
-export const DEFAULT_POST_LOGIN_PATH = "/";
+export const DEFAULT_POST_LOGIN_PATH = DEFAULT_PLATFORM_SERVICE_HREF;
 export const AUTH_SESSION_COOKIE_NAME = "yeon.session";
 export const AUTH_OAUTH_STATE_COOKIE_NAME = "yeon.oauth.state";
 export const AUTH_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;

@@ -12,6 +12,10 @@ import {
   listDevLoginOptions,
 } from "@/server/auth/dev-login";
 import { getAuthUserBySessionToken } from "@/server/auth/session";
+import {
+  DEFAULT_PLATFORM_SERVICE_HREF,
+  getPlatformServices,
+} from "@/lib/platform-services";
 
 type HomePageProps = {
   searchParams: Promise<{
@@ -20,21 +24,8 @@ type HomePageProps = {
   }>;
 };
 
-const AUTHENTICATED_HOME_REDIRECT_PATH = "/home";
-
 function pickFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function getAuthenticatedRedirectPath(options: {
-  nextPath: string;
-  hasNextPath: boolean;
-}) {
-  if (!options.hasNextPath || options.nextPath === "/") {
-    return AUTHENTICATED_HOME_REDIRECT_PATH;
-  }
-
-  return options.nextPath;
 }
 
 function buildHomeRedirectPath(options: {
@@ -61,6 +52,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams;
   const requestedNextPath = pickFirstValue(resolvedSearchParams.next);
   const nextPath = normalizeAuthRedirectPath(requestedNextPath);
+  const hasRequestedNextPath = !!requestedNextPath;
   const requestedLoginModalOpen =
     pickFirstValue(resolvedSearchParams.login) === "1";
   const cookieStore = await cookies();
@@ -71,13 +63,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     : null;
   const openLoginModalOnLoad = requestedLoginModalOpen && !currentUser;
 
-  if (currentUser) {
-    redirect(
-      getAuthenticatedRedirectPath({
-        nextPath,
-        hasNextPath: !!requestedNextPath,
-      }),
-    );
+  if (currentUser && hasRequestedNextPath) {
+    redirect(nextPath);
   }
 
   if (sessionToken && !currentUser) {
@@ -85,7 +72,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       buildAuthSessionCleanupHref(
         buildHomeRedirectPath({
           nextPath,
-          hasNextPath: !!requestedNextPath,
+          hasNextPath: hasRequestedNextPath,
           openLoginModalOnLoad,
         }),
       ),
@@ -99,9 +86,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <LandingHome
-      nextPath={nextPath}
+      nextPath={hasRequestedNextPath ? nextPath : DEFAULT_PLATFORM_SERVICE_HREF}
       initialLoginModalOpen={openLoginModalOnLoad}
       devLoginOptions={devLoginOptions}
+      services={getPlatformServices()}
+      isAuthenticated={!!currentUser}
+      defaultServiceHref={DEFAULT_PLATFORM_SERVICE_HREF}
     />
   );
 }
