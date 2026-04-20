@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { FEATURES, fadeUp, staggerContainer } from "./landing-constants";
 import { RevealSection } from "./reveal-section";
-import styles from "./landing-home.module.css";
+import styles from "./landing-workspace.module.css";
 
 export function LandingFeaturesSection() {
   return (
