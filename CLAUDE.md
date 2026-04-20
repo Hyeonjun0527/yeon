@@ -39,6 +39,21 @@
 - 현재 workspace에 스크립트가 아직 정의되지 않았다면 없는 척 채우지 말고, 검증이 불가능한 이유를 명시한다.
 - 문서 전용 변경이라면 최소한 `git diff --check` 수준의 형식 검증은 수행한다.
 
+### DB Schema 변경 원칙
+
+- **schema 파일(`apps/web/src/server/db/schema/**`)을 수정하면 반드시 같은 commit에 마이그레이션 SQL을 포함한다.** `pnpm --filter @yeon/web db:generate --name=<설명적 이름>`으로 생성하고 결과 SQL을 검토한다.
+- **`drizzle-kit push`는 일회성 로컬 실험에만 허용.** `push`로 DB를 직접 반영하고 commit에서 마이그레이션을 누락하면 schema/snapshot/`drizzle.__drizzle_migrations` 3중 drift가 발생한다.
+- **마이그레이션 SQL은 멱등(idempotent)으로 작성한다.** develop/main push 시 자동 운영 배포(`.github/workflows/docker-image.yml` → `scripts/migrate.sh`)가 실행되므로 안전하지 않은 SQL은 운영에 그대로 적용된다.
+  - `CREATE TABLE` → `CREATE TABLE IF NOT EXISTS`
+  - `ADD COLUMN` → `ADD COLUMN IF NOT EXISTS`
+  - `CREATE INDEX`/`DROP INDEX` → `IF [NOT] EXISTS`
+  - `ADD CONSTRAINT`은 `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN null; WHEN duplicate_table THEN null; END $$;` 패턴. `duplicate_object`만 잡으면 unique constraint(= implicit unique index)에서 `duplicate_table`로 깨진다.
+- **검증 파이프라인**
+  - 로컬: `pnpm --filter @yeon/web db:check:drift` (또는 루트 `pnpm validate`) — schema와 마이그레이션이 어긋나면 실패.
+  - pre-commit: schema/migrations 파일이 staged 되면 자동 실행.
+  - CI: `.github/workflows/db-drift.yml`이 PR 게이트.
+- **머지 전 운영 DB 상태 확인.** drift 복구 마이그레이션을 만들 때는 운영 DB가 로컬/스테이징과 같은 상태인지 사전 점검한다.
+
 ### Styling Rules
 
 - 이 저장소는 기본 Tailwind 유틸리티 사용을 허용한다.

@@ -46,16 +46,6 @@ export const PLATFORM_SERVICES = [
     accessPolicy: platformServiceAccessPolicies.anonymous,
     status: platformServiceStatuses.live,
   },
-  {
-    slug: "beauty-ranking-service",
-    href: "/beauty-ranking-service",
-    title: "미녀 랭킹",
-    summary:
-      "공개 노출, 랭킹, 신고 및 모더레이션 흐름을 전제로 한 실험형 서비스 예정 슬롯입니다.",
-    audience: "공개형 바이럴 서비스",
-    accessPolicy: platformServiceAccessPolicies.mixed,
-    status: platformServiceStatuses.planned,
-  },
 ] as const satisfies readonly PlatformServiceDescriptor[];
 
 export const PLATFORM_HOME_HREF = "/";

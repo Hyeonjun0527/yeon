@@ -66,11 +66,14 @@ export type TypingRaceSnapshot = {
   subheadline: string;
   roundLabel: string;
   lanes: readonly TypingRaceLaneSnapshot[];
+  speedUnit?: string;
 };
 
 export type MatchJoinMessage = {
-  difficulty: string;
+  difficulty?: string;
   playerLabel: string;
+  playerId?: string;
+  locale?: "ko" | "en";
 };
 
 export type MatchAcceptedMessage = {

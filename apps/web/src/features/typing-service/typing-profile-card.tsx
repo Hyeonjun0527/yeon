@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { TypingProfile } from "./use-typing-profile";
+import { createTranslator, type TypingLocale } from "./use-typing-settings";
 
 export const TYPING_CHARACTERS = [
-  { id: "camel", label: "낙타", sprite: "/sprites/camel-run.png" },
+  { id: "camel", labelKey: "characterCamel" as const, sprite: "/sprites/camel-run.png" },
 ] as const;
 
 const FRAME_SIZE = 96; // original sprite frame px
@@ -42,13 +43,16 @@ type TypingProfileCardProps = {
   profile: TypingProfile;
   onNicknameChange: (nickname: string) => void;
   onCharacterChange: (characterId: string) => void;
+  locale: TypingLocale;
 };
 
 export function TypingProfileCard({
   profile,
   onNicknameChange,
   onCharacterChange,
+  locale,
 }: TypingProfileCardProps) {
+  const t = createTranslator(locale);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(profile.nickname);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +125,7 @@ export function TypingProfileCard({
                 : "border-[#e5e5e5] text-[#555] hover:border-[#aaa]"
             }`}
           >
-            {char.label}
+            {t(char.labelKey)}
           </button>
         ))}
       </div>

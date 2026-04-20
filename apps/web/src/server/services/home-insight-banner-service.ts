@@ -9,6 +9,7 @@ import { homeInsightBannerKeyValues } from "@yeon/api-contract";
 
 import { getDb } from "@/server/db";
 import { homeInsightBannerDismissals } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 const HOME_INSIGHT_BANNER_DISMISS_DURATION_MS = 1000 * 60 * 60 * 3;
 
@@ -56,6 +57,7 @@ export async function dismissHomeInsightBanner(params: {
   await getDb()
     .insert(homeInsightBannerDismissals)
     .values({
+      publicId: generatePublicId(ID_PREFIX.homeInsightBannerDismissals),
       userId: params.userId,
       bannerKey: params.bannerKey,
       hiddenUntil,

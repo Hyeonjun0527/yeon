@@ -169,6 +169,20 @@
       "when": 1776105000000,
       "tag": "0023_counseling_record_source",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1776709743246,
+      "tag": "0024_schema_drift_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776710647639,
+      "tag": "0025_poc_home_insight_banner_bigint",
+      "breakpoints": true
     }
   ]
 }

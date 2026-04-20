@@ -31,7 +31,7 @@ export async function mountTypingRaceEngine(
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.container,
-    backgroundColor: "#07131f",
+    backgroundColor: "#a8d8f0",
     width: Math.max(options.container.clientWidth, 960),
     height: 520,
     scale: {
@@ -66,11 +66,11 @@ export async function mountTypingRaceEngine(
   };
 }
 
-// 배경 이미지 1536x1024 기준 레인 Y 비율 (캔버스 height=520 기준으로 환산)
-// 각 트랙(흙길) 중심 Y / 1024 * 520
-const LANE_Y_RATIOS = [0.303, 0.445, 0.587, 0.726] as const;
-const TRACK_START_X_RATIO = 0.075; // 깃발 오른쪽
-const TRACK_END_X_RATIO = 0.97;
+// 배경 이미지 레인 Y 비율 (캔버스 height=520 기준)
+// 새 배경: 하늘 28% + 4개 흙길 레인 균등 배치, 좌측 컬러 깃발·우측 체크무늬 결승선 내장
+const LANE_Y_RATIOS = [0.325, 0.475, 0.625, 0.775] as const;
+const TRACK_START_X_RATIO = 0.08; // 좌측 깃발 오른쪽
+const TRACK_END_X_RATIO = 0.99;   // 우측 체크무늬 왼쪽
 
 function createStartLineScene(
   Phaser: PhaserModule,
@@ -177,7 +177,7 @@ function createStartLineScene(
       }
 
       this.previousStage = snapshot.stage;
-      this.syncLanes(snapshot.lanes);
+      this.syncLanes(snapshot.lanes, snapshot.speedUnit);
 
       // 레이스 시작 시 낙타 애니메이션 보장
       if (snapshot.stage !== TYPING_RACE_STAGE.COUNTDOWN) {
@@ -189,19 +189,30 @@ function createStartLineScene(
       }
     }
 
-    private syncLanes(lanes: readonly TypingRaceLaneSnapshot[]) {
+    private syncLanes(lanes: readonly TypingRaceLaneSnapshot[], speedUnit?: string) {
       const width = this.scale.width;
       const height = this.scale.height;
       const trackStartX = width * TRACK_START_X_RATIO;
       const trackEndX = width * TRACK_END_X_RATIO;
       const trackWidth = trackEndX - trackStartX;
 
+      // 스냅샷에 없는 오래된 레인 정리 (rejoin/참여자 이탈 시 stale 누적 방지)
+      const activeIds = new Set(lanes.map((lane) => lane.id));
+      for (const [id, visual] of this.laneVisuals.entries()) {
+        if (!activeIds.has(id)) {
+          visual.car.destroy();
+          visual.label.destroy();
+          visual.speed.destroy();
+          this.laneVisuals.delete(id);
+        }
+      }
+
       lanes.forEach((lane, index) => {
         const laneY = height * (LANE_Y_RATIOS[index] ?? 0.5);
         const existing = this.laneVisuals.get(lane.id);
 
         if (!existing) {
-          const label = this.add.text(trackStartX, laneY + 26, lane.label, {
+          const label = this.add.text(trackStartX, laneY + 28, lane.label, {
             color: lane.role === "local" ? "#ffffff" : "#ffe97a",
             fontFamily: "monospace",
             fontSize: "13px",
@@ -209,7 +220,7 @@ function createStartLineScene(
             stroke: "#000000",
             strokeThickness: 3,
           });
-          label.setOrigin(0, 0);
+          label.setOrigin(0.5, 0);
           label.setDepth(5);
 
           const car = this.add.sprite(trackStartX, laneY, "camel-run");
@@ -218,14 +229,14 @@ function createStartLineScene(
           car.setDepth(5);
           car.play("camel-run");
 
-          const speed = this.add.text(trackEndX + 6, laneY, "", {
+          const speed = this.add.text(trackEndX - 50, laneY + 14, "", {
             color: "#ffffff",
             fontFamily: "monospace",
             fontSize: "12px",
             stroke: "#000000",
             strokeThickness: 3,
           });
-          speed.setOrigin(0, 0.5);
+          speed.setOrigin(1, 0.5);
           speed.setDepth(5);
 
           this.laneVisuals.set(lane.id, {
@@ -240,12 +251,19 @@ function createStartLineScene(
         const visual = this.laneVisuals.get(lane.id);
         if (!visual) return;
 
-        visual.speed.setText(`${lane.wpm}wpm`);
+        // 참여자 이탈로 index가 바뀌면 Y 위치도 재배치 (기존 생성 시 Y가 고정되던 버그 수정)
+        visual.car.y = laneY;
+        visual.label.y = laneY + 28;
+        visual.speed.y = laneY + 14;
+
+        visual.label.setText(lane.label);
+        visual.speed.setText(lane.progress >= 100 ? `${lane.wpm}${speedUnit ?? "타"}` : "");
         const spriteW = visual.car.displayWidth;
         visual.car.x =
           visual.startX +
           (visual.trackWidth - spriteW) *
             (clampRaceProgress(lane.progress) / 100);
+        visual.label.x = visual.car.x + spriteW / 2 - 7;
       });
 
     }

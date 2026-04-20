@@ -23,7 +23,8 @@ const gameServer = new Server({
   }),
 });
 
-gameServer.define(TYPING_RACE_ROOM_NAME, TypingRaceRoom);
+// locale별 룸 풀 분리 (ko/en 매칭 섞임 방지)
+gameServer.define(TYPING_RACE_ROOM_NAME, TypingRaceRoom).filterBy(["locale"]);
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`typing-race room server listening on ${port}`);
