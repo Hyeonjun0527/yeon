@@ -75,7 +75,7 @@ function createStartLineScene(
     private readonly laneVisuals = new Map<
       string,
       {
-        car: Phaser.GameObjects.Rectangle;
+        car: Phaser.GameObjects.Sprite;
         label: Phaser.GameObjects.Text;
         speed: Phaser.GameObjects.Text;
         trackWidth: number;
@@ -99,8 +99,26 @@ function createStartLineScene(
       super("typing-race-start-line");
     }
 
+    preload() {
+      this.load.spritesheet("camel-run", "/sprites/camel-run.png", {
+        frameWidth: 96,
+        frameHeight: 96,
+      });
+    }
+
     create() {
       this.cameras.main.setBackgroundColor("#07131f");
+
+      this.anims.create({
+        key: "camel-run",
+        frames: this.anims.generateFrameNumbers("camel-run", {
+          start: 0,
+          end: 5,
+        }),
+        frameRate: 10,
+        repeat: -1,
+      });
+
       this.drawChrome();
       this.renderSnapshot(this.currentSnapshot);
 
@@ -202,7 +220,6 @@ function createStartLineScene(
 
       lanes.forEach((lane, index) => {
         const y = laneStartY + index * laneGap;
-        const accent = Phaser.Display.Color.HexStringToColor(lane.accent).color;
         const existing = this.laneVisuals.get(lane.id);
 
         if (!existing) {
@@ -213,9 +230,10 @@ function createStartLineScene(
             fontStyle: lane.role === "local" ? "700" : "500",
           });
 
-          const car = this.add.rectangle(trackStartX, y - 18, 80, 34, accent);
+          const car = this.add.sprite(trackStartX, y, "camel-run");
           car.setOrigin(0, 0.5);
-          car.setStrokeStyle(3, 0xe7eef7, 0.9);
+          car.setScale(0.52);
+          car.play("camel-run");
 
           const speed = this.add.text(
             trackStartX + trackWidth + 22,
@@ -246,9 +264,10 @@ function createStartLineScene(
 
         visual.label.setText(lane.label);
         visual.speed.setText(`${lane.wpm} wpm`);
+        const spriteWidth = visual.car.displayWidth;
         visual.car.x =
           visual.startX +
-          (visual.trackWidth - visual.car.width) *
+          (visual.trackWidth - spriteWidth) *
             (clampRaceProgress(lane.progress) / 100);
       });
     }
