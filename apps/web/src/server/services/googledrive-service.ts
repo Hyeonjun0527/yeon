@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 
+import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
+import { DEFAULT_PLATFORM_SERVICE_HREF } from "@/lib/platform-services";
 import { getDb } from "@/server/db";
 import { googledriveTokens } from "@/server/db/schema";
 import { ServiceError } from "./service-error";
@@ -89,7 +91,12 @@ function getClientSecret(): string {
 
 function getRedirectUri(): string {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${base}/api/v1/integrations/googledrive/auth/callback`;
+  const callbackPath = resolveApiHrefForBasePath(
+    DEFAULT_PLATFORM_SERVICE_HREF,
+    "/api/v1/integrations/googledrive/auth/callback",
+  );
+
+  return new URL(callbackPath, base).toString();
 }
 
 export function getOAuthUrl(state: string): string {

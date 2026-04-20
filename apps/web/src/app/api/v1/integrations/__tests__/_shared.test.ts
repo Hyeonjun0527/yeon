@@ -57,11 +57,38 @@ vi.mock("@/app/api/v1/counseling-records/_shared", () => ({
     Response.json({ message }, { status }),
 }));
 
-import { handleCloudAnalyzeRoute, handleImportCommitRoute } from "../_shared";
+import {
+  createOAuthCallbackErrorResponse,
+  createOAuthCallbackSuccessResponse,
+  handleCloudAnalyzeRoute,
+  handleImportCommitRoute,
+} from "../_shared";
 
 describe("integrations _shared", () => {
+  const env = { ...process.env };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env = { ...env, NEXT_PUBLIC_APP_URL: "https://yeon.world" };
+  });
+
+  it("OAuth callback 성공 응답은 counseling-service student-management로 돌려보낸다", () => {
+    const response = createOAuthCallbackSuccessResponse("googledrive");
+
+    expect(response.headers.get("location")).toBe(
+      "https://yeon.world/counseling-service/student-management?googledrive_connected=true",
+    );
+  });
+
+  it("OAuth callback 실패 응답은 counseling-service student-management로 돌려보낸다", () => {
+    const response = createOAuthCallbackErrorResponse(
+      "onedrive",
+      "exchange_failed",
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://yeon.world/counseling-service/student-management?onedrive_error=exchange_failed",
+    );
   });
 
   it("handleImportCommitRoute는 invalid JSON이면 400을 반환한다", async () => {

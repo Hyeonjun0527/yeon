@@ -5,14 +5,16 @@
 
 ## OAuth 리디렉션 URI 규칙
 
-OAuth 앱(Google, Microsoft 등) 설정 시 리디렉션 URI는 반드시 4개를 등록한다:
+상담 연동 OAuth 앱(Google Drive, Microsoft 등) 설정 시 리디렉션 URI는 반드시 4개를 등록한다:
 
 ```
-http://localhost:3000/api/v1/integrations/<provider>/auth/callback
-https://yeon.world/api/v1/integrations/<provider>/auth/callback
-https://www.yeon.world/api/v1/integrations/<provider>/auth/callback
-https://dev.yeon.world/api/v1/integrations/<provider>/auth/callback
+http://localhost:3000/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://www.yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://dev.yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
 ```
+
+루트 소셜 로그인(Kakao, Google Sign-In)은 별도이며 `/api/auth/<provider>/callback`를 유지한다.
 
 ## 작업 스타일
 
