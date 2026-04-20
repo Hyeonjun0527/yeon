@@ -181,7 +181,7 @@ function createStartLineScene(
         const existing = this.laneVisuals.get(lane.id);
 
         if (!existing && !this.lanesCreated) {
-          const label = this.add.text(trackStartX - 4, laneY - 28, lane.label, {
+          const label = this.add.text(trackStartX, laneY + 26, lane.label, {
             color: lane.role === "local" ? "#ffffff" : "#ffe97a",
             fontFamily: "monospace",
             fontSize: "13px",
@@ -189,7 +189,7 @@ function createStartLineScene(
             stroke: "#000000",
             strokeThickness: 3,
           });
-          label.setOrigin(0, 1);
+          label.setOrigin(0, 0);
           label.setDepth(5);
 
           const car = this.add.sprite(trackStartX, laneY, "camel-run");
