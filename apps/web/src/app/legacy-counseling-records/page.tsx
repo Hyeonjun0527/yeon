@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 function getLoginRedirectHref() {
-  return "/?login=1&next=%2Fcounseling-records";
+  return "/?login=1&next=%2Fcounseling-service";
 }
 
 export default async function CounselingRecordsPage() {

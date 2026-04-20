@@ -4,6 +4,11 @@ import { memo, useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { DevLoginOption } from "@/lib/auth/dev-login-options";
+import type { PlatformServiceDescriptor } from "@/lib/platform-services";
+import {
+  platformServiceAccessPolicies,
+  platformServiceStatuses,
+} from "@/lib/platform-services";
 import {
   BRAND_REVIEW_CONTACT_DESCRIPTION,
   GOOGLE_ACCOUNT_DATA_USAGE_DESCRIPTION,
@@ -33,14 +38,22 @@ const LANDING_VARS = {
   "--text-muted": "rgba(255,255,255,0.38)",
 } as React.CSSProperties;
 
+const ACCESS_POLICY_COPY = {
+  [platformServiceAccessPolicies.anonymous]: "로그인 없이 사용 가능",
+  [platformServiceAccessPolicies.authRequired]: "로그인 후 진입",
+  [platformServiceAccessPolicies.mixed]: "서비스별 공개/로그인 혼합",
+} as const;
+
 const HeroSection = memo(function HeroSection({
   paused,
-  onOpenLogin,
+  onPrimaryAction,
   onScrollToStats,
+  primaryActionLabel,
 }: {
   paused: boolean;
-  onOpenLogin: () => void;
+  onPrimaryAction: () => void;
   onScrollToStats: () => void;
+  primaryActionLabel: string;
 }) {
   const [isSplineLive, setIsSplineLive] = useState(false);
 
@@ -67,19 +80,19 @@ const HeroSection = memo(function HeroSection({
         </p>
 
         <p className="m-0 inline-flex w-fit items-center rounded-full border border-[rgba(129,140,248,0.22)] bg-[rgba(129,140,248,0.08)] px-3 py-1 text-[11px] font-semibold tracking-[-0.01em] text-[rgba(255,255,255,0.82)] md:px-3.5 md:py-1.5 md:text-[12px]">
-          교육기관 운영자와 멘토를 위한 상담 기록 워크스페이스
+          루트 포털에서 여러 서비스를 여는 멀티 서비스 플랫폼
         </p>
 
         <h1 className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]">
           <span className="md:hidden">
-            <span className="block">상담기록부터</span>
-            <span className="block">수강생 관리 보고까지</span>
+            <span className="block">상담 워크스페이스부터</span>
+            <span className="block">바이럴 서비스까지</span>
             <span className="relative block text-[var(--accent)]">한 번에</span>
           </span>
           <span className="hidden md:inline">
-            상담기록부터
+            상담 워크스페이스부터
             <br />
-            수강생 관리 보고까지
+            바이럴 서비스까지
             <br />
             <span className="text-[var(--accent)] relative">한 번에</span>
           </span>
@@ -87,14 +100,16 @@ const HeroSection = memo(function HeroSection({
 
         <p className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]">
           <span className="md:hidden">
-            <span className="block">녹음하면 원문이 남고,</span>
-            <span className="block">AI가 수강생 정보를 정리하고,</span>
-            <span className="block">보고서까지 바로 이어집니다</span>
+            <span className="block">루트 포털에서 서비스를 열고,</span>
+            <span className="block">로그인과 계정은 한 곳에서 관리하고,</span>
+            <span className="block">도메인 흐름은 서비스별로 분리합니다</span>
           </span>
           <span className="hidden md:inline">
-            녹음하면 원문이 남고, AI가 핵심을 정리하고,
+            루트 포털에서 여러 서비스를 열고, 로그인과 계정은 한 곳에서
+            관리합니다.
             <br className="hidden md:block" />
-            수강생 정보 추출과 엑셀·워드 보고서까지 바로 이어집니다.
+            상담, 타자연습, 랭킹 같은 서로 다른 서비스를 같은 규약 위에서
+            확장합니다.
           </span>
         </p>
 
@@ -102,11 +117,11 @@ const HeroSection = memo(function HeroSection({
           <button
             className="pointer-events-auto relative z-[6] inline-flex min-h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] border border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.16)] px-6 py-4 text-base font-bold text-white shadow-[0_16px_34px_rgba(0,0,0,0.18)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.28)] hover:bg-[rgba(255,255,255,0.22)] hover:shadow-[0_22px_42px_rgba(0,0,0,0.24)] sm:w-auto sm:px-9 md:rounded-[14px]"
             type="button"
-            onClick={onOpenLogin}
+            onClick={onPrimaryAction}
             aria-haspopup="dialog"
             aria-controls="landing-login-modal"
           >
-            로그인하고 시작하기
+            {primaryActionLabel}
           </button>
         </div>
       </div>
@@ -188,6 +203,101 @@ const MissionSection = memo(function MissionSection() {
           <br />
           원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로 이어갑니다.
         </p>
+      </div>
+    </section>
+  );
+});
+
+const ServicesSection = memo(function ServicesSection({
+  services,
+  isAuthenticated,
+  onOpenLogin,
+}: {
+  services: readonly PlatformServiceDescriptor[];
+  isAuthenticated: boolean;
+  onOpenLogin: () => void;
+}) {
+  return (
+    <section className="relative z-[1] bg-[var(--dark-bg)] px-5 py-14 md:px-12 md:py-[120px]">
+      <div className="mx-auto grid max-w-[1100px] gap-8 md:gap-10">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_320px] md:items-end">
+          <div>
+            <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
+              서비스 포털
+            </p>
+            <h2 className="m-0 max-w-[14ch] text-[clamp(28px,9vw,48px)] font-black leading-[1.08] tracking-[-0.04em] md:max-w-none md:text-[clamp(28px,4vw,48px)] md:leading-[1.15] md:tracking-[-0.025em]">
+              같은 루트에서 여러 서비스를
+              <br />
+              독립적으로 붙입니다
+            </h2>
+          </div>
+          <p className="m-0 text-[14px] leading-[1.75] text-[var(--text-secondary)] md:text-right">
+            루트는 포털과 로그인, 계정과 서비스 목록을 맡고
+            <br className="hidden md:block" />
+            실제 도메인 권한과 UX는 각 서비스가 소유합니다.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {services.map((service) => {
+            const isLive = service.status === platformServiceStatuses.live;
+            const requiresAuth =
+              service.accessPolicy ===
+              platformServiceAccessPolicies.authRequired;
+            const showLoginAction = isLive && requiresAuth && !isAuthenticated;
+            const canOpenService = isLive && (!requiresAuth || isAuthenticated);
+
+            return (
+              <article
+                key={service.slug}
+                className="grid gap-4 rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.16)] md:p-6"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full border border-[rgba(255,255,255,0.1)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                    {service.slug}
+                  </span>
+                  <span className="inline-flex rounded-full bg-[rgba(255,255,255,0.06)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                    {ACCESS_POLICY_COPY[service.accessPolicy]}
+                  </span>
+                </div>
+
+                <div className="grid gap-2">
+                  <h3 className="m-0 text-[22px] font-bold leading-[1.18] tracking-[-0.03em]">
+                    {service.title}
+                  </h3>
+                  <p className="m-0 text-[14px] leading-[1.7] text-[rgba(255,255,255,0.76)]">
+                    {service.summary}
+                  </p>
+                </div>
+
+                <p className="m-0 text-[13px] leading-[1.65] text-[var(--text-muted)]">
+                  대상: {service.audience}
+                </p>
+
+                {canOpenService ? (
+                  <a
+                    href={service.href}
+                    className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[rgba(255,255,255,0.16)] bg-[rgba(255,255,255,0.12)] px-5 text-[15px] font-bold text-white no-underline transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.28)] hover:bg-[rgba(255,255,255,0.18)]"
+                  >
+                    서비스 열기
+                  </a>
+                ) : showLoginAction ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[rgba(129,140,248,0.28)] bg-[rgba(129,140,248,0.14)] px-5 text-[15px] font-bold text-white transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(129,140,248,0.38)] hover:bg-[rgba(129,140,248,0.22)]"
+                    onClick={onOpenLogin}
+                  >
+                    로그인 후 열기
+                  </button>
+                ) : (
+                  <div className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-dashed border-[rgba(255,255,255,0.14)] px-5 text-[15px] font-medium text-[var(--text-muted)]">
+                    준비 중
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -307,9 +417,11 @@ const FlowSection = memo(function FlowSection() {
 });
 
 const CtaSection = memo(function CtaSection({
-  onOpenLogin,
+  onPrimaryAction,
+  primaryActionLabel,
 }: {
-  onOpenLogin: () => void;
+  onPrimaryAction: () => void;
+  primaryActionLabel: string;
 }) {
   return (
     <section className="relative z-[1] flex justify-center overflow-hidden bg-[var(--dark-bg)] px-5 py-14 text-left md:px-12 md:py-40 md:text-center">
@@ -330,11 +442,11 @@ const CtaSection = memo(function CtaSection({
           <button
             className="inline-flex min-h-[56px] w-full items-center justify-center gap-2.5 rounded-[18px] border border-[rgba(255,255,255,0.16)] bg-[rgba(255,255,255,0.14)] px-6 py-4 text-base font-bold text-white shadow-[0_14px_28px_rgba(0,0,0,0.16)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(255,255,255,0.26)] hover:bg-[rgba(255,255,255,0.2)] hover:shadow-[0_20px_36px_rgba(0,0,0,0.22)] sm:w-auto sm:px-9 md:rounded-[14px]"
             type="button"
-            onClick={onOpenLogin}
+            onClick={onPrimaryAction}
             aria-haspopup="dialog"
             aria-controls="landing-login-modal"
           >
-            로그인하고 시작하기
+            {primaryActionLabel}
           </button>
         </div>
       </div>
@@ -415,12 +527,18 @@ type LandingHomeProps = {
   nextPath: string;
   initialLoginModalOpen?: boolean;
   devLoginOptions: DevLoginOption[];
+  services: readonly PlatformServiceDescriptor[];
+  isAuthenticated: boolean;
+  defaultServiceHref: string;
 };
 
 export function LandingHome({
   nextPath,
   initialLoginModalOpen = false,
   devLoginOptions,
+  services,
+  isAuthenticated,
+  defaultServiceHref,
 }: LandingHomeProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(
     initialLoginModalOpen,
@@ -434,6 +552,15 @@ export function LandingHome({
     setIsLoginModalOpen(false);
   }, []);
 
+  const handlePrimaryAction = useCallback(() => {
+    if (isAuthenticated) {
+      window.location.assign(defaultServiceHref);
+      return;
+    }
+
+    setIsLoginModalOpen(true);
+  }, [defaultServiceHref, isAuthenticated]);
+
   const scrollToSection = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -441,6 +568,10 @@ export function LandingHome({
   const handleScrollToStats = useCallback(() => {
     scrollToSection("stats");
   }, [scrollToSection]);
+
+  const primaryActionLabel = isAuthenticated
+    ? "상담 서비스 열기"
+    : "로그인하고 시작하기";
 
   return (
     <>
@@ -457,15 +588,24 @@ export function LandingHome({
       >
         <HeroSection
           paused={isLoginModalOpen}
-          onOpenLogin={handleLoginModalOpen}
+          onPrimaryAction={handlePrimaryAction}
           onScrollToStats={handleScrollToStats}
+          primaryActionLabel={primaryActionLabel}
         />
         <StatsSection />
         <MissionSection />
+        <ServicesSection
+          services={services}
+          isAuthenticated={isAuthenticated}
+          onOpenLogin={handleLoginModalOpen}
+        />
         <FeaturesSection />
         <PhilosophySection />
         <FlowSection />
-        <CtaSection onOpenLogin={handleLoginModalOpen} />
+        <CtaSection
+          onPrimaryAction={handlePrimaryAction}
+          primaryActionLabel={primaryActionLabel}
+        />
         <FooterSection />
       </div>
     </>
