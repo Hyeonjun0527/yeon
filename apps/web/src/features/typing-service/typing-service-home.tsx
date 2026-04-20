@@ -172,10 +172,10 @@ export function TypingServiceHome() {
             </div>
             <div className="flex flex-wrap gap-3">
               <a
-                href="#practice"
+                href="/typing-service/play"
                 className="inline-flex min-h-[54px] items-center justify-center rounded-[18px] bg-[#17110c] px-6 text-[15px] font-bold text-white no-underline shadow-[0_18px_42px_rgba(23,17,12,0.22)] transition-transform duration-200 hover:-translate-y-px"
               >
-                바로 시작하기
+                출발선 입장하기
               </a>
               <a
                 href="#faq"
@@ -198,7 +198,8 @@ export function TypingServiceHome() {
             </h2>
             <ul className="m-0 grid gap-2 pl-5 text-[14px] leading-[1.7] text-[#5e4b35]">
               <li>익명 진입 가능</li>
-              <li>한 페이지 안에서 소개와 연습 동시 제공</li>
+              <li>랜딩과 플레이 경로를 분리하되 같은 도메인에서 유지</li>
+              <li>10초 카운트다운과 lane 기반 레이스 프리뷰 제공</li>
               <li>타수, 정확도, 진행률 실시간 피드백</li>
               <li>FAQ와 metadata로 검색 의도 대응</li>
             </ul>
@@ -208,9 +209,9 @@ export function TypingServiceHome() {
         <div className="grid gap-3 md:grid-cols-4">
           {[
             { label: "진입 방식", value: "익명 시작" },
-            { label: "연습 모드", value: "3개 난이도" },
+            { label: "플레이 구조", value: "랜딩 + play" },
             { label: "실시간 지표", value: "타수 · 정확도" },
-            { label: "SEO 구조", value: "FAQ · 구조화데이터" },
+            { label: "레이스 톤", value: "10초 카운트다운" },
           ].map((item) => (
             <div
               key={item.label}
