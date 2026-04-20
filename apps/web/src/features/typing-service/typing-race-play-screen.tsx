@@ -16,6 +16,7 @@ import {
   type TypingRaceEngineController,
 } from "@yeon/typing-race-engine";
 import { TYPING_PASSAGES } from "./typing-content";
+import { useTypingProfile } from "./use-typing-profile";
 
 const RACE_PASSAGES = TYPING_PASSAGES.filter((p) => p.difficulty === "flow");
 
@@ -53,6 +54,7 @@ function getProgress(prompt: string, input: string) {
 }
 
 export function TypingRacePlayScreen() {
+  const { profile } = useTypingProfile();
   const [passage, setPassage] = useState(() => getRandomPassage());
   const [input, setInput] = useState("");
   const [countdownRemaining, setCountdownRemaining] = useState<number>(
@@ -159,7 +161,7 @@ export function TypingRacePlayScreen() {
       lanes: [
         {
           id: "local-player",
-          label: "You",
+          label: profile.nickname,
           accent: TYPING_RACE_LANE_ACCENTS[0],
           role: TYPING_RACE_LANE_ROLE.LOCAL,
           progress,
@@ -168,7 +170,7 @@ export function TypingRacePlayScreen() {
         ...benchmarkLanes,
       ],
     };
-  }, [countdownRemaining, elapsedSeconds, passage.title, progress, promptChars.length, raceStage, typingSpeed]);
+  }, [countdownRemaining, elapsedSeconds, passage.title, profile.nickname, progress, promptChars.length, raceStage, typingSpeed]);
 
   useEffect(() => {
     engineControllerRef.current?.setSnapshot(snapshot);
