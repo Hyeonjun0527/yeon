@@ -1,0 +1,23 @@
+{
+  "name": "@yeon/race-server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@colyseus/ws-transport": "^0.17.13",
+    "@yeon/race-shared": "workspace:*",
+    "colyseus": "^0.17.9"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@yeon/config": "workspace:*",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

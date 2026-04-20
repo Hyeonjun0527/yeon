@@ -1,0 +1,21 @@
+{
+  "name": "@yeon/typing-race-engine",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@yeon/race-shared": "workspace:*",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@yeon/config": "workspace:*",
+    "typescript": "^6.0.2"
+  }
+}

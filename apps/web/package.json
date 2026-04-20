@@ -32,6 +32,8 @@
     "@types/dompurify": "^3.2.0",
     "@yeon/api-client": "workspace:*",
     "@yeon/api-contract": "workspace:*",
+    "@yeon/race-shared": "workspace:*",
+    "@yeon/typing-race-engine": "workspace:*",
     "docx": "^9.6.1",
     "dompurify": "^3.3.3",
     "dotenv": "^17.4.1",
