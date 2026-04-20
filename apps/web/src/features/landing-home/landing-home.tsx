@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { DevLoginOption } from "@/lib/auth/dev-login-options";
@@ -20,7 +20,7 @@ import { SplineHero } from "./spline-hero";
 import { Counter } from "./counter";
 import { FEATURES, FLOW_STEPS, STATS } from "./landing-constants";
 import { LoginModal } from "./login-modal";
-import styles from "./landing-home.module.css";
+import styles from "./landing-workspace.module.css";
 
 /* ── CSS variable definitions for dark landing theme ── */
 const LANDING_VARS = {
@@ -85,30 +85,30 @@ const HeroSection = memo(function HeroSection({
 
         <h1 className="m-0 max-w-[320px] text-[clamp(31px,9.5vw,84px)] font-black leading-[1.02] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(44px,7.5vw,84px)] md:leading-[1.02] md:tracking-[-0.045em]">
           <span className="md:hidden">
-            <span className="block">상담 워크스페이스부터</span>
-            <span className="block">바이럴 서비스까지</span>
-            <span className="relative block text-[var(--accent)]">한 번에</span>
+            <span className="block">서비스를 하나씩 붙여도</span>
+            <span className="block">루트는</span>
+            <span className="relative block text-[var(--accent)]">하나로</span>
           </span>
           <span className="hidden md:inline">
-            상담 워크스페이스부터
+            서비스를 하나씩 붙여도
             <br />
-            바이럴 서비스까지
+            루트는
             <br />
-            <span className="text-[var(--accent)] relative">한 번에</span>
+            <span className="text-[var(--accent)] relative">하나로</span>
           </span>
         </h1>
 
         <p className="m-0 max-w-[318px] text-[15px] leading-[1.68] text-[rgba(255,255,255,0.86)] md:max-w-[520px] md:text-[clamp(16px,2vw,20px)] md:leading-[1.75] md:text-[var(--text-secondary)]">
           <span className="md:hidden">
-            <span className="block">루트 포털에서 서비스를 열고,</span>
-            <span className="block">로그인과 계정은 한 곳에서 관리하고,</span>
-            <span className="block">도메인 흐름은 서비스별로 분리합니다</span>
+            <span className="block">yeon.world는 포털과 계정을 맡고,</span>
+            <span className="block">각 서비스는 자기 경로와</span>
+            <span className="block">자기 경험을 소유합니다</span>
           </span>
           <span className="hidden md:inline">
-            루트 포털에서 여러 서비스를 열고, 로그인과 계정은 한 곳에서
-            관리합니다.
+            yeon.world는 포털과 공통 계정을 맡고, 각 서비스는 자기 경로와 경험을
+            독립적으로 소유합니다.
             <br className="hidden md:block" />
-            상담, 타자연습, 랭킹 같은 서로 다른 서비스를 같은 규약 위에서
+            상담, 타자연습, 랭킹 같은 서로 다른 서비스를 같은 구조 위에서
             확장합니다.
           </span>
         </p>
@@ -194,14 +194,16 @@ const MissionSection = memo(function MissionSection() {
           왜 지금 필요한가
         </p>
         <h2 className="m-0 max-w-[12ch] text-[clamp(30px,10vw,60px)] font-black leading-[1.08] tracking-[-0.045em] md:max-w-none md:text-[clamp(34px,5.5vw,60px)] md:tracking-[-0.035em]">
-          녹음이 기록이 되고
+          루트는 얇게 두고
           <br />
-          기록이 다음 상담이 됩니다
+          서비스는 깊게 만듭니다
         </h2>
         <p className="m-0 max-w-[34ch] text-[15px] leading-[1.78] text-[rgba(255,255,255,0.74)] md:max-w-none md:text-[18px] md:leading-[1.85] md:text-[var(--text-secondary)]">
-          상담 메모를 다시 정리하느라 시간을 쓰지 않습니다.
+          루트 포털이 모든 기능을 삼키기 시작하면 새 서비스가 붙을수록 구조가
+          무거워집니다.
           <br />
-          원문, 요약, 액션을 한 화면에 남겨 다음 상담 맥락을 바로 이어갑니다.
+          브랜드와 로그인은 공통으로 두고, 실제 경험은 서비스가 각자 깊게
+          가져가야 확장이 쉬워집니다.
         </p>
       </div>
     </section>
@@ -215,11 +217,14 @@ const ServicesSection = memo(function ServicesSection({
 }: {
   services: readonly PlatformServiceDescriptor[];
   isAuthenticated: boolean;
-  onOpenLogin: () => void;
+  onOpenLogin: (nextPath: string) => void;
 }) {
   return (
     <section className="relative z-[1] bg-[var(--dark-bg)] px-5 py-14 md:px-12 md:py-[120px]">
-      <div className="mx-auto grid max-w-[1100px] gap-8 md:gap-10">
+      <div
+        id="services"
+        className="mx-auto grid max-w-[1100px] gap-8 md:gap-10"
+      >
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_320px] md:items-end">
           <div>
             <p className="m-0 text-[12px] font-bold tracking-[0.2em] uppercase text-[var(--accent)] font-mono">
@@ -285,7 +290,7 @@ const ServicesSection = memo(function ServicesSection({
                   <button
                     type="button"
                     className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[rgba(129,140,248,0.28)] bg-[rgba(129,140,248,0.14)] px-5 text-[15px] font-bold text-white transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:border-[rgba(129,140,248,0.38)] hover:bg-[rgba(129,140,248,0.22)]"
-                    onClick={onOpenLogin}
+                    onClick={() => onOpenLogin(service.href)}
                   >
                     로그인 후 열기
                   </button>
@@ -315,9 +320,9 @@ const FeaturesSection = memo(function FeaturesSection() {
             핵심 기능
           </p>
           <h2 className="m-0 max-w-[11ch] text-[clamp(28px,9vw,48px)] font-black leading-[1.08] tracking-[-0.04em] md:max-w-none md:text-[clamp(28px,4vw,48px)] md:leading-[1.15] md:tracking-[-0.025em]">
-            상담기록이 관리와 보고로
+            서비스가 늘어나도
             <br />
-            바로 이어집니다
+            구조가 무너지지 않게
           </h2>
         </div>
 
@@ -356,14 +361,15 @@ const PhilosophySection = memo(function PhilosophySection() {
           원칙
         </p>
         <blockquote className="m-0 max-w-[11ch] text-[clamp(28px,10vw,56px)] font-black leading-[1.12] tracking-[-0.05em] text-[var(--text-primary)] md:max-w-none md:text-[clamp(30px,5.5vw,56px)] md:leading-[1.2] md:tracking-[-0.035em]">
-          &ldquo;원문이 보이지 않으면
+          &ldquo;루트는 포털,
           <br />
-          AI를 믿을 수 없습니다&rdquo;
+          서비스는 본체&rdquo;
         </blockquote>
         <p className="m-0 max-w-[34ch] text-[15px] leading-[1.78] text-[rgba(255,255,255,0.68)] md:max-w-none md:text-[17px] md:leading-[1.85] md:text-[var(--text-muted)]">
-          {SITE_BRAND_NAME}은 요약보다 먼저 원문을 보여줍니다.
+          {SITE_BRAND_NAME}은 루트가 모든 기능을 가져가도록 만들지 않습니다.
           <br />
-          상담 기록이 다음 대화와 후속 관리로 이어지게 설계합니다.
+          서비스가 자기 상태와 자기 UX를 직접 소유해야 장기적으로 더 빨리 확장할
+          수 있습니다.
         </p>
       </div>
     </section>
@@ -429,13 +435,14 @@ const CtaSection = memo(function CtaSection({
       <div className="relative grid max-w-[600px] gap-5 justify-items-start rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-5 py-6 shadow-[0_18px_48px_rgba(0,0,0,0.18)] md:justify-items-center md:border-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none md:gap-7">
         <div>
           <h2 className="m-0 max-w-[11ch] text-[clamp(30px,10vw,60px)] font-black leading-[1.05] tracking-[-0.05em] md:max-w-none md:text-[clamp(34px,5.5vw,60px)] md:leading-[1.1] md:tracking-[-0.035em]">
-            상담 기록을
+            다음 서비스도
             <br />
-            <span className="text-[var(--accent)]">{SITE_BRAND_NAME}</span>
-            으로 정리하세요
+            <span className="text-[var(--accent)]">{SITE_BRAND_NAME}</span>에
+            붙일 준비를 하세요
           </h2>
           <p className="m-0 max-w-[32ch] text-[15px] leading-[1.72] text-[rgba(255,255,255,0.78)] md:max-w-none md:text-[18px] md:text-[var(--text-secondary)]">
-            녹음, 원문, 요약, AI 질의를 하나의 흐름으로 연결합니다.
+            루트는 브랜드와 계정을 맡고, 각 서비스는 자기 slug 아래에서
+            독립적으로 성장하게 만듭니다.
           </p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap md:w-auto md:items-center md:justify-center md:gap-4">
@@ -461,7 +468,7 @@ const FooterSection = memo(function FooterSection() {
         <div className="grid gap-4 rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[0_14px_34px_rgba(0,0,0,0.14)] md:grid-cols-2 md:gap-6 md:px-6 lg:grid-cols-3">
           <div className="grid gap-2">
             <p className="m-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">
-              앱 목적
+              플랫폼 목적
             </p>
             <p className="m-0 text-[14px] leading-[1.8] text-[rgba(255,255,255,0.82)] md:text-[15px]">
               {SITE_PURPOSE_DESCRIPTION}
@@ -529,7 +536,6 @@ type LandingHomeProps = {
   devLoginOptions: DevLoginOption[];
   services: readonly PlatformServiceDescriptor[];
   isAuthenticated: boolean;
-  defaultServiceHref: string;
 };
 
 export function LandingHome({
@@ -538,15 +544,23 @@ export function LandingHome({
   devLoginOptions,
   services,
   isAuthenticated,
-  defaultServiceHref,
 }: LandingHomeProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(
     initialLoginModalOpen,
   );
+  const [loginNextPath, setLoginNextPath] = useState(nextPath);
 
-  const handleLoginModalOpen = useCallback(() => {
-    setIsLoginModalOpen(true);
-  }, []);
+  useEffect(() => {
+    setLoginNextPath(nextPath);
+  }, [nextPath]);
+
+  const handleLoginModalOpen = useCallback(
+    (targetNextPath: string = nextPath) => {
+      setLoginNextPath(targetNextPath);
+      setIsLoginModalOpen(true);
+    },
+    [nextPath],
+  );
 
   const handleLoginModalClose = useCallback(() => {
     setIsLoginModalOpen(false);
@@ -554,12 +568,14 @@ export function LandingHome({
 
   const handlePrimaryAction = useCallback(() => {
     if (isAuthenticated) {
-      window.location.assign(defaultServiceHref);
+      document
+        .getElementById("services")
+        ?.scrollIntoView({ behavior: "smooth" });
       return;
     }
 
-    setIsLoginModalOpen(true);
-  }, [defaultServiceHref, isAuthenticated]);
+    handleLoginModalOpen(nextPath);
+  }, [handleLoginModalOpen, isAuthenticated, nextPath]);
 
   const scrollToSection = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -570,15 +586,15 @@ export function LandingHome({
   }, [scrollToSection]);
 
   const primaryActionLabel = isAuthenticated
-    ? "상담 서비스 열기"
-    : "로그인하고 시작하기";
+    ? "서비스 둘러보기"
+    : "로그인하고 서비스 둘러보기";
 
   return (
     <>
       <LoginModal
         open={isLoginModalOpen}
         onClose={handleLoginModalClose}
-        nextPath={nextPath}
+        nextPath={loginNextPath}
         devLoginOptions={devLoginOptions}
       />
       {/* Landing shell — CSS vars defined here, dot-grid ::before in CSS module */}

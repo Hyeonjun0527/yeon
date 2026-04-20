@@ -41,10 +41,10 @@ export const PLATFORM_SERVICES = [
     href: "/typing-service",
     title: "키보드 타자연습",
     summary:
-      "빠른 익명 진입과 기록 기반 리텐션을 목표로 하는 바이럴 서비스 예정 슬롯입니다.",
+      "로그인 없이 바로 시작해 정확도와 타수를 확인할 수 있는 공개형 타자연습 서비스입니다.",
     audience: "대중형 바이럴 서비스",
     accessPolicy: platformServiceAccessPolicies.anonymous,
-    status: platformServiceStatuses.planned,
+    status: platformServiceStatuses.live,
   },
   {
     slug: "beauty-ranking-service",
@@ -58,7 +58,8 @@ export const PLATFORM_SERVICES = [
   },
 ] as const satisfies readonly PlatformServiceDescriptor[];
 
-export const DEFAULT_PLATFORM_SERVICE_HREF = "/counseling-service";
+export const PLATFORM_HOME_HREF = "/";
+export const DEFAULT_COUNSELING_SERVICE_HREF = "/counseling-service";
 
 export function getPlatformServices() {
   return PLATFORM_SERVICES;

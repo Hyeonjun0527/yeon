@@ -13,7 +13,7 @@ import {
 } from "@/server/auth/dev-login";
 import { getAuthUserBySessionToken } from "@/server/auth/session";
 import {
-  DEFAULT_PLATFORM_SERVICE_HREF,
+  PLATFORM_HOME_HREF,
   getPlatformServices,
 } from "@/lib/platform-services";
 
@@ -86,12 +86,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <LandingHome
-      nextPath={hasRequestedNextPath ? nextPath : DEFAULT_PLATFORM_SERVICE_HREF}
+      nextPath={hasRequestedNextPath ? nextPath : PLATFORM_HOME_HREF}
       initialLoginModalOpen={openLoginModalOnLoad}
       devLoginOptions={devLoginOptions}
       services={getPlatformServices()}
       isAuthenticated={!!currentUser}
-      defaultServiceHref={DEFAULT_PLATFORM_SERVICE_HREF}
     />
   );
 }
