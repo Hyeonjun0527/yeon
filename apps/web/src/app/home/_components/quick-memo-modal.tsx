@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import type { CounselingRecordDetail } from "@yeon/api-contract/counseling-records";
 import type { RecordItem } from "../_lib/types";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 interface QuickMemoModalProps {
   onClose: () => void;
@@ -50,10 +51,13 @@ export function QuickMemoModal({
         form.append("memberId", defaultMemberId);
       }
 
-      const res = await fetch("/api/v1/counseling-records", {
-        method: "POST",
-        body: form,
-      });
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/counseling-records"),
+        {
+          method: "POST",
+          body: form,
+        },
+      );
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");

@@ -63,3 +63,22 @@ export const DEFAULT_PLATFORM_SERVICE_HREF = "/counseling-service";
 export function getPlatformServices() {
   return PLATFORM_SERVICES;
 }
+
+export function getPlatformServiceBySlug(slug: string) {
+  return PLATFORM_SERVICES.find((service) => service.slug === slug) ?? null;
+}
+
+export function getPlatformServiceByPathname(pathname: string) {
+  return (
+    PLATFORM_SERVICES.find(
+      (service) =>
+        pathname === service.href || pathname.startsWith(`${service.href}/`),
+    ) ?? null
+  );
+}
+
+export function serviceRequiresAuthentication(
+  service: Pick<PlatformServiceDescriptor, "accessPolicy"> | null | undefined,
+) {
+  return service?.accessPolicy === platformServiceAccessPolicies.authRequired;
+}

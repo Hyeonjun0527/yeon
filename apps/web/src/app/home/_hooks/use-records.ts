@@ -17,6 +17,7 @@ import type {
 } from "../_lib/types";
 import { getProcessingChecklistStep } from "../_lib/processing-progress";
 import { fmtRelativeDate, fmtDurationMs } from "../_lib/utils";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import { normalizeCounselingTranscriptSegments } from "@/lib/counseling-transcript-display";
 
 const POLL_INTERVAL_MS = 3000;
@@ -148,7 +149,9 @@ export function useRecords(selectedRecordId: string | null) {
   const { data: serverData, isPending } = useQuery({
     queryKey: ["counseling-records"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/counseling-records");
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/counseling-records"),
+      );
       if (!res.ok) throw new Error("목록 조회 실패");
       return res.json() as Promise<{ records: CounselingRecordListItem[] }>;
     },
@@ -215,7 +218,11 @@ export function useRecords(selectedRecordId: string | null) {
         queryKey: ["counseling-record", item.id],
         queryFn: async () => {
           // eslint-disable-next-line no-restricted-syntax
-          const res = await fetch(`/api/v1/counseling-records/${item.id}`);
+          const res = await fetch(
+            resolveApiHrefForCurrentPath(
+              `/api/v1/counseling-records/${item.id}`,
+            ),
+          );
           if (!res.ok) throw new Error("상세 조회 실패");
           return res.json() as Promise<{ record: CounselingRecordDetail }>;
         },
@@ -241,7 +248,9 @@ export function useRecords(selectedRecordId: string | null) {
         const data = await queryClient.fetchQuery({
           queryKey: ["counseling-record", id],
           queryFn: async () => {
-            const res = await fetch(`/api/v1/counseling-records/${id}`);
+            const res = await fetch(
+              resolveApiHrefForCurrentPath(`/api/v1/counseling-records/${id}`),
+            );
             if (!res.ok) throw new Error("상세 조회 실패");
             return res.json() as Promise<{ record: CounselingRecordDetail }>;
           },
@@ -389,9 +398,12 @@ export function useRecords(selectedRecordId: string | null) {
   );
 
   const clearMessages = useCallback(async (id: string) => {
-    const response = await fetch(`/api/v1/counseling-records/${id}/chat`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      resolveApiHrefForCurrentPath(`/api/v1/counseling-records/${id}/chat`),
+      {
+        method: "DELETE",
+      },
+    );
 
     if (!response.ok) {
       throw new Error("채팅 기록을 초기화하지 못했습니다.");

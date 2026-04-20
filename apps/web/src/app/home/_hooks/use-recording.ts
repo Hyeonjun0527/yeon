@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { CounselingRecordDetail } from "@yeon/api-contract/counseling-records";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import type { RecordItem } from "../_lib/types";
 import { fmtDuration, fmtDurationMs, createTimestamp } from "../_lib/utils";
 
@@ -108,10 +109,13 @@ export function useRecording({
         }
         formData.append("audioDurationMs", String(elapsedRef.current * 1000));
 
-        const res = await fetch("/api/v1/counseling-records", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch(
+          resolveApiHrefForCurrentPath("/api/v1/counseling-records"),
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
 
         if (!res.ok) {
           const text = await res.text().catch(() => "");

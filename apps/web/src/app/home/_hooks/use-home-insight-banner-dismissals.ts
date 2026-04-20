@@ -12,6 +12,7 @@ import {
   dismissHomeInsightBannerResponseSchema,
   homeInsightBannerStateResponseSchema,
 } from "@yeon/api-contract";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 const HOME_INSIGHT_BANNER_DISMISSALS_QUERY_KEY = [
   "home-insight-banner-dismissals",
@@ -49,7 +50,9 @@ export function useHomeInsightBannerDismissals() {
   const query = useQuery({
     queryKey: HOME_INSIGHT_BANNER_DISMISSALS_QUERY_KEY,
     queryFn: async () => {
-      const response = await fetch("/api/v1/home/insight-banners");
+      const response = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/home/insight-banners"),
+      );
       const payload = (await response.json().catch(() => null)) as
         | ({ message?: string } & Partial<HomeInsightBannerStateResponse>)
         | null;
@@ -107,11 +110,14 @@ export function useHomeInsightBannerDismissals() {
     mutationFn: async (
       bannerKey: HomeInsightBannerKey,
     ): Promise<DismissHomeInsightBannerResponse> => {
-      const response = await fetch("/api/v1/home/insight-banners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bannerKey }),
-      });
+      const response = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/home/insight-banners"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bannerKey }),
+        },
+      );
       const payload = (await response.json().catch(() => null)) as
         | ({ message?: string } & Partial<DismissHomeInsightBannerResponse>)
         | null;

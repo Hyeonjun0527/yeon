@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
 
 export default function MemberNewPage() {
   const router = useRouter();
-  const { resolveAppHref } = useAppRoute();
+  const { resolveApiHref, resolveAppHref } = useAppRoute();
   const { spaces, spacesLoading, selectedSpaceId, refetchMembers } =
     useStudentManagement();
 
@@ -45,16 +45,19 @@ export default function MemberNewPage() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/v1/spaces/${selectedSpaceId}/members`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          status: status || null,
-        }),
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/spaces/${selectedSpaceId}/members`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim() || null,
+            phone: phone.trim() || null,
+            status: status || null,
+          }),
+        },
+      );
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };

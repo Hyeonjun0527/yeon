@@ -46,7 +46,7 @@ import { createPatchedHref } from "@/lib/route-state/search-params";
 function MockV2WorkspaceInner() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { resolveAppHref } = useAppRoute();
+  const { resolveApiHref, resolveAppHref } = useAppRoute();
   const autoEntryHandledRef = useRef(false);
 
   // ── refs: 순환 의존 해소 (selection ↔ records ↔ audio) ─────────
@@ -259,9 +259,12 @@ function MockV2WorkspaceInner() {
   // ── 삭제 핸들러 ───────────────────────────────────────────────
   const handleDeleteRecord = useCallback(
     async (recordId: string) => {
-      const res = await fetch(`/api/v1/counseling-records/${recordId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        resolveApiHref(`/api/v1/counseling-records/${recordId}`),
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "상담 기록을 삭제하지 못했습니다.");
@@ -278,7 +281,7 @@ function MockV2WorkspaceInner() {
         throw new Error("선택된 스페이스가 없습니다.");
       }
       const res = await fetch(
-        `/api/v1/spaces/${currentSpaceId}/members/${memberId}`,
+        resolveApiHref(`/api/v1/spaces/${currentSpaceId}/members/${memberId}`),
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -296,7 +299,7 @@ function MockV2WorkspaceInner() {
 
   const handleDeleteSpace = useCallback(
     async (spaceId: string) => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}`, {
+      const res = await fetch(resolveApiHref(`/api/v1/spaces/${spaceId}`), {
         method: "DELETE",
       });
       if (!res.ok) {

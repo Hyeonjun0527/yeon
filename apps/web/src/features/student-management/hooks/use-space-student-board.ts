@@ -10,6 +10,7 @@ import type {
   UpdatePublicCheckSessionBody,
   UpdateStudentBoardBody,
 } from "@yeon/api-contract";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,7 +32,9 @@ export function useSpaceStudentBoard(
     queryFn: async () => {
       const params = new URLSearchParams({ historyPeriod });
       const response = await fetch(
-        `/api/v1/spaces/${spaceId}/student-board?${params.toString()}`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${spaceId}/student-board?${params.toString()}`,
+        ),
       );
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
@@ -58,7 +61,9 @@ export function useSpaceStudentBoard(
       body: UpdateStudentBoardBody;
     }) => {
       const response = await fetch(
-        `/api/v1/spaces/${spaceId}/student-board/${params.memberId}`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${spaceId}/student-board/${params.memberId}`,
+        ),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -82,11 +87,14 @@ export function useSpaceStudentBoard(
 
   const createSession = useMutation({
     mutationFn: async (body: CreatePublicCheckSessionBody) => {
-      const response = await fetch(`/api/v1/spaces/${spaceId}/student-board`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/spaces/${spaceId}/student-board`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
@@ -108,7 +116,9 @@ export function useSpaceStudentBoard(
       body: UpdatePublicCheckSessionBody;
     }) => {
       const response = await fetch(
-        `/api/v1/spaces/${spaceId}/public-check-sessions/${params.sessionId}`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${spaceId}/public-check-sessions/${params.sessionId}`,
+        ),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -158,7 +168,9 @@ export function useMemberStudentBoard(
     queryFn: async () => {
       const params = new URLSearchParams({ period });
       const response = await fetch(
-        `/api/v1/spaces/${spaceId}/members/${memberId}/board-history?${params.toString()}`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${spaceId}/members/${memberId}/board-history?${params.toString()}`,
+        ),
       );
 
       if (!response.ok) {

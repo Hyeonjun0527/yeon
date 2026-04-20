@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useStudentManagement } from "../student-management-provider";
 import type { Member } from "../types";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import { createPatchedHref } from "@/lib/route-state/search-params";
 
 interface UseMemberDetailParams {
@@ -58,7 +59,9 @@ export function useMemberDetail({ memberId }: UseMemberDetailParams) {
   const { data: memberData } = useQuery({
     queryKey: ["member", memberId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/members/${memberId}`);
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/members/${memberId}`),
+      );
       if (!res.ok) return null;
       return res.json() as Promise<{ member: Member }>;
     },

@@ -4,10 +4,11 @@ import type {
   SpaceTab,
   SpaceTemplateSummary,
 } from "./types";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 import type { Space } from "@/features/student-management/types";
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const res = await fetch(resolveApiHrefForCurrentPath(url), {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

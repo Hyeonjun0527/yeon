@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/app-route-context", () => ({
   useAppRoute: () => ({
     normalizeAppPathname: (pathname: string) => pathname,
+    resolveApiHref: (href: string) => href,
     resolveAppHref: (href: string) => href,
   }),
 }));

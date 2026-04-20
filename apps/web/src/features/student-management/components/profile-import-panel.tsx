@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Member } from "../types";
 import { CloudProfilePicker } from "./cloud-profile-picker";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 interface ProfileSuggestions {
   name?: string | null;
@@ -124,7 +125,9 @@ export function ProfileImportPanel({
 
       try {
         const res = await fetch(
-          `/api/v1/spaces/${member.spaceId}/members/${member.id}/profile-import`,
+          resolveApiHrefForCurrentPath(
+            `/api/v1/spaces/${member.spaceId}/members/${member.id}/profile-import`,
+          ),
           { method: "POST", body: form },
         );
 
@@ -195,7 +198,9 @@ export function ProfileImportPanel({
 
     try {
       const res = await fetch(
-        `/api/v1/spaces/${member.spaceId}/members/${member.id}`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${member.spaceId}/members/${member.id}`,
+        ),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -208,7 +213,9 @@ export function ProfileImportPanel({
         throw new Error(data.error ?? "저장에 실패했습니다.");
       }
 
-      const memberRes = await fetch(`/api/v1/members/${member.id}`);
+      const memberRes = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/members/${member.id}`),
+      );
 
       if (!memberRes.ok) {
         throw new Error("저장된 수강생 정보를 다시 불러오지 못했습니다.");

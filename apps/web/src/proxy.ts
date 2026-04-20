@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import {
+  getPlatformServiceByPathname,
+  serviceRequiresAuthentication,
+} from "@/lib/platform-services";
+import { AUTH_SESSION_COOKIE_NAME } from "@/server/auth/constants";
 
 const LEGACY_COUNSELING_BASE_PATH = "/home";
 const COUNSELING_SERVICE_BASE_PATH = "/counseling-service";
@@ -39,6 +44,30 @@ export function proxy(request: NextRequest) {
   if (LEGACY_COUNSELING_ENTRY_PATHS.has(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = COUNSELING_SERVICE_BASE_PATH;
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  const matchedService = getPlatformServiceByPathname(pathname);
+  const isServiceApiRequest =
+    matchedService !== null &&
+    pathname.startsWith(`${matchedService.href}/api/`);
+  const hasSessionCookie = Boolean(
+    request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value,
+  );
+
+  if (
+    matchedService &&
+    serviceRequiresAuthentication(matchedService) &&
+    !isServiceApiRequest &&
+    !hasSessionCookie
+  ) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/";
+    redirectUrl.searchParams.set("login", "1");
+    redirectUrl.searchParams.set(
+      "next",
+      `${pathname}${request.nextUrl.search}`,
+    );
     return NextResponse.redirect(redirectUrl);
   }
 

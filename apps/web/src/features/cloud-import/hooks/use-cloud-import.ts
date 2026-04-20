@@ -29,6 +29,7 @@ import { applyLocalPreviewRefinement } from "./local-preview-refinement";
 import { normalizeCloudDriveFiles } from "./cloud-file-normalizers";
 import { resetImportState } from "./import-state-reset";
 import { useImportDraftRecovery } from "./use-import-draft-recovery";
+import { useAppRoute } from "@/lib/app-route-context";
 
 const API_BASE: Record<CloudProvider, string> = {
   onedrive: "/api/v1/integrations/onedrive",
@@ -105,7 +106,8 @@ export function useCloudImport(
   provider: CloudProvider,
   onImportComplete?: (result: ImportCommitResult) => void,
 ) {
-  const base = API_BASE[provider];
+  const { resolveApiHref } = useAppRoute();
+  const base = resolveApiHref(API_BASE[provider]);
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -177,7 +179,7 @@ export function useCloudImport(
   const loadDraft = useCallback(
     async (targetDraftId: string) => {
       const res = await fetch(
-        `/api/v1/integrations/local/drafts/${targetDraftId}`,
+        resolveApiHref(`/api/v1/integrations/local/drafts/${targetDraftId}`),
       );
       if (!res.ok) {
         throw new Error(
@@ -416,11 +418,14 @@ export function useCloudImport(
       }
 
       previewSaveTimerRef.current = setTimeout(() => {
-        void fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        }).catch(() => {
+        void fetch(
+          resolveApiHref(`/api/v1/integrations/local/drafts/${draftId}`),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          },
+        ).catch(() => {
           // 자동 저장 실패는 다음 입력 기회에서 재시도
         });
       }, 400);
@@ -492,9 +497,12 @@ export function useCloudImport(
 
     if (!currentDraftId) return;
 
-    await fetch(`/api/v1/integrations/local/drafts/${currentDraftId}`, {
-      method: "DELETE",
-    }).catch(() => {
+    await fetch(
+      resolveApiHref(`/api/v1/integrations/local/drafts/${currentDraftId}`),
+      {
+        method: "DELETE",
+      },
+    ).catch(() => {
       // 초안 삭제 실패는 조용히 무시하고 UI 상태만 정리
     });
   }, [clearStoredDraftId, draftId]);
@@ -540,11 +548,14 @@ export function useCloudImport(
           }
 
           previewSaveTimerRef.current = setTimeout(() => {
-            void fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(localRefinement.preview),
-            }).catch(() => {
+            void fetch(
+              resolveApiHref(`/api/v1/integrations/local/drafts/${draftId}`),
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(localRefinement.preview),
+              },
+            ).catch(() => {
               // 자동 저장 실패는 다음 입력 기회에서 재시도
             });
           }, 400);

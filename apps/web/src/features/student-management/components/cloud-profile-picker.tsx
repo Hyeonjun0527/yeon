@@ -18,6 +18,7 @@ import {
 } from "@/features/cloud-import/cloud-provider-config";
 import { useCloudImport } from "@/features/cloud-import/hooks/use-cloud-import";
 import type { CloudProvider, DriveFile } from "@/features/cloud-import/types";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 interface CloudProfilePickerProps {
   onFilePicked: (file: File) => void;
@@ -74,8 +75,8 @@ function FileBrowser({ provider, onFilePicked }: FileBrowserProps) {
       try {
         const proxyUrl = `${
           provider === "onedrive"
-            ? "/api/v1/integrations/onedrive"
-            : "/api/v1/integrations/googledrive"
+            ? resolveApiHrefForCurrentPath("/api/v1/integrations/onedrive")
+            : resolveApiHrefForCurrentPath("/api/v1/integrations/googledrive")
         }/file/${driveFile.id}${
           driveFile.mimeType
             ? `?mimeType=${encodeURIComponent(driveFile.mimeType)}`
@@ -250,8 +251,9 @@ export function CloudProfilePicker({
   onFilePicked,
   onClose,
 }: CloudProfilePickerProps) {
-  const [activeProvider, setActiveProvider] =
-    useState<CloudProvider>(DEFAULT_CLOUD_PROVIDER);
+  const [activeProvider, setActiveProvider] = useState<CloudProvider>(
+    DEFAULT_CLOUD_PROVIDER,
+  );
 
   return (
     <div

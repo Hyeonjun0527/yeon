@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 const STORAGE_KEY = "yeon_current_space_id";
 
@@ -33,7 +34,7 @@ export function useCurrentSpace() {
   const { data, isLoading: loading } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/spaces");
+      const res = await fetch(resolveApiHrefForCurrentPath("/api/v1/spaces"));
       if (!res.ok) throw new Error("스페이스 조회 실패");
       return res.json() as Promise<{ spaces: Space[] }>;
     },
