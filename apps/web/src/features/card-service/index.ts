@@ -1,2 +1,3 @@
 export { CardServiceHome } from "./card-service-home";
-export type { CardServiceHomeViewState } from "./types";
+export { DeckDetailScreen } from "./deck-detail-screen";
+export type { CardServiceHomeViewState, DeckDetailViewState } from "./types";
