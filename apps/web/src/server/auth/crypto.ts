@@ -50,15 +50,22 @@ export function signAuthValue(value: string) {
 }
 
 export function verifySignedAuthValue(value: string, signature: string) {
-  const expectedSignature = signAuthValue(value);
-  const expectedBuffer = Buffer.from(expectedSignature);
-  const actualBuffer = Buffer.from(signature);
+  return timingSafeEqualString(signAuthValue(value), signature);
+}
 
-  if (expectedBuffer.length !== actualBuffer.length) {
+/**
+ * 길이가 다르면 즉시 false, 같으면 timingSafeEqual로 상수시간 비교.
+ * 인증/세션 토큰·OAuth state·서명값처럼 사용자 입력과 비교하는 모든 시크릿에 사용한다.
+ */
+export function timingSafeEqualString(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+
+  if (bufA.length !== bufB.length) {
     return false;
   }
 
-  return timingSafeEqual(expectedBuffer, actualBuffer);
+  return timingSafeEqual(bufA, bufB);
 }
 
 export function hashAuthToken(token: string) {

@@ -9,6 +9,7 @@ import {
 import {
   createAuthRandomToken,
   signAuthValue,
+  timingSafeEqualString,
   verifySignedAuthValue,
 } from "./crypto";
 
@@ -111,7 +112,7 @@ export function consumeOAuthStateCookieValue(options: {
       !!options.state &&
       !matchedEntry &&
       entry.provider === options.provider &&
-      entry.state === options.state;
+      timingSafeEqualString(entry.state, options.state);
 
     if (isMatchingEntry) {
       matchedEntry = entry;

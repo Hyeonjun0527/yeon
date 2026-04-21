@@ -4,6 +4,7 @@ import {
   createAuthRandomToken,
   hashAuthToken,
   signAuthValue,
+  timingSafeEqualString,
   verifySignedAuthValue,
 } from "../crypto";
 
@@ -56,5 +57,17 @@ describe("auth crypto", () => {
     expect(() => signAuthValue("payload")).toThrow(
       "AUTH_SECRET 환경변수가 필요합니다.",
     );
+  });
+
+  it("timingSafeEqualString은 같은 값에서 true, 다른 값에서 false를 반환한다", () => {
+    expect(timingSafeEqualString("abc", "abc")).toBe(true);
+    expect(timingSafeEqualString("abc", "abd")).toBe(false);
+    expect(timingSafeEqualString("", "")).toBe(true);
+  });
+
+  it("timingSafeEqualString은 길이가 다르면 즉시 false를 반환한다", () => {
+    expect(timingSafeEqualString("abc", "abcd")).toBe(false);
+    expect(timingSafeEqualString("abcd", "abc")).toBe(false);
+    expect(timingSafeEqualString("", "x")).toBe(false);
   });
 });
