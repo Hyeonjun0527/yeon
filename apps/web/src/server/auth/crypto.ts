@@ -1,4 +1,5 @@
 import {
+  createHash,
   createHmac,
   hkdfSync,
   randomBytes,
@@ -70,4 +71,20 @@ export function timingSafeEqualString(a: string, b: string): boolean {
 
 export function hashAuthToken(token: string) {
   return createHmac("sha256", getAuthSecret()).update(token).digest("hex");
+}
+
+/**
+ * RFC 7636 PKCE code_verifier — 32바이트 랜덤을 base64url로 인코딩(43자, 패딩 없음).
+ * RFC 권장 길이(43-128) 안에 들어간다.
+ */
+export function createPkceCodeVerifier() {
+  return createAuthRandomToken(32);
+}
+
+/**
+ * RFC 7636 PKCE code_challenge (S256) — verifier의 SHA-256 해시를 base64url로 인코딩.
+ * authorization URL의 code_challenge 파라미터에 사용한다.
+ */
+export function createPkceCodeChallenge(verifier: string) {
+  return createHash("sha256").update(verifier).digest("base64url");
 }

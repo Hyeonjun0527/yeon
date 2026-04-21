@@ -8,6 +8,7 @@ import {
 } from "./constants";
 import {
   createAuthRandomToken,
+  createPkceCodeVerifier,
   signAuthValue,
   timingSafeEqualString,
   verifySignedAuthValue,
@@ -18,6 +19,7 @@ const oauthStateEntrySchema = z.object({
   provider: authProviderSchema,
   nextPath: z.string().min(1),
   expiresAt: z.string().datetime(),
+  codeVerifier: z.string().min(43).max(128),
 });
 
 const oauthStateCookiePayloadSchema = z.object({
@@ -85,6 +87,7 @@ export function createOAuthStateCookieValue(options: {
     expiresAt: new Date(
       Date.now() + AUTH_OAUTH_STATE_TTL_SECONDS * 1000,
     ).toISOString(),
+    codeVerifier: createPkceCodeVerifier(),
   } satisfies OAuthStateEntry;
   const nextEntries = [
     ...decodePayload(options.existingCookieValue).slice(-7),
@@ -94,6 +97,7 @@ export function createOAuthStateCookieValue(options: {
   return {
     state: payload.state,
     nextPath: payload.nextPath,
+    codeVerifier: payload.codeVerifier,
     cookieValue: encodePayload(nextEntries),
   };
 }
