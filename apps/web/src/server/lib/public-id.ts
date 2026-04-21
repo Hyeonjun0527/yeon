@@ -24,6 +24,8 @@ export const ID_PREFIX = {
   counselingRecords: "crd",
   counselingTranscriptSegments: "cts",
   activityLogs: "alg",
+  cardDecks: "dck",
+  cardDeckItems: "dki",
 } as const;
 
 export type IdPrefixKey = keyof typeof ID_PREFIX;
@@ -60,7 +62,9 @@ export function parsePublicId(prefix: IdPrefix, raw: unknown): string {
   }
   for (let i = 0; i < body.length; i += 1) {
     if (NANOID_ALPHABET.indexOf(body[i]!) === -1) {
-      throw new InvalidPublicIdError("ID에 허용되지 않은 문자가 포함되어 있습니다.");
+      throw new InvalidPublicIdError(
+        "ID에 허용되지 않은 문자가 포함되어 있습니다.",
+      );
     }
   }
   return raw;

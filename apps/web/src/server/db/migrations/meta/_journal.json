@@ -204,6 +204,13 @@
       "when": 1776769823980,
       "tag": "0028_add_oauth_tokens_encrypted_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1776772198706,
+      "tag": "0029_add_card_decks",
+      "breakpoints": true
     }
   ]
 }
