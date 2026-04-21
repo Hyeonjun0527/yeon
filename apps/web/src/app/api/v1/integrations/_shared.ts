@@ -32,12 +32,12 @@ import { detectFileKind } from "@/features/cloud-import/file-kind";
 import { jsonError } from "@/app/api/v1/counseling-records/_shared";
 
 const importRequestSchema = z.object({
-  draftId: z.string().uuid().optional(),
+  draftId: z.string().min(1).optional(),
   preview: importPreviewBodySchema,
 });
 
 const cloudAnalyzeRequestSchema = z.object({
-  draftId: z.string().uuid().optional(),
+  draftId: z.string().min(1).optional(),
   fileId: z.string().min(1).optional(),
   fileName: z.string().optional(),
   mimeType: z.string().optional(),
@@ -584,14 +584,16 @@ export async function handleCloudAnalyzeRoute({
       activeDraftId = createdDraft.id;
     }
 
-    const ensuredDraftId = activeDraftId;
+    if (!activeDraftId) {
+      return jsonError("초안 식별자를 확인하지 못했습니다.", 500);
+    }
     const buffer = await downloadFile(accessToken, fileId, mimeType);
     const refine = buildRefineContext(parsed.data);
 
     return executeAnalyzeRoute({
       request,
       userId,
-      draftId: ensuredDraftId,
+      draftId: activeDraftId,
       buffer,
       fileName,
       mimeType,

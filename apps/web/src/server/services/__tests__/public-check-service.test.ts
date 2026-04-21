@@ -21,6 +21,13 @@ vi.mock("@/server/services/student-board-service", () => ({
   assertSpaceOwnedByUser: vi.fn(),
   persistMemberBoardSnapshot: vi.fn(),
 }));
+vi.mock("@/server/lib/public-id", () => ({
+  generatePublicId: () => "pcb_testpublicid",
+  ID_PREFIX: {
+    publicCheckSessions: "pcs",
+    publicCheckSubmissions: "pcb",
+  },
+}));
 
 import { persistMemberBoardSnapshot } from "@/server/services/student-board-service";
 import {
@@ -38,6 +45,7 @@ function createDbMock(selectResults: unknown[][]) {
       const result = selectResults[selectIndex++] ?? [];
       const chain = {
         from: vi.fn(() => chain),
+        innerJoin: vi.fn(() => chain),
         where: vi.fn(() => chain),
         limit: vi.fn(async () => result),
         orderBy: vi.fn(async () => result),
@@ -73,21 +81,26 @@ describe("public-check-service", () => {
     const { db } = createDbMock([
       [
         {
-          id: "session-1",
-          spaceId: "space-1",
-          title: "오늘 출석 체크",
-          status: "active",
-          checkMode: "attendance_and_assignment",
-          enabledMethods: ["qr", "location"],
-          locationLabel: "강남 강의실",
-          opensAt: null,
-          closesAt: null,
+          session: {
+            id: 1n,
+            publicId: "pcs_1",
+            spaceId: 10n,
+            title: "오늘 출석 체크",
+            status: "active",
+            checkMode: "attendance_and_assignment",
+            enabledMethods: ["qr", "location"],
+            locationLabel: "강남 강의실",
+            opensAt: null,
+            closesAt: null,
+          },
+          spacePublicId: "space-1",
         },
       ],
       [
         {
-          id: "member-1",
-          spaceId: "space-1",
+          id: 100n,
+          publicId: "member-1",
+          spaceId: 10n,
           name: "홍길동",
           phone: "010-1111-1234",
         },
@@ -119,19 +132,24 @@ describe("public-check-service", () => {
     const { db } = createDbMock([
       [
         {
-          id: "session-1",
-          spaceId: "space-1",
-          status: "active",
-          checkMode: "attendance_and_assignment",
-          enabledMethods: ["qr"],
-          opensAt: null,
-          closesAt: null,
+          session: {
+            id: 1n,
+            publicId: "pcs_1",
+            spaceId: 10n,
+            status: "active",
+            checkMode: "attendance_and_assignment",
+            enabledMethods: ["qr"],
+            opensAt: null,
+            closesAt: null,
+          },
+          spacePublicId: "space-1",
         },
       ],
       [
         {
-          id: "member-1",
-          spaceId: "space-1",
+          id: 100n,
+          publicId: "member-1",
+          spaceId: 10n,
           name: "홍길동",
           phone: "010-1111-1234",
         },
@@ -162,19 +180,24 @@ describe("public-check-service", () => {
     const { db, insertedPayloads } = createDbMock([
       [
         {
-          id: "session-1",
-          spaceId: "space-1",
-          status: "active",
-          checkMode: "attendance_and_assignment",
-          enabledMethods: ["qr"],
-          opensAt: null,
-          closesAt: null,
+          session: {
+            id: 1n,
+            publicId: "pcs_1",
+            spaceId: 10n,
+            status: "active",
+            checkMode: "attendance_and_assignment",
+            enabledMethods: ["qr"],
+            opensAt: null,
+            closesAt: null,
+          },
+          spacePublicId: "space-1",
         },
       ],
       [
         {
-          id: "member-1",
-          spaceId: "space-1",
+          id: 100n,
+          publicId: "member-1",
+          spaceId: 10n,
           name: "홍길동",
           phone: "010-1111-1234",
         },
@@ -216,12 +239,12 @@ describe("public-check-service", () => {
       assignmentStatus: "done",
       assignmentLink: "https://example.com/homework",
       source: "public_qr",
-      sessionId: "session-1",
+      sessionId: "pcs_1",
     });
     expect(insertedPayloads[0]).toMatchObject({
-      memberId: "member-1",
-      sessionId: "session-1",
-      spaceId: "space-1",
+      memberId: 100n,
+      sessionId: 1n,
+      spaceId: 10n,
       assignmentStatus: "done",
       assignmentLink: "https://example.com/homework",
       verificationStatus: "matched",
@@ -234,19 +257,24 @@ describe("public-check-service", () => {
     const { db, insertedPayloads } = createDbMock([
       [
         {
-          id: "session-1",
-          spaceId: "space-1",
-          status: "active",
-          checkMode: "attendance_only",
-          enabledMethods: ["qr"],
-          opensAt: null,
-          closesAt: null,
+          session: {
+            id: 1n,
+            publicId: "pcs_1",
+            spaceId: 10n,
+            status: "active",
+            checkMode: "attendance_only",
+            enabledMethods: ["qr"],
+            opensAt: null,
+            closesAt: null,
+          },
+          spacePublicId: "space-1",
         },
       ],
       [
         {
-          id: "member-1",
-          spaceId: "space-1",
+          id: 100n,
+          publicId: "member-1",
+          spaceId: 10n,
           name: "홍길동",
           phone: "010-1111-1234",
         },
@@ -285,11 +313,11 @@ describe("public-check-service", () => {
       spaceId: "space-1",
       attendanceStatus: "present",
       source: "public_qr",
-      sessionId: "session-1",
+      sessionId: "pcs_1",
     });
     expect(insertedPayloads[0]).toMatchObject({
-      memberId: "member-1",
-      sessionId: "session-1",
+      memberId: 100n,
+      sessionId: 1n,
       verificationStatus: "matched",
       submittedName: "홍길동",
       submittedPhoneLast4: "1234",

@@ -25,13 +25,30 @@ const { responses, chain } = vi.hoisted(() => {
 });
 
 vi.mock("@/server/db", () => ({ getDb: () => chain }));
-vi.mock("@/server/db/schema", () => ({ memberTabDefinitions: {} }));
+vi.mock("@/server/db/schema", () => ({
+  memberTabDefinitions: { id: "id", publicId: "publicId", spaceId: "spaceId" },
+  memberFieldDefinitions: {
+    id: "id",
+    publicId: "publicId",
+    spaceId: "spaceId",
+    tabId: "tabId",
+  },
+  spaces: { id: "id", publicId: "publicId" },
+}));
 vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => args,
   asc: (col: unknown) => col,
   eq: (col: unknown, val: unknown) => ({ col, val }),
   isNotNull: (col: unknown) => col,
+  isNull: (col: unknown) => col,
   ne: (col: unknown, val: unknown) => ({ col, val }),
+}));
+vi.mock("@/server/lib/public-id", () => ({
+  generatePublicId: () => "mtb_testpublicid",
+  ID_PREFIX: {
+    memberTabs: "mtb",
+    memberFields: "mfd",
+  },
 }));
 
 import {
@@ -72,7 +89,7 @@ describe("createDefaultSystemTabs", () => {
     responses.push(undefined); // createDefaultOverviewFields
 
     await expect(
-      createDefaultSystemTabs("space-1", "user-1"),
+      createDefaultSystemTabs(1n, "user-1"),
     ).resolves.toBeUndefined();
   });
 
@@ -81,7 +98,7 @@ describe("createDefaultSystemTabs", () => {
     responses.push([]);
     responses.push(undefined);
     await expect(
-      createDefaultSystemTabs("space-1", "user-1"),
+      createDefaultSystemTabs(1n, "user-1"),
     ).resolves.toBeUndefined();
   });
 });
@@ -103,6 +120,7 @@ describe("createCustomTab", () => {
     const existingTabs = [makeTab({ displayOrder: 2 })];
     const newTab = makeTab({ name: "새 탭", displayOrder: 3, id: "tab-new" });
 
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push(existingTabs); // getTabsForSpace
     responses.push([newTab]); // insert.returning()
 
@@ -118,6 +136,7 @@ describe("createCustomTab", () => {
     const truncated = "가".repeat(80);
     const newTab = makeTab({ name: truncated });
 
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([]); // getTabsForSpace (빈 공간)
     responses.push([newTab]); // insert.returning()
 
@@ -132,6 +151,7 @@ describe("createCustomTab", () => {
 
 describe("updateTab", () => {
   it("존재하지 않는 탭은 404 ServiceError를 던진다", async () => {
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([]); // select → 빈 배열
     await expect(
       updateTab("nonexistent", "space-1", { name: "새 이름" }),
@@ -140,6 +160,7 @@ describe("updateTab", () => {
 
   it("기본 시스템 탭을 수정하려 하면 403 ServiceError를 던진다", async () => {
     const overviewTab = makeTab({ tabType: "system", systemKey: "overview" });
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([overviewTab]);
 
     await expect(
@@ -152,6 +173,7 @@ describe("updateTab", () => {
 
   it("빈 이름으로 업데이트하면 400 ServiceError를 던진다", async () => {
     const tab = makeTab({ tabType: "custom" });
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([tab]);
 
     await expect(
@@ -162,6 +184,7 @@ describe("updateTab", () => {
   it("커스텀 탭 이름 변경은 성공한다", async () => {
     const tab = makeTab({ tabType: "custom", name: "기존 탭" });
     const updated = { ...tab, name: "새 이름" };
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([tab]);
     responses.push([updated]);
 
@@ -174,6 +197,7 @@ describe("updateTab", () => {
 
 describe("deleteCustomTab", () => {
   it("존재하지 않는 탭은 404 ServiceError를 던진다", async () => {
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([]);
     await expect(
       deleteCustomTab("nonexistent", "space-1"),
@@ -182,6 +206,7 @@ describe("deleteCustomTab", () => {
 
   it("시스템 탭을 삭제하려 하면 403 ServiceError를 던진다", async () => {
     const systemTab = makeTab({ tabType: "system", systemKey: "overview" });
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([systemTab]);
 
     await expect(deleteCustomTab("tab-1", "space-1")).rejects.toMatchObject({
@@ -192,6 +217,7 @@ describe("deleteCustomTab", () => {
 
   it("커스텀 탭은 정상 삭제된다", async () => {
     const customTab = makeTab({ tabType: "custom" });
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([customTab]);
     responses.push(undefined); // delete 결과 (반환값 없음)
 
@@ -203,6 +229,7 @@ describe("deleteCustomTab", () => {
 
 describe("getOverviewTab", () => {
   it("overview 탭이 없으면 null을 반환한다", async () => {
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([]);
     const result = await getOverviewTab("space-1");
     expect(result).toBeNull();
@@ -210,6 +237,7 @@ describe("getOverviewTab", () => {
 
   it("overview 탭이 있으면 탭 레코드를 반환한다", async () => {
     const overviewTab = makeTab({ tabType: "system", systemKey: "overview" });
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     responses.push([overviewTab]);
 
     const result = await getOverviewTab("space-1");
@@ -221,10 +249,12 @@ describe("getOverviewTab", () => {
 
 describe("reorderTabs", () => {
   it("빈 순서 배열로 호출해도 오류 없이 완료된다", async () => {
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     await expect(reorderTabs("space-1", [])).resolves.toBeUndefined();
   });
 
   it("탭 ID 배열 순서대로 displayOrder를 업데이트한다", async () => {
+    responses.push([{ id: 1n }]); // requireSpaceInternalIdByPublicId
     // update는 반환값을 기다리지 않으므로 responses 없이도 동작
     responses.push(undefined);
     responses.push(undefined);

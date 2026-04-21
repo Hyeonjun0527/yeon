@@ -14,7 +14,9 @@
     "typecheck:web": "pnpm --filter @yeon/web typecheck",
     "typecheck:race-server": "pnpm --filter @yeon/race-server typecheck",
     "typecheck:api-contract": "pnpm --filter @yeon/api-contract typecheck",
-    "typecheck:api-client": "pnpm --filter @yeon/api-client typecheck"
+    "typecheck:api-client": "pnpm --filter @yeon/api-client typecheck",
+    "db:check:drift": "pnpm --filter @yeon/web db:check:drift",
+    "validate": "pnpm lint && pnpm typecheck && pnpm db:check:drift"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

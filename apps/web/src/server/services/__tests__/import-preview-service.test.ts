@@ -32,9 +32,26 @@ vi.mock("@/server/db/schema", () => ({
   memberTabDefinitions: {},
   members: {},
   spaces: {},
+  counselingRecords: {
+    id: "id",
+    publicId: "publicId",
+    createdByUserId: "createdByUserId",
+  },
+  counselingTranscriptSegments: {},
+  activityLogs: {},
 }));
 vi.mock("./member-field-values-service", () => ({
   buildValueColumns: (_type: string, value: string) => ({ valueText: value }),
+}));
+vi.mock("@/server/lib/public-id", () => ({
+  generatePublicId: (prefix: string) => `${prefix}_testpublicid`,
+  ID_PREFIX: {
+    spaces: "spc",
+    members: "mem",
+    memberFields: "mfd",
+    memberTabs: "mtb",
+    memberFieldValues: "mfv",
+  },
 }));
 
 import {
@@ -71,14 +88,26 @@ describe("import-preview-service", () => {
   });
 
   it("여러 cohort를 spaces/members 개수로 집계한다", async () => {
-    txResponses.push(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-    );
+    // cohort 1 (2명): spaces.returning, tabs.returning, members.returning
+    txResponses.push([{ id: 1n, publicId: "spc_1" }]);
+    txResponses.push([
+      { id: 11n, systemKey: "overview" },
+      { id: 12n, systemKey: "student_board" },
+      { id: 13n, systemKey: "counseling" },
+      { id: 14n, systemKey: "memos" },
+      { id: 15n, systemKey: "report" },
+    ]);
+    txResponses.push([{ id: 101n }, { id: 102n }]);
+    // cohort 2 (1명)
+    txResponses.push([{ id: 2n, publicId: "spc_2" }]);
+    txResponses.push([
+      { id: 21n, systemKey: "overview" },
+      { id: 22n, systemKey: "student_board" },
+      { id: 23n, systemKey: "counseling" },
+      { id: 24n, systemKey: "memos" },
+      { id: 25n, systemKey: "report" },
+    ]);
+    txResponses.push([{ id: 201n }]);
 
     await expect(
       importPreviewIntoSpaces("user-1", {

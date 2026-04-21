@@ -2,10 +2,30 @@ import { eq } from "drizzle-orm";
 
 import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
 import { DEFAULT_COUNSELING_SERVICE_HREF } from "@/lib/platform-services";
+import { decryptField, encryptField } from "@/server/auth/field-crypto";
 import { getDb } from "@/server/db";
 import { onedriveTokens } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
+
+type OneDriveTokenRow = typeof onedriveTokens.$inferSelect;
+
+/**
+ * 저장된 row에서 평문 access/refresh token을 복원한다.
+ * 암호화 컬럼이 채워져 있으면 우선 복호화, 없으면 평문 fallback.
+ */
+function readPlainAccessToken(row: OneDriveTokenRow): string {
+  return row.accessTokenEncrypted
+    ? decryptField(row.accessTokenEncrypted)
+    : row.accessToken;
+}
+
+function readPlainRefreshToken(row: OneDriveTokenRow): string {
+  return row.refreshTokenEncrypted
+    ? decryptField(row.refreshTokenEncrypted)
+    : row.refreshToken;
+}
 
 /* ── Microsoft OAuth 설정 ── */
 
@@ -142,12 +162,18 @@ export async function saveTokens(
   const db = getDb();
   const now = new Date();
 
+  const accessTokenEncrypted = encryptField(tokens.accessToken);
+  const refreshTokenEncrypted = encryptField(tokens.refreshToken);
+
   await db
     .insert(onedriveTokens)
     .values({
+      publicId: generatePublicId(ID_PREFIX.onedriveTokens),
       userId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      accessTokenEncrypted,
+      refreshTokenEncrypted,
       expiresAt: tokens.expiresAt,
       updatedAt: now,
     })
@@ -156,6 +182,8 @@ export async function saveTokens(
       set: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
         expiresAt: tokens.expiresAt,
         updatedAt: now,
       },
@@ -180,10 +208,10 @@ export async function getValidAccessToken(
   const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
 
   if (row.expiresAt > fiveMinutesFromNow) {
-    return row.accessToken;
+    return readPlainAccessToken(row);
   }
 
-  const refreshed = await refreshAccessToken(row.refreshToken);
+  const refreshed = await refreshAccessToken(readPlainRefreshToken(row));
   await saveTokens(userId, refreshed);
   return refreshed.accessToken;
 }

@@ -16,3 +16,14 @@ pnpm lint
 
 echo "[pre-commit] pnpm typecheck"
 pnpm typecheck
+
+# schema 또는 마이그레이션 파일이 staged 되어 있으면 drift 검사 강제.
+# schema 파일만 수정하고 drizzle-kit generate를 누락한 커밋을 차단한다.
+staged_db_changes=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^apps/web/(src/server/db/(schema|migrations)|drizzle\.config)' \
+  || true)
+
+if [ -n "$staged_db_changes" ]; then
+  echo "[pre-commit] DB 파일 변경 감지 → pnpm db:check:drift"
+  pnpm db:check:drift
+fi

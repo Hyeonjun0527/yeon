@@ -11,6 +11,7 @@ import {
   createDefaultSystemTabs,
   getTabsForSpace,
 } from "@/server/services/member-tabs-service";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 import { ServiceError } from "@/server/services/service-error";
 
 export const runtime = "nodejs";
@@ -29,7 +30,8 @@ export async function GET(
     // 시스템 탭이 없으면 lazy init (기존 스페이스 backfill)
     const hasSystemTabs = tabs.some((t) => t.tabType === "system");
     if (!hasSystemTabs) {
-      await createDefaultSystemTabs(spaceId, currentUser.id);
+      const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
+      await createDefaultSystemTabs(spaceInternalId, currentUser.id);
       tabs = await getTabsForSpace(spaceId);
     }
     return NextResponse.json({ tabs });

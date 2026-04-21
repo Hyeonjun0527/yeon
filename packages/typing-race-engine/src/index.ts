@@ -31,7 +31,7 @@ export async function mountTypingRaceEngine(
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.container,
-    backgroundColor: "#07131f",
+    backgroundColor: "#a8d8f0",
     width: Math.max(options.container.clientWidth, 960),
     height: 520,
     scale: {
@@ -66,6 +66,12 @@ export async function mountTypingRaceEngine(
   };
 }
 
+// 배경 이미지 레인 Y 비율 (캔버스 height=520 기준)
+// 새 배경: 하늘 28% + 4개 흙길 레인 균등 배치, 좌측 컬러 깃발·우측 체크무늬 결승선 내장
+const LANE_Y_RATIOS = [0.325, 0.475, 0.625, 0.775] as const;
+const TRACK_START_X_RATIO = 0.08; // 좌측 깃발 오른쪽
+const TRACK_END_X_RATIO = 0.99;   // 우측 체크무늬 왼쪽
+
 function createStartLineScene(
   Phaser: PhaserModule,
   snapshotBus: EventTarget,
@@ -75,7 +81,7 @@ function createStartLineScene(
     private readonly laneVisuals = new Map<
       string,
       {
-        car: Phaser.GameObjects.Rectangle;
+        car: Phaser.GameObjects.Sprite;
         label: Phaser.GameObjects.Text;
         speed: Phaser.GameObjects.Text;
         trackWidth: number;
@@ -84,24 +90,56 @@ function createStartLineScene(
     >();
 
     private countdownLabel?: Phaser.GameObjects.Text;
-
-    private headlineLabel?: Phaser.GameObjects.Text;
-
-    private subheadlineLabel?: Phaser.GameObjects.Text;
-
-    private statusPill?: Phaser.GameObjects.Text;
-
     private currentSnapshot = initialSnapshot;
-
     private detachSnapshot?: () => void;
+    private previousStage?: string;
 
     constructor() {
       super("typing-race-start-line");
     }
 
+    preload() {
+      this.load.image("race-bg", "/sprites/race-bg.png");
+      this.load.spritesheet("camel-run", "/sprites/camel-run.png", {
+        frameWidth: 96,
+        frameHeight: 96,
+      });
+    }
+
     create() {
-      this.cameras.main.setBackgroundColor("#07131f");
-      this.drawChrome();
+      const width = this.scale.width;
+      const height = this.scale.height;
+
+      // 배경
+      const bg = this.add.image(0, 0, "race-bg");
+      bg.setOrigin(0, 0);
+      bg.setDisplaySize(width, height);
+
+      // 애니메이션 (중복 등록 방지)
+      if (!this.anims.exists("camel-run")) {
+        this.anims.create({
+          key: "camel-run",
+          frames: this.anims.generateFrameNumbers("camel-run", {
+            start: 0,
+            end: 5,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
+      }
+
+      // 카운트다운 (캔버스 중앙)
+      this.countdownLabel = this.add.text(width / 2, height / 2, "", {
+        color: "#ffffff",
+        fontFamily: "monospace",
+        fontSize: "96px",
+        fontStyle: "900",
+        stroke: "#000000",
+        strokeThickness: 10,
+      });
+      this.countdownLabel.setOrigin(0.5, 0.5);
+      this.countdownLabel.setDepth(10);
+
       this.renderSnapshot(this.currentSnapshot);
 
       const handleSnapshot = (event: Event) => {
@@ -119,115 +157,87 @@ function createStartLineScene(
       });
     }
 
-    private drawChrome() {
-      const graphics = this.add.graphics();
-      const width = this.scale.width;
-      const height = this.scale.height;
+    private renderSnapshot(snapshot: TypingRaceSnapshot) {
+      const wasCountdown = this.previousStage === TYPING_RACE_STAGE.COUNTDOWN;
+      const isNowLive = snapshot.stage === TYPING_RACE_STAGE.LIVE;
 
-      graphics.fillGradientStyle(0x081827, 0x07131f, 0x0b2134, 0x0b2134, 1);
-      graphics.fillRect(0, 0, width, height);
-
-      graphics.fillStyle(0x10263a, 0.92);
-      graphics.fillRoundedRect(32, 28, width - 64, height - 56, 32);
-
-      graphics.lineStyle(2, 0x18354d, 1);
-      graphics.strokeRoundedRect(32, 28, width - 64, height - 56, 32);
-
-      this.statusPill = this.add.text(58, 52, "START LINE", {
-        color: "#9dcfff",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "14px",
-        fontStyle: "700",
-      });
-
-      this.headlineLabel = this.add.text(56, 88, "", {
-        color: "#f3f7fb",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "38px",
-        fontStyle: "900",
-      });
-
-      this.subheadlineLabel = this.add.text(58, 134, "", {
-        color: "#90acc4",
-        fontFamily: "Pretendard, sans-serif",
-        fontSize: "16px",
-      });
-
-      this.countdownLabel = this.add.text(width - 160, 82, "", {
-        color: "#f9fbff",
-        fontFamily: "Outfit, sans-serif",
-        fontSize: "84px",
-        fontStyle: "900",
-      });
-      this.countdownLabel.setOrigin(0.5, 0);
-
-      const laneStartY = 220;
-      const laneGap = 62;
-      const trackStartX = 226;
-      const trackWidth = width - 320;
-
-      for (let index = 0; index < 6; index += 1) {
-        const y = laneStartY + index * laneGap;
-
-        graphics.lineStyle(2, 0x284663, 1);
-        graphics.strokeLineShape(
-          new Phaser.Geom.Line(trackStartX, y, trackStartX + trackWidth, y),
-        );
+      if (wasCountdown && isNowLive) {
+        this.countdownLabel?.setText("START!");
+        this.time.delayedCall(900, () => {
+          if (this.countdownLabel?.text === "START!") {
+            this.countdownLabel.setText("");
+          }
+        });
+      } else if (snapshot.stage === TYPING_RACE_STAGE.COUNTDOWN) {
+        this.countdownLabel?.setText(`${snapshot.countdownRemaining}`);
+      } else if (snapshot.stage === TYPING_RACE_STAGE.FINISHED) {
+        this.countdownLabel?.setText("FINISH");
+      } else if (!wasCountdown) {
+        this.countdownLabel?.setText("");
       }
 
-      graphics.fillStyle(0xffda59, 0.85);
-      graphics.fillRect(trackStartX - 8, laneStartY - 32, 6, laneGap * 5 + 8);
+      this.previousStage = snapshot.stage;
+      this.syncLanes(snapshot.lanes, snapshot.speedUnit);
+
+      // 레이스 시작 시 낙타 애니메이션 보장
+      if (snapshot.stage !== TYPING_RACE_STAGE.COUNTDOWN) {
+        for (const visual of this.laneVisuals.values()) {
+          if (!visual.car.anims.isPlaying) {
+            visual.car.play("camel-run");
+          }
+        }
+      }
     }
 
-    private renderSnapshot(snapshot: TypingRaceSnapshot) {
-      this.headlineLabel?.setText(snapshot.headline);
-      this.subheadlineLabel?.setText(snapshot.subheadline);
-      this.countdownLabel?.setText(
-        snapshot.stage === TYPING_RACE_STAGE.COUNTDOWN
-          ? `:${String(snapshot.countdownRemaining).padStart(2, "0")}`
-          : snapshot.stage === TYPING_RACE_STAGE.FINISHED
-            ? "FIN"
-            : "GO",
-      );
-      this.statusPill?.setText(snapshot.roundLabel.toUpperCase());
+    private syncLanes(lanes: readonly TypingRaceLaneSnapshot[], speedUnit?: string) {
+      const width = this.scale.width;
+      const height = this.scale.height;
+      const trackStartX = width * TRACK_START_X_RATIO;
+      const trackEndX = width * TRACK_END_X_RATIO;
+      const trackWidth = trackEndX - trackStartX;
 
-      this.syncLanes(snapshot.lanes);
-    }
-
-    private syncLanes(lanes: readonly TypingRaceLaneSnapshot[]) {
-      const laneStartY = 220;
-      const laneGap = 62;
-      const trackStartX = 226;
-      const trackWidth = this.scale.width - 320;
+      // 스냅샷에 없는 오래된 레인 정리 (rejoin/참여자 이탈 시 stale 누적 방지)
+      const activeIds = new Set(lanes.map((lane) => lane.id));
+      for (const [id, visual] of this.laneVisuals.entries()) {
+        if (!activeIds.has(id)) {
+          visual.car.destroy();
+          visual.label.destroy();
+          visual.speed.destroy();
+          this.laneVisuals.delete(id);
+        }
+      }
 
       lanes.forEach((lane, index) => {
-        const y = laneStartY + index * laneGap;
-        const accent = Phaser.Display.Color.HexStringToColor(lane.accent).color;
+        const laneY = height * (LANE_Y_RATIOS[index] ?? 0.5);
         const existing = this.laneVisuals.get(lane.id);
 
         if (!existing) {
-          const label = this.add.text(56, y - 22, lane.label, {
-            color: lane.role === "benchmark" ? "#8bb0cd" : "#eef5ff",
-            fontFamily: "Pretendard, sans-serif",
-            fontSize: "26px",
-            fontStyle: lane.role === "local" ? "700" : "500",
+          const label = this.add.text(trackStartX, laneY + 28, lane.label, {
+            color: lane.role === "local" ? "#ffffff" : "#ffe97a",
+            fontFamily: "monospace",
+            fontSize: "13px",
+            fontStyle: lane.role === "local" ? "700" : "400",
+            stroke: "#000000",
+            strokeThickness: 3,
           });
+          label.setOrigin(0.5, 0);
+          label.setDepth(5);
 
-          const car = this.add.rectangle(trackStartX, y - 18, 80, 34, accent);
+          const car = this.add.sprite(trackStartX, laneY, "camel-run");
           car.setOrigin(0, 0.5);
-          car.setStrokeStyle(3, 0xe7eef7, 0.9);
+          car.setScale(0.48);
+          car.setDepth(5);
+          car.play("camel-run");
 
-          const speed = this.add.text(
-            trackStartX + trackWidth + 22,
-            y - 22,
-            "",
-            {
-              color: "#90acc4",
-              fontFamily: "Outfit, sans-serif",
-              fontSize: "20px",
-              fontStyle: "700",
-            },
-          );
+          const speed = this.add.text(trackEndX - 50, laneY + 14, "", {
+            color: "#ffffff",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            stroke: "#000000",
+            strokeThickness: 3,
+          });
+          speed.setOrigin(1, 0.5);
+          speed.setDepth(5);
 
           this.laneVisuals.set(lane.id, {
             car,
@@ -239,18 +249,23 @@ function createStartLineScene(
         }
 
         const visual = this.laneVisuals.get(lane.id);
+        if (!visual) return;
 
-        if (!visual) {
-          return;
-        }
+        // 참여자 이탈로 index가 바뀌면 Y 위치도 재배치 (기존 생성 시 Y가 고정되던 버그 수정)
+        visual.car.y = laneY;
+        visual.label.y = laneY + 28;
+        visual.speed.y = laneY + 14;
 
         visual.label.setText(lane.label);
-        visual.speed.setText(`${lane.wpm} wpm`);
+        visual.speed.setText(lane.progress >= 100 ? `${lane.wpm}${speedUnit ?? "타"}` : "");
+        const spriteW = visual.car.displayWidth;
         visual.car.x =
           visual.startX +
-          (visual.trackWidth - visual.car.width) *
+          (visual.trackWidth - spriteW) *
             (clampRaceProgress(lane.progress) / 100);
+        visual.label.x = visual.car.x + spriteW / 2 - 7;
       });
+
     }
   };
 }
@@ -263,10 +278,10 @@ function createFallbackSnapshot(): TypingRaceSnapshot {
     subheadline: "엔진이 출발선을 구성하고 있습니다.",
     roundLabel: "Typing Race",
     lanes: [
-      createFallbackLane("local", "Guest (you)", "#f4b5ff", 0, 0),
-      createFallbackLane("bench-1", "Benchmark Guest", "#62c5ff", 0, 0),
-      createFallbackLane("bench-2", "Benchmark Guest", "#93d63f", 0, 0),
-      createFallbackLane("bench-3", "Benchmark Guest", "#ff925b", 0, 0),
+      createFallbackLane("local-player", "You", "#f4b5ff", 0, 0),
+      createFallbackLane("benchmark-1", "Guest", "#62c5ff", 0, 0),
+      createFallbackLane("benchmark-2", "Guest", "#93d63f", 0, 0),
+      createFallbackLane("benchmark-3", "Guest", "#ff925b", 0, 0),
     ],
   };
 }

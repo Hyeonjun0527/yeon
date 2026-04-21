@@ -15,6 +15,7 @@ import {
   isSecureAuthCookie,
   type SocialProvider,
 } from "./constants";
+import { createPkceCodeChallenge } from "./crypto";
 import {
   createOAuthStateCookieValue,
   consumeOAuthStateCookieValue,
@@ -103,6 +104,7 @@ export async function startSocialAuth(
     const authorizationUrl = buildSocialAuthorizationUrl({
       provider,
       state: oauthState.state,
+      codeChallenge: createPkceCodeChallenge(oauthState.codeVerifier),
       originFallback: request.nextUrl.origin,
     });
     const response = NextResponse.redirect(authorizationUrl);
@@ -187,6 +189,7 @@ export async function completeSocialAuth(
     const profile = await fetchSocialIdentityProfile({
       provider,
       code,
+      codeVerifier: oauthState.matchedEntry.codeVerifier,
       originFallback: request.nextUrl.origin,
     });
     const authUser = await upsertSocialLogin(profile);

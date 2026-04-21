@@ -8,6 +8,7 @@ import {
   updateMember,
 } from "@/server/services/members-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 
 import {
   jsonError,
@@ -42,8 +43,9 @@ export async function PATCH(
 
   try {
     const member = await getMemberByIdForUser(currentUser.id, memberId);
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
 
-    if (member.spaceId !== spaceId) {
+    if (member.spaceId !== spaceInternalId) {
       return jsonError(
         "해당 수강생을 찾을 수 없거나 접근 권한이 없습니다.",
         404,

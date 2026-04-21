@@ -1,4 +1,5 @@
 import {
+  bigint,
   integer,
   jsonb,
   pgTable,
@@ -11,7 +12,10 @@ import {
 import { users } from "./users";
 
 export const importDrafts = pgTable("import_drafts", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: bigint("id", { mode: "bigint" })
+    .primaryKey()
+    .generatedAlwaysAsIdentity(),
+  publicId: text("public_id").notNull().unique(),
   createdByUserId: uuid("created_by_user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),

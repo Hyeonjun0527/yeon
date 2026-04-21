@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 
 import { getDb } from "@/server/db";
 import { activityLogs, members, sheetIntegrations } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 
@@ -158,6 +159,7 @@ export async function syncSheetToActivityLogs(
     }
 
     await db.insert(activityLogs).values({
+      publicId: generatePublicId(ID_PREFIX.activityLogs),
       memberId: member.id,
       spaceId: integration.spaceId,
       type: logType,

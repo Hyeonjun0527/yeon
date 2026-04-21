@@ -17,6 +17,7 @@ on:
       - "compose.prod.yml"
       - "compose.dev.yml"
       - "apps/web/**"
+      - "apps/race-server/**"
       - "packages/**"
   workflow_dispatch:
 
@@ -31,6 +32,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_REPOSITORY: yeon-web-app
+  RACE_IMAGE_REPOSITORY: yeon-race-server
 
 jobs:
   build_amd64:
@@ -76,7 +78,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          build-args: NODE_MEMORY=4096
+          build-args: |
+            NODE_MEMORY=4096
+            NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=yeon-web-amd64
@@ -145,7 +149,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
-          build-args: NODE_MEMORY=3072
+          build-args: |
+            NODE_MEMORY=3072
+            NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=yeon-web-arm64
@@ -301,9 +307,239 @@ jobs:
             sleep 20
           done
 
+  build_race_amd64:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    env:
+      DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve lowercase image name
+        id: image
+        run: |
+          owner_lower="$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "ref=${{ env.REGISTRY }}/${owner_lower}/${{ env.RACE_IMAGE_REPOSITORY }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.ref }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=sha,format=short,prefix=sha-
+
+      - name: Build race-server amd64 image by digest
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: ./apps/race-server/Dockerfile
+          platforms: linux/amd64
+          outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=yeon-race-amd64
+          cache-to: type=gha,mode=max,scope=yeon-race-amd64
+
+      - name: Export amd64 digest
+        run: |
+          rm -rf "${DIGEST_DIR}"
+          mkdir -p "${DIGEST_DIR}"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${DIGEST_DIR}/${digest#sha256:}"
+
+      - name: Upload amd64 digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-race-amd64
+          path: ${{ env.DIGEST_DIR }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build_race_arm64:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, Linux, ARM64]
+    env:
+      DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve lowercase image name
+        id: image
+        run: |
+          owner_lower="$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "ref=${{ env.REGISTRY }}/${owner_lower}/${{ env.RACE_IMAGE_REPOSITORY }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.ref }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=sha,format=short,prefix=sha-
+
+      - name: 디스크·이미지 정리 (빌드 전)
+        run: |
+          docker image prune -f --filter "until=48h"
+          docker builder prune -f --filter "until=48h"
+
+      - name: Build race-server arm64 image by digest
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: ./apps/race-server/Dockerfile
+          platforms: linux/arm64
+          outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=yeon-race-arm64
+          cache-to: type=gha,mode=min,scope=yeon-race-arm64
+
+      - name: Export arm64 digest
+        run: |
+          rm -rf "${DIGEST_DIR}"
+          mkdir -p "${DIGEST_DIR}"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${DIGEST_DIR}/${digest#sha256:}"
+
+      - name: Upload arm64 digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-race-arm64
+          path: ${{ env.DIGEST_DIR }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish_race_manifest:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    needs:
+      - build_race_amd64
+      - build_race_arm64
+    runs-on: ubuntu-latest
+    env:
+      DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-manifest-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Resolve lowercase image name
+        id: image
+        run: |
+          owner_lower="$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "ref=${{ env.REGISTRY }}/${owner_lower}/${{ env.RACE_IMAGE_REPOSITORY }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.ref }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=sha,format=short,prefix=sha-
+
+      - name: Download image digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.DIGEST_DIR }}
+          pattern: digest-race-*
+          merge-multiple: true
+
+      - name: Create and push multi-arch manifest
+        working-directory: ${{ env.DIGEST_DIR }}
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          all_entries=(*)
+          digest_files=()
+          for entry in "${all_entries[@]}"; do
+            [ -f "$entry" ] || continue
+            if [[ "$entry" =~ ^[0-9a-f]{64}$ ]]; then
+              digest_files+=("$entry")
+            fi
+          done
+
+          if [ "${#digest_files[@]}" -ne 2 ]; then
+            echo "race-server digest 파일 개수가 예상과 다릅니다: ${#digest_files[@]}개"
+            exit 1
+          fi
+
+          refs=()
+          for digest in "${digest_files[@]}"; do
+            ref="${IMAGE}@sha256:${digest}"
+            refs+=("$ref")
+            for i in 1 2 3; do
+              docker buildx imagetools inspect "$ref" >/dev/null 2>&1 && break
+              [ "$i" -eq 3 ] && { echo "race digest 확인 실패: $ref"; exit 1; }
+              echo "race digest 확인 실패 (${i}/3), 10초 후 재시도..."
+              sleep 10
+            done
+          done
+
+          mapfile -t tags < <(jq -r '.tags[]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          if [ "${#tags[@]}" -eq 0 ]; then
+            echo "race manifest 태그가 비어 있습니다."
+            exit 1
+          fi
+
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(-t "$tag")
+          done
+
+          for i in 1 2 3; do
+            docker buildx imagetools create "${tag_args[@]}" "${refs[@]}" && break
+            [ "$i" -eq 3 ] && { echo "race manifest 생성 실패"; exit 1; }
+            wait_seconds=$((i * 20))
+            echo "race manifest 생성 실패 (${i}/3), ${wait_seconds}초 후 재시도..."
+            sleep "$wait_seconds"
+          done
+
   deploy_production:
     if: github.ref == 'refs/heads/main'
-    needs: publish_manifest
+    needs:
+      - publish_manifest
+      - publish_race_manifest
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DEPLOY_DIR: /srv/yeon
@@ -342,6 +578,7 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
+          export YEON_RACE_SERVER_IMAGE="ghcr.io/${owner_lower}/yeon-race-server:${IMAGE_TAG}"
           # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
           for i in 1 2 3; do
             docker compose -f "${COMPOSE_FILE}" pull && break
@@ -360,7 +597,9 @@ jobs:
 
   deploy_develop:
     if: github.ref == 'refs/heads/develop'
-    needs: publish_manifest
+    needs:
+      - publish_manifest
+      - publish_race_manifest
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DEPLOY_DIR: /srv/yeon-develop
@@ -399,6 +638,7 @@ jobs:
           owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           cd "${DEPLOY_DIR}"
           export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
+          export YEON_RACE_SERVER_IMAGE="ghcr.io/${owner_lower}/yeon-race-server:${IMAGE_TAG}"
           # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
           for i in 1 2 3; do
             docker compose -f "${COMPOSE_FILE}" pull && break

@@ -1,5 +1,4 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import type {
   MemberFieldType as FieldType,
   MemberFieldValuePayload,
@@ -7,8 +6,11 @@ import type {
 
 import { getDb } from "@/server/db";
 import { memberFieldDefinitions, memberFieldValues } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
+import { requireMemberInternalIdByPublicId } from "./members-service";
 
 /* ── 타입 ── */
 
@@ -16,10 +18,19 @@ export type MemberFieldValue = typeof memberFieldValues.$inferSelect;
 
 export type FieldValuePayload = MemberFieldValuePayload;
 
-export type FieldValueWithDefinition = MemberFieldValue & {
-  fieldDefinitionId: string;
+export type FieldValueWithDefinition = {
+  id: bigint;
+  memberId: bigint;
+  fieldDefinitionId: bigint;
+  valueText: string | null;
+  valueNumber: string | null;
+  valueBoolean: boolean | null;
+  valueJson: unknown;
+  createdAt: Date;
+  updatedAt: Date;
   fieldType: string;
   fieldName: string;
+  fieldDefinitionPublicId: string;
 };
 
 /* ── 내부 유틸 ── */
@@ -76,8 +87,8 @@ export function buildValueColumns(
 
 /** 수강생의 특정 필드에 대한 기존 값 레코드를 조회 */
 async function findExistingFieldValue(
-  memberId: string,
-  fieldDefinitionId: string,
+  memberInternalId: bigint,
+  fieldDefinitionInternalId: bigint,
   db: ReturnType<typeof getDb>,
 ): Promise<MemberFieldValue | undefined> {
   const [existing] = await db
@@ -85,8 +96,8 @@ async function findExistingFieldValue(
     .from(memberFieldValues)
     .where(
       and(
-        eq(memberFieldValues.memberId, memberId),
-        eq(memberFieldValues.fieldDefinitionId, fieldDefinitionId),
+        eq(memberFieldValues.memberId, memberInternalId),
+        eq(memberFieldValues.fieldDefinitionId, fieldDefinitionInternalId),
       ),
     )
     .limit(1);
@@ -99,16 +110,66 @@ async function findExistingFieldValue(
  * 수강생의 모든 필드 값 조회 (정의와 조인)
  */
 export async function getFieldValues(
-  memberId: string,
-  spaceId: string,
+  memberPublicId: string,
+  spacePublicId: string,
 ): Promise<FieldValueWithDefinition[]> {
-  return getFieldValuesForDefinitions(memberId, spaceId);
+  return getFieldValuesForDefinitions(memberPublicId, spacePublicId);
 }
 
 export async function getFieldValuesForDefinitions(
-  memberId: string,
-  spaceId: string,
-  fieldDefinitionIds?: string[],
+  memberPublicId: string,
+  spacePublicId: string,
+  fieldDefinitionPublicIds?: string[],
+): Promise<FieldValueWithDefinition[]> {
+  const db = getDb();
+
+  const memberInternalId =
+    await requireMemberInternalIdByPublicId(memberPublicId);
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+
+  const rows = await db
+    .select({
+      id: memberFieldValues.id,
+      memberId: memberFieldValues.memberId,
+      fieldDefinitionId: memberFieldValues.fieldDefinitionId,
+      valueText: memberFieldValues.valueText,
+      valueNumber: memberFieldValues.valueNumber,
+      valueBoolean: memberFieldValues.valueBoolean,
+      valueJson: memberFieldValues.valueJson,
+      createdAt: memberFieldValues.createdAt,
+      updatedAt: memberFieldValues.updatedAt,
+      fieldType: memberFieldDefinitions.fieldType,
+      fieldName: memberFieldDefinitions.name,
+      fieldDefinitionPublicId: memberFieldDefinitions.publicId,
+    })
+    .from(memberFieldValues)
+    .innerJoin(
+      memberFieldDefinitions,
+      eq(memberFieldValues.fieldDefinitionId, memberFieldDefinitions.id),
+    )
+    .where(
+      and(
+        eq(memberFieldValues.memberId, memberInternalId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
+        isNull(memberFieldDefinitions.deletedAt),
+        ...(fieldDefinitionPublicIds?.length
+          ? [
+              inArray(
+                memberFieldDefinitions.publicId,
+                fieldDefinitionPublicIds,
+              ),
+            ]
+          : []),
+      ),
+    );
+
+  return rows;
+}
+
+export async function getFieldValuesForDefinitionsByInternalIds(
+  memberInternalId: bigint,
+  spaceInternalId: bigint,
+  fieldDefinitionInternalIds?: bigint[],
 ): Promise<FieldValueWithDefinition[]> {
   const db = getDb();
 
@@ -125,6 +186,7 @@ export async function getFieldValuesForDefinitions(
       updatedAt: memberFieldValues.updatedAt,
       fieldType: memberFieldDefinitions.fieldType,
       fieldName: memberFieldDefinitions.name,
+      fieldDefinitionPublicId: memberFieldDefinitions.publicId,
     })
     .from(memberFieldValues)
     .innerJoin(
@@ -133,11 +195,16 @@ export async function getFieldValuesForDefinitions(
     )
     .where(
       and(
-        eq(memberFieldValues.memberId, memberId),
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldValues.memberId, memberInternalId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
         isNull(memberFieldDefinitions.deletedAt),
-        ...(fieldDefinitionIds?.length
-          ? [inArray(memberFieldValues.fieldDefinitionId, fieldDefinitionIds)]
+        ...(fieldDefinitionInternalIds?.length
+          ? [
+              inArray(
+                memberFieldValues.fieldDefinitionId,
+                fieldDefinitionInternalIds,
+              ),
+            ]
           : []),
       ),
     );
@@ -149,20 +216,23 @@ export async function getFieldValuesForDefinitions(
  * 단일 필드 값 upsert (없으면 INSERT, 있으면 UPDATE)
  */
 export async function upsertFieldValue(
-  memberId: string,
-  spaceId: string,
+  memberPublicId: string,
+  spacePublicId: string,
   payload: FieldValuePayload,
 ): Promise<MemberFieldValue> {
   const db = getDb();
 
-  // 필드 정의 확인 (소유권 검증)
+  const memberInternalId =
+    await requireMemberInternalIdByPublicId(memberPublicId);
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+
   const [definition] = await db
     .select()
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.id, payload.fieldDefinitionId),
-        eq(memberFieldDefinitions.spaceId, spaceId),
+        eq(memberFieldDefinitions.publicId, payload.fieldDefinitionId),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
         isNull(memberFieldDefinitions.deletedAt),
       ),
     )
@@ -180,13 +250,12 @@ export async function upsertFieldValue(
   const now = new Date();
 
   const existing = await findExistingFieldValue(
-    memberId,
-    payload.fieldDefinitionId,
+    memberInternalId,
+    definition.id,
     db,
   );
 
   if (existing) {
-    // UPDATE
     const [updated] = await db
       .update(memberFieldValues)
       .set({ ...valueColumns, updatedAt: now })
@@ -197,13 +266,12 @@ export async function upsertFieldValue(
     return updated;
   }
 
-  // INSERT
   const [inserted] = await db
     .insert(memberFieldValues)
     .values({
-      id: randomUUID(),
-      memberId,
-      fieldDefinitionId: payload.fieldDefinitionId,
+      publicId: generatePublicId(ID_PREFIX.memberFieldValues),
+      memberId: memberInternalId,
+      fieldDefinitionId: definition.id,
       valueText: valueColumns.valueText ?? null,
       valueNumber: valueColumns.valueNumber ?? null,
       valueBoolean: valueColumns.valueBoolean ?? null,
@@ -221,8 +289,8 @@ export async function upsertFieldValue(
  * 여러 필드 값 일괄 upsert (임포트 시 사용)
  */
 export async function bulkUpsertFieldValues(
-  memberId: string,
-  spaceId: string,
+  memberPublicId: string,
+  spacePublicId: string,
   values: FieldValuePayload[],
 ): Promise<void> {
   if (values.length === 0) {
@@ -230,7 +298,11 @@ export async function bulkUpsertFieldValues(
   }
 
   const db = getDb();
-  const definitionIds = [
+  const memberInternalId =
+    await requireMemberInternalIdByPublicId(memberPublicId);
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
+
+  const definitionPublicIds = [
     ...new Set(values.map((value) => value.fieldDefinitionId)),
   ];
   const definitions = await db
@@ -238,25 +310,25 @@ export async function bulkUpsertFieldValues(
     .from(memberFieldDefinitions)
     .where(
       and(
-        eq(memberFieldDefinitions.spaceId, spaceId),
-        inArray(memberFieldDefinitions.id, definitionIds),
+        eq(memberFieldDefinitions.spaceId, spaceInternalId),
+        inArray(memberFieldDefinitions.publicId, definitionPublicIds),
         isNull(memberFieldDefinitions.deletedAt),
       ),
     );
 
-  const definitionById = new Map(
-    definitions.map((definition) => [definition.id, definition]),
+  const definitionByPublicId = new Map(
+    definitions.map((definition) => [definition.publicId, definition]),
   );
 
-  for (const definitionId of definitionIds) {
-    if (!definitionById.has(definitionId)) {
+  for (const definitionPublicId of definitionPublicIds) {
+    if (!definitionByPublicId.has(definitionPublicId)) {
       throw new ServiceError(404, "필드 정의를 찾지 못했습니다.");
     }
   }
 
   const now = new Date();
   const upsertRows = values.map((payload) => {
-    const definition = definitionById.get(payload.fieldDefinitionId);
+    const definition = definitionByPublicId.get(payload.fieldDefinitionId);
 
     if (!definition) {
       throw new ServiceError(404, "필드 정의를 찾지 못했습니다.");
@@ -268,9 +340,9 @@ export async function bulkUpsertFieldValues(
     );
 
     return {
-      id: randomUUID(),
-      memberId,
-      fieldDefinitionId: payload.fieldDefinitionId,
+      publicId: generatePublicId(ID_PREFIX.memberFieldValues),
+      memberId: memberInternalId,
+      fieldDefinitionId: definition.id,
       valueText: valueColumns.valueText ?? null,
       valueNumber: valueColumns.valueNumber ?? null,
       valueBoolean: valueColumns.valueBoolean ?? null,

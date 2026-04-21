@@ -12,7 +12,7 @@ import { ServiceError } from "@/server/services/service-error";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-  templateId: z.string().uuid(),
+  templateId: z.string().min(1),
 });
 
 export async function POST(

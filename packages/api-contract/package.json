@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth": "./src/auth.ts",
+    "./card-decks": "./src/card-decks.ts",
     "./counseling-records": "./src/counseling-records.ts",
     "./contest": "./src/contest.ts",
     "./health": "./src/health.ts",

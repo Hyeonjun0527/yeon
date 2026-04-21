@@ -10,6 +10,7 @@ import {
   createDevLoginUser,
   isDevLoginAllowed,
   resolveDevLoginUserId,
+  verifyDevLoginRequestSecret,
 } from "@/server/auth/dev-login";
 import {
   createAuthSession,
@@ -23,7 +24,7 @@ function jsonError(message: string, status: number) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isDevLoginAllowed(request.nextUrl.hostname)) {
+  if (!isDevLoginAllowed() || !verifyDevLoginRequestSecret(request)) {
     return new NextResponse(null, { status: 404 });
   }
 

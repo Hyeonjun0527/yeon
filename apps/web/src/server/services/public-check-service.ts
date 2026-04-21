@@ -16,17 +16,28 @@ import {
   members,
   publicCheckSessions,
   publicCheckSubmissions,
+  spaces,
 } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 import type { RememberedPublicCheckIdentity } from "@/server/services/public-check-device-cookie";
+import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 import {
   assertSpaceOwnedByUser,
   persistMemberBoardSnapshot,
 } from "@/server/services/student-board-service";
 
-import { ServiceError } from "./service-error";
-
 type PublicCheckSessionRecord = typeof publicCheckSessions.$inferSelect;
 type MemberRecord = typeof members.$inferSelect;
+
+/**
+ * 내부 bigint FK와 외부 publicId를 함께 들고 다녀야 하는 세션 컨텍스트.
+ * 외부 노출용 DTO는 publicId를, DB write에는 bigint FK를 사용한다.
+ */
+type PublicCheckSessionContext = {
+  session: PublicCheckSessionRecord;
+  spacePublicId: string;
+};
 
 type MemberMatchFailure = {
   matched: null;
@@ -182,18 +193,25 @@ function haversineMeters(params: {
   return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function findActivePublicCheckSessionByToken(token: string) {
+async function findActivePublicCheckSessionByToken(
+  token: string,
+): Promise<PublicCheckSessionContext> {
   const db = getDb();
-  const [session] = await db
-    .select()
+  const [row] = await db
+    .select({
+      session: publicCheckSessions,
+      spacePublicId: spaces.publicId,
+    })
     .from(publicCheckSessions)
+    .innerJoin(spaces, eq(spaces.id, publicCheckSessions.spaceId))
     .where(eq(publicCheckSessions.publicToken, token))
     .limit(1);
 
-  if (!session || session.status !== "active") {
+  if (!row || row.session.status !== "active") {
     throw new ServiceError(404, "유효한 체크인 세션을 찾지 못했습니다.");
   }
 
+  const session = row.session;
   const now = new Date();
   if (session.opensAt && session.opensAt.getTime() > now.getTime()) {
     throw new ServiceError(403, "아직 열리지 않은 체크인 세션입니다.");
@@ -202,18 +220,29 @@ async function findActivePublicCheckSessionByToken(token: string) {
     throw new ServiceError(403, "이미 종료된 체크인 세션입니다.");
   }
 
-  return session;
+  return { session, spacePublicId: row.spacePublicId };
 }
 
-async function findSpaceMembers(spaceId: string) {
-  return getDb().select().from(members).where(eq(members.spaceId, spaceId));
+async function findSpaceMembers(spaceInternalId: bigint) {
+  return getDb()
+    .select()
+    .from(members)
+    .where(eq(members.spaceId, spaceInternalId));
 }
 
-async function findSpaceMemberById(spaceId: string, memberId: string) {
+async function findSpaceMemberByPublicId(
+  spaceInternalId: bigint,
+  memberPublicId: string,
+) {
   const [member] = await getDb()
     .select()
     .from(members)
-    .where(and(eq(members.spaceId, spaceId), eq(members.id, memberId)))
+    .where(
+      and(
+        eq(members.spaceId, spaceInternalId),
+        eq(members.publicId, memberPublicId),
+      ),
+    )
     .limit(1);
 
   return member ?? null;
@@ -287,11 +316,15 @@ export async function createPublicCheckSession(params: {
     );
   }
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(
+    params.spaceId,
+  );
   const db = getDb();
   const [session] = await db
     .insert(publicCheckSessions)
     .values({
-      spaceId: params.spaceId,
+      publicId: generatePublicId(ID_PREFIX.publicCheckSessions),
+      spaceId: spaceInternalId,
       title: params.body.title.trim(),
       publicToken: generatePublicToken(),
       status: "active",
@@ -310,7 +343,7 @@ export async function createPublicCheckSession(params: {
     .returning();
 
   return {
-    id: session.id,
+    id: session.publicId,
     title: session.title,
     status: session.status as "active" | "closed",
     checkMode: session.checkMode as
@@ -335,6 +368,10 @@ export async function updatePublicCheckSession(params: {
   closesAt?: string | null;
 }) {
   await assertSpaceOwnedByUser(params.userId, params.spaceId);
+
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(
+    params.spaceId,
+  );
   const db = getDb();
   const [updated] = await db
     .update(publicCheckSessions)
@@ -347,8 +384,8 @@ export async function updatePublicCheckSession(params: {
     })
     .where(
       and(
-        eq(publicCheckSessions.id, params.sessionId),
-        eq(publicCheckSessions.spaceId, params.spaceId),
+        eq(publicCheckSessions.publicId, params.sessionId),
+        eq(publicCheckSessions.spaceId, spaceInternalId),
       ),
     )
     .returning();
@@ -357,7 +394,22 @@ export async function updatePublicCheckSession(params: {
     throw new ServiceError(404, "체크인 세션을 찾지 못했습니다.");
   }
 
-  return updated;
+  return {
+    id: updated.publicId,
+    title: updated.title,
+    status: updated.status as "active" | "closed",
+    checkMode: updated.checkMode as
+      | "attendance_only"
+      | "assignment_only"
+      | "attendance_and_assignment",
+    enabledMethods: updated.enabledMethods as PublicCheckMethod[],
+    publicPath: `/check/${updated.publicToken}`,
+    opensAt: toIso(updated.opensAt),
+    closesAt: toIso(updated.closesAt),
+    locationLabel: updated.locationLabel ?? null,
+    radiusMeters: updated.radiusMeters ?? null,
+    createdAt: updated.createdAt.toISOString(),
+  };
 }
 
 export async function getPublicCheckSessionByToken(params: {
@@ -365,17 +417,19 @@ export async function getPublicCheckSessionByToken(params: {
   entry: PublicCheckEntry | null;
   rememberedIdentities?: RememberedPublicCheckIdentity[];
 }): Promise<GetPublicCheckSessionOutcome> {
-  const session = await findActivePublicCheckSessionByToken(params.token);
+  const { session, spacePublicId } = await findActivePublicCheckSessionByToken(
+    params.token,
+  );
   const rememberedMemberId =
     params.rememberedIdentities?.find(
-      (identity) => identity.spaceId === session.spaceId,
+      (identity) => identity.spaceId === spacePublicId,
     )?.memberId ?? null;
 
   let rememberedMemberName: string | null = null;
   let shouldClearRememberedIdentity = false;
 
   if (params.entry === "qr" && rememberedMemberId) {
-    const rememberedMember = await findSpaceMemberById(
+    const rememberedMember = await findSpaceMemberByPublicId(
       session.spaceId,
       rememberedMemberId,
     );
@@ -388,7 +442,7 @@ export async function getPublicCheckSessionByToken(params: {
   }
 
   return {
-    spaceId: session.spaceId,
+    spaceId: spacePublicId,
     session: buildPublicCheckSessionPublic(session, {
       entry: params.entry,
       rememberedMemberName,
@@ -401,7 +455,9 @@ export async function verifyPublicCheckIdentity(params: {
   token: string;
   body: VerifyPublicCheckIdentityBody;
 }): Promise<VerifyPublicCheckIdentityOutcome> {
-  const session = await findActivePublicCheckSessionByToken(params.token);
+  const { session, spacePublicId } = await findActivePublicCheckSessionByToken(
+    params.token,
+  );
 
   if (!isMethodEnabled(session.enabledMethods, "qr")) {
     throw new ServiceError(400, "이 세션은 QR 체크인을 지원하지 않습니다.");
@@ -415,7 +471,7 @@ export async function verifyPublicCheckIdentity(params: {
 
   if (!match.matched) {
     return {
-      spaceId: session.spaceId,
+      spaceId: spacePublicId,
       result: {
         verificationStatus: match.verificationStatus,
         message: match.message,
@@ -426,13 +482,13 @@ export async function verifyPublicCheckIdentity(params: {
   }
 
   return {
-    spaceId: session.spaceId,
+    spaceId: spacePublicId,
     result: {
       verificationStatus: "matched",
       message: "본인 확인이 완료되었습니다.",
       matchedMemberName: match.matched.name,
     },
-    rememberedMemberId: match.matched.id,
+    rememberedMemberId: match.matched.publicId,
   };
 }
 
@@ -441,10 +497,12 @@ export async function submitPublicCheck(params: {
   body: SubmitPublicCheckBody;
   rememberedIdentities?: RememberedPublicCheckIdentity[];
 }): Promise<SubmitPublicCheckOutcome> {
-  const session = await findActivePublicCheckSessionByToken(params.token);
+  const { session, spacePublicId } = await findActivePublicCheckSessionByToken(
+    params.token,
+  );
   const rememberedMemberId =
     params.rememberedIdentities?.find(
-      (identity) => identity.spaceId === session.spaceId,
+      (identity) => identity.spaceId === spacePublicId,
     )?.memberId ?? null;
 
   if (!isMethodEnabled(session.enabledMethods, params.body.method)) {
@@ -464,7 +522,10 @@ export async function submitPublicCheck(params: {
   let shouldClearRememberedIdentity = false;
 
   if (shouldUseRememberedIdentity) {
-    matched = await findSpaceMemberById(session.spaceId, rememberedMemberId!);
+    matched = await findSpaceMemberByPublicId(
+      session.spaceId,
+      rememberedMemberId!,
+    );
 
     if (!matched) {
       shouldClearRememberedIdentity = true;
@@ -502,6 +563,7 @@ export async function submitPublicCheck(params: {
         .insert(publicCheckSubmissions)
         .values({
           ...baseSubmission,
+          publicId: generatePublicId(ID_PREFIX.publicCheckSubmissions),
           memberId: null,
           verificationStatus: match.verificationStatus,
           distanceMeters: null,
@@ -509,7 +571,7 @@ export async function submitPublicCheck(params: {
         });
 
       return {
-        spaceId: session.spaceId,
+        spaceId: spacePublicId,
         result: {
           verificationStatus: match.verificationStatus,
           message: match.message,
@@ -560,6 +622,7 @@ export async function submitPublicCheck(params: {
       await getDb()
         .insert(publicCheckSubmissions)
         .values({
+          publicId: generatePublicId(ID_PREFIX.publicCheckSubmissions),
           sessionId: session.id,
           spaceId: session.spaceId,
           memberId: matched.id,
@@ -578,7 +641,7 @@ export async function submitPublicCheck(params: {
         });
 
       return {
-        spaceId: session.spaceId,
+        spaceId: spacePublicId,
         result: {
           verificationStatus: "outside_radius",
           message: "허용된 위치 반경 밖이라 체크인을 완료하지 못했습니다.",
@@ -593,8 +656,8 @@ export async function submitPublicCheck(params: {
   const happenedAt = new Date();
 
   await persistMemberBoardSnapshot({
-    memberId: matched.id,
-    spaceId: session.spaceId,
+    memberId: matched.publicId,
+    spaceId: spacePublicId,
     attendanceStatus: shouldMarkAttendance ? "present" : undefined,
     assignmentStatus: shouldMarkAssignment
       ? (params.body.assignmentStatus ?? "unknown")
@@ -604,7 +667,7 @@ export async function submitPublicCheck(params: {
       : undefined,
     source: params.body.method === "location" ? "public_location" : "public_qr",
     updatedByUserId: null,
-    sessionId: session.id,
+    sessionId: session.publicId,
     happenedAt,
     lastPublicCheckAt: happenedAt,
     historyMode: "always",
@@ -614,6 +677,7 @@ export async function submitPublicCheck(params: {
   await getDb()
     .insert(publicCheckSubmissions)
     .values({
+      publicId: generatePublicId(ID_PREFIX.publicCheckSubmissions),
       sessionId: session.id,
       spaceId: session.spaceId,
       memberId: matched.id,
@@ -630,13 +694,14 @@ export async function submitPublicCheck(params: {
     });
 
   return {
-    spaceId: session.spaceId,
+    spaceId: spacePublicId,
     result: {
       verificationStatus: "matched",
       message: buildSubmissionMessage(session),
       matchedMemberName: matched.name,
     },
-    rememberedMemberId: params.body.method === "qr" ? matched.id : null,
+    rememberedMemberId: params.body.method === "qr" ? matched.publicId : null,
     shouldClearRememberedIdentity,
   };
 }
+

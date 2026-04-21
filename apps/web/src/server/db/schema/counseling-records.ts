@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   index,
   integer,
   jsonb,
@@ -17,7 +18,10 @@ import { users } from "./users";
 export const counselingRecords = pgTable(
   "counseling_records",
   {
-    id: uuid("id").primaryKey(),
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
     createdByUserId: uuid("created_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -66,12 +70,18 @@ export const counselingRecords = pgTable(
     analysisAttemptCount: integer("analysis_attempt_count")
       .notNull()
       .default(0),
-    spaceId: uuid("space_id").references(() => spaces.id, {
-      onDelete: "set null",
-    }),
-    memberId: uuid("member_id").references(() => members.id, {
-      onDelete: "set null",
-    }),
+    spaceId: bigint("space_id", { mode: "bigint" }).references(
+      () => spaces.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    memberId: bigint("member_id", { mode: "bigint" }).references(
+      () => members.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     analysisResult: jsonb("analysis_result"),
     assistantMessages: jsonb("assistant_messages")
       .$type<unknown[]>()

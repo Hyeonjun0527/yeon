@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
     try {
       const overviewTab = await getOverviewTab(spaceId.trim());
       if (overviewTab) {
-        const fields = await getFieldsForTab(overviewTab.id, spaceId.trim());
+        const fields = await getFieldsForTab(
+          overviewTab.publicId,
+          spaceId.trim(),
+        );
         fieldHints = fields.map((f) => ({
           name: f.name,
           fieldType: f.fieldType,
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
       fileName = draft.row.sourceFileName;
       mimeType = draft.row.sourceMimeType ?? "";
       kind = draft.row.sourceFileKind as FileKind;
-      activeDraftId = draft.row.id;
+      activeDraftId = draft.row.publicId;
     } else if (file instanceof Blob) {
       fileName = (file as File).name;
       mimeType = file.type;
@@ -113,12 +116,14 @@ export async function POST(request: NextRequest) {
       return jsonError("file 또는 draftId 필드가 필요합니다.", 400);
     }
 
-    const ensuredDraftId = activeDraftId;
+    if (!activeDraftId) {
+      return jsonError("초안 식별자를 확인하지 못했습니다.", 500);
+    }
 
     return executeAnalyzeRoute({
       request,
       userId: currentUser.id,
-      draftId: ensuredDraftId,
+      draftId: activeDraftId,
       buffer,
       fileName,
       mimeType,

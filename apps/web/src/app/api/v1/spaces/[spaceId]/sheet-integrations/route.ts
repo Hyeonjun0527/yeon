@@ -7,6 +7,8 @@ import { getDb } from "@/server/db";
 import { sheetIntegrations } from "@/server/db/schema";
 import { extractSheetId } from "@/server/services/google-sheets-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import {
   jsonError,
@@ -41,11 +43,12 @@ export async function GET(
   const { spaceId } = await params;
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const db = getDb();
     const integrationList = await db
       .select()
       .from(sheetIntegrations)
-      .where(eq(sheetIntegrations.spaceId, spaceId));
+      .where(eq(sheetIntegrations.spaceId, spaceInternalId));
 
     return NextResponse.json({ integrations: integrationList });
   } catch (error) {
@@ -85,13 +88,15 @@ export async function POST(
   }
 
   try {
+    const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
     const sheetId = extractSheetId(parsed.data.sheetUrl);
     const db = getDb();
 
     const [integration] = await db
       .insert(sheetIntegrations)
       .values({
-        spaceId,
+        publicId: generatePublicId(ID_PREFIX.sheetIntegrations),
+        spaceId: spaceInternalId,
         sheetUrl: parsed.data.sheetUrl,
         sheetId,
         dataType: parsed.data.dataType,

@@ -19,6 +19,8 @@ import { getDb } from "@/server/db";
 import {
   counselingRecords,
   counselingTranscriptSegments,
+  members,
+  spaces,
 } from "@/server/db/schema";
 
 import { ServiceError } from "./service-error";
@@ -45,9 +47,12 @@ export type CounselingRecordRow = typeof counselingRecords.$inferSelect;
 type CounselingTranscriptSegmentRow =
   typeof counselingTranscriptSegments.$inferSelect;
 
+/**
+ * 외부 노출용 row. spaceId/memberId는 FK publicId(string)로 해석된 뒤 담긴다.
+ * DB 내부 bigint id는 `internalId` 필드로만 보존한다.
+ */
 export type CounselingRecordListRow = Pick<
   CounselingRecordRow,
-  | "id"
   | "createdByUserId"
   | "studentName"
   | "sessionTitle"
@@ -72,8 +77,6 @@ export type CounselingRecordListRow = Pick<
   | "analysisProgress"
   | "analysisErrorMessage"
   | "analysisAttemptCount"
-  | "spaceId"
-  | "memberId"
   | "errorMessage"
   | "language"
   | "sttModel"
@@ -81,16 +84,20 @@ export type CounselingRecordListRow = Pick<
   | "updatedAt"
   | "transcriptionCompletedAt"
   | "analysisCompletedAt"
->;
+> & {
+  id: string;
+  internalId: bigint;
+  spaceId: string | null;
+  memberId: string | null;
+};
 
-export type MemberRiskRecordRow = Pick<
-  CounselingRecordRow,
-  | "memberId"
-  | "analysisResult"
-  | "recordSource"
-  | "audioStoragePath"
-  | "createdAt"
->;
+export type MemberRiskRecordRow = {
+  memberId: string | null;
+  analysisResult: unknown;
+  recordSource: string;
+  audioStoragePath: string;
+  createdAt: Date;
+};
 
 export type CounselingRecordListQueryOptions = {
   limit?: number;
@@ -110,7 +117,8 @@ export type CounselingRecordDetailSource = {
 };
 
 const counselingRecordListSelection = {
-  id: counselingRecords.id,
+  id: counselingRecords.publicId,
+  internalId: counselingRecords.id,
   createdByUserId: counselingRecords.createdByUserId,
   studentName: counselingRecords.studentName,
   sessionTitle: counselingRecords.sessionTitle,
@@ -136,8 +144,8 @@ const counselingRecordListSelection = {
   analysisProgress: counselingRecords.analysisProgress,
   analysisErrorMessage: counselingRecords.analysisErrorMessage,
   analysisAttemptCount: counselingRecords.analysisAttemptCount,
-  spaceId: counselingRecords.spaceId,
-  memberId: counselingRecords.memberId,
+  spaceId: spaces.publicId,
+  memberId: members.publicId,
   errorMessage: counselingRecords.errorMessage,
   language: counselingRecords.language,
   sttModel: counselingRecords.sttModel,
@@ -156,6 +164,8 @@ async function executeRecordListQuery(params: {
   const query = db
     .select(counselingRecordListSelection)
     .from(counselingRecords)
+    .leftJoin(spaces, eq(spaces.id, counselingRecords.spaceId))
+    .leftJoin(members, eq(members.id, counselingRecords.memberId))
     .where(params.filters)
     .orderBy(
       params.order === "asc"
@@ -410,7 +420,7 @@ function guessExtensionFromMimeType(mimeType: string) {
 }
 
 export async function persistAudioFile(
-  recordId: string,
+  recordPublicId: string,
   file: File,
 ): Promise<PersistedAudio> {
   ensureAllowedAudioFile(file);
@@ -422,7 +432,7 @@ export async function persistAudioFile(
     path.basename(originalName, originalExtension),
   );
   const storagePath = path.posix.join(
-    recordId,
+    recordPublicId,
     `${Date.now()}-${safeStem}${originalExtension}`,
   );
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -526,7 +536,7 @@ export function mapSegmentRow(
   segment: CounselingTranscriptSegmentRow,
 ): CounselingTranscriptSegment {
   return {
-    id: segment.id,
+    id: segment.publicId,
     segmentIndex: segment.segmentIndex,
     startMs: segment.startMs,
     endMs: segment.endMs,
@@ -536,8 +546,15 @@ export function mapSegmentRow(
   };
 }
 
+/**
+ * DetailSource를 외부 DTO로 변환한다.
+ * - record는 CounselingRecordListRow 형태(id = publicId, spaceId/memberId = publicId)로 미리 매핑돼 있어야 한다.
+ */
 export function mapRecordDetail(
-  record: CounselingRecordRow,
+  record: CounselingRecordListRow & {
+    analysisResult: unknown;
+    assistantMessages: unknown;
+  },
   segments: CounselingTranscriptSegmentRow[],
 ): CounselingRecordDetail {
   return {
@@ -564,37 +581,92 @@ export function parseCounselingChatMessages(
 
 // ── DB 쿼리 ──
 
+/**
+ * publicId → 내부 bigint id 해석. 존재하지 않으면 null.
+ */
+export async function resolveRecordInternalIdByPublicId(
+  recordPublicId: string,
+): Promise<bigint | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: counselingRecords.id })
+    .from(counselingRecords)
+    .where(eq(counselingRecords.publicId, recordPublicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+async function resolveSpaceInternalIdByPublicId(
+  spacePublicId: string,
+): Promise<bigint | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: spaces.id })
+    .from(spaces)
+    .where(eq(spaces.publicId, spacePublicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+async function resolveMemberInternalIdByPublicId(
+  memberPublicId: string,
+): Promise<bigint | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: members.id })
+    .from(members)
+    .where(eq(members.publicId, memberPublicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function linkRecordToMember(
-  recordId: string,
-  memberId: string | null,
-  spaceId: string | null,
+  recordPublicId: string,
+  memberPublicId: string | null,
+  spacePublicId: string | null,
 ) {
   const db = getDb();
+  const memberInternalId = memberPublicId
+    ? await resolveMemberInternalIdByPublicId(memberPublicId)
+    : null;
+  const spaceInternalId = spacePublicId
+    ? await resolveSpaceInternalIdByPublicId(spacePublicId)
+    : null;
+
   await db
     .update(counselingRecords)
-    .set({ memberId, spaceId, updatedAt: new Date() })
-    .where(eq(counselingRecords.id, recordId));
+    .set({
+      memberId: memberInternalId,
+      spaceId: spaceInternalId,
+      updatedAt: new Date(),
+    })
+    .where(eq(counselingRecords.publicId, recordPublicId));
 }
 
 export async function replaceAssistantMessages(
-  recordId: string,
+  recordPublicId: string,
   assistantMessages: CounselingChatMessage[],
 ) {
   const db = getDb();
   await db
     .update(counselingRecords)
     .set({ assistantMessages, updatedAt: new Date() })
-    .where(eq(counselingRecords.id, recordId));
+    .where(eq(counselingRecords.publicId, recordPublicId));
 }
 
 export async function findRecordsBySpaceId(
   userId: string,
-  spaceId: string,
+  spacePublicId: string,
   options?: CounselingRecordListQueryOptions,
 ): Promise<CounselingRecordListRow[]> {
+  const spaceInternalId = await resolveSpaceInternalIdByPublicId(spacePublicId);
+  if (spaceInternalId === null) {
+    return [];
+  }
+
   return executeRecordListQuery({
     filters: and(
-      eq(counselingRecords.spaceId, spaceId),
+      eq(counselingRecords.spaceId, spaceInternalId),
       eq(counselingRecords.createdByUserId, userId),
       ...(options?.beforeCreatedAt
         ? [lt(counselingRecords.createdAt, options.beforeCreatedAt)]
@@ -640,12 +712,18 @@ export async function findUnlinkedRecords(
 
 export async function findRecordsByMemberId(
   userId: string,
-  memberId: string,
+  memberPublicId: string,
   options?: CounselingRecordListQueryOptions,
 ): Promise<CounselingRecordListRow[]> {
+  const memberInternalId =
+    await resolveMemberInternalIdByPublicId(memberPublicId);
+  if (memberInternalId === null) {
+    return [];
+  }
+
   return executeRecordListQuery({
     filters: and(
-      eq(counselingRecords.memberId, memberId),
+      eq(counselingRecords.memberId, memberInternalId),
       eq(counselingRecords.createdByUserId, userId),
       ...(options?.beforeCreatedAt
         ? [lt(counselingRecords.createdAt, options.beforeCreatedAt)]
@@ -658,9 +736,9 @@ export async function findRecordsByMemberId(
 
 export async function findOwnedRecordsByIds(
   userId: string,
-  recordIds: string[],
+  recordPublicIds: string[],
 ): Promise<CounselingRecordRow[]> {
-  if (recordIds.length === 0) {
+  if (recordPublicIds.length === 0) {
     return [];
   }
 
@@ -672,13 +750,15 @@ export async function findOwnedRecordsByIds(
     .where(
       and(
         eq(counselingRecords.createdByUserId, userId),
-        inArray(counselingRecords.id, recordIds),
+        inArray(counselingRecords.publicId, recordPublicIds),
       ),
     );
 }
 
-export async function findTranscriptSegmentsByRecordIds(recordIds: string[]) {
-  if (recordIds.length === 0) {
+export async function findTranscriptSegmentsByRecordIds(
+  recordInternalIds: bigint[],
+) {
+  if (recordInternalIds.length === 0) {
     return [];
   }
 
@@ -687,7 +767,7 @@ export async function findTranscriptSegmentsByRecordIds(recordIds: string[]) {
   return db
     .select()
     .from(counselingTranscriptSegments)
-    .where(inArray(counselingTranscriptSegments.recordId, recordIds))
+    .where(inArray(counselingTranscriptSegments.recordId, recordInternalIds))
     .orderBy(
       asc(counselingTranscriptSegments.recordId),
       asc(counselingTranscriptSegments.segmentIndex),
@@ -696,9 +776,9 @@ export async function findTranscriptSegmentsByRecordIds(recordIds: string[]) {
 
 export async function findOwnedRecordDetailSource(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
 ): Promise<CounselingRecordDetailSource> {
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   const segments = await findTranscriptSegments(record.id);
 
   return { record, segments };
@@ -706,43 +786,59 @@ export async function findOwnedRecordDetailSource(
 
 export async function findOwnedRecordDetailSourcesByIds(
   userId: string,
-  recordIds: string[],
+  recordPublicIds: string[],
 ): Promise<CounselingRecordDetailSource[]> {
-  if (recordIds.length === 0) {
+  if (recordPublicIds.length === 0) {
     return [];
   }
 
-  const records = await findOwnedRecordsByIds(userId, recordIds);
+  const records = await findOwnedRecordsByIds(userId, recordPublicIds);
   const segments = await findTranscriptSegmentsByRecordIds(
     records.map((record) => record.id),
   );
   const segmentsByRecordId = new Map<string, typeof segments>();
 
   for (const segment of segments) {
-    const group = segmentsByRecordId.get(segment.recordId);
+    const key = segment.recordId.toString();
+    const group = segmentsByRecordId.get(key);
 
     if (group) {
       group.push(segment);
     } else {
-      segmentsByRecordId.set(segment.recordId, [segment]);
+      segmentsByRecordId.set(key, [segment]);
     }
   }
 
   return records.map((record) => ({
     record,
-    segments: segmentsByRecordId.get(record.id) ?? [],
+    segments: segmentsByRecordId.get(record.id.toString()) ?? [],
   }));
 }
 
 export async function findRiskRecordsByMemberIds(
   userId: string,
-  memberIds: string[],
+  memberPublicIds: string[],
 ): Promise<MemberRiskRecordRow[]> {
-  if (memberIds.length === 0) {
+  if (memberPublicIds.length === 0) {
     return [];
   }
 
   const db = getDb();
+
+  const memberRows = await db
+    .select({ id: members.id, publicId: members.publicId })
+    .from(members)
+    .where(inArray(members.publicId, memberPublicIds));
+
+  if (memberRows.length === 0) {
+    return [];
+  }
+
+  const memberInternalIds = memberRows.map((row) => row.id);
+  const publicIdByInternalId = new Map(
+    memberRows.map((row) => [row.id.toString(), row.publicId]),
+  );
+
   const rankedRiskRecords = db
     .select({
       memberId: counselingRecords.memberId,
@@ -759,12 +855,12 @@ export async function findRiskRecordsByMemberIds(
     .where(
       and(
         eq(counselingRecords.createdByUserId, userId),
-        inArray(counselingRecords.memberId, memberIds),
+        inArray(counselingRecords.memberId, memberInternalIds),
       ),
     )
     .as("ranked_risk_records");
 
-  return db
+  const rows = await db
     .select({
       memberId: rankedRiskRecords.memberId,
       analysisResult: rankedRiskRecords.analysisResult,
@@ -774,6 +870,16 @@ export async function findRiskRecordsByMemberIds(
     })
     .from(rankedRiskRecords)
     .where(lte(rankedRiskRecords.rowNumber, 5));
+
+  return rows.map((row) => ({
+    memberId: row.memberId
+      ? (publicIdByInternalId.get(row.memberId.toString()) ?? null)
+      : null,
+    analysisResult: row.analysisResult,
+    recordSource: row.recordSource,
+    audioStoragePath: row.audioStoragePath,
+    createdAt: row.createdAt,
+  }));
 }
 
 export async function summarizeStudentsByName(
@@ -805,14 +911,14 @@ export async function summarizeStudentsByName(
   }));
 }
 
-export async function findOwnedRecord(userId: string, recordId: string) {
+export async function findOwnedRecord(userId: string, recordPublicId: string) {
   const db = getDb();
   const [record] = await db
     .select()
     .from(counselingRecords)
     .where(
       and(
-        eq(counselingRecords.id, recordId),
+        eq(counselingRecords.publicId, recordPublicId),
         eq(counselingRecords.createdByUserId, userId),
       ),
     )
@@ -825,13 +931,13 @@ export async function findOwnedRecord(userId: string, recordId: string) {
   return record;
 }
 
-export async function findTranscriptSegments(recordId: string) {
+export async function findTranscriptSegments(recordInternalId: bigint) {
   const db = getDb();
 
   return db
     .select()
     .from(counselingTranscriptSegments)
-    .where(eq(counselingTranscriptSegments.recordId, recordId))
+    .where(eq(counselingTranscriptSegments.recordId, recordInternalId))
     .orderBy(asc(counselingTranscriptSegments.segmentIndex));
 }
 
@@ -900,14 +1006,14 @@ export function parseSingleAudioRange(
 }
 
 export async function rebuildTranscriptText(
-  recordId: string,
+  recordInternalId: bigint,
   tx?: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
 ) {
   const conn = tx ?? getDb();
   const segments = await conn
     .select()
     .from(counselingTranscriptSegments)
-    .where(eq(counselingTranscriptSegments.recordId, recordId))
+    .where(eq(counselingTranscriptSegments.recordId, recordInternalId))
     .orderBy(asc(counselingTranscriptSegments.segmentIndex));
   const fullText = segments.map((s) => s.text).join("\n");
 
@@ -917,5 +1023,5 @@ export async function rebuildTranscriptText(
       transcriptText: fullText,
       updatedAt: new Date(),
     })
-    .where(eq(counselingRecords.id, recordId));
+    .where(eq(counselingRecords.id, recordInternalId));
 }

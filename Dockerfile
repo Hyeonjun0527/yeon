@@ -46,6 +46,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # 플랫폼에 따라 워크플로우에서 --build-arg NODE_MEMORY=<value> 로 조정한다.
 ARG NODE_MEMORY=4096
 
+# 타자 레이스 WebSocket 서버 URL (Next.js 빌드 시점에 번들에 인라인된다)
+ARG NEXT_PUBLIC_RACE_SERVER_URL
+ENV NEXT_PUBLIC_RACE_SERVER_URL=${NEXT_PUBLIC_RACE_SERVER_URL}
+
 RUN mkdir -p apps/web/public/test-data \
     && rm -f apps/web/public/test-data/test-counseling.mp3 \
       "apps/web/public/test-data/상담기록_테스트음성_20분.mp3" \

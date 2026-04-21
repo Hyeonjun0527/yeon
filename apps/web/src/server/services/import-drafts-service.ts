@@ -9,6 +9,7 @@ import {
 import type { FileKind } from "@/lib/file-kind";
 import { getDb } from "@/server/db";
 import { importDrafts } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import {
   importPreviewBodySchema,
@@ -84,7 +85,7 @@ function ensureImportDraftProcessingStage(value: string): ImportAnalysisStage {
 function buildDriveFile(row: ImportDraftRow) {
   const kind = row.sourceFileKind as FileKind;
   return {
-    id: row.sourceFileId ?? `local-draft:${row.id}`,
+    id: row.sourceFileId ?? `local-draft:${row.publicId}`,
     name: row.sourceFileName,
     size: row.sourceByteSize,
     lastModifiedAt: (row.sourceLastModifiedAt ?? row.createdAt).toISOString(),
@@ -113,11 +114,11 @@ function assertLocalImportKind(kind: FileKind) {
   }
 }
 
-async function findAccessibleDraft(userId: string, draftId: string) {
+async function findAccessibleDraft(userId: string, draftPublicId: string) {
   const db = getDb();
   const row = await db.query.importDrafts.findFirst({
     where: and(
-      eq(importDrafts.id, draftId),
+      eq(importDrafts.publicId, draftPublicId),
       eq(importDrafts.createdByUserId, userId),
       gt(importDrafts.expiresAt, new Date()),
     ),
@@ -164,6 +165,7 @@ export async function createLocalImportDraft(params: {
   const [row] = await db
     .insert(importDrafts)
     .values({
+      publicId: generatePublicId(ID_PREFIX.importDrafts),
       createdByUserId: params.userId,
       provider: "local",
       status: "uploaded",
@@ -182,7 +184,14 @@ export async function createLocalImportDraft(params: {
     })
     .returning();
 
-  return row;
+  if (!row) {
+    throw new ServiceError(500, "가져오기 초안을 생성하지 못했습니다.");
+  }
+
+  return {
+    ...row,
+    id: row.publicId,
+  };
 }
 
 export async function createCloudImportDraft(params: {
@@ -202,6 +211,7 @@ export async function createCloudImportDraft(params: {
   const [row] = await db
     .insert(importDrafts)
     .values({
+      publicId: generatePublicId(ID_PREFIX.importDrafts),
       createdByUserId: params.userId,
       provider: params.provider,
       status: "uploaded",
@@ -222,13 +232,20 @@ export async function createCloudImportDraft(params: {
     })
     .returning();
 
-  return row;
+  if (!row) {
+    throw new ServiceError(500, "가져오기 초안을 생성하지 못했습니다.");
+  }
+
+  return {
+    ...row,
+    id: row.publicId,
+  };
 }
 
 export async function getImportDraftSnapshot(userId: string, draftId: string) {
   const row = await findAccessibleDraft(userId, draftId);
   return {
-    id: row.id,
+    id: row.publicId,
     provider: ensureImportDraftProvider(row.provider),
     status: ensureImportDraftStatus(row.status),
     selectedFile: buildDriveFile(row),
@@ -268,7 +285,7 @@ export async function listImportDraftSnapshots(params: {
   });
 
   return rows.map((row) => ({
-    id: row.id,
+    id: row.publicId,
     provider: ensureImportDraftProvider(row.provider),
     status: ensureImportDraftStatus(row.status),
     selectedFile: buildDriveFile(row),
@@ -288,7 +305,7 @@ export async function deleteImportDraft(userId: string, draftId: string) {
     .delete(importDrafts)
     .where(
       and(
-        eq(importDrafts.id, draftId),
+        eq(importDrafts.publicId, draftId),
         eq(importDrafts.createdByUserId, userId),
       ),
     );
@@ -320,7 +337,7 @@ export async function getImportDraftBuffer(userId: string, draftId: string) {
 export async function getImportDraftSource(userId: string, draftId: string) {
   const row = await findAccessibleDraft(userId, draftId);
   return {
-    id: row.id,
+    id: row.publicId,
     provider: ensureImportDraftProvider(row.provider),
     selectedFile: buildDriveFile(row),
     expiresAt: row.expiresAt.toISOString(),
@@ -346,7 +363,7 @@ export async function markImportDraftAnalyzing(
     })
     .where(
       and(
-        eq(importDrafts.id, draftId),
+        eq(importDrafts.publicId, draftId),
         eq(importDrafts.createdByUserId, userId),
       ),
     );
@@ -387,7 +404,7 @@ export async function saveImportDraftProcessingState(params: {
     })
     .where(
       and(
-        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.publicId, params.draftId),
         eq(importDrafts.createdByUserId, params.userId),
       ),
     );
@@ -417,7 +434,7 @@ export async function saveImportDraftPreview(params: {
     })
     .where(
       and(
-        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.publicId, params.draftId),
         eq(importDrafts.createdByUserId, params.userId),
       ),
     );
@@ -442,7 +459,7 @@ export async function saveImportDraftError(params: {
     })
     .where(
       and(
-        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.publicId, params.draftId),
         eq(importDrafts.createdByUserId, params.userId),
       ),
     );
@@ -468,7 +485,7 @@ export async function markImportDraftImported(params: {
     })
     .where(
       and(
-        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.publicId, params.draftId),
         eq(importDrafts.createdByUserId, params.userId),
       ),
     );
@@ -493,7 +510,7 @@ export async function markImportDraftImporting(params: {
     })
     .where(
       and(
-        eq(importDrafts.id, params.draftId),
+        eq(importDrafts.publicId, params.draftId),
         eq(importDrafts.createdByUserId, params.userId),
       ),
     );

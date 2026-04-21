@@ -15,6 +15,8 @@ import {
 } from "@yeon/race-shared";
 import { type Client, Room } from "colyseus";
 
+type RoomLocale = "ko" | "en";
+
 type RoomParticipant = {
   id: string;
   label: string;
@@ -26,32 +28,24 @@ type RoomParticipant = {
   joinedAt: number;
 };
 
-const DEMO_PROMPT =
-  "열 초 카운트다운이 끝나면 눈보다 손이 먼저 나가지 않게 문장을 끝까지 밀어 보세요.";
+const DEMO_PROMPTS: Record<RoomLocale, string> = {
+  ko: "열 초 카운트다운이 끝나면 눈보다 손이 먼저 나가지 않게 문장을 끝까지 밀어 보세요.",
+  en: "Once the ten second countdown ends, let your fingers move forward through the sentence with a steady rhythm.",
+};
+
+const ROUND_LABEL_ID = "flow-focus"; // 클라이언트가 번역해 표시
 
 const BENCHMARKS = [
-  {
-    id: "benchmark-1",
-    label: "Benchmark Guest",
-    accent: TYPING_RACE_LANE_ACCENTS[1],
-    wpm: 265,
-  },
-  {
-    id: "benchmark-2",
-    label: "Benchmark Guest",
-    accent: TYPING_RACE_LANE_ACCENTS[2],
-    wpm: 241,
-  },
-  {
-    id: "benchmark-3",
-    label: "Benchmark Guest",
-    accent: TYPING_RACE_LANE_ACCENTS[3],
-    wpm: 227,
-  },
+  { id: "benchmark-1", label: "Guest", accent: TYPING_RACE_LANE_ACCENTS[1], wpm: 265 },
+  { id: "benchmark-2", label: "Guest", accent: TYPING_RACE_LANE_ACCENTS[2], wpm: 241 },
+  { id: "benchmark-3", label: "Guest", accent: TYPING_RACE_LANE_ACCENTS[3], wpm: 227 },
 ] as const;
 
+// 엔진 레인 수가 4개라 maxClients도 4로 고정 (LANE_Y_RATIOS 길이와 일치시켜 5~6번째 참여자 누락 방지)
+const MAX_PLAYERS_PER_ROOM = 4;
+
 export class TypingRaceRoom extends Room {
-  maxClients = TYPING_RACE_DEFAULTS.maxPlayers;
+  maxClients = MAX_PLAYERS_PER_ROOM;
 
   private readonly participants = new Map<string, RoomParticipant>();
 
@@ -65,15 +59,16 @@ export class TypingRaceRoom extends Room {
 
   private countdownAccumulator: number = 0;
 
-  onCreate() {
+  private finishCount: number = 0;
+
+  private locale: RoomLocale = "ko";
+
+  onCreate(options?: { locale?: string }) {
     this.roomName = TYPING_RACE_ROOM_NAME;
-    this.setMetadata({ mode: "typing-race" });
+    this.locale = options?.locale === "en" ? "en" : "ko";
+    this.setMetadata({ mode: "typing-race", locale: this.locale });
     this.resetRaceClock();
     this.bootstrapBenchmarks();
-
-    this.onMessage(RACE_EVENTS.MATCH_JOIN, (client, message) => {
-      this.registerParticipant(client, message as MatchJoinMessage);
-    });
 
     this.onMessage(RACE_EVENTS.RACE_PROGRESS, (client, message) => {
       this.updateParticipantProgress(client, message as RaceProgressMessage);
@@ -93,19 +88,10 @@ export class TypingRaceRoom extends Room {
 
   onJoin(client: Client, options: MatchJoinMessage) {
     this.registerParticipant(client, options);
-    client.send(RACE_EVENTS.MATCH_ACCEPTED, {
-      roomId: this.roomId,
-      roomName: TYPING_RACE_ROOM_NAME,
-      seat: client.sessionId,
-    });
     client.send(RACE_EVENTS.RACE_SEED, {
-      passageId: "flow-focus",
-      prompt: DEMO_PROMPT,
-      roundLabel: "Flow Focus",
-    });
-    client.send(RACE_EVENTS.RACE_COUNTDOWN, {
-      countdownSeconds: this.countdownRemaining,
-      startedAt: this.startedAt,
+      passageId: ROUND_LABEL_ID,
+      prompt: DEMO_PROMPTS[this.locale],
+      roundLabel: ROUND_LABEL_ID,
     });
     client.send(RACE_EVENTS.RACE_STATE, this.createSnapshot());
   }
@@ -167,11 +153,20 @@ export class TypingRaceRoom extends Room {
       Math.min(100, Math.round(message.accuracy)),
     );
 
+    this.finishCount += 1;
     client.send(RACE_EVENTS.RACE_RESULT, {
-      placement: 1,
+      placement: this.finishCount,
       totalPlayers: this.participants.size + this.benchmarks.size,
       completedAt: Date.now(),
     });
+
+    // 실제 참여자 모두 완주 시 FINISHED 전환 (벤치마크 제외)
+    const allFinished = Array.from(this.participants.values()).every(
+      (p) => p.progress >= 100,
+    );
+    if (allFinished && this.participants.size > 0) {
+      this.stage = TYPING_RACE_STAGE.FINISHED;
+    }
   }
 
   private tick(deltaTime: number) {
@@ -184,19 +179,19 @@ export class TypingRaceRoom extends Room {
 
         if (this.countdownRemaining === 0) {
           this.stage = TYPING_RACE_STAGE.LIVE;
+          // LIVE 전환 시 룸 잠금: 이후 joinOrCreate는 새 룸 생성
+          this.lock();
         }
       }
     }
 
     if (this.stage === TYPING_RACE_STAGE.LIVE) {
       const elapsedSeconds = (Date.now() - this.startedAt) / 1000;
-      let benchmarkOffset = 0;
+      const promptChars = Math.max(1, Array.from(DEMO_PROMPTS[this.locale]).length);
 
       this.benchmarks.forEach((benchmark) => {
-        const baseProgress =
-          elapsedSeconds * (benchmark.wpm / 12.4) + benchmarkOffset * 3;
-        benchmark.progress = clampRaceProgress(baseProgress);
-        benchmarkOffset += 1;
+        const charsTyped = elapsedSeconds * (benchmark.wpm / 60);
+        benchmark.progress = clampRaceProgress((charsTyped / promptChars) * 100);
       });
     }
 
@@ -208,13 +203,10 @@ export class TypingRaceRoom extends Room {
       ...this.participants.values(),
       ...this.benchmarks.values(),
     ]
-      .slice(0, 4)
+      .slice(0, MAX_PLAYERS_PER_ROOM)
       .map((participant) => ({
         id: participant.id,
-        label:
-          participant.role === TYPING_RACE_LANE_ROLE.LOCAL
-            ? `${participant.label} (you)`
-            : participant.label,
+        label: participant.label,
         accent: participant.accent,
         progress: participant.progress,
         wpm: participant.wpm,
@@ -224,15 +216,9 @@ export class TypingRaceRoom extends Room {
     return {
       stage: this.stage,
       countdownRemaining: this.countdownRemaining,
-      headline:
-        this.stage === TYPING_RACE_STAGE.COUNTDOWN
-          ? "출발선 정렬 중"
-          : "레이스 진행 중",
-      subheadline:
-        this.stage === TYPING_RACE_STAGE.COUNTDOWN
-          ? "카운트다운이 끝나면 입력 진행률에 맞춰 lane이 움직입니다."
-          : "로컬 입력과 benchmark lane이 같은 룸 상태를 기준으로 움직입니다.",
-      roundLabel: "Flow Focus",
+      headline: "",
+      subheadline: "",
+      roundLabel: ROUND_LABEL_ID,
       lanes,
     };
   }
