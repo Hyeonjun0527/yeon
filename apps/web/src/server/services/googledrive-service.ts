@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { resolveApiHrefForBasePath } from "@/lib/app-route-paths";
 import { DEFAULT_COUNSELING_SERVICE_HREF } from "@/lib/platform-services";
+import { decryptField, encryptField } from "@/server/auth/field-crypto";
 import { getDb } from "@/server/db";
 import { googledriveTokens } from "@/server/db/schema";
 import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
@@ -30,6 +31,23 @@ const SHEETS_REQUIRED_SCOPES = [
 const SCOPE = OAUTH_SCOPES.join(" ");
 
 type GoogleDriveTokenRow = typeof googledriveTokens.$inferSelect;
+
+/**
+ * 저장된 row에서 평문 access token을 복원한다.
+ * 암호화 컬럼이 채워져 있으면 우선 복호화하고, 없으면 평문 컬럼 fallback.
+ * (백필 완료 + 평문 컬럼 drop 후에는 fallback 경로가 사라진다.)
+ */
+function readPlainAccessToken(row: GoogleDriveTokenRow): string {
+  return row.accessTokenEncrypted
+    ? decryptField(row.accessTokenEncrypted)
+    : row.accessToken;
+}
+
+function readPlainRefreshToken(row: GoogleDriveTokenRow): string {
+  return row.refreshTokenEncrypted
+    ? decryptField(row.refreshTokenEncrypted)
+    : row.refreshToken;
+}
 
 function parseScopeSet(scopeText: string | undefined): Set<string> {
   return new Set(
@@ -226,6 +244,9 @@ export async function saveTokens(
   const db = getDb();
   const now = new Date();
 
+  const accessTokenEncrypted = encryptField(tokens.accessToken);
+  const refreshTokenEncrypted = encryptField(tokens.refreshToken);
+
   await db
     .insert(googledriveTokens)
     .values({
@@ -233,6 +254,8 @@ export async function saveTokens(
       userId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      accessTokenEncrypted,
+      refreshTokenEncrypted,
       expiresAt: tokens.expiresAt,
       updatedAt: now,
     })
@@ -241,6 +264,8 @@ export async function saveTokens(
       set: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
         expiresAt: tokens.expiresAt,
         updatedAt: now,
       },
@@ -251,7 +276,7 @@ export async function getSavedRefreshToken(
   userId: string,
 ): Promise<string | null> {
   const row = await getSavedTokenRow(userId);
-  return row?.refreshToken ?? null;
+  return row ? readPlainRefreshToken(row) : null;
 }
 
 export async function getValidAccessToken(
@@ -264,10 +289,10 @@ export async function getValidAccessToken(
   const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
 
   if (row.expiresAt > fiveMinutesFromNow) {
-    return row.accessToken;
+    return readPlainAccessToken(row);
   }
 
-  const refreshed = await refreshAccessToken(row.refreshToken);
+  const refreshed = await refreshAccessToken(readPlainRefreshToken(row));
   await saveTokens(userId, refreshed);
   return refreshed.accessToken;
 }

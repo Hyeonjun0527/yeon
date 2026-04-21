@@ -231,7 +231,16 @@
 
 ---
 
-## 8차 — S6 (Minor): 세션 슬라이딩 만료/회전
+## 8차 — S6 (Minor): 세션 슬라이딩 만료/회전 — **이번 사이클 보류**
+
+### 보류 사유 (2026-04-21)
+- 백로그 본 안(토큰 회전 + 쿠키 갱신 + 구 토큰 즉시 폐기)을 안전하게 적용하려면 클라 쿠키 갱신이 같이 일어나야 한다.
+- 그런데 `requireAuthenticatedUser` 호출부가 50곳이라 일괄 수정 부담 + 회귀 위험.
+- DB-only sliding(토큰 유지, expires만 연장)은 호출부 수정 없이 가능하지만, **leak된 토큰을 사용자 활동마다 자동 갱신해주는 보안 회귀**가 발생한다.
+- 따라서 cookie 회전 메커니즘을 middleware 기반으로 분리 설계하는 별도 차수에서 다룬다.
+- middleware 설계: edge runtime(DB 미가용) 한계 → Node.js runtime middleware 또는 응답 후처리 hook 형태 검토 필요.
+
+### 후속 진행 시 작업내용 (예약)
 
 ### 작업내용
 - `apps/web/src/server/auth/session.ts`
@@ -249,7 +258,14 @@
 
 ---
 
-## 9차 — S7 (Minor): Google id_token 검증
+## 9차 — S7 (Minor): Google id_token 검증 — **이번 사이클 보류**
+
+### 보류 사유 (2026-04-21)
+- Severity가 Minor(현 UserInfo 호출도 Google에 의한 검증된 access_token으로 보호되고, 추가 공격 벡터는 OAuth 흐름 전체를 깨야 가능).
+- 신규 의존성(`jose`) + JWKS 캐싱 인프라 도입은 단순 fix가 아니라 별도 설계.
+- 보안 1·4·5·6·7차로 Critical/Major가 모두 종결되므로, 9차는 후속 사이클에서 단독 차수로 진행한다.
+
+### 후속 진행 시 작업내용 (예약)
 
 ### 작업내용
 - `apps/web/src/server/auth/social-providers.ts`
