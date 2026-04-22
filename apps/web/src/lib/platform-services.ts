@@ -46,6 +46,16 @@ export const PLATFORM_SERVICES = [
     accessPolicy: platformServiceAccessPolicies.anonymous,
     status: platformServiceStatuses.live,
   },
+  {
+    slug: "card-service",
+    href: "/card-service",
+    title: "플래시카드 덱",
+    summary:
+      "내 덱을 만들고 카드를 추가해 앞뒷면을 뒤집으며 학습하는 개인용 플래시카드 서비스입니다.",
+    audience: "개인 학습자",
+    accessPolicy: platformServiceAccessPolicies.authRequired,
+    status: platformServiceStatuses.live,
+  },
 ] as const satisfies readonly PlatformServiceDescriptor[];
 
 export const PLATFORM_HOME_HREF = "/";

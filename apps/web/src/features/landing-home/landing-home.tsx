@@ -123,6 +123,7 @@ export function LandingHome({
               const serviceIcon: Record<string, string> = {
                 "counseling-service": "🎙️",
                 "typing-service": "⌨️",
+                "card-service": "🃏",
               };
 
               const cardBase =
