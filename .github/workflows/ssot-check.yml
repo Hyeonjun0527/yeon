@@ -1,0 +1,28 @@
+name: SSOT Check
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  ssot-check:
+    runs-on: ubuntu-latest
+    name: SSOT + 스킬 wrapper drift 검증
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 프로젝트 SSOT 건전성 검사
+        run: bash bin/verify-ssot.sh --project-only
+
+      - name: 스킬 wrapper 동기화 검사
+        run: bash bin/sync-skills.sh --check
+
+      - name: 실패 시 복구 안내
+        if: failure()
+        run: |
+          echo "::error::SSOT drift 또는 스킬 wrapper 불일치. 로컬에서 다음을 실행하세요:"
+          echo "  bin/setup.sh    # 최초 1회"
+          echo "  bin/sync-skills.sh"
+          echo "  bin/verify-ssot.sh"

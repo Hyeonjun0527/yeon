@@ -1,15 +1,73 @@
 #!/bin/sh
+# pre-commit — SSOT 검증이 최우선 (lint/typecheck 에 가려지지 않도록). major-1 대응.
+# SSOT 점검은 staged 파일 필터 없이 항상 실행. major-2 대응.
 
 set -eu
 
 repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
 
+# --- 1) SSOT 건전성 (최우선, 항상 실행) ---
+if [ -x "$repo_root/bin/verify-ssot.sh" ]; then
+  echo "[pre-commit] SSOT 건전성 점검"
+  if ! "$repo_root/bin/verify-ssot.sh"; then
+    echo "" >&2
+    echo "❌ SSOT 문제 감지. bin/repair-ssot.sh 실행 후 다시 커밋하세요." >&2
+    exit 1
+  fi
+fi
+
+if [ -x "$repo_root/bin/sync-skills.sh" ]; then
+  echo "[pre-commit] 스킬 wrapper 동기화 점검"
+  if ! "$repo_root/bin/sync-skills.sh" --check; then
+    echo "" >&2
+    echo "❌ 스킬 wrapper drift. bin/sync-skills.sh 실행 후 다시 커밋하세요." >&2
+    exit 1
+  fi
+fi
+
+# staged .claude/(commands|skills)/<n>.md 에 대응하는 .codex/skills/<n>/SKILL.md 도 staged 인지 확인.
+# critical-1 대응: wrapper 파일이 untracked/unstaged 상태로 원본만 커밋되는 drift 차단.
+staged_source_names=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^\.claude/(commands|skills)/[^/]+\.md$' \
+  | sed -E 's|^\.claude/(commands|skills)/([^/]+)\.md$|\2|' \
+  | LC_ALL=C sort -u || true)
+
+if [ -n "$staged_source_names" ]; then
+  missing_staged=""
+  for name in $staged_source_names; do
+    wrapper="$repo_root/.codex/skills/$name/SKILL.md"
+    if [ -f "$wrapper" ]; then
+      wrapper_rel=".codex/skills/$name/SKILL.md"
+      # 실제 파일 내용이 HEAD 와 다른데 staged 되지 않은 경우 거부
+      if ! git diff --cached --name-only | grep -qx "$wrapper_rel"; then
+        if git diff --name-only | grep -qx "$wrapper_rel" \
+           || ! git ls-files --error-unmatch "$wrapper_rel" >/dev/null 2>&1; then
+          missing_staged="${missing_staged}\n  - $wrapper_rel"
+        fi
+      fi
+    fi
+  done
+  if [ -n "$missing_staged" ]; then
+    printf "\n❌ 대응 Codex wrapper 가 staged 되지 않았습니다:%b\n\n커밋에 함께 포함하세요: git add .codex/skills/\n" "$missing_staged" >&2
+    exit 1
+  fi
+
+  # README.md 도 함께 staged 되어야 함 (sync-skills 가 갱신하는 파일)
+  readme_rel=".codex/skills/README.md"
+  if git diff --name-only | grep -qx "$readme_rel" \
+     && ! git diff --cached --name-only | grep -qx "$readme_rel"; then
+    echo "" >&2
+    echo "❌ $readme_rel 가 변경되었지만 staged 되지 않음. 함께 커밋하세요: git add $readme_rel" >&2
+    exit 1
+  fi
+fi
+
+# --- 2) pnpm 검증 ---
 if ! command -v pnpm >/dev/null 2>&1; then
   echo "pnpm을 찾을 수 없어 pre-commit 검증을 중단합니다." >&2
   exit 1
 fi
-
-cd "$repo_root"
 
 echo "[pre-commit] pnpm lint"
 pnpm lint
@@ -17,8 +75,7 @@ pnpm lint
 echo "[pre-commit] pnpm typecheck"
 pnpm typecheck
 
-# schema 또는 마이그레이션 파일이 staged 되어 있으면 drift 검사 강제.
-# schema 파일만 수정하고 drizzle-kit generate를 누락한 커밋을 차단한다.
+# --- 3) DB schema drift (staged DB 파일 있을 때만) ---
 staged_db_changes=$(git diff --cached --name-only --diff-filter=ACMR \
   | grep -E '^apps/web/(src/server/db/(schema|migrations)|drizzle\.config)' \
   || true)
