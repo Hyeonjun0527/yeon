@@ -165,12 +165,16 @@ jobs:
             NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
+          # provenance / sbom 은 cache export 를 무겁게 하고 여기선 쓰지 않으므로 off.
+          provenance: false
+          sbom: false
           cache-from: |
             type=local,src=${{ env.BUILDX_LOCAL_CACHE }}
             type=registry,ref=ghcr.io/hyeonjun0527/yeon-web-app:buildcache-arm64
+          # local 은 Pi 디스크라 빠르므로 mode=max 로 모든 layer 보관, registry 는 cross-runner fallback 용이라 min 으로 충분.
           cache-to: |
             type=local,dest=${{ env.BUILDX_LOCAL_CACHE }},mode=max
-            type=registry,ref=ghcr.io/hyeonjun0527/yeon-web-app:buildcache-arm64,mode=max
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-web-app:buildcache-arm64,mode=min
 
       - name: Export arm64 digest
         run: |
@@ -454,12 +458,16 @@ jobs:
           platforms: linux/arm64
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
+          # provenance / sbom 은 cache export 를 무겁게 하고 여기선 쓰지 않으므로 off.
+          provenance: false
+          sbom: false
           cache-from: |
             type=local,src=${{ env.BUILDX_LOCAL_CACHE }}
             type=registry,ref=ghcr.io/hyeonjun0527/yeon-race-server:buildcache-arm64
+          # local 은 Pi 디스크라 빠르므로 mode=max 로 모든 layer 보관, registry 는 cross-runner fallback 용이라 min 으로 충분.
           cache-to: |
             type=local,dest=${{ env.BUILDX_LOCAL_CACHE }},mode=max
-            type=registry,ref=ghcr.io/hyeonjun0527/yeon-race-server:buildcache-arm64,mode=max
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-race-server:buildcache-arm64,mode=min
 
       - name: Export arm64 digest
         run: |
