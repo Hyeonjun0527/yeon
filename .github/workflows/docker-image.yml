@@ -106,6 +106,10 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+      # Pi self-hosted runner 에 영구 보존되는 local buildx cache 경로.
+      # type=gha 는 미국 blob storage 와의 지연으로 레이어 다운로드에 초당 0.5MB 수준밖에 안 나왔으므로
+      # local 을 1차, GHCR registry 를 2차 fallback 으로 두어 네트워크 병목을 제거한다.
+      BUILDX_LOCAL_CACHE: /home/runner/.cache/buildx-yeon-web-arm64
 
     steps:
       - name: Checkout
@@ -140,7 +144,10 @@ jobs:
       - name: 디스크·이미지 정리 (빌드 전)
         run: |
           docker image prune -f --filter "until=48h"
-          docker builder prune -f --filter "until=48h"
+          docker builder prune -f --filter "until=48h" --keep-storage 10GB
+
+      - name: Prepare local buildx cache dir
+        run: mkdir -p "${BUILDX_LOCAL_CACHE}"
 
       - name: Build arm64 image by digest
         uses: docker/build-push-action@v6
@@ -154,8 +161,12 @@ jobs:
             NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=yeon-web-arm64
-          cache-to: type=gha,mode=min,scope=yeon-web-arm64
+          cache-from: |
+            type=local,src=${{ env.BUILDX_LOCAL_CACHE }}
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-web-app:buildcache-arm64
+          cache-to: |
+            type=local,dest=${{ env.BUILDX_LOCAL_CACHE }},mode=max
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-web-app:buildcache-arm64,mode=max
 
       - name: Export arm64 digest
         run: |
@@ -171,6 +182,10 @@ jobs:
           path: ${{ env.DIGEST_DIR }}/*
           if-no-files-found: error
           retention-days: 1
+
+      - name: Buildx cache prune (ARM64 local, 10GB 이하 유지)
+        if: always()
+        run: docker buildx prune -f --keep-storage 10GB --filter "until=168h" || true
 
   publish_manifest:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
@@ -382,6 +397,7 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+      BUILDX_LOCAL_CACHE: /home/runner/.cache/buildx-yeon-race-arm64
 
     steps:
       - name: Checkout
@@ -416,7 +432,10 @@ jobs:
       - name: 디스크·이미지 정리 (빌드 전)
         run: |
           docker image prune -f --filter "until=48h"
-          docker builder prune -f --filter "until=48h"
+          docker builder prune -f --filter "until=48h" --keep-storage 10GB
+
+      - name: Prepare local buildx cache dir
+        run: mkdir -p "${BUILDX_LOCAL_CACHE}"
 
       - name: Build race-server arm64 image by digest
         uses: docker/build-push-action@v6
@@ -427,8 +446,12 @@ jobs:
           platforms: linux/arm64
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=yeon-race-arm64
-          cache-to: type=gha,mode=min,scope=yeon-race-arm64
+          cache-from: |
+            type=local,src=${{ env.BUILDX_LOCAL_CACHE }}
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-race-server:buildcache-arm64
+          cache-to: |
+            type=local,dest=${{ env.BUILDX_LOCAL_CACHE }},mode=max
+            type=registry,ref=ghcr.io/hyeonjun0527/yeon-race-server:buildcache-arm64,mode=max
 
       - name: Export arm64 digest
         run: |
@@ -444,6 +467,10 @@ jobs:
           path: ${{ env.DIGEST_DIR }}/*
           if-no-files-found: error
           retention-days: 1
+
+      - name: Buildx cache prune (race ARM64 local, 10GB 이하 유지)
+        if: always()
+        run: docker buildx prune -f --keep-storage 10GB --filter "until=168h" || true
 
   publish_race_manifest:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
