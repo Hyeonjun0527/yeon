@@ -208,12 +208,19 @@ jobs:
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
-      - name: Download image digests
+      # pattern: 'digest-*' 는 prefix match 라 race-server 용 artifact(`digest-race-amd64` 등)까지 잡아
+      # digest 파일 개수 mismatch(3~4개)를 일으킨다. web 용 두 artifact 만 명시적으로 받는다.
+      - name: Download web amd64 digest
         uses: actions/download-artifact@v4
         with:
+          name: digest-amd64
           path: ${{ env.DIGEST_DIR }}
-          pattern: digest-*
-          merge-multiple: true
+
+      - name: Download web arm64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digest-arm64
+          path: ${{ env.DIGEST_DIR }}
 
       - name: Create and push multi-arch manifest
         working-directory: ${{ env.DIGEST_DIR }}
