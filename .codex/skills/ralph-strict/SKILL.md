@@ -1,6 +1,6 @@
 ---
 name: ralph-strict
-description: ralph 루프에 deep-interview 게이트와 story-level code-review를 구조적으로 의무화한 엄격 모드. 옵션 B — interview 1회 게이트 + 모호 재호출, review 각 story 후 + 최종 1회.
+description: ralph 루프에 inline Socratic 게이트와 story-level code-review를 구조적으로 의무화한 엄격 모드. wrapper 안에서 interview 를 직접 돌려 deep-interview 본체의 terminal handoff 문제를 회피한다.
 ---
 
 # ralph-strict

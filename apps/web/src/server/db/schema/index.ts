@@ -2,6 +2,21 @@ export { activityLogs } from "./activity-logs";
 export { authSessions } from "./auth-sessions";
 export { cardDecks } from "./card-decks";
 export { cardDeckItems } from "./card-deck-items";
+export {
+  chatServiceAskPosts,
+  chatServiceAskVotes,
+  chatServiceAuthChallenges,
+  chatServiceAuthSessions,
+  chatServiceBlocks,
+  chatServiceChatMessages,
+  chatServiceChatRooms,
+  chatServiceDemoMeta,
+  chatServiceDmUnlocks,
+  chatServiceFeedPosts,
+  chatServiceFriendLinks,
+  chatServiceProfiles,
+  chatServiceReports,
+} from "./chat-service";
 export { counselingRecords } from "./counseling-records";
 export { counselingTranscriptSegments } from "./counseling-transcript-segments";
 export { homeInsightBannerDismissals } from "./home-insight-banner-dismissals";

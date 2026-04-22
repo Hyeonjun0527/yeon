@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "YEON Chat Service",
+    "slug": "chat-service",
+    "scheme": "chat-service",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

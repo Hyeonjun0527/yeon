@@ -1,5 +1,6 @@
 export * from "./auth";
 export * from "./card-decks";
+export * from "./chat-service";
 export * from "./counseling-records";
 export * from "./contest";
 export * from "./error";

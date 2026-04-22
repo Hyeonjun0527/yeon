@@ -1,0 +1,29 @@
+# 작업 로그
+
+- 작업자: codex
+- 시작: 04:43
+- 종료: 05:02
+- 주제: chat-service strict code-review 개선 루프
+- 범위: runtime seed, profile source of truth, account delete failure boundary, report target validation, 재검증
+- 결정 반영:
+  - demo seed는 `ENABLE_CHAT_SERVICE_DEMO_SEED=true` 명시 opt-in으로만 허용
+  - public profile 조회는 차단 관계에서 403으로 제한
+- 수정 요약:
+  - runtime demo seed 무조건 실행 제거
+  - public profile route 추가 및 mobile profile detail source-of-truth 교체
+  - profile delete partial failure 경계 수정
+  - report target existence / room membership 검증 추가
+  - block relation을 feed/ask/friends suggestion/chat room list 및 room access에 반영
+- 검증:
+  - `pnpm --filter @yeon/mobile lint`
+  - `pnpm --filter @yeon/mobile typecheck`
+  - `pnpm --filter @yeon/api-contract typecheck`
+  - `pnpm --filter @yeon/api-client typecheck`
+  - `pnpm --filter @yeon/web lint`
+  - `pnpm --filter @yeon/web typecheck`
+  - `pnpm --filter @yeon/web build`
+  - `pnpm lint`
+  - `pnpm typecheck`
+- 결과:
+  - `.omc/reviews/US-002.md`, `US-004.md`, `US-005.md`, `US-006.md`, `FINAL.md` 갱신
+  - strict review loop 기준 unresolved critical/major/minor 0건
