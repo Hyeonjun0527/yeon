@@ -109,7 +109,8 @@ jobs:
       # Pi self-hosted runner 에 영구 보존되는 local buildx cache 경로.
       # type=gha 는 미국 blob storage 와의 지연으로 레이어 다운로드에 초당 0.5MB 수준밖에 안 나왔으므로
       # local 을 1차, GHCR registry 를 2차 fallback 으로 두어 네트워크 병목을 제거한다.
-      BUILDX_LOCAL_CACHE: /home/runner/.cache/buildx-yeon-web-arm64
+      # BUILDX_LOCAL_CACHE 는 Pi runner 유저의 실제 $HOME 이 /home/runner 가 아닐 수 있어
+      # job-level env 에 하드코딩하지 않고 "Resolve BUILDX_LOCAL_CACHE" 스텝에서 $HOME 기준으로 해석한다.
 
     steps:
       - name: Checkout
@@ -145,6 +146,9 @@ jobs:
         run: |
           docker image prune -f --filter "until=48h"
           docker builder prune -f --filter "until=48h" --keep-storage 10GB
+
+      - name: Resolve BUILDX_LOCAL_CACHE
+        run: echo "BUILDX_LOCAL_CACHE=$HOME/.cache/buildx-yeon-web-arm64" >> "$GITHUB_ENV"
 
       - name: Prepare local buildx cache dir
         run: mkdir -p "${BUILDX_LOCAL_CACHE}"
@@ -397,7 +401,8 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-arm64-${{ github.run_id }}-${{ github.run_attempt }}
-      BUILDX_LOCAL_CACHE: /home/runner/.cache/buildx-yeon-race-arm64
+      # BUILDX_LOCAL_CACHE 는 Pi runner 유저의 실제 $HOME 이 /home/runner 가 아닐 수 있어
+      # job-level env 에 하드코딩하지 않고 "Resolve BUILDX_LOCAL_CACHE" 스텝에서 $HOME 기준으로 해석한다.
 
     steps:
       - name: Checkout
@@ -433,6 +438,9 @@ jobs:
         run: |
           docker image prune -f --filter "until=48h"
           docker builder prune -f --filter "until=48h" --keep-storage 10GB
+
+      - name: Resolve BUILDX_LOCAL_CACHE
+        run: echo "BUILDX_LOCAL_CACHE=$HOME/.cache/buildx-yeon-race-arm64" >> "$GITHUB_ENV"
 
       - name: Prepare local buildx cache dir
         run: mkdir -p "${BUILDX_LOCAL_CACHE}"
