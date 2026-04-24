@@ -20,6 +20,7 @@ import {
   normalizeChatServicePhoneNumber,
   type ChatServiceProfileRow,
 } from "./common";
+import { sendChatServiceOtpSms } from "./sms-service";
 
 export const CHAT_SERVICE_SESSION_COOKIE_NAME = "chat-service-session";
 
@@ -28,6 +29,10 @@ type VerifyOtpInput = {
   phoneNumber: string;
   code: string;
 };
+
+function isChatServiceOtpBypassEnabled() {
+  return process.env.NODE_ENV !== "production";
+}
 
 function createChatServiceSessionToken() {
   return randomBytes(24).toString("hex");
@@ -74,6 +79,7 @@ export async function requestChatServiceOtp(phoneNumberInput: string) {
   const phoneNumber = normalizeChatServicePhoneNumber(phoneNumberInput);
   const expiresAt = new Date(Date.now() + CHAT_SERVICE_OTP_TTL_MS);
   const otpCode = createOtpCode();
+  const acceptAnyCode = isChatServiceOtpBypassEnabled();
   const [challenge] = await db
     .insert(chatServiceAuthChallenges)
     .values({
@@ -84,10 +90,26 @@ export async function requestChatServiceOtp(phoneNumberInput: string) {
     })
     .returning();
 
+  if (!acceptAnyCode) {
+    try {
+      await sendChatServiceOtpSms({
+        otpCode,
+        phoneNumber,
+      });
+    } catch (error) {
+      await db
+        .delete(chatServiceAuthChallenges)
+        .where(eq(chatServiceAuthChallenges.id, challenge.id));
+
+      throw error;
+    }
+  }
+
   return {
     challengeId: challenge.id,
     expiresAt: challenge.expiresAt.toISOString(),
-    debugCode: process.env.NODE_ENV === "production" ? null : otpCode,
+    acceptAnyCode,
+    debugCode: null,
   };
 }
 
@@ -114,7 +136,10 @@ export async function verifyChatServiceOtp(input: VerifyOtpInput) {
     throw new ServiceError(410, "인증번호가 만료되었습니다.");
   }
 
-  if (challenge.codeHash !== hashChatServiceSecret(input.code)) {
+  if (
+    !isChatServiceOtpBypassEnabled() &&
+    challenge.codeHash !== hashChatServiceSecret(input.code)
+  ) {
     throw new ServiceError(400, "인증번호가 올바르지 않습니다.");
   }
 

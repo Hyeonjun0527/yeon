@@ -1,6 +1,7 @@
 ---
 name: monorepo-patterns
-description: `apps/*`와 `packages/*` 경계를 유지하는 기준.
+description: |-
+  `apps/*`와 `packages/*` 경계를 유지하는 기준.
 ---
 
 # monorepo-patterns

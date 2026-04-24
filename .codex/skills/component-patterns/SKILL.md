@@ -1,6 +1,7 @@
 ---
 name: component-patterns
-description: 웹 컴포넌트와 UI 추상화 레벨을 정하는 기준.
+description: |-
+  웹 컴포넌트와 UI 추상화 레벨을 정하는 기준.
 ---
 
 # component-patterns

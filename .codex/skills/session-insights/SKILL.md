@@ -1,6 +1,7 @@
 ---
 name: session-insights
-description: 과거 세션 데이터를 분석하여 작업 패턴, git 활동, 유용했던 접근법을 정리하고 시각화한다.
+description: |-
+  과거 세션 데이터를 분석하여 작업 패턴, git 활동, 유용했던 접근법을 정리하고 시각화한다.
 ---
 
 # session-insights

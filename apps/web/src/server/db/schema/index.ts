@@ -36,3 +36,7 @@ export { userIdentities } from "./user-identities";
 export { onedriveTokens } from "./onedrive-tokens";
 export { googledriveTokens } from "./googledrive-tokens";
 export { users } from "./users";
+export { passwordCredentials } from "./password-credentials";
+export { emailVerificationTokens } from "./email-verification-tokens";
+export { passwordResetTokens } from "./password-reset-tokens";
+export { loginAttempts } from "./login-attempts";

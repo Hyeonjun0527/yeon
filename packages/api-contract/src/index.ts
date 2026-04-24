@@ -11,3 +11,5 @@ export * from "./instructor-workspace";
 export * from "./spaces";
 export * from "./student-board";
 export * from "./users";
+export * from "./credential";
+export * from "./card-deck-merge-guest";

@@ -1,6 +1,8 @@
 ---
 name: design-eye
-description: |
+description: |-
+  10년차 디자이너/기획자/프론트엔드의 안목으로 UI를 판단하고 개선하는 스킬.
+  UI 신규 작성, 수정, 디자인 리뷰, 카드/모달/페이지 레이아웃 설계 시 적용한다.
 ---
 
 # design-eye

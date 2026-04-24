@@ -6,5 +6,10 @@
     "baseUrl": ".",
     "noEmit": true
   },
-  "include": ["expo-env.d.ts", "app/**/*", "src/**/*"]
+  "include": [
+    "expo-env.d.ts",
+    "app/**/*",
+    "src/**/*",
+    ".expo/types/**/*.ts"
+  ]
 }

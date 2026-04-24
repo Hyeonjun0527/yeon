@@ -1,6 +1,7 @@
 ---
 name: self-improve-checklist
-description: 코드 작성 후 자기 점검 체크리스트.
+description: |-
+  코드 작성 후 자기 점검 체크리스트.
 ---
 
 # self-improve-checklist

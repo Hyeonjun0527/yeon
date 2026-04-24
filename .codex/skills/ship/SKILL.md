@@ -1,6 +1,7 @@
 ---
 name: ship
-description: 검증 → 커밋 → push → PR → develop 머지까지 일사천리로 수행하는 배포 플로우.
+description: |-
+  검증 → 커밋 → push → PR → develop 머지까지 일사천리로 수행하는 배포 플로우.
 ---
 
 # ship

@@ -3,7 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CardDeckDto } from "@yeon/api-contract/card-decks";
 
-export const CARD_DECKS_QUERY_KEY = ["card-decks"] as const;
+import { listGuestDecks } from "@/lib/guest-card-service-store";
+
+import { useIsAuthenticated } from "../auth-context";
+
+export function cardDecksQueryKey(isAuthenticated: boolean) {
+  return ["card-decks", isAuthenticated ? "server" : "guest"] as const;
+}
 
 async function fetchCardDecks(): Promise<CardDeckDto[]> {
   const res = await fetch("/api/v1/card-decks", { credentials: "include" });
@@ -15,8 +21,9 @@ async function fetchCardDecks(): Promise<CardDeckDto[]> {
 }
 
 export function useDeckList() {
+  const isAuthenticated = useIsAuthenticated();
   return useQuery({
-    queryKey: CARD_DECKS_QUERY_KEY,
-    queryFn: fetchCardDecks,
+    queryKey: cardDecksQueryKey(isAuthenticated),
+    queryFn: isAuthenticated ? fetchCardDecks : listGuestDecks,
   });
 }

@@ -1,6 +1,7 @@
 ---
 name: expo-patterns
-description: `apps/mobile`에서 Expo 앱 구조를 잡는 기준.
+description: |-
+  `apps/mobile`에서 Expo 앱 구조를 잡는 기준.
 ---
 
 # expo-patterns

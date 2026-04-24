@@ -3,8 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CardDeckDetailResponse } from "@yeon/api-contract/card-decks";
 
-export const CARD_DECK_DETAIL_QUERY_KEY = (deckId: string) =>
-  ["card-decks", deckId] as const;
+import { getGuestDeckDetail } from "@/lib/guest-card-service-store";
+
+import { useIsAuthenticated } from "../auth-context";
+
+export function cardDeckDetailQueryKey(
+  isAuthenticated: boolean,
+  deckId: string,
+) {
+  return ["card-decks", isAuthenticated ? "server" : "guest", deckId] as const;
+}
 
 async function fetchCardDeckDetail(
   deckId: string,
@@ -18,10 +26,22 @@ async function fetchCardDeckDetail(
   return (await res.json()) as CardDeckDetailResponse;
 }
 
+async function fetchGuestDeckDetail(
+  deckId: string,
+): Promise<CardDeckDetailResponse> {
+  const result = await getGuestDeckDetail(deckId);
+  if (!result) {
+    throw new Error("덱을 찾을 수 없습니다.");
+  }
+  return result;
+}
+
 export function useDeckDetail(deckId: string) {
+  const isAuthenticated = useIsAuthenticated();
   return useQuery({
-    queryKey: CARD_DECK_DETAIL_QUERY_KEY(deckId),
-    queryFn: () => fetchCardDeckDetail(deckId),
+    queryKey: cardDeckDetailQueryKey(isAuthenticated, deckId),
+    queryFn: () =>
+      isAuthenticated ? fetchCardDeckDetail(deckId) : fetchGuestDeckDetail(deckId),
     enabled: deckId.length > 0,
   });
 }

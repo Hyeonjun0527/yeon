@@ -10,6 +10,7 @@ describe("toAuthUserDto", () => {
       displayName: "멘토",
       avatarUrl: null,
       lastLoginAt: new Date("2026-04-12T10:00:00.000Z"),
+      emailVerifiedAt: null,
       createdAt: new Date("2026-04-12T09:00:00.000Z"),
       updatedAt: new Date("2026-04-12T10:00:00.000Z"),
     };
@@ -63,6 +64,7 @@ describe("toAuthUserDto", () => {
           displayName: "멘토",
           avatarUrl: null,
           lastLoginAt: new Date("2026-04-12T10:00:00.000Z"),
+          emailVerifiedAt: null,
           createdAt: new Date("2026-04-12T09:00:00.000Z"),
           updatedAt: new Date("2026-04-12T10:00:00.000Z"),
         },

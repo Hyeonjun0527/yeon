@@ -1,6 +1,7 @@
 ---
 name: nextjs-patterns
-description: `apps/web`에서 Next.js App Router를 다루는 기준.
+description: |-
+  `apps/web`에서 Next.js App Router를 다루는 기준.
 ---
 
 # nextjs-patterns

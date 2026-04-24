@@ -1,6 +1,7 @@
 ---
 name: clarify
-description: 사용자의 의도를 객관식 질문으로 명확하게 만들어주는 의도 명확화 스킬.
+description: |-
+  사용자의 의도를 객관식 질문으로 명확하게 만들어주는 의도 명확화 스킬.
 ---
 
 # clarify

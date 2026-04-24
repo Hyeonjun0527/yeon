@@ -1,6 +1,7 @@
 ---
 name: refactor-repo
-description: 현재 프로젝트 코드베이스에서 실제 리팩토링 대상을 최소 0개, 최대 10개 도출한다.
+description: |-
+  현재 프로젝트 코드베이스에서 실제 리팩토링 대상을 최소 0개, 최대 10개 도출한다.
 ---
 
 # refactor-repo

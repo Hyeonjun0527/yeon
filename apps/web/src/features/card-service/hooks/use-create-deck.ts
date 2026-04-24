@@ -6,7 +6,10 @@ import type {
   CreateCardDeckBody,
 } from "@yeon/api-contract/card-decks";
 
-import { CARD_DECKS_QUERY_KEY } from "./use-deck-list";
+import { createGuestDeck } from "@/lib/guest-card-service-store";
+
+import { useIsAuthenticated } from "../auth-context";
+import { cardDecksQueryKey } from "./use-deck-list";
 
 async function postCardDeck(body: CreateCardDeckBody): Promise<CardDeckDto> {
   const res = await fetch("/api/v1/card-decks", {
@@ -31,10 +34,14 @@ async function postCardDeck(body: CreateCardDeckBody): Promise<CardDeckDto> {
 
 export function useCreateDeck() {
   const queryClient = useQueryClient();
+  const isAuthenticated = useIsAuthenticated();
   return useMutation({
-    mutationFn: postCardDeck,
+    mutationFn: (body: CreateCardDeckBody) =>
+      isAuthenticated ? postCardDeck(body) : createGuestDeck(body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: CARD_DECKS_QUERY_KEY });
+      void queryClient.invalidateQueries({
+        queryKey: cardDecksQueryKey(isAuthenticated),
+      });
     },
   });
 }

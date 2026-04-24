@@ -1,6 +1,7 @@
 ---
 name: validate
-description: 코드 변경 후 실행하는 lint → format → typecheck → build 검증 파이프라인.
+description: |-
+  코드 변경 후 실행하는 lint → format → typecheck → build 검증 파이프라인.
 ---
 
 # validate

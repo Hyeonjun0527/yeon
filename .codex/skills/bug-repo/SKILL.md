@@ -1,6 +1,7 @@
 ---
 name: bug-repo
-description: 프로젝트 전체를 훑어 잠재 버그를 최소 0개, 최대 10개 탐색한다.
+description: |-
+  프로젝트 전체를 훑어 잠재 버그를 최소 0개, 최대 10개 탐색한다.
 ---
 
 # bug-repo

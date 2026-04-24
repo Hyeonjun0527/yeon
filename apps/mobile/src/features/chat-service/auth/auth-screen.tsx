@@ -11,10 +11,7 @@ import {
 } from "react-native";
 
 import { ActionButton } from "../../../components/ui/action-button";
-import { SectionCard } from "../../../components/ui/section-card";
-import { StateBlock } from "../../../components/ui/state-block";
 import { TextField } from "../../../components/ui/text-field";
-import { TopBar } from "../../../components/ui/top-bar";
 import { useChatServiceSession } from "../../../providers/chat-service-session-provider";
 import { colors } from "../../../theme/colors";
 
@@ -31,8 +28,16 @@ export function AuthScreen() {
   async function handleRequestOtp() {
     try {
       setIsSubmitting(true);
-      await requestOtp(phoneNumber.trim());
-      Alert.alert("인증번호 전송", "전화번호 인증 준비가 완료됐습니다.");
+      const nextChallenge = await requestOtp(phoneNumber.trim());
+
+      if (nextChallenge.acceptAnyCode) {
+        Alert.alert(
+          "개발환경 인증",
+          "개발환경에서는 인증번호에 아무 값이나 입력해도 입장됩니다.",
+        );
+      } else {
+        Alert.alert("인증번호 전송", "문자로 인증번호를 보냈습니다.");
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -64,80 +69,63 @@ export function AuthScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.keyboard}
     >
-      <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-        <TopBar
-          subtitle="전화번호 인증으로 바로 입장하는 모바일 전용 커뮤니티"
-          title="chat-service"
-        />
-
-        {status === "booting" ? (
-          <StateBlock
-            loading
-            message="저장된 세션을 확인하고 있습니다."
-            title="세션 확인 중"
-          />
-        ) : null}
-
-        <SectionCard>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>1단계</Text>
-            <Text style={styles.sectionTitle}>전화번호 입력</Text>
-            <Text style={styles.sectionDescription}>
-              소셜로그인 없이 서비스 전용 인증만 사용합니다.
-            </Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        style={styles.screen}
+      >
+        <View style={styles.shell}>
+          <View style={styles.header}>
+            <Text style={styles.headerBrand}>연챗 - 익명 친구 만들기</Text>
+            <Text style={styles.headerTitle}>회원가입</Text>
           </View>
 
-          <TextField
-            keyboardType="phone-pad"
-            label="전화번호"
-            onChangeText={setPhoneNumber}
-            placeholder="01012345678"
-            value={phoneNumber}
-          />
+          <View style={styles.formStack}>
+            <View style={styles.formBlock}>
+              <Text style={styles.blockTitle}>전화번호</Text>
+              <TextField
+                keyboardType="phone-pad"
+                label="휴대폰 번호"
+                onChangeText={setPhoneNumber}
+                placeholder="01012345678"
+                value={phoneNumber}
+              />
 
-          <ActionButton
-            disabled={isSubmitting || phoneNumber.trim().length < 10}
-            label="인증번호 요청"
-            onPress={handleRequestOtp}
-          />
-        </SectionCard>
-
-        {challenge ? (
-          <SectionCard>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEyebrow}>2단계</Text>
-              <Text style={styles.sectionTitle}>인증번호 확인</Text>
-              <Text style={styles.sectionDescription}>
-                {challenge.phoneNumber} 로 요청한 인증을 마무리합니다.
-              </Text>
+              <ActionButton
+                disabled={isSubmitting || phoneNumber.trim().length < 10}
+                label={challenge ? "인증번호 다시 요청" : "인증번호 요청"}
+                onPress={handleRequestOtp}
+              />
             </View>
 
-            <TextField
-              keyboardType="number-pad"
-              label="6자리 코드"
-              maxLength={6}
-              onChangeText={setCode}
-              placeholder="123456"
-              value={code}
-            />
+            {challenge ? (
+              <View style={styles.formBlock}>
+                <Text style={styles.blockTitle}>인증번호</Text>
+                <TextField
+                  keyboardType={
+                    challenge.acceptAnyCode ? "default" : "number-pad"
+                  }
+                  label={challenge.acceptAnyCode ? "임의 값" : "인증번호"}
+                  maxLength={challenge.acceptAnyCode ? undefined : 6}
+                  onChangeText={setCode}
+                  placeholder={
+                    challenge.acceptAnyCode ? "아무 값이나 입력" : "6자리 숫자"
+                  }
+                  value={code}
+                />
 
-            {challenge.debugCode ? (
-              <View style={styles.debugPanel}>
-                <Text style={styles.debugLabel}>개발용 코드</Text>
-                <Text style={styles.debugCode}>{challenge.debugCode}</Text>
-                <Text style={styles.debugHint}>
-                  운영 환경에서는 이 값이 내려오지 않습니다.
-                </Text>
+                <ActionButton
+                  disabled={
+                    isSubmitting ||
+                    code.trim().length < (challenge.acceptAnyCode ? 1 : 6)
+                  }
+                  label="입장하기"
+                  onPress={handleVerifyOtp}
+                />
               </View>
             ) : null}
-
-            <ActionButton
-              disabled={isSubmitting || code.trim().length !== 6}
-              label="입장하기"
-              onPress={handleVerifyOtp}
-            />
-          </SectionCard>
-        ) : null}
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -152,52 +140,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 18,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    paddingTop: 28,
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: 48,
+    paddingHorizontal: 24,
+    paddingTop: 48,
   },
-  sectionHeader: {
-    gap: 6,
-    marginBottom: 14,
+  shell: {
+    alignSelf: "center",
+    gap: 40,
+    maxWidth: 360,
+    width: "100%",
   },
-  sectionEyebrow: {
-    color: colors.warm,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.4,
+  header: {
+    alignItems: "center",
+    gap: 10,
   },
-  sectionTitle: {
+  headerBrand: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: "900",
-    letterSpacing: -0.5,
-  },
-  sectionDescription: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  debugPanel: {
-    backgroundColor: colors.backgroundMuted,
-    borderRadius: 18,
-    gap: 4,
-    padding: 14,
-  },
-  debugLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "700",
+    textAlign: "center",
   },
-  debugCode: {
-    color: colors.accent,
-    fontSize: 32,
+  headerTitle: {
+    color: colors.text,
+    fontSize: 36,
     fontWeight: "900",
-    letterSpacing: 8,
+    letterSpacing: -0.8,
+    textAlign: "center",
   },
-  debugHint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
+  formStack: {
+    gap: 16,
+  },
+  formBlock: {
+    backgroundColor: colors.white,
+    borderColor: colors.border,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 14,
+    padding: 18,
+  },
+  blockTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
 });

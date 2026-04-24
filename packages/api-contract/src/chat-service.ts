@@ -39,13 +39,14 @@ export const chatServiceRequestOtpBodySchema = z.object({
 export const chatServiceRequestOtpResponseSchema = z.object({
   challengeId: z.string().uuid(),
   expiresAt: z.string().datetime(),
+  acceptAnyCode: z.boolean(),
   debugCode: z.string().length(6).nullable(),
 });
 
 export const chatServiceVerifyOtpBodySchema = z.object({
   challengeId: z.string().uuid(),
   phoneNumber: z.string().min(10).max(20),
-  code: z.string().length(6),
+  code: z.string().trim().min(1).max(32),
 });
 
 export const chatServiceVerifyOtpResponseSchema = z.object({

@@ -14,6 +14,13 @@ export const authErrorCodes = {
   emailRequired: "email_required",
   emailNotVerified: "email_not_verified",
   providerConflict: "provider_conflict",
+  invalidCredentials: "invalid_credentials",
+  passwordPolicyViolation: "password_policy_violation",
+  emailAlreadyRegistered: "email_already_registered",
+  accountLocked: "account_locked",
+  rateLimitExceeded: "rate_limit_exceeded",
+  invalidVerificationToken: "invalid_verification_token",
+  invalidResetToken: "invalid_reset_token",
   serverError: "server_error",
 } as const;
 
@@ -122,6 +129,54 @@ export function getAuthErrorCopy(
         title: "같은 공급자에 다른 계정이 이미 연결되어 있어요",
         description:
           "기존에 연결된 동일 공급자 계정과 현재 로그인한 계정이 다릅니다. 같은 계정으로 다시 시도해 주세요.",
+      };
+    case authErrorCodes.invalidCredentials:
+      return {
+        reason: normalizedReason,
+        title: "이메일 또는 비밀번호가 올바르지 않아요",
+        description:
+          "입력한 정보를 다시 확인해 주세요. 비밀번호가 기억나지 않으면 재설정을 이용할 수 있습니다.",
+      };
+    case authErrorCodes.passwordPolicyViolation:
+      return {
+        reason: normalizedReason,
+        title: "비밀번호 형식이 올바르지 않아요",
+        description:
+          "최소 8자 이상 72자 이하로, 공백 없이 입력해 주세요.",
+      };
+    case authErrorCodes.emailAlreadyRegistered:
+      return {
+        reason: normalizedReason,
+        title: "이미 가입된 이메일이에요",
+        description:
+          "기존 계정으로 로그인하거나 비밀번호 재설정을 이용해 주세요.",
+      };
+    case authErrorCodes.accountLocked:
+      return {
+        reason: normalizedReason,
+        title: "로그인 시도가 너무 많아 잠시 잠겨 있어요",
+        description:
+          "잠시 후 다시 시도하거나, 비밀번호 재설정으로 계정을 복구할 수 있습니다.",
+      };
+    case authErrorCodes.rateLimitExceeded:
+      return {
+        reason: normalizedReason,
+        title: "요청이 너무 많아요",
+        description: "잠시 후 다시 시도해 주세요.",
+      };
+    case authErrorCodes.invalidVerificationToken:
+      return {
+        reason: normalizedReason,
+        title: "인증 링크가 만료되었거나 사용할 수 없어요",
+        description:
+          "새로운 인증 메일을 다시 받아 진행해 주세요.",
+      };
+    case authErrorCodes.invalidResetToken:
+      return {
+        reason: normalizedReason,
+        title: "비밀번호 재설정 링크가 만료되었거나 사용할 수 없어요",
+        description:
+          "비밀번호 재설정을 다시 요청해 주세요.",
       };
     default:
       return {

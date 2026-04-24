@@ -15,7 +15,9 @@
     "./error": "./src/error.ts",
     "./instructor-dashboard": "./src/instructor-dashboard.ts",
     "./instructor-workspace": "./src/instructor-workspace.ts",
-    "./spaces": "./src/spaces.ts"
+    "./spaces": "./src/spaces.ts",
+    "./credential": "./src/credential.ts",
+    "./card-deck-merge-guest": "./src/card-deck-merge-guest.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",

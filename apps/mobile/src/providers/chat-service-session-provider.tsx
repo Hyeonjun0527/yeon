@@ -14,6 +14,7 @@ type ChallengeState = {
   challengeId: string;
   phoneNumber: string;
   expiresAt: string;
+  acceptAnyCode: boolean;
   debugCode: string | null;
 };
 
@@ -27,7 +28,7 @@ type ChatServiceSessionContextValue = {
   status: ChatServiceSessionStatus;
   session: ChatServiceSessionDto | null;
   challenge: ChallengeState | null;
-  requestOtp: (phoneNumber: string) => Promise<void>;
+  requestOtp: (phoneNumber: string) => Promise<ChallengeState>;
   verifyOtp: (code: string) => Promise<void>;
   refreshSession: () => Promise<void>;
   logout: () => Promise<void>;
@@ -53,14 +54,20 @@ export function ChatServiceSessionProvider({
   }, []);
 
   async function bootstrap() {
-    const token = await readChatServiceSessionToken();
+    try {
+      const token = await readChatServiceSessionToken();
 
-    if (!token) {
+      if (!token) {
+        setStatus("signed_out");
+        return;
+      }
+
+      await restoreSession(token);
+    } catch {
+      setSession(null);
+      setChallenge(null);
       setStatus("signed_out");
-      return;
     }
-
-    await restoreSession(token);
   }
 
   async function restoreSession(token: string) {
@@ -89,13 +96,17 @@ export function ChatServiceSessionProvider({
       phoneNumber,
     });
 
-    setChallenge({
+    const nextChallenge = {
       challengeId: response.challengeId,
       phoneNumber,
       expiresAt: response.expiresAt,
+      acceptAnyCode: response.acceptAnyCode,
       debugCode: response.debugCode,
-    });
+    };
+
+    setChallenge(nextChallenge);
     setStatus("awaiting_otp");
+    return nextChallenge;
   }
 
   async function verifyOtp(code: string) {

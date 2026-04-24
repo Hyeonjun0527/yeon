@@ -36,7 +36,8 @@ render_expected() {
   cat <<EOF
 ---
 name: $name
-description: $description
+description: |-
+$(printf '%s\n' "$description" | sed 's/^/  /')
 ---
 
 # $name
@@ -56,6 +57,65 @@ description: $description
 3. 사용자가 전달한 인자(\$ARGUMENTS)가 있으면 그 의도를 유지한 채 동일 workflow 로 실행한다.
 4. 이 wrapper 는 \`bin/sync-skills.sh\` 가 자동 생성한다. 직접 수정하지 말고 SSOT 파일을 편집한다.
 EOF
+}
+
+extract_description() {
+  local source_file="$1"
+  awk '
+    BEGIN {
+      in_frontmatter = 0
+      in_description_block = 0
+      has_output = 0
+    }
+
+    NR == 1 && $0 == "---" {
+      in_frontmatter = 1
+      next
+    }
+
+    in_frontmatter && $0 == "---" {
+      exit
+    }
+
+    !in_frontmatter {
+      exit
+    }
+
+    in_description_block {
+      if ($0 ~ /^  /) {
+        line = $0
+        sub(/^  /, "", line)
+        if (has_output) {
+          printf "\n"
+        }
+        printf "%s", line
+        has_output = 1
+        next
+      }
+
+      if ($0 == "") {
+        if (has_output) {
+          printf "\n"
+        }
+        has_output = 1
+        next
+      }
+
+      exit
+    }
+
+    /^description:[[:space:]]*[>|][+-]?[[:space:]]*$/ {
+      in_description_block = 1
+      next
+    }
+
+    /^description:[[:space:]]*/ {
+      line = $0
+      sub(/^description:[[:space:]]*/, "", line)
+      printf "%s", line
+      exit
+    }
+  ' "$source_file"
 }
 
 # 본문 파일 판정: frontmatter (`---` 로 시작) 가 있으면 full body, 없으면 thin slash trigger.
@@ -161,7 +221,7 @@ while IFS= read -r name; do
   wrapper_dir="$CODEX_DIR/skills/$name"
   wrapper_file="$wrapper_dir/SKILL.md"
 
-  description=$(awk '/^description: /{sub(/^description: /,""); print; exit}' "$REPO_ROOT/$source_rel" || true)
+  description=$(extract_description "$REPO_ROOT/$source_rel" || true)
   [ -z "$description" ] && description="Claude 측 $source_rel 의 Codex wrapper."
 
   expected=$(render_expected "$name" "$source_rel" "$description")
