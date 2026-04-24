@@ -1,4 +1,5 @@
 import {
+  bigint,
   index,
   jsonb,
   pgTable,
@@ -11,14 +12,21 @@ import {
 import { sheetIntegrations } from "./sheet-integrations";
 import { spaces } from "./spaces";
 
+/**
+ * member_id는 외부 sheet row의 식별자로 쓰이는 uuid 값이라 FK를 걸지 않고
+ * uuid를 그대로 유지한다 (다른 도메인 테이블의 bigint FK와 구분).
+ */
 export const sheetIntegrationMemberSnapshots = pgTable(
   "sheet_integration_member_snapshots",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    integrationId: uuid("integration_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    integrationId: bigint("integration_id", { mode: "bigint" })
       .notNull()
       .references(() => sheetIntegrations.id, { onDelete: "cascade" }),
-    spaceId: uuid("space_id")
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
     memberId: uuid("member_id").notNull(),

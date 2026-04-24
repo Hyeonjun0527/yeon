@@ -6,6 +6,7 @@ import {
   ensureStudentBoardSystemTab,
   SYNTHETIC_STUDENT_BOARD_TAB_ID,
 } from "@/lib/member-system-tabs";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 export interface DynamicTab {
   id: string;
@@ -32,7 +33,9 @@ export function useDynamicMemberTabs(spaceId: string | null) {
     queryKey,
     enabled: !!spaceId,
     queryFn: async () => {
-      const res = await fetch(`/api/v1/spaces/${spaceId}/member-tabs`);
+      const res = await fetch(
+        resolveApiHrefForCurrentPath(`/api/v1/spaces/${spaceId}/member-tabs`),
+      );
       if (!res.ok) {
         throw new Error("탭 목록을 불러오지 못했습니다.");
       }

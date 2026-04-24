@@ -69,8 +69,8 @@ export function StudentDetailScreen({
   });
   const detailSpaceId = member?.spaceId ?? selectedSpaceId;
   const backHref = detailSpaceId
-    ? `${resolveAppHref("/home/student-management")}?spaceId=${detailSpaceId}`
-    : resolveAppHref("/home/student-management");
+    ? `${resolveAppHref("/counseling-service/student-management")}?spaceId=${detailSpaceId}`
+    : resolveAppHref("/counseling-service/student-management");
   const {
     memos: memberMemos,
     newMemoText: memberMemoText,
@@ -129,12 +129,16 @@ export function StudentDetailScreen({
   const handleOpenMemberRecordEntry = React.useCallback(
     (memberId: string, memberName: string, spaceId: string) => {
       router.push(
-        createPatchedHref(resolveAppHref("/home"), new URLSearchParams(), {
-          spaceId,
-          memberId,
-          studentName: memberName,
-          newRecordEntry: "true",
-        }),
+        createPatchedHref(
+          resolveAppHref("/counseling-service"),
+          new URLSearchParams(),
+          {
+            spaceId,
+            memberId,
+            studentName: memberName,
+            newRecordEntry: "true",
+          },
+        ),
       );
     },
     [resolveAppHref, router],

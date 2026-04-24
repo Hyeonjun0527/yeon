@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   jsonb,
   pgTable,
@@ -27,7 +28,10 @@ import { users } from "./users";
  * ]
  */
 export const spaceTemplates = pgTable("space_templates", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: bigint("id", { mode: "bigint" })
+    .primaryKey()
+    .generatedAlwaysAsIdentity(),
+  publicId: text("public_id").notNull().unique(),
 
   /**
    * null 이면 시스템 제공 템플릿 (삭제 불가)

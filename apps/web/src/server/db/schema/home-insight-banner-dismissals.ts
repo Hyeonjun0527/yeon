@@ -1,6 +1,8 @@
 import {
+  bigint,
   index,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -12,7 +14,10 @@ import { users } from "./users";
 export const homeInsightBannerDismissals = pgTable(
   "home_insight_banner_dismissals",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

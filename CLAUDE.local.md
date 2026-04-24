@@ -5,14 +5,16 @@
 
 ## OAuth 리디렉션 URI 규칙
 
-OAuth 앱(Google, Microsoft 등) 설정 시 리디렉션 URI는 반드시 4개를 등록한다:
+상담 연동 OAuth 앱(Google Drive, Microsoft 등) 설정 시 리디렉션 URI는 반드시 4개를 등록한다:
 
 ```
-http://localhost:3000/api/v1/integrations/<provider>/auth/callback
-https://yeon.world/api/v1/integrations/<provider>/auth/callback
-https://www.yeon.world/api/v1/integrations/<provider>/auth/callback
-https://dev.yeon.world/api/v1/integrations/<provider>/auth/callback
+http://localhost:3000/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://www.yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
+https://dev.yeon.world/counseling-service/api/v1/integrations/<provider>/auth/callback
 ```
+
+루트 소셜 로그인(Kakao, Google Sign-In)은 별도이며 `/api/auth/<provider>/callback`를 유지한다.
 
 ## 작업 스타일
 
@@ -32,8 +34,9 @@ https://dev.yeon.world/api/v1/integrations/<provider>/auth/callback
 ## 개발 계획 / 백로그 규칙
 
 - 코드 수정, 리팩토링, 설계 변경, API 추가, DDL 변경처럼 실제 개발 작업에 들어가기 전에는 반드시 먼저 백로그 문서를 작성한다.
-- 백로그 문서는 항상 `personal_space/YYYY-MM-DD/N-적당한이름_BACKLOG.md` 경로에 작성한다.
+- 백로그 문서는 항상 `personal_space/ai-log/YYYY-MM-DD/N-적당한이름_BACKLOG.md` 경로에 작성한다. 2026-04-23 이전 경로(`personal_space/YYYY-MM-DD/...`)는 하위 호환 용도로 유지하고, 새 문서는 `ai-log/` 하위로만 작성한다.
 - 이미 같은 주제의 백로그를 완료했다면 기존 파일명에는 `(완)`을 붙여 보관하고, 새 백로그는 숫자를 이어 붙인 새 파일로 만든다.
+- 실행 주체 기반 작업 문서는 별도 네이밍을 쓴다: `N-작업-{claude|codex}_{시작HHMM}-{종료HHMM}_{주제}_[작업중|완료].md`. 같은 날짜 디렉터리 안에서 백로그와 공존한다.
 - 개발 계획은 `차수` 단위 backlog 형식으로 작성한다.
 - 각 차수에는 최소한 `작업내용`, `논의 필요`, `선택지`, `추천`, `사용자 방향` 항목이 있어야 한다.
 - `사용자 방향`이 비어 있으면 `추천` 기준으로 진행한다.

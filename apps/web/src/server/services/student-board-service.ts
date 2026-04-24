@@ -18,9 +18,12 @@ import {
   spaceMemberBoards,
   spaces,
 } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { getMembers } from "./members-service";
 import { ServiceError } from "./service-error";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
+import { requireMemberInternalIdByPublicId } from "./members-service";
 
 const HISTORY_TIME_ZONE = "Asia/Seoul";
 const HISTORY_PERIOD_DAY_COUNT: Record<
@@ -86,17 +89,28 @@ function toStudentBoardDailyCell(
   };
 }
 
-function buildDailyCellMapByMember(rows: BoardHistoryRecord[]) {
+function buildDailyCellMapByMember(
+  rows: BoardHistoryRecord[],
+  memberPublicIdByInternalId: Map<string, string>,
+) {
   const cellsByMember = new Map<string, Map<string, StudentBoardDailyCell>>();
 
   for (const row of rows) {
+    const memberPublicId = memberPublicIdByInternalId.get(
+      row.memberId.toString(),
+    );
+
+    if (!memberPublicId) {
+      continue;
+    }
+
     const historyDate = getHistoryDateKey(row.happenedAt);
     const memberCells =
-      cellsByMember.get(row.memberId) ??
+      cellsByMember.get(memberPublicId) ??
       new Map<string, StudentBoardDailyCell>();
 
-    if (!cellsByMember.has(row.memberId)) {
-      cellsByMember.set(row.memberId, memberCells);
+    if (!cellsByMember.has(memberPublicId)) {
+      cellsByMember.set(memberPublicId, memberCells);
     }
 
     if (memberCells.has(historyDate)) {
@@ -107,8 +121,8 @@ function buildDailyCellMapByMember(rows: BoardHistoryRecord[]) {
   }
 
   return new Map(
-    Array.from(cellsByMember.entries()).map(([memberId, dateMap]) => [
-      memberId,
+    Array.from(cellsByMember.entries()).map(([memberPublicId, dateMap]) => [
+      memberPublicId,
       Array.from(dateMap.values()).sort((left, right) =>
         left.date.localeCompare(right.date),
       ),
@@ -118,20 +132,27 @@ function buildDailyCellMapByMember(rows: BoardHistoryRecord[]) {
 
 function mapHistoryRows(
   rows: BoardHistoryRecord[],
-  memberNameById: Map<string, string>,
+  memberNameByPublicId: Map<string, string>,
+  memberPublicIdByInternalId: Map<string, string>,
 ): StudentBoardHistoryItem[] {
   const items: StudentBoardHistoryItem[] = [];
 
   for (const row of rows) {
-    const memberName = memberNameById.get(row.memberId);
+    const memberPublicId = memberPublicIdByInternalId.get(
+      row.memberId.toString(),
+    );
+    if (!memberPublicId) {
+      continue;
+    }
 
+    const memberName = memberNameByPublicId.get(memberPublicId);
     if (!memberName) {
       continue;
     }
 
     items.push({
-      id: row.id,
-      memberId: row.memberId,
+      id: row.publicId,
+      memberId: memberPublicId,
       memberName,
       historyDate: getHistoryDateKey(row.happenedAt),
       occurredAt: row.happenedAt.toISOString(),
@@ -146,14 +167,14 @@ function mapHistoryRows(
 }
 
 async function listBoardHistoryRows(params: {
-  spaceId: string;
+  spaceInternalId: bigint;
   period: StudentBoardHistoryPeriod;
-  memberId?: string;
+  memberInternalId?: bigint;
   rangeStartDate?: string | null;
   rangeEndDate?: string | null;
 }) {
   const filters = [
-    eq(spaceMemberBoardHistory.spaceId, params.spaceId),
+    eq(spaceMemberBoardHistory.spaceId, params.spaceInternalId),
     gte(
       spaceMemberBoardHistory.happenedAt,
       params.period === "space"
@@ -171,8 +192,10 @@ async function listBoardHistoryRows(params: {
     );
   }
 
-  if (params.memberId) {
-    filters.push(eq(spaceMemberBoardHistory.memberId, params.memberId));
+  if (params.memberInternalId !== undefined) {
+    filters.push(
+      eq(spaceMemberBoardHistory.memberId, params.memberInternalId),
+    );
   }
 
   return getDb()
@@ -182,12 +205,20 @@ async function listBoardHistoryRows(params: {
     .orderBy(desc(spaceMemberBoardHistory.happenedAt));
 }
 
-export async function assertSpaceOwnedByUser(userId: string, spaceId: string) {
+export async function assertSpaceOwnedByUser(
+  userId: string,
+  spacePublicId: string,
+) {
   const db = getDb();
   const [space] = await db
     .select()
     .from(spaces)
-    .where(and(eq(spaces.id, spaceId), eq(spaces.createdByUserId, userId)))
+    .where(
+      and(
+        eq(spaces.publicId, spacePublicId),
+        eq(spaces.createdByUserId, userId),
+      ),
+    )
     .limit(1);
 
   if (!space) {
@@ -202,39 +233,47 @@ export async function assertSpaceOwnedByUser(userId: string, spaceId: string) {
 
 export async function listSpaceStudentBoard(
   userId: string,
-  spaceId: string,
+  spacePublicId: string,
   historyPeriod: StudentBoardHistoryPeriod = "7d",
 ): Promise<StudentBoardResponse> {
-  const space = await assertSpaceOwnedByUser(userId, spaceId);
+  const space = await assertSpaceOwnedByUser(userId, spacePublicId);
 
   const db = getDb();
   const [memberList, boardRows, sessions, historyRows] = await Promise.all([
-    getMembers(spaceId),
+    getMembers(spacePublicId),
     db
       .select()
       .from(spaceMemberBoards)
-      .where(eq(spaceMemberBoards.spaceId, spaceId)),
+      .where(eq(spaceMemberBoards.spaceId, space.id)),
     db
       .select()
       .from(publicCheckSessions)
-      .where(eq(publicCheckSessions.spaceId, spaceId))
+      .where(eq(publicCheckSessions.spaceId, space.id))
       .orderBy(desc(publicCheckSessions.createdAt))
       .limit(10),
     listBoardHistoryRows({
-      spaceId,
+      spaceInternalId: space.id,
       period: historyPeriod,
       rangeStartDate: space.startDate ?? null,
       rangeEndDate: space.endDate ?? null,
     }),
   ]);
 
-  const boardByMemberId = new Map(boardRows.map((row) => [row.memberId, row]));
-  const dailyCellsByMemberId = buildDailyCellMapByMember(historyRows);
+  const memberPublicIdByInternalId = new Map(
+    memberList.map((member) => [member.id.toString(), member.publicId]),
+  );
+  const boardByMemberInternalId = new Map(
+    boardRows.map((row) => [row.memberId.toString(), row]),
+  );
+  const dailyCellsByMemberPublicId = buildDailyCellMapByMember(
+    historyRows,
+    memberPublicIdByInternalId,
+  );
 
   const rows: StudentBoardRow[] = memberList.map((member) => {
-    const board = boardByMemberId.get(member.id);
+    const board = boardByMemberInternalId.get(member.id.toString());
     return {
-      memberId: member.id,
+      memberId: member.publicId,
       attendanceStatus:
         (board?.attendanceStatus as StudentAttendanceStatus | undefined) ??
         "unknown",
@@ -252,14 +291,14 @@ export async function listSpaceStudentBoard(
         null,
       lastPublicCheckAt: toIso(board?.lastPublicCheckAt),
       isSelfCheckReady: !!extractPhoneLast4(member.phone),
-      dailyCells: dailyCellsByMemberId.get(member.id) ?? [],
+      dailyCells: dailyCellsByMemberPublicId.get(member.publicId) ?? [],
     };
   });
 
   return {
     rows,
     sessions: sessions.map((session) => ({
-      id: session.id,
+      id: session.publicId,
       title: session.title,
       status: session.status as "active" | "closed",
       checkMode: session.checkMode as
@@ -291,25 +330,35 @@ export async function listMemberStudentBoardHistory(params: {
   const space = await assertSpaceOwnedByUser(params.userId, params.spaceId);
 
   const members = await getMembers(params.spaceId);
-  const member = members.find((item) => item.id === params.memberId);
+  const member = members.find((item) => item.publicId === params.memberId);
 
   if (!member) {
     throw new ServiceError(404, "해당 수강생을 찾지 못했습니다.");
   }
 
   const historyRows = await listBoardHistoryRows({
-    spaceId: params.spaceId,
-    memberId: params.memberId,
+    spaceInternalId: space.id,
+    memberInternalId: member.id,
     period,
     rangeStartDate: space.startDate ?? null,
     rangeEndDate: space.endDate ?? null,
   });
 
+  const memberPublicIdByInternalId = new Map([
+    [member.id.toString(), member.publicId],
+  ]);
+
   return {
     period,
     dailyCells:
-      buildDailyCellMapByMember(historyRows).get(params.memberId) ?? [],
-    history: mapHistoryRows(historyRows, new Map([[member.id, member.name]])),
+      buildDailyCellMapByMember(historyRows, memberPublicIdByInternalId).get(
+        member.publicId,
+      ) ?? [],
+    history: mapHistoryRows(
+      historyRows,
+      new Map([[member.publicId, member.name]]),
+      memberPublicIdByInternalId,
+    ),
   };
 }
 
@@ -332,13 +381,24 @@ export async function persistMemberBoardSnapshot(
   params: PersistMemberBoardSnapshotParams,
 ) {
   const db = getDb();
+
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(
+    params.spaceId,
+  );
+  const memberInternalId = await requireMemberInternalIdByPublicId(
+    params.memberId,
+  );
+  const sessionInternalId = params.sessionId
+    ? await resolvePublicCheckSessionInternalIdByPublicId(params.sessionId)
+    : null;
+
   const [existing] = await db
     .select()
     .from(spaceMemberBoards)
     .where(
       and(
-        eq(spaceMemberBoards.spaceId, params.spaceId),
-        eq(spaceMemberBoards.memberId, params.memberId),
+        eq(spaceMemberBoards.spaceId, spaceInternalId),
+        eq(spaceMemberBoards.memberId, memberInternalId),
       ),
     )
     .limit(1);
@@ -395,8 +455,9 @@ export async function persistMemberBoardSnapshot(
   await db
     .insert(spaceMemberBoards)
     .values({
-      spaceId: params.spaceId,
-      memberId: params.memberId,
+      publicId: generatePublicId(ID_PREFIX.spaceMemberBoards),
+      spaceId: spaceInternalId,
+      memberId: memberInternalId,
       attendanceStatus: nextAttendanceStatus,
       attendanceMarkedAt: shouldRefreshAttendanceMark
         ? nextAttendanceStatus === "unknown"
@@ -451,9 +512,10 @@ export async function persistMemberBoardSnapshot(
 
   if (shouldAppendHistory) {
     await db.insert(spaceMemberBoardHistory).values({
-      spaceId: params.spaceId,
-      memberId: params.memberId,
-      sessionId: params.sessionId ?? null,
+      publicId: generatePublicId(ID_PREFIX.spaceMemberBoardHistory),
+      spaceId: spaceInternalId,
+      memberId: memberInternalId,
+      sessionId: sessionInternalId,
       attendanceStatus: nextAttendanceStatus,
       assignmentStatus: nextAssignmentStatus,
       assignmentLink: nextAssignmentLink,
@@ -471,6 +533,18 @@ export async function persistMemberBoardSnapshot(
   };
 }
 
+export async function resolvePublicCheckSessionInternalIdByPublicId(
+  sessionPublicId: string,
+): Promise<bigint | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: publicCheckSessions.id })
+    .from(publicCheckSessions)
+    .where(eq(publicCheckSessions.publicId, sessionPublicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function upsertMemberBoardStatus(params: {
   userId: string;
   spaceId: string;
@@ -482,7 +556,7 @@ export async function upsertMemberBoardStatus(params: {
   await assertSpaceOwnedByUser(params.userId, params.spaceId);
 
   const members = await getMembers(params.spaceId);
-  const member = members.find((item) => item.id === params.memberId);
+  const member = members.find((item) => item.publicId === params.memberId);
 
   if (!member) {
     throw new ServiceError(404, "해당 수강생을 찾지 못했습니다.");

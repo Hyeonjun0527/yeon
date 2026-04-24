@@ -1,4 +1,5 @@
 import {
+  index,
   pgTable,
   timestamp,
   uniqueIndex,
@@ -26,5 +27,6 @@ export const authSessions = pgTable(
   },
   (table) => [
     uniqueIndex("auth_sessions_token_hash_key").on(table.sessionTokenHash),
+    index("auth_sessions_user_id_idx").on(table.userId),
   ],
 );

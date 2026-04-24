@@ -28,6 +28,7 @@ import { answerLocalPreviewQuestion } from "./local-preview-assistant";
 import { applyLocalPreviewRefinement } from "./local-preview-refinement";
 import { resetImportState } from "./import-state-reset";
 import { useImportDraftRecovery } from "./use-import-draft-recovery";
+import { useAppRoute } from "@/lib/app-route-context";
 
 const LOCAL_IMPORT_DRAFT_STORAGE_KEY = "yeon:local-import:last-draft-id";
 const IMPORT_DRAFT_RETENTION_TEXT =
@@ -64,6 +65,7 @@ export function useLocalImport(
   initialDraftId?: string | null,
   onDraftDiscarded?: () => void,
 ): UseLocalImportReturn {
+  const { resolveApiHref } = useAppRoute();
   const rawFileRef = useRef<File | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
@@ -134,7 +136,7 @@ export function useLocalImport(
 
   const loadDraft = useCallback(async (targetDraftId: string) => {
     const res = await fetch(
-      `/api/v1/integrations/local/drafts/${targetDraftId}`,
+      resolveApiHref(`/api/v1/integrations/local/drafts/${targetDraftId}`),
     );
     if (!res.ok) {
       throw new Error(
@@ -233,7 +235,7 @@ export function useLocalImport(
 
       const analysisResult = await runImportAnalysisRequest({
         request: () =>
-          fetch("/api/v1/integrations/local/analyze", {
+          fetch(resolveApiHref("/api/v1/integrations/local/analyze"), {
             method: "POST",
             headers: { Accept: "text/event-stream" },
             body: formData,
@@ -287,11 +289,14 @@ export function useLocalImport(
       }
 
       previewSaveTimerRef.current = setTimeout(() => {
-        void fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        }).catch(() => {
+        void fetch(
+          resolveApiHref(`/api/v1/integrations/local/drafts/${draftId}`),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          },
+        ).catch(() => {
           // 자동 저장 실패는 다음 입력 기회에서 재시도
         });
       }, 400);
@@ -305,14 +310,17 @@ export function useLocalImport(
     try {
       setImporting(true);
       setError(null);
-      const res = await fetch("/api/v1/integrations/local/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          draftId: draftId ?? undefined,
-          preview: editablePreview,
-        }),
-      });
+      const res = await fetch(
+        resolveApiHref("/api/v1/integrations/local/import"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draftId: draftId ?? undefined,
+            preview: editablePreview,
+          }),
+        },
+      );
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -391,9 +399,12 @@ export function useLocalImport(
 
     if (!currentDraftId) return;
 
-    await fetch(`/api/v1/integrations/local/drafts/${currentDraftId}`, {
-      method: "DELETE",
-    }).catch(() => {
+    await fetch(
+      resolveApiHref(`/api/v1/integrations/local/drafts/${currentDraftId}`),
+      {
+        method: "DELETE",
+      },
+    ).catch(() => {
       // 초안 삭제 실패는 조용히 무시하고 UI 상태만 정리
     });
     onDraftDiscarded?.();
@@ -441,11 +452,14 @@ export function useLocalImport(
           }
 
           previewSaveTimerRef.current = setTimeout(() => {
-            void fetch(`/api/v1/integrations/local/drafts/${draftId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(localRefinement.preview),
-            }).catch(() => {
+            void fetch(
+              resolveApiHref(`/api/v1/integrations/local/drafts/${draftId}`),
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(localRefinement.preview),
+              },
+            ).catch(() => {
               // 자동 저장 실패는 다음 입력 기회에서 재시도
             });
           }, 400);
@@ -481,7 +495,7 @@ export function useLocalImport(
 
         const analysisResult = await runImportAnalysisRequest({
           request: () =>
-            fetch("/api/v1/integrations/local/analyze", {
+            fetch(resolveApiHref("/api/v1/integrations/local/analyze"), {
               method: "POST",
               headers: { Accept: "text/event-stream" },
               body: formData,
@@ -535,7 +549,7 @@ export function useLocalImport(
 
   const fileProxyUrl =
     draftId != null
-      ? `/api/v1/integrations/local/drafts/${draftId}/file`
+      ? resolveApiHref(`/api/v1/integrations/local/drafts/${draftId}/file`)
       : localPreviewUrl;
   const draftPolicyText = draftId ? IMPORT_DRAFT_RETENTION_TEXT : null;
 

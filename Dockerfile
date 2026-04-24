@@ -46,6 +46,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # 플랫폼에 따라 워크플로우에서 --build-arg NODE_MEMORY=<value> 로 조정한다.
 ARG NODE_MEMORY=4096
 
+# 타자 레이스 WebSocket 서버 URL (Next.js 빌드 시점에 번들에 인라인된다)
+ARG NEXT_PUBLIC_RACE_SERVER_URL
+ENV NEXT_PUBLIC_RACE_SERVER_URL=${NEXT_PUBLIC_RACE_SERVER_URL}
+
 RUN mkdir -p apps/web/public/test-data \
     && rm -f apps/web/public/test-data/test-counseling.mp3 \
       "apps/web/public/test-data/상담기록_테스트음성_20분.mp3" \
@@ -67,10 +71,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system --gid 1001 nodejs \
+# ffmpeg 는 apt 로 설치하면 libavcodec/x11/opengl 등 196개 의존 패키지가 딸려와
+# runner image 빌드가 3분+ 걸린다. 음성 chunk 분할(libmp3lame 인코딩)과 duration 확인(ffprobe)
+# 두 용도만 쓰므로 mwader/static-ffmpeg 의 statically-linked binary 를 그대로 복사한다.
+# 버전은 major.minor 고정 — 상담 전사 기능이 의존하는 codec (mp3/aac/wav 디코더, libmp3lame 인코더)은
+# 이 태그가 모두 포함한다. 만약 특수 codec 이 추가로 필요해지면 apt 설치 방식으로 되돌린다.
+COPY --from=mwader/static-ffmpeg:7.0 /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=mwader/static-ffmpeg:7.0 /ffprobe /usr/local/bin/ffprobe
+
+RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./

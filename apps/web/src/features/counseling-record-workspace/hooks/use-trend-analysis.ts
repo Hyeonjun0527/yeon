@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { readErrorMessage } from "../utils";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 interface TrendAnalysisState {
   studentName: string;
@@ -36,12 +37,17 @@ export function useTrendAnalysis(
     setSelectedRecordId(null);
 
     try {
-      const response = await fetch("/api/v1/counseling-records/analyze-trend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordIds }),
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        resolveApiHrefForCurrentPath(
+          "/api/v1/counseling-records/analyze-trend",
+        ),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recordIds }),
+          signal: controller.signal,
+        },
+      );
 
       if (!response.ok || !response.body) {
         throw new Error(

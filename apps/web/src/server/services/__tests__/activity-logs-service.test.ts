@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetMemberByIdForUser = vi.fn();
+const mockRequireSpaceInternalIdByPublicId = vi.fn();
 
 const { responses, db } = vi.hoisted(() => {
   const responses: unknown[] = [];
@@ -32,6 +33,14 @@ vi.mock("../members-service", () => ({
   getMemberByIdForUser: (...args: unknown[]) =>
     mockGetMemberByIdForUser(...args),
 }));
+vi.mock("../spaces-service", () => ({
+  requireSpaceInternalIdByPublicId: (...args: unknown[]) =>
+    mockRequireSpaceInternalIdByPublicId(...args),
+}));
+vi.mock("@/server/lib/public-id", () => ({
+  generatePublicId: () => "alg_testpublicid",
+  ID_PREFIX: { activityLogs: "alg" },
+}));
 
 import {
   MEMBER_MEMO_LOG_TYPE,
@@ -45,16 +54,18 @@ describe("activity-logs-service", () => {
     vi.clearAllMocks();
     responses.length = 0;
     mockGetMemberByIdForUser.mockResolvedValue({
-      id: "member-1",
-      spaceId: "space-1",
+      id: 1n,
+      spaceId: 10n,
     });
+    mockRequireSpaceInternalIdByPublicId.mockResolvedValue(10n);
   });
 
   it("다른 스페이스 소속 수강생이면 조회 시 404를 던진다", async () => {
     mockGetMemberByIdForUser.mockResolvedValue({
-      id: "member-1",
-      spaceId: "space-2",
+      id: 1n,
+      spaceId: 20n,
     });
+    mockRequireSpaceInternalIdByPublicId.mockResolvedValue(10n);
 
     await expect(
       listActivityLogsForMember({
@@ -83,7 +94,7 @@ describe("activity-logs-service", () => {
   it("createMemberMemoLog는 메모 공백을 정규화하고 기본 작성자를 멘토로 저장한다", async () => {
     responses.push([
       {
-        id: "log-1",
+        id: 1n,
         type: MEMBER_MEMO_LOG_TYPE,
         metadata: {
           noteText: "첫 줄 두 번째 줄",

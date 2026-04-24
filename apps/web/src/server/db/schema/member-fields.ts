@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   integer,
   jsonb,
@@ -28,8 +29,11 @@ import { users } from "./users";
 export const memberFieldDefinitions = pgTable(
   "member_field_definitions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    spaceId: uuid("space_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, {
@@ -37,7 +41,7 @@ export const memberFieldDefinitions = pgTable(
     }),
 
     /** 이 필드가 속한 탭 (overview 탭 또는 custom 탭만 허용) */
-    tabId: uuid("tab_id")
+    tabId: bigint("tab_id", { mode: "bigint" })
       .notNull()
       .references(() => memberTabDefinitions.id, { onDelete: "cascade" }),
 
@@ -95,11 +99,14 @@ export const memberFieldDefinitions = pgTable(
 export const memberFieldValues = pgTable(
   "member_field_values",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    memberId: uuid("member_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    memberId: bigint("member_id", { mode: "bigint" })
       .notNull()
       .references(() => members.id, { onDelete: "cascade" }),
-    fieldDefinitionId: uuid("field_definition_id")
+    fieldDefinitionId: bigint("field_definition_id", { mode: "bigint" })
       .notNull()
       .references(() => memberFieldDefinitions.id, { onDelete: "cascade" }),
 

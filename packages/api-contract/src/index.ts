@@ -1,4 +1,6 @@
 export * from "./auth";
+export * from "./card-decks";
+export * from "./chat-service";
 export * from "./counseling-records";
 export * from "./contest";
 export * from "./error";
@@ -9,3 +11,5 @@ export * from "./instructor-workspace";
 export * from "./spaces";
 export * from "./student-board";
 export * from "./users";
+export * from "./credential";
+export * from "./card-deck-merge-guest";

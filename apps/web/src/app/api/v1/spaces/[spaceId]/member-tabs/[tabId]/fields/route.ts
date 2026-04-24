@@ -14,6 +14,7 @@ import {
 import { getFieldValuesForDefinitions } from "@/server/services/member-field-values-service";
 import { getOverviewTab } from "@/server/services/member-tabs-service";
 import { ServiceError } from "@/server/services/service-error";
+import { requireSpaceInternalIdByPublicId } from "@/server/services/spaces-service";
 
 export const runtime = "nodejs";
 
@@ -29,8 +30,13 @@ export async function GET(
 
   try {
     const overviewTab = await getOverviewTab(spaceId);
-    if (overviewTab?.id === tabId) {
-      await createDefaultOverviewFields(spaceId, tabId, currentUser.id);
+    if (overviewTab?.publicId === tabId) {
+      const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
+      await createDefaultOverviewFields(
+        spaceInternalId,
+        overviewTab.id,
+        currentUser.id,
+      );
     }
 
     const fields = await getFieldsForTab(tabId, spaceId);
@@ -42,7 +48,7 @@ export async function GET(
     const values = await getFieldValuesForDefinitions(
       memberId,
       spaceId,
-      fields.map((field) => field.id),
+      fields.map((field) => field.publicId),
     );
 
     return NextResponse.json({ fields, values });
@@ -76,8 +82,13 @@ export async function POST(
 
   try {
     const overviewTab = await getOverviewTab(spaceId);
-    if (overviewTab?.id === tabId) {
-      await createDefaultOverviewFields(spaceId, tabId, currentUser.id);
+    if (overviewTab?.publicId === tabId) {
+      const spaceInternalId = await requireSpaceInternalIdByPublicId(spaceId);
+      await createDefaultOverviewFields(
+        spaceInternalId,
+        overviewTab.id,
+        currentUser.id,
+      );
     }
 
     const field = await createField(

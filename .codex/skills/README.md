@@ -14,6 +14,8 @@
 
 ## 현재 미러링된 이름
 
+<!-- SYNC-SKILLS:LOCAL:BEGIN -->
+
 - `bug-repo`
 - `clarify`
 - `code-review`
@@ -25,6 +27,7 @@
 - `git-pr-workflow`
 - `monorepo-patterns`
 - `nextjs-patterns`
+- `ralph-strict`
 - `refactor-repo`
 - `retrospective`
 - `review-repo`
@@ -33,6 +36,8 @@
 - `ship`
 - `validate`
 - `wrap`
+
+<!-- SYNC-SKILLS:LOCAL:END -->
 
 ## Vendored OMC Skills
 
@@ -51,6 +56,7 @@ deep-dive
 deep-interview
 deepinit
 external-context
+frontend-design-skill
 hud
 learner
 mcp-setup
@@ -71,6 +77,7 @@ skill
 skillify
 team
 trace
+ui-ux-pro-max
 ultraqa
 ultrawork
 verify
@@ -80,6 +87,3 @@ writer-memory
 ```
 
 ## 호출 메모
-
-- Codex 표면에 따라 `$skill-name`으로 호출할 수 있다.
-- slash command 목록에 노출되는 환경에서는 같은 이름으로 사용할 수 있다.

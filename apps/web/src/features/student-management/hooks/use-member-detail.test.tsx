@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     replace: replaceMock,
   }),
-  usePathname: () => "/home/student-management/member-1",
+  usePathname: () => "/counseling-service/student-management/member-1",
 }));
 
 vi.mock("../student-management-provider", () => ({
@@ -56,7 +56,7 @@ describe("useMemberDetail", () => {
     window.history.replaceState(
       null,
       "",
-      "/home/student-management/member-1?tab=overview",
+      "/counseling-service/student-management/member-1?tab=overview",
     );
   });
 
@@ -64,7 +64,7 @@ describe("useMemberDetail", () => {
     window.history.replaceState(
       null,
       "",
-      "/home/student-management/member-1?tab=memos",
+      "/counseling-service/student-management/member-1?tab=memos",
     );
 
     const { result } = renderHook(
@@ -93,7 +93,7 @@ describe("useMemberDetail", () => {
 
     expect(result.current.activeTab).toBe("counseling");
     expect(replaceMock).toHaveBeenCalledWith(
-      "/home/student-management/member-1?tab=counseling",
+      "/counseling-service/student-management/member-1?tab=counseling",
     );
 
     await waitFor(() => {
@@ -113,7 +113,7 @@ describe("useMemberDetail", () => {
       window.history.pushState(
         null,
         "",
-        "/home/student-management/member-1?tab=report",
+        "/counseling-service/student-management/member-1?tab=report",
       );
       window.dispatchEvent(new PopStateEvent("popstate"));
     });

@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../../"),
   transpilePackages: [
     "@yeon/api-contract",
+    "@yeon/race-shared",
+    "@yeon/typing-race-engine",
     "@splinetool/react-spline",
     "@splinetool/runtime",
   ],

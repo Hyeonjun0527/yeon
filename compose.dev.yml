@@ -46,6 +46,20 @@ services:
       db:
         condition: service_healthy
 
+  race-server:
+    image: ${YEON_RACE_SERVER_IMAGE:-ghcr.io/hyeonjun0527/yeon-race-server:develop}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 2567
+    ports:
+      - "${RACE_SERVER_PORT:-2567}:2567"
+    networks:
+      default:
+      edge:
+        aliases:
+          - yeon-dev-race
+
   db:
     image: postgres:16-bookworm
     restart: unless-stopped

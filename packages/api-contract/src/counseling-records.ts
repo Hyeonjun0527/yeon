@@ -40,7 +40,7 @@ export const counselingRecordSpeakerToneSchema = z.enum([
 ]);
 
 export const counselingTranscriptSegmentSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   segmentIndex: z.number().int().nonnegative(),
   startMs: z.number().int().nonnegative().nullable(),
   endMs: z.number().int().nonnegative().nullable(),
@@ -69,9 +69,9 @@ export const counselingChatRequestSchema = z.object({
 });
 
 export const counselingRecordListItemSchema = z.object({
-  id: z.string().uuid(),
-  spaceId: z.string().uuid().nullable(),
-  memberId: z.string().uuid().nullable(),
+  id: z.string().min(1),
+  spaceId: z.string().min(1).nullable(),
+  memberId: z.string().min(1).nullable(),
   studentName: z.string(),
   sessionTitle: z.string(),
   counselingType: z.string(),
@@ -158,7 +158,7 @@ export const counselingRecordDetailResponseSchema = z.object({
 });
 
 export const bulkCounselingRecordDetailsRequestSchema = z.object({
-  recordIds: z.array(z.string().uuid()).min(1).max(50),
+  recordIds: z.array(z.string().min(1)).min(1).max(50),
 });
 
 export const bulkCounselingRecordDetailsResponseSchema = z.object({
@@ -246,7 +246,7 @@ export type AnalyzeRecordResponse = z.infer<typeof analyzeRecordResponseSchema>;
 // ── 수강생 연결 ──
 
 export const linkMemberRequestSchema = z.object({
-  memberId: z.string().uuid().nullable(),
+  memberId: z.string().min(1).nullable(),
 });
 
 export const linkMemberResponseSchema = z.object({ ok: z.literal(true) });

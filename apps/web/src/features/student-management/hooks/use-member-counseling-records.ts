@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { CounselingRecordListItem } from "@yeon/api-contract/counseling-records";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 export function useMemberCounselingRecords(
   spaceId: string | null,
@@ -12,7 +13,9 @@ export function useMemberCounselingRecords(
     enabled: !!spaceId && !!memberId,
     queryFn: async () => {
       const res = await fetch(
-        `/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`,
+        resolveApiHrefForCurrentPath(
+          `/api/v1/spaces/${spaceId}/members/${memberId}/counseling-records`,
+        ),
       );
 
       if (!res.ok) {

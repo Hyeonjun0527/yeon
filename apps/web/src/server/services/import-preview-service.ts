@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { z } from "zod";
 
 import { getDb } from "@/server/db";
@@ -14,6 +12,7 @@ import {
   getSpacePeriodInputError,
   normalizeSpaceDateInput,
 } from "@/lib/space-period";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { buildValueColumns } from "./member-field-values-service";
 import { type FieldType } from "./member-fields-service";
@@ -94,7 +93,7 @@ function normalizeCohortPeriod(cohort: ImportPreviewBody["cohorts"][number]): {
 }
 
 function normalizeMemberRow(
-  spaceId: string,
+  spaceInternalId: bigint,
   student: ImportPreviewBody["cohorts"][number]["students"][number],
   now: Date,
 ) {
@@ -104,8 +103,8 @@ function normalizeMemberRow(
   }
 
   return {
-    id: randomUUID(),
-    spaceId,
+    publicId: generatePublicId(ID_PREFIX.members),
+    spaceId: spaceInternalId,
     name,
     email: student.email?.trim().slice(0, 255) || null,
     phone: student.phone?.trim().slice(0, 20) || null,
@@ -226,7 +225,7 @@ export async function importPreviewIntoSpaces(
   return db.transaction(async (tx) => {
     let spacesCreated = 0;
     let membersCreated = 0;
-    const spaceIds: string[] = [];
+    const spacePublicIds: string[] = [];
 
     for (const cohort of preview.cohorts) {
       const cohortMemberRows = cohort.students.map((student) => ({
@@ -234,38 +233,61 @@ export async function importPreviewIntoSpaces(
         customFieldEntries: normalizeCustomFieldEntries(student.customFields),
       }));
       const now = new Date();
-      const spaceId = randomUUID();
       const spaceName = normalizeSpaceName(cohort.name);
       const period = normalizeCohortPeriod(cohort);
-      spaceIds.push(spaceId);
 
-      await tx.insert(spaces).values({
-        id: spaceId,
-        name: spaceName,
-        description: null,
-        startDate: period.startDate,
-        endDate: period.endDate,
-        createdByUserId: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+      // 수강생 이름 유효성을 먼저 확인해 실패 시 space 를 만들지 않게 한다.
+      for (const { student } of cohortMemberRows) {
+        if (!student.name.trim()) {
+          throw new ServiceError(400, "수강생 이름은 필수입니다.");
+        }
+      }
 
-      const tabRows = DEFAULT_SYSTEM_TABS.map((tab) => ({
-        id: randomUUID(),
-        spaceId,
-        createdByUserId: userId,
-        tabType: "system",
-        systemKey: tab.systemKey,
-        name: tab.name,
-        isVisible: true,
-        displayOrder: tab.displayOrder,
-        createdAt: now,
-        updatedAt: now,
-      }));
+      const [createdSpace] = await tx
+        .insert(spaces)
+        .values({
+          publicId: generatePublicId(ID_PREFIX.spaces),
+          name: spaceName,
+          description: null,
+          startDate: period.startDate,
+          endDate: period.endDate,
+          createdByUserId: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: spaces.id, publicId: spaces.publicId });
 
-      await tx.insert(memberTabDefinitions).values(tabRows);
+      if (!createdSpace) {
+        throw new ServiceError(500, "스페이스를 생성하지 못했습니다.");
+      }
 
-      const overviewTab = tabRows.find((tab) => tab.systemKey === "overview");
+      const spaceInternalId = createdSpace.id;
+      spacePublicIds.push(createdSpace.publicId);
+
+      const insertedTabs = await tx
+        .insert(memberTabDefinitions)
+        .values(
+          DEFAULT_SYSTEM_TABS.map((tab) => ({
+            publicId: generatePublicId(ID_PREFIX.memberTabs),
+            spaceId: spaceInternalId,
+            createdByUserId: userId,
+            tabType: "system",
+            systemKey: tab.systemKey,
+            name: tab.name,
+            isVisible: true,
+            displayOrder: tab.displayOrder,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        )
+        .returning({
+          id: memberTabDefinitions.id,
+          systemKey: memberTabDefinitions.systemKey,
+        });
+
+      const overviewTab = insertedTabs.find(
+        (tab) => tab.systemKey === "overview",
+      );
       if (!overviewTab) {
         throw new ServiceError(
           500,
@@ -276,56 +298,69 @@ export async function importPreviewIntoSpaces(
       const customFieldSpecs = collectCustomFieldSpecs(cohort.students);
       const fieldDefinitionsByName = new Map<
         string,
-        { id: string; fieldType: FieldType }
+        { internalId: bigint; fieldType: FieldType }
       >();
 
       if (customFieldSpecs.length > 0) {
-        const fieldRows = customFieldSpecs.map((fieldSpec, index) => {
-          const id = randomUUID();
-          fieldDefinitionsByName.set(fieldSpec.name, {
-            id,
-            fieldType: fieldSpec.fieldType,
+        const insertedFields = await tx
+          .insert(memberFieldDefinitions)
+          .values(
+            customFieldSpecs.map((fieldSpec, index) => ({
+              publicId: generatePublicId(ID_PREFIX.memberFields),
+              spaceId: spaceInternalId,
+              tabId: overviewTab.id,
+              createdByUserId: userId,
+              name: fieldSpec.name,
+              fieldType: fieldSpec.fieldType,
+              options: null,
+              isRequired: false,
+              displayOrder: index,
+              createdAt: now,
+              updatedAt: now,
+            })),
+          )
+          .returning({
+            id: memberFieldDefinitions.id,
+            name: memberFieldDefinitions.name,
+            fieldType: memberFieldDefinitions.fieldType,
           });
 
-          return {
-            id,
-            spaceId,
-            tabId: overviewTab.id,
-            createdByUserId: userId,
-            name: fieldSpec.name,
-            fieldType: fieldSpec.fieldType,
-            options: null,
-            isRequired: false,
-            displayOrder: index,
-            createdAt: now,
-            updatedAt: now,
-          };
-        });
-
-        await tx.insert(memberFieldDefinitions).values(fieldRows);
+        for (const row of insertedFields) {
+          fieldDefinitionsByName.set(row.name, {
+            internalId: row.id,
+            fieldType: row.fieldType as FieldType,
+          });
+        }
       }
 
       const memberRows = cohortMemberRows.map(({ student }) =>
-        normalizeMemberRow(spaceId, student, now),
+        normalizeMemberRow(spaceInternalId, student, now),
       );
 
+      const insertedMemberInternalIds: bigint[] = [];
       for (const chunk of chunkArray(memberRows, MEMBER_INSERT_CHUNK_SIZE)) {
-        await tx.insert(members).values(chunk);
+        const inserted = await tx
+          .insert(members)
+          .values(chunk)
+          .returning({ id: members.id });
+        for (const row of inserted) {
+          insertedMemberInternalIds.push(row.id);
+        }
       }
 
       const fieldValueRows = cohortMemberRows.flatMap(
         ({ customFieldEntries }, studentIndex) => {
-          const memberId = memberRows[studentIndex]?.id;
-          if (!memberId) return [];
+          const memberInternalId = insertedMemberInternalIds[studentIndex];
+          if (memberInternalId === undefined) return [];
 
           return customFieldEntries.flatMap(({ name, value }) => {
             const fieldDefinition = fieldDefinitionsByName.get(name);
             if (!fieldDefinition || value === null) return [];
 
             return {
-              id: randomUUID(),
-              memberId,
-              fieldDefinitionId: fieldDefinition.id,
+              publicId: generatePublicId(ID_PREFIX.memberFieldValues),
+              memberId: memberInternalId,
+              fieldDefinitionId: fieldDefinition.internalId,
               ...buildValueColumns(fieldDefinition.fieldType, value),
               createdAt: now,
               updatedAt: now,
@@ -347,7 +382,7 @@ export async function importPreviewIntoSpaces(
     return {
       spaces: spacesCreated,
       members: membersCreated,
-      spaceIds,
+      spaceIds: spacePublicIds,
     };
   });
 }

@@ -1,5 +1,4 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import type {
   CreateMemberBody,
   UpdateMemberBody,
@@ -7,16 +6,47 @@ import type {
 
 import { getDb } from "@/server/db";
 import { members, spaces } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 import {
   attachMemberRiskProfiles,
   getMemberRiskProfile,
 } from "./member-risk-service";
+import { requireSpaceInternalIdByPublicId } from "./spaces-service";
 
 export type CreateMemberInput = CreateMemberBody;
 
-export async function createMember(spaceId: string, data: CreateMemberInput) {
+export type MemberRow = typeof members.$inferSelect;
+
+/**
+ * publicId → 내부 bigint id 해석. 존재하지 않으면 null.
+ */
+export async function resolveMemberInternalIdByPublicId(
+  publicId: string,
+): Promise<bigint | null> {
+  const [row] = await getDb()
+    .select({ id: members.id })
+    .from(members)
+    .where(eq(members.publicId, publicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+export async function requireMemberInternalIdByPublicId(
+  publicId: string,
+): Promise<bigint> {
+  const id = await resolveMemberInternalIdByPublicId(publicId);
+  if (id === null) {
+    throw new ServiceError(404, "수강생을 찾지 못했습니다.");
+  }
+  return id;
+}
+
+export async function createMember(
+  spacePublicId: string,
+  data: CreateMemberInput,
+): Promise<MemberRow> {
   const db = getDb();
   const name = data.name.trim().slice(0, 100);
 
@@ -24,13 +54,14 @@ export async function createMember(spaceId: string, data: CreateMemberInput) {
     throw new ServiceError(400, "수강생 이름은 필수입니다.");
   }
 
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
   const now = new Date();
 
   const [member] = await db
     .insert(members)
     .values({
-      id: randomUUID(),
-      spaceId,
+      publicId: generatePublicId(ID_PREFIX.members),
+      spaceId: spaceInternalId,
       name,
       email: data.email?.trim().slice(0, 255) || null,
       phone: data.phone?.trim().slice(0, 20) || null,
@@ -40,32 +71,59 @@ export async function createMember(spaceId: string, data: CreateMemberInput) {
     })
     .returning();
 
+  if (!member) {
+    throw new ServiceError(500, "수강생을 생성하지 못했습니다.");
+  }
+
   return member;
 }
 
-export async function getMembers(spaceId: string) {
+export async function getMembers(spacePublicId: string): Promise<MemberRow[]> {
   const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
 
   return db
     .select()
     .from(members)
-    .where(eq(members.spaceId, spaceId))
+    .where(eq(members.spaceId, spaceInternalId))
     .orderBy(desc(members.createdAt));
 }
 
-export async function getMembersWithRisk(userId: string, spaceId: string) {
-  const memberList = await getMembers(spaceId);
+export async function getMembersWithRisk(
+  userId: string,
+  spacePublicId: string,
+) {
+  const memberList = await getMembers(spacePublicId);
 
-  return attachMemberRiskProfiles(userId, memberList);
+  const profiled = await attachMemberRiskProfiles(
+    userId,
+    memberList.map((member) => ({
+      id: member.publicId,
+      initialRiskLevel: member.initialRiskLevel,
+    })),
+  );
+  const profileByPublicId = new Map(
+    profiled.map((profile) => [profile.id, profile]),
+  );
+
+  return memberList.map((member) => {
+    const profile = profileByPublicId.get(member.publicId);
+    return {
+      ...member,
+      ...(profile ?? {}),
+    };
+  });
 }
 
-export async function getMemberById(memberId: string) {
+export async function getMemberByPublicId(
+  memberPublicId: string,
+): Promise<MemberRow> {
   const db = getDb();
 
   const [member] = await db
     .select()
     .from(members)
-    .where(eq(members.id, memberId))
+    .where(eq(members.publicId, memberPublicId))
     .limit(1);
 
   if (!member) {
@@ -75,11 +133,17 @@ export async function getMemberById(memberId: string) {
   return member;
 }
 
-export async function getMemberByIdWithRisk(userId: string, memberId: string) {
-  const member = await getMemberById(memberId);
+/** 기존 호출자 호환용 별칭. */
+export const getMemberById = getMemberByPublicId;
+
+export async function getMemberByIdWithRisk(
+  userId: string,
+  memberPublicId: string,
+) {
+  const member = await getMemberByPublicId(memberPublicId);
   const riskProfile = await getMemberRiskProfile({
     userId,
-    memberId,
+    memberId: member.publicId,
     initialRiskLevel: member.initialRiskLevel,
   });
 
@@ -90,14 +154,22 @@ export async function getMemberByIdWithRisk(userId: string, memberId: string) {
 }
 
 /** 현재 사용자의 space에 속한 멤버인지 소유권까지 검증한다. */
-export async function getMemberByIdForUser(userId: string, memberId: string) {
+export async function getMemberByIdForUser(
+  userId: string,
+  memberPublicId: string,
+): Promise<MemberRow> {
   const db = getDb();
 
   const [row] = await db
     .select({ member: members })
     .from(members)
     .innerJoin(spaces, eq(members.spaceId, spaces.id))
-    .where(and(eq(members.id, memberId), eq(spaces.createdByUserId, userId)))
+    .where(
+      and(
+        eq(members.publicId, memberPublicId),
+        eq(spaces.createdByUserId, userId),
+      ),
+    )
     .limit(1);
 
   if (!row) {
@@ -112,12 +184,12 @@ export async function getMemberByIdForUser(userId: string, memberId: string) {
 
 export async function getMemberByIdForUserWithRisk(
   userId: string,
-  memberId: string,
+  memberPublicId: string,
 ) {
-  const member = await getMemberByIdForUser(userId, memberId);
+  const member = await getMemberByIdForUser(userId, memberPublicId);
   const riskProfile = await getMemberRiskProfile({
     userId,
-    memberId,
+    memberId: member.publicId,
     initialRiskLevel: member.initialRiskLevel,
   });
 
@@ -129,7 +201,10 @@ export async function getMemberByIdForUserWithRisk(
 
 export type UpdateMemberInput = UpdateMemberBody;
 
-export async function updateMember(memberId: string, data: UpdateMemberInput) {
+export async function updateMember(
+  memberPublicId: string,
+  data: UpdateMemberInput,
+): Promise<MemberRow> {
   const db = getDb();
 
   const patch: Record<string, unknown> = { updatedAt: new Date() };
@@ -155,7 +230,7 @@ export async function updateMember(memberId: string, data: UpdateMemberInput) {
   const [updated] = await db
     .update(members)
     .set(patch)
-    .where(eq(members.id, memberId))
+    .where(eq(members.publicId, memberPublicId))
     .returning();
 
   if (!updated) {
@@ -165,13 +240,16 @@ export async function updateMember(memberId: string, data: UpdateMemberInput) {
   return updated;
 }
 
-export async function deleteMember(userId: string, memberId: string) {
+export async function deleteMember(
+  userId: string,
+  memberPublicId: string,
+): Promise<MemberRow> {
   const db = getDb();
-  await getMemberByIdForUser(userId, memberId);
+  await getMemberByIdForUser(userId, memberPublicId);
 
   const [deletedMember] = await db
     .delete(members)
-    .where(eq(members.id, memberId))
+    .where(eq(members.publicId, memberPublicId))
     .returning();
 
   if (!deletedMember) {
@@ -186,25 +264,26 @@ export async function deleteMember(userId: string, memberId: string) {
 
 export async function bulkDeleteMembersInSpace(
   userId: string,
-  spaceId: string,
-  memberIds: string[],
+  spacePublicId: string,
+  memberPublicIds: string[],
 ) {
-  const normalizedMemberIds = [...new Set(memberIds)];
+  const normalizedMemberIds = [...new Set(memberPublicIds)];
 
   if (normalizedMemberIds.length === 0) {
     throw new ServiceError(400, "삭제할 수강생을 선택해 주세요.");
   }
 
   const db = getDb();
+  const spaceInternalId = await requireSpaceInternalIdByPublicId(spacePublicId);
   const ownedMembers = await db
-    .select({ id: members.id })
+    .select({ id: members.id, publicId: members.publicId })
     .from(members)
     .innerJoin(spaces, eq(members.spaceId, spaces.id))
     .where(
       and(
         eq(spaces.createdByUserId, userId),
-        eq(members.spaceId, spaceId),
-        inArray(members.id, normalizedMemberIds),
+        eq(members.spaceId, spaceInternalId),
+        inArray(members.publicId, normalizedMemberIds),
       ),
     );
 
@@ -219,14 +298,14 @@ export async function bulkDeleteMembersInSpace(
     .delete(members)
     .where(
       and(
-        eq(members.spaceId, spaceId),
-        inArray(members.id, normalizedMemberIds),
+        eq(members.spaceId, spaceInternalId),
+        inArray(members.publicId, normalizedMemberIds),
       ),
     )
-    .returning({ id: members.id });
+    .returning({ id: members.id, publicId: members.publicId });
 
   return {
     deletedCount: deletedMembers.length,
-    deletedIds: deletedMembers.map((member) => member.id),
+    deletedIds: deletedMembers.map((member) => member.publicId),
   };
 }

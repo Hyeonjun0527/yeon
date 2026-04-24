@@ -186,7 +186,11 @@ function normalizeProfileUrl(value?: string | null) {
   }
 }
 
-function buildGoogleAuthorizationUrl(state: string, originFallback?: string) {
+function buildGoogleAuthorizationUrl(
+  state: string,
+  codeChallenge: string,
+  originFallback?: string,
+) {
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 
   url.searchParams.set(
@@ -201,12 +205,15 @@ function buildGoogleAuthorizationUrl(state: string, originFallback?: string) {
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("state", state);
   url.searchParams.set("include_granted_scopes", "true");
+  url.searchParams.set("code_challenge", codeChallenge);
+  url.searchParams.set("code_challenge_method", "S256");
 
   return url.toString();
 }
 
 async function fetchGoogleIdentityProfile(
   code: string,
+  codeVerifier: string,
   originFallback?: string,
 ): Promise<SocialIdentityProfile> {
   const token = await fetchProviderJsonResponse({
@@ -228,6 +235,7 @@ async function fetchGoogleIdentityProfile(
           originFallback,
         ),
         grant_type: "authorization_code",
+        code_verifier: codeVerifier,
       }),
       cache: "no-store",
     },
@@ -259,7 +267,11 @@ async function fetchGoogleIdentityProfile(
   };
 }
 
-function buildKakaoAuthorizationUrl(state: string, originFallback?: string) {
+function buildKakaoAuthorizationUrl(
+  state: string,
+  codeChallenge: string,
+  originFallback?: string,
+) {
   const url = new URL("https://kauth.kakao.com/oauth/authorize");
 
   url.searchParams.set(
@@ -273,12 +285,15 @@ function buildKakaoAuthorizationUrl(state: string, originFallback?: string) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
   url.searchParams.set("scope", "account_email");
+  url.searchParams.set("code_challenge", codeChallenge);
+  url.searchParams.set("code_challenge_method", "S256");
 
   return url.toString();
 }
 
 async function fetchKakaoIdentityProfile(
   code: string,
+  codeVerifier: string,
   originFallback?: string,
 ): Promise<SocialIdentityProfile> {
   const body = new URLSearchParams({
@@ -286,6 +301,7 @@ async function fetchKakaoIdentityProfile(
     client_id: getRequiredEnv("KAKAO_REST_API_KEY", socialProviders.kakao),
     redirect_uri: getProviderCallbackUrl(socialProviders.kakao, originFallback),
     code,
+    code_verifier: codeVerifier,
   });
   const kakaoClientSecret = getOptionalEnv("KAKAO_CLIENT_SECRET");
 
@@ -339,25 +355,43 @@ async function fetchKakaoIdentityProfile(
 export function buildSocialAuthorizationUrl(options: {
   provider: SocialProvider;
   state: string;
+  codeChallenge: string;
   originFallback?: string;
 }) {
   switch (options.provider) {
     case socialProviders.google:
-      return buildGoogleAuthorizationUrl(options.state, options.originFallback);
+      return buildGoogleAuthorizationUrl(
+        options.state,
+        options.codeChallenge,
+        options.originFallback,
+      );
     case socialProviders.kakao:
-      return buildKakaoAuthorizationUrl(options.state, options.originFallback);
+      return buildKakaoAuthorizationUrl(
+        options.state,
+        options.codeChallenge,
+        options.originFallback,
+      );
   }
 }
 
 export async function fetchSocialIdentityProfile(options: {
   provider: SocialProvider;
   code: string;
+  codeVerifier: string;
   originFallback?: string;
 }) {
   switch (options.provider) {
     case socialProviders.google:
-      return fetchGoogleIdentityProfile(options.code, options.originFallback);
+      return fetchGoogleIdentityProfile(
+        options.code,
+        options.codeVerifier,
+        options.originFallback,
+      );
     case socialProviders.kakao:
-      return fetchKakaoIdentityProfile(options.code, options.originFallback);
+      return fetchKakaoIdentityProfile(
+        options.code,
+        options.codeVerifier,
+        options.originFallback,
+      );
   }
 }

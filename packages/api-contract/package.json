@@ -6,6 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth": "./src/auth.ts",
+    "./card-decks": "./src/card-decks.ts",
+    "./chat-service": "./src/chat-service.ts",
     "./counseling-records": "./src/counseling-records.ts",
     "./contest": "./src/contest.ts",
     "./health": "./src/health.ts",
@@ -13,7 +15,9 @@
     "./error": "./src/error.ts",
     "./instructor-dashboard": "./src/instructor-dashboard.ts",
     "./instructor-workspace": "./src/instructor-workspace.ts",
-    "./spaces": "./src/spaces.ts"
+    "./spaces": "./src/spaces.ts",
+    "./credential": "./src/credential.ts",
+    "./card-deck-merge-guest": "./src/card-deck-merge-guest.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",

@@ -6,13 +6,13 @@ import type {
   StudentSummary,
 } from "@yeon/api-contract";
 import { and, eq } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 
 import { getDb } from "@/server/db";
 import {
   counselingRecords,
   counselingTranscriptSegments,
 } from "@/server/db/schema";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 import {
@@ -53,11 +53,13 @@ import {
   persistAudioFile,
   replaceAssistantMessages,
   rebuildTranscriptText,
+  resolveRecordInternalIdByPublicId,
   sanitizeOptionalValue,
   sanitizeRequiredValue,
   summarizeStudentsByName,
 } from "./counseling-records-repository";
 import { getMemberByIdForUser } from "./members-service";
+import { resolveSpaceInternalIdByPublicId } from "./spaces-service";
 
 // ── 전사 스케줄러 ──
 
@@ -102,6 +104,7 @@ type CreateCounselingRecordInput = {
 type SchedulableReadRecord = Pick<
   CounselingRecordListRow,
   | "id"
+  | "internalId"
   | "status"
   | "processingStage"
   | "recordSource"
@@ -109,6 +112,75 @@ type SchedulableReadRecord = Pick<
   | "analysisStatus"
   | "createdByUserId"
 >;
+
+function toListRowView(record: CounselingRecordRow): CounselingRecordListRow {
+  return {
+    id: record.publicId,
+    internalId: record.id,
+    createdByUserId: record.createdByUserId,
+    studentName: record.studentName,
+    sessionTitle: record.sessionTitle,
+    counselingType: record.counselingType,
+    counselorName: record.counselorName,
+    status: record.status,
+    recordSource: record.recordSource,
+    audioOriginalName: record.audioOriginalName,
+    audioMimeType: record.audioMimeType,
+    audioByteSize: record.audioByteSize,
+    audioDurationMs: record.audioDurationMs,
+    audioStoragePath: record.audioStoragePath,
+    transcriptText: record.transcriptText,
+    transcriptSegmentCount: record.transcriptSegmentCount,
+    processingStage: record.processingStage,
+    processingProgress: record.processingProgress,
+    processingMessage: record.processingMessage,
+    processingChunkCount: record.processingChunkCount,
+    processingChunkCompletedCount: record.processingChunkCompletedCount,
+    transcriptionAttemptCount: record.transcriptionAttemptCount,
+    analysisStatus: record.analysisStatus,
+    analysisProgress: record.analysisProgress,
+    analysisErrorMessage: record.analysisErrorMessage,
+    analysisAttemptCount: record.analysisAttemptCount,
+    spaceId: null,
+    memberId: null,
+    errorMessage: record.errorMessage,
+    language: record.language,
+    sttModel: record.sttModel,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    transcriptionCompletedAt: record.transcriptionCompletedAt,
+    analysisCompletedAt: record.analysisCompletedAt,
+  };
+}
+
+async function attachRelationPublicIds(
+  record: CounselingRecordRow,
+): Promise<CounselingRecordListRow> {
+  const view = toListRowView(record);
+  const db = getDb();
+
+  if (record.spaceId !== null) {
+    const { spaces } = await import("@/server/db/schema");
+    const [spaceRow] = await db
+      .select({ publicId: spaces.publicId })
+      .from(spaces)
+      .where(eq(spaces.id, record.spaceId))
+      .limit(1);
+    view.spaceId = spaceRow?.publicId ?? null;
+  }
+
+  if (record.memberId !== null) {
+    const { members } = await import("@/server/db/schema");
+    const [memberRow] = await db
+      .select({ publicId: members.publicId })
+      .from(members)
+      .where(eq(members.id, record.memberId))
+      .limit(1);
+    view.memberId = memberRow?.publicId ?? null;
+  }
+
+  return view;
+}
 
 function isChunkSnapshot(
   value: unknown,
@@ -181,7 +253,7 @@ function buildTranscriptFromChunkSnapshots(
 ) {
   const transcriptParts: string[] = [];
   const segments: {
-    id: string;
+    publicId: string;
     segmentIndex: number;
     startMs: number | null;
     endMs: number | null;
@@ -225,7 +297,7 @@ function buildTranscriptFromChunkSnapshots(
       }
 
       segments.push({
-        id: randomUUID(),
+        publicId: generatePublicId(ID_PREFIX.counselingTranscriptSegments),
         segmentIndex,
         startMs: segment.startMs,
         endMs: segment.endMs,
@@ -268,36 +340,36 @@ function buildTranscriptionProgress(
 }
 
 async function updateTranscriptionState(
-  recordId: string,
+  recordInternalId: bigint,
   patch: Partial<typeof counselingRecords.$inferInsert>,
 ) {
   await getDb()
     .update(counselingRecords)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(counselingRecords.id, recordId));
+    .where(eq(counselingRecords.id, recordInternalId));
 }
 
 async function updateAnalysisState(
-  recordId: string,
+  recordInternalId: bigint,
   patch: Partial<typeof counselingRecords.$inferInsert>,
 ) {
   await getDb()
     .update(counselingRecords)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(counselingRecords.id, recordId));
+    .where(eq(counselingRecords.id, recordInternalId));
 }
 
 function scheduleCounselingRecordTranscription(params: {
   userId: string;
-  recordId: string;
+  recordPublicId: string;
   clientRequestId?: string | null;
 }) {
-  if (scheduledTranscriptionJobs.has(params.recordId)) {
+  if (scheduledTranscriptionJobs.has(params.recordPublicId)) {
     return false;
   }
 
   const job = (async () => {
-    const record = await findOwnedRecord(params.userId, params.recordId);
+    const record = await findOwnedRecord(params.userId, params.recordPublicId);
 
     if (!hasPlayableAudio(record)) {
       return;
@@ -310,29 +382,29 @@ function scheduleCounselingRecordTranscription(params: {
   })()
     .catch((error) => {
       console.error("counseling-record-transcription-failed", {
-        recordId: params.recordId,
+        recordId: params.recordPublicId,
         error,
       });
     })
     .finally(() => {
-      scheduledTranscriptionJobs.delete(params.recordId);
+      scheduledTranscriptionJobs.delete(params.recordPublicId);
     });
 
-  scheduledTranscriptionJobs.set(params.recordId, job);
+  scheduledTranscriptionJobs.set(params.recordPublicId, job);
 
   return true;
 }
 
 function scheduleCounselingRecordAnalysis(params: {
   userId: string;
-  recordId: string;
+  recordPublicId: string;
 }) {
-  if (scheduledAnalysisJobs.has(params.recordId)) {
+  if (scheduledAnalysisJobs.has(params.recordPublicId)) {
     return false;
   }
 
   const job = (async () => {
-    const record = await findOwnedRecord(params.userId, params.recordId);
+    const record = await findOwnedRecord(params.userId, params.recordPublicId);
 
     if (record.status !== "ready") {
       return;
@@ -342,15 +414,15 @@ function scheduleCounselingRecordAnalysis(params: {
   })()
     .catch((error) => {
       console.error("counseling-record-analysis-failed", {
-        recordId: params.recordId,
+        recordId: params.recordPublicId,
         error,
       });
     })
     .finally(() => {
-      scheduledAnalysisJobs.delete(params.recordId);
+      scheduledAnalysisJobs.delete(params.recordPublicId);
     });
 
-  scheduledAnalysisJobs.set(params.recordId, job);
+  scheduledAnalysisJobs.set(params.recordPublicId, job);
 
   return true;
 }
@@ -379,7 +451,7 @@ function ensureCounselingRecordTranscriptionScheduled(
 
   return scheduleCounselingRecordTranscription({
     userId: record.createdByUserId,
-    recordId: record.id,
+    recordPublicId: record.id,
     clientRequestId: options?.clientRequestId ?? null,
   });
 }
@@ -399,7 +471,7 @@ function ensureCounselingRecordAnalysisScheduled(
 
   return scheduleCounselingRecordAnalysis({
     userId: record.createdByUserId,
-    recordId: record.id,
+    recordPublicId: record.id,
   });
 }
 
@@ -418,7 +490,8 @@ function ensureRecordProcessingScheduledForList(
 
 async function queueAnalysisAfterTranscriptMutation(params: {
   userId: string;
-  recordId: string;
+  recordInternalId: bigint;
+  recordPublicId: string;
   processingMessage: string;
 }) {
   await getDb()
@@ -433,10 +506,14 @@ async function queueAnalysisAfterTranscriptMutation(params: {
       processingMessage: params.processingMessage,
       updatedAt: new Date(),
     })
-    .where(eq(counselingRecords.id, params.recordId));
+    .where(eq(counselingRecords.id, params.recordInternalId));
 
-  const refreshedRecord = await findOwnedRecord(params.userId, params.recordId);
-  ensureCounselingRecordAnalysisScheduled(refreshedRecord);
+  const refreshedRecord = await findOwnedRecord(
+    params.userId,
+    params.recordPublicId,
+  );
+  const refreshedListRow = await attachRelationPublicIds(refreshedRecord);
+  ensureCounselingRecordAnalysisScheduled(refreshedListRow);
 }
 
 // ── 내부 헬퍼 ──
@@ -465,25 +542,38 @@ function mapReadyRecordListItems(records: CounselingRecordListRow[]) {
   return visibleRecords.map(mapRecordListItem);
 }
 
-function mapRequestedRecordDetails(params: {
-  recordIds: string[];
+async function mapRequestedRecordDetails(params: {
+  recordPublicIds: string[];
   detailSources: CounselingRecordDetailSource[];
 }) {
-  const detailSourceById = new Map(
-    params.detailSources.map((source) => [source.record.id, source]),
+  const detailSourceByPublicId = new Map(
+    params.detailSources.map((source) => [source.record.publicId, source]),
   );
 
-  return params.recordIds.flatMap((recordId) => {
-    const source = detailSourceById.get(recordId);
+  const results: CounselingRecordDetail[] = [];
+
+  for (const recordPublicId of params.recordPublicIds) {
+    const source = detailSourceByPublicId.get(recordPublicId);
 
     if (!source || isDemoPlaceholderRecord(source.record)) {
-      return [];
+      continue;
     }
 
-    ensureRecordProcessingScheduled(source.record);
+    const listRow = await attachRelationPublicIds(source.record);
+    ensureRecordProcessingScheduled(listRow);
+    results.push(
+      mapRecordDetail(
+        {
+          ...listRow,
+          analysisResult: source.record.analysisResult,
+          assistantMessages: source.record.assistantMessages,
+        },
+        source.segments,
+      ),
+    );
+  }
 
-    return [mapRecordDetail(source.record, source.segments)];
-  });
+  return results;
 }
 
 /** 전사 실행 + AI 화자 식별 → 화자 라벨이 반영된 세그먼트 + 수강생 이름 반환 */
@@ -497,7 +587,7 @@ async function transcribeAndResolveSpeakers(
   const existingChunks = readTranscriptionChunks(record);
 
   const transcription = await transcribeStoredAudio({
-    recordId: record.id,
+    recordId: record.publicId,
     storagePath: record.audioStoragePath,
     mimeType: record.audioMimeType,
     originalName: record.audioOriginalName,
@@ -535,7 +625,7 @@ async function transcribeAndResolveSpeakers(
     },
     onChunkCompleted: async ({ chunkIndex, chunkCount, snapshot }) => {
       const previousChunks = readTranscriptionChunks(
-        await findOwnedRecord(record.createdByUserId, record.id),
+        await findOwnedRecord(record.createdByUserId, record.publicId),
       );
       const nextChunks = [
         ...previousChunks.filter((item) => item.index !== snapshot.index),
@@ -598,12 +688,11 @@ async function transcribeAndResolveSpeakers(
 
 /** 전사 결과를 DB에 저장 (트랜잭션) */
 async function persistTranscriptResult(params: {
-  recordId: string;
+  recordInternalId: bigint;
   initialStudentName: string;
   originalAudioDurationMs: number | null;
   transcription: Awaited<ReturnType<typeof transcribeStoredAudio>>;
   resolvedSegments: {
-    id: string;
     segmentIndex: number;
     startMs: number | null;
     endMs: number | null;
@@ -642,17 +731,17 @@ async function persistTranscriptResult(params: {
         transcriptionCompletedAt: now,
         updatedAt: now,
       })
-      .where(eq(counselingRecords.id, params.recordId));
+      .where(eq(counselingRecords.id, params.recordInternalId));
 
     await tx
       .delete(counselingTranscriptSegments)
-      .where(eq(counselingTranscriptSegments.recordId, params.recordId));
+      .where(eq(counselingTranscriptSegments.recordId, params.recordInternalId));
 
     if (params.resolvedSegments.length > 0) {
       await tx.insert(counselingTranscriptSegments).values(
         params.resolvedSegments.map((segment) => ({
-          id: segment.id,
-          recordId: params.recordId,
+          publicId: generatePublicId(ID_PREFIX.counselingTranscriptSegments),
+          recordId: params.recordInternalId,
           segmentIndex: segment.segmentIndex,
           startMs: segment.startMs,
           endMs: segment.endMs,
@@ -666,7 +755,7 @@ async function persistTranscriptResult(params: {
 }
 
 async function persistPartialTranscriptResult(params: {
-  recordId: string;
+  recordInternalId: bigint;
   chunkSnapshots: PersistedTranscriptionChunkSnapshot[];
   originalAudioDurationMs: number | null;
   processingChunkCount: number;
@@ -716,17 +805,17 @@ async function persistPartialTranscriptResult(params: {
         transcriptionCompletedAt: null,
         updatedAt: now,
       })
-      .where(eq(counselingRecords.id, params.recordId));
+      .where(eq(counselingRecords.id, params.recordInternalId));
 
     await tx
       .delete(counselingTranscriptSegments)
-      .where(eq(counselingTranscriptSegments.recordId, params.recordId));
+      .where(eq(counselingTranscriptSegments.recordId, params.recordInternalId));
 
     if (partialTranscript.segments.length > 0) {
       await tx.insert(counselingTranscriptSegments).values(
         partialTranscript.segments.map((segment) => ({
-          id: segment.id,
-          recordId: params.recordId,
+          publicId: segment.publicId,
+          recordId: params.recordInternalId,
           segmentIndex: segment.segmentIndex,
           startMs: segment.startMs,
           endMs: segment.endMs,
@@ -745,11 +834,11 @@ async function runTranscriptionForRecord(params: {
 }) {
   const freshRecord = await findOwnedRecord(
     params.record.createdByUserId,
-    params.record.id,
+    params.record.publicId,
   );
   if (freshRecord.status !== "processing") {
     console.info("전사 스킵: 레코드 상태가 processing이 아님", {
-      recordId: params.record.id,
+      recordId: params.record.publicId,
       status: freshRecord.status,
     });
     return;
@@ -770,7 +859,7 @@ async function runTranscriptionForRecord(params: {
       await transcribeAndResolveSpeakers(freshRecord, params.clientRequestId);
 
     await persistTranscriptResult({
-      recordId: params.record.id,
+      recordInternalId: params.record.id,
       initialStudentName: params.record.studentName,
       originalAudioDurationMs: params.record.audioDurationMs,
       transcription,
@@ -780,9 +869,10 @@ async function runTranscriptionForRecord(params: {
 
     const completedRecord = await findOwnedRecord(
       params.record.createdByUserId,
-      params.record.id,
+      params.record.publicId,
     );
-    ensureCounselingRecordAnalysisScheduled(completedRecord);
+    const completedListRow = await attachRelationPublicIds(completedRecord);
+    ensureCounselingRecordAnalysisScheduled(completedListRow);
   } catch (error) {
     const message =
       error instanceof ServiceError
@@ -790,20 +880,20 @@ async function runTranscriptionForRecord(params: {
         : "음성 전사 처리 중 알 수 없는 오류가 발생했습니다.";
     const latestRecord = await findOwnedRecord(
       params.record.createdByUserId,
-      params.record.id,
+      params.record.publicId,
     );
     const partialChunks = readTranscriptionChunks(latestRecord);
 
     if (partialChunks.length > 0) {
       console.warn("counseling-record-transcription-partial", {
-        recordId: params.record.id,
+        recordId: params.record.publicId,
         completedChunkCount: partialChunks.length,
         processingChunkCount: latestRecord.processingChunkCount,
         error: message,
       });
 
       await persistPartialTranscriptResult({
-        recordId: params.record.id,
+        recordInternalId: params.record.id,
         chunkSnapshots: partialChunks,
         originalAudioDurationMs: params.record.audioDurationMs,
         processingChunkCount: latestRecord.processingChunkCount,
@@ -829,7 +919,7 @@ async function runTranscriptionForRecord(params: {
 async function runQueuedAnalysisForRecord(record: CounselingRecordRow) {
   const detail = await getCounselingRecordDetail(
     record.createdByUserId,
-    record.id,
+    record.publicId,
   );
 
   if (detail.status !== "ready" || detail.transcriptSegments.length === 0) {
@@ -927,69 +1017,80 @@ export async function listStudentSummaries(
 
 async function getMultipleCounselingRecordDetailsInternal(
   userId: string,
-  recordIds: string[],
+  recordPublicIds: string[],
 ) {
-  if (recordIds.length === 0) {
+  if (recordPublicIds.length === 0) {
     return [] as CounselingRecordDetail[];
   }
 
   return mapRequestedRecordDetails({
-    recordIds,
-    detailSources: await findOwnedRecordDetailSourcesByIds(userId, recordIds),
+    recordPublicIds,
+    detailSources: await findOwnedRecordDetailSourcesByIds(
+      userId,
+      recordPublicIds,
+    ),
   });
 }
 
 export async function getMultipleCounselingRecordDetails(
   userId: string,
-  recordIds: string[],
+  recordPublicIds: string[],
 ) {
-  return getMultipleCounselingRecordDetailsInternal(userId, recordIds);
+  return getMultipleCounselingRecordDetailsInternal(userId, recordPublicIds);
 }
 
 export async function getCounselingRecordDetail(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
 ) {
-  const source = await findOwnedRecordDetailSource(userId, recordId);
+  const source = await findOwnedRecordDetailSource(userId, recordPublicId);
   const record = assertViewableRecord(source.record);
 
-  ensureRecordProcessingScheduled(record);
+  const listRow = await attachRelationPublicIds(record);
+  ensureRecordProcessingScheduled(listRow);
 
-  return mapRecordDetail(record, source.segments);
+  return mapRecordDetail(
+    {
+      ...listRow,
+      analysisResult: record.analysisResult,
+      assistantMessages: record.assistantMessages,
+    },
+    source.segments,
+  );
 }
 
 export async function appendCounselingRecordAssistantMessages(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
   messages: CounselingChatMessage[],
 ) {
   if (messages.length === 0) {
     return [];
   }
 
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   const currentMessages = parseCounselingChatMessages(record.assistantMessages);
   const nextMessages = [...currentMessages, ...messages];
 
-  await replaceAssistantMessages(recordId, nextMessages);
+  await replaceAssistantMessages(recordPublicId, nextMessages);
 
   return nextMessages;
 }
 
 export async function clearCounselingRecordAssistantMessages(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
 ) {
-  await findOwnedRecord(userId, recordId);
-  await replaceAssistantMessages(recordId, []);
+  await findOwnedRecord(userId, recordPublicId);
+  await replaceAssistantMessages(recordPublicId, []);
 }
 
 export async function getMultipleRecordsWithSegments(
   userId: string,
-  recordIds: string[],
+  recordPublicIds: string[],
 ) {
   const MAX_TREND_RECORDS = 5;
-  const limitedIds = recordIds.slice(0, MAX_TREND_RECORDS);
+  const limitedIds = recordPublicIds.slice(0, MAX_TREND_RECORDS);
   const detailedRecords = await getMultipleCounselingRecordDetailsInternal(
     userId,
     limitedIds,
@@ -1023,9 +1124,9 @@ export async function createCounselingRecordAndQueueTranscription(
   input: CreateCounselingRecordInput,
 ) {
   const db = getDb();
-  const recordId = randomUUID();
-  let linkedMemberId: string | null = null;
-  let linkedSpaceId: string | null = null;
+  const recordPublicId = generatePublicId(ID_PREFIX.counselingRecords);
+  let linkedMemberInternalId: bigint | null = null;
+  let linkedSpaceInternalId: bigint | null = null;
   let resolvedStudentName = sanitizeOptionalValue(input.studentName, 80) ?? "";
 
   if (input.memberId) {
@@ -1033,8 +1134,8 @@ export async function createCounselingRecordAndQueueTranscription(
       input.currentUser.id,
       input.memberId,
     );
-    linkedMemberId = member.id;
-    linkedSpaceId = member.spaceId;
+    linkedMemberInternalId = member.id;
+    linkedSpaceInternalId = member.spaceId;
     resolvedStudentName = resolvedStudentName || member.name;
   }
 
@@ -1045,15 +1146,15 @@ export async function createCounselingRecordAndQueueTranscription(
   );
   const counselingType =
     sanitizeOptionalValue(input.counselingType, 40) ?? DEFAULT_COUNSELING_TYPE;
-  const persistedAudio = await persistAudioFile(recordId, input.file);
+  const persistedAudio = await persistAudioFile(recordPublicId, input.file);
   const now = new Date();
 
   try {
     await db.insert(counselingRecords).values({
-      id: recordId,
+      publicId: recordPublicId,
       createdByUserId: input.currentUser.id,
-      memberId: linkedMemberId,
-      spaceId: linkedSpaceId,
+      memberId: linkedMemberInternalId,
+      spaceId: linkedSpaceInternalId,
       studentName: resolvedStudentName,
       sessionTitle,
       counselingType,
@@ -1085,7 +1186,7 @@ export async function createCounselingRecordAndQueueTranscription(
     await deleteCounselingAudioObject(persistedAudio.storagePath).catch(
       (cleanupError) => {
         console.error("counseling-record-r2-cleanup-failed", {
-          recordId,
+          recordId: recordPublicId,
           cleanupError,
         });
       },
@@ -1096,11 +1197,11 @@ export async function createCounselingRecordAndQueueTranscription(
 
   scheduleCounselingRecordTranscription({
     userId: input.currentUser.id,
-    recordId,
+    recordPublicId,
     clientRequestId: input.clientRequestId,
   });
 
-  return getCounselingRecordDetail(input.currentUser.id, recordId);
+  return getCounselingRecordDetail(input.currentUser.id, recordPublicId);
 }
 
 export async function createTextMemoRecord(input: {
@@ -1112,10 +1213,12 @@ export async function createTextMemoRecord(input: {
   counselingType?: string;
 }): Promise<CounselingRecordDetail> {
   const db = getDb();
-  const recordId = randomUUID();
-  const segmentId = randomUUID();
-  let linkedMemberId: string | null = null;
-  let linkedSpaceId: string | null = null;
+  const recordPublicId = generatePublicId(ID_PREFIX.counselingRecords);
+  const segmentPublicId = generatePublicId(
+    ID_PREFIX.counselingTranscriptSegments,
+  );
+  let linkedMemberInternalId: bigint | null = null;
+  let linkedSpaceInternalId: bigint | null = null;
   let resolvedStudentName = sanitizeOptionalValue(input.studentName, 80) ?? "";
 
   if (input.memberId) {
@@ -1123,8 +1226,8 @@ export async function createTextMemoRecord(input: {
       input.currentUser.id,
       input.memberId,
     );
-    linkedMemberId = member.id;
-    linkedSpaceId = member.spaceId;
+    linkedMemberInternalId = member.id;
+    linkedSpaceInternalId = member.spaceId;
     resolvedStudentName = resolvedStudentName || member.name;
   }
 
@@ -1139,39 +1242,46 @@ export async function createTextMemoRecord(input: {
   const now = new Date();
 
   await db.transaction(async (tx) => {
-    await tx.insert(counselingRecords).values({
-      id: recordId,
-      createdByUserId: input.currentUser.id,
-      memberId: linkedMemberId,
-      spaceId: linkedSpaceId,
-      studentName: resolvedStudentName,
-      sessionTitle,
-      counselingType,
-      recordSource: COUNSELING_RECORD_SOURCE.TEXT_MEMO,
-      counselorName:
-        sanitizeOptionalValue(input.currentUser.displayName, 80) ??
-        sanitizeOptionalValue(input.currentUser.email, 80),
-      status: "ready",
-      audioOriginalName: "텍스트 메모",
-      audioMimeType: "text/plain",
-      audioByteSize: 0,
-      audioDurationMs: null,
-      audioStoragePath: `text_memo://${recordId}`,
-      audioSha256: "",
-      transcriptText: content,
-      transcriptSegmentCount: 1,
-      language: "ko",
-      processingStage: "completed",
-      processingProgress: 100,
-      processingMessage: "텍스트 메모 원문이 즉시 준비되었습니다.",
-      analysisStatus: "idle",
-      analysisProgress: 0,
-      updatedAt: now,
-    });
+    const [inserted] = await tx
+      .insert(counselingRecords)
+      .values({
+        publicId: recordPublicId,
+        createdByUserId: input.currentUser.id,
+        memberId: linkedMemberInternalId,
+        spaceId: linkedSpaceInternalId,
+        studentName: resolvedStudentName,
+        sessionTitle,
+        counselingType,
+        recordSource: COUNSELING_RECORD_SOURCE.TEXT_MEMO,
+        counselorName:
+          sanitizeOptionalValue(input.currentUser.displayName, 80) ??
+          sanitizeOptionalValue(input.currentUser.email, 80),
+        status: "ready",
+        audioOriginalName: "텍스트 메모",
+        audioMimeType: "text/plain",
+        audioByteSize: 0,
+        audioDurationMs: null,
+        audioStoragePath: `text_memo://${recordPublicId}`,
+        audioSha256: "",
+        transcriptText: content,
+        transcriptSegmentCount: 1,
+        language: "ko",
+        processingStage: "completed",
+        processingProgress: 100,
+        processingMessage: "텍스트 메모 원문이 즉시 준비되었습니다.",
+        analysisStatus: "idle",
+        analysisProgress: 0,
+        updatedAt: now,
+      })
+      .returning({ id: counselingRecords.id });
+
+    if (!inserted) {
+      throw new ServiceError(500, "텍스트 메모 생성에 실패했습니다.");
+    }
 
     await tx.insert(counselingTranscriptSegments).values({
-      id: segmentId,
-      recordId,
+      publicId: segmentPublicId,
+      recordId: inserted.id,
       segmentIndex: 0,
       startMs: null,
       endMs: null,
@@ -1181,16 +1291,16 @@ export async function createTextMemoRecord(input: {
     });
   });
 
-  return getCounselingRecordDetail(input.currentUser.id, recordId);
+  return getCounselingRecordDetail(input.currentUser.id, recordPublicId);
 }
 
 export async function retryCounselingRecordTranscription(
   currentUser: AuthUserDto,
-  recordId: string,
+  recordPublicId: string,
   clientRequestId?: string | null,
 ) {
   const db = getDb();
-  const existingRecord = await findOwnedRecord(currentUser.id, recordId);
+  const existingRecord = await findOwnedRecord(currentUser.id, recordPublicId);
   const preservedChunks =
     existingRecord.processingStage === PARTIAL_TRANSCRIPT_READY_STAGE
       ? readTranscriptionChunks(existingRecord)
@@ -1213,9 +1323,9 @@ export async function retryCounselingRecordTranscription(
 
   if (
     existingRecord.status === "processing" &&
-    scheduledTranscriptionJobs.has(existingRecord.id)
+    scheduledTranscriptionJobs.has(existingRecord.publicId)
   ) {
-    return getCounselingRecordDetail(currentUser.id, recordId);
+    return getCounselingRecordDetail(currentUser.id, recordPublicId);
   }
 
   const now = new Date();
@@ -1251,19 +1361,19 @@ export async function retryCounselingRecordTranscription(
 
   scheduleCounselingRecordTranscription({
     userId: currentUser.id,
-    recordId: existingRecord.id,
+    recordPublicId: existingRecord.publicId,
     clientRequestId,
   });
 
-  return getCounselingRecordDetail(currentUser.id, recordId);
+  return getCounselingRecordDetail(currentUser.id, recordPublicId);
 }
 
 export async function getCounselingRecordAudio(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
   rangeHeader?: string | null,
 ) {
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
 
   if (isTextMemoRecord(record)) {
     throw new ServiceError(404, "텍스트 메모에는 재생할 원본 음성이 없습니다.");
@@ -1303,8 +1413,11 @@ export async function getCounselingRecordAudio(
   };
 }
 
-export async function runAnalysisForRecord(userId: string, recordId: string) {
-  const detail = await getCounselingRecordDetail(userId, recordId);
+export async function runAnalysisForRecord(
+  userId: string,
+  recordPublicId: string,
+) {
+  const detail = await getCounselingRecordDetail(userId, recordPublicId);
 
   if (detail.status !== "ready" || detail.transcriptSegments.length === 0) {
     throw new ServiceError(400, "전사가 완료된 레코드만 분석할 수 있습니다.");
@@ -1315,12 +1428,12 @@ export async function runAnalysisForRecord(userId: string, recordId: string) {
   }
 
   if (detail.analysisStatus === "processing") {
-    const existingJob = scheduledAnalysisJobs.get(recordId);
+    const existingJob = scheduledAnalysisJobs.get(recordPublicId);
     if (existingJob) {
       await existingJob;
       const refreshedWhileRunning = await getCounselingRecordDetail(
         userId,
-        recordId,
+        recordPublicId,
       );
       if (refreshedWhileRunning.analysisResult) {
         return refreshedWhileRunning.analysisResult;
@@ -1333,10 +1446,10 @@ export async function runAnalysisForRecord(userId: string, recordId: string) {
     );
   }
 
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   await runQueuedAnalysisForRecord(record);
 
-  const refreshed = await getCounselingRecordDetail(userId, recordId);
+  const refreshed = await getCounselingRecordDetail(userId, recordPublicId);
 
   if (!refreshed.analysisResult) {
     throw new ServiceError(502, "AI 분석 결과를 저장하지 못했습니다.");
@@ -1347,29 +1460,36 @@ export async function runAnalysisForRecord(userId: string, recordId: string) {
 
 export async function linkCounselingRecordMember(
   userId: string,
-  recordId: string,
-  memberId: string | null,
+  recordPublicId: string,
+  memberPublicId: string | null,
 ) {
-  await findOwnedRecord(userId, recordId);
+  await findOwnedRecord(userId, recordPublicId);
 
-  /* memberId가 있으면 소유권 검증 후 해당 멤버의 spaceId를 함께 저장 */
-  let spaceId: string | null = null;
-  if (memberId) {
+  /* memberId가 있으면 소유권 검증 후 해당 멤버의 space publicId를 함께 저장 */
+  let spacePublicId: string | null = null;
+  if (memberPublicId) {
     // getMemberByIdForUser: 현재 사용자의 space에 속한 멤버인지 함께 검증
-    const member = await getMemberByIdForUser(userId, memberId);
-    spaceId = member.spaceId;
+    const member = await getMemberByIdForUser(userId, memberPublicId);
+    // member.spaceId는 내부 bigint이므로 publicId로 해석
+    const { spaces } = await import("@/server/db/schema");
+    const [spaceRow] = await getDb()
+      .select({ publicId: spaces.publicId })
+      .from(spaces)
+      .where(eq(spaces.id, member.spaceId))
+      .limit(1);
+    spacePublicId = spaceRow?.publicId ?? null;
   }
 
-  await linkRecordToMember(recordId, memberId, spaceId);
+  await linkRecordToMember(recordPublicId, memberPublicId, spacePublicId);
 }
 
 export async function listCounselingRecordsBySpace(
   userId: string,
-  spaceId: string,
+  spacePublicId: string,
   options?: CounselingRecordListQueryOptions,
 ) {
   return mapReadyRecordListItems(
-    await findRecordsBySpaceId(userId, spaceId, options),
+    await findRecordsBySpaceId(userId, spacePublicId, options),
   );
 }
 
@@ -1382,20 +1502,23 @@ export async function listUnlinkedCounselingRecords(
 
 export async function listCounselingRecordsByMember(
   userId: string,
-  memberId: string,
+  memberPublicId: string,
   options?: CounselingRecordListQueryOptions,
 ) {
   return mapReadyRecordListItems(
-    await findRecordsByMemberId(userId, memberId, options),
+    await findRecordsByMemberId(userId, memberPublicId, options),
   );
 }
 
-export async function deleteCounselingRecord(userId: string, recordId: string) {
+export async function deleteCounselingRecord(
+  userId: string,
+  recordPublicId: string,
+) {
   // 진행 중인 전사 job을 취소해 고아 세그먼트 방지
-  scheduledTranscriptionJobs.delete(recordId);
-  scheduledAnalysisJobs.delete(recordId);
+  scheduledTranscriptionJobs.delete(recordPublicId);
+  scheduledAnalysisJobs.delete(recordPublicId);
 
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   const db = getDb();
 
   await db.delete(counselingRecords).where(eq(counselingRecords.id, record.id));
@@ -1405,7 +1528,7 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
       await deleteCounselingAudioObject(record.audioStoragePath);
     } catch (error) {
       console.error("counseling-record-r2-delete-failed", {
-        recordId: record.id,
+        recordId: record.publicId,
         storagePath: record.audioStoragePath,
         error,
       });
@@ -1415,15 +1538,15 @@ export async function deleteCounselingRecord(userId: string, recordId: string) {
 
 export async function updateTranscriptSegment(
   userId: string,
-  recordId: string,
-  segmentId: string,
+  recordPublicId: string,
+  segmentPublicId: string,
   patch: {
     text?: string;
     speakerLabel?: string;
     speakerTone?: CounselingRecordSpeakerTone;
   },
 ) {
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   const db = getDb();
 
   if (record.status !== "ready") {
@@ -1438,7 +1561,7 @@ export async function updateTranscriptSegment(
     .from(counselingTranscriptSegments)
     .where(
       and(
-        eq(counselingTranscriptSegments.id, segmentId),
+        eq(counselingTranscriptSegments.publicId, segmentPublicId),
         eq(counselingTranscriptSegments.recordId, record.id),
       ),
     )
@@ -1471,7 +1594,7 @@ export async function updateTranscriptSegment(
   const [updated] = await db
     .update(counselingTranscriptSegments)
     .set(updateFields)
-    .where(eq(counselingTranscriptSegments.id, segmentId))
+    .where(eq(counselingTranscriptSegments.publicId, segmentPublicId))
     .returning();
 
   await rebuildTranscriptText(record.id);
@@ -1480,7 +1603,8 @@ export async function updateTranscriptSegment(
   // runAnalysisForRecord의 캐시 체크(detail.analysisResult)가 재분석을 허용하게 됨
   await queueAnalysisAfterTranscriptMutation({
     userId,
-    recordId: record.id,
+    recordInternalId: record.id,
+    recordPublicId: record.publicId,
     processingMessage: "원문이 수정되어 AI 분석을 다시 준비합니다.",
   });
 
@@ -1489,12 +1613,12 @@ export async function updateTranscriptSegment(
 
 export async function bulkUpdateSpeakerLabel(
   userId: string,
-  recordId: string,
+  recordPublicId: string,
   fromSpeakerLabel: string,
   toSpeakerLabel: string,
   toSpeakerTone?: CounselingRecordSpeakerTone,
 ) {
-  const record = await findOwnedRecord(userId, recordId);
+  const record = await findOwnedRecord(userId, recordPublicId);
   const db = getDb();
 
   if (record.status !== "ready") {
@@ -1529,10 +1653,14 @@ export async function bulkUpdateSpeakerLabel(
     // 화자 레이블 변경은 분석 결과(발화자 기반 요약)를 stale하게 만들므로 초기화
     await queueAnalysisAfterTranscriptMutation({
       userId,
-      recordId: record.id,
+      recordInternalId: record.id,
+      recordPublicId: record.publicId,
       processingMessage: "화자 정보가 수정되어 AI 분석을 다시 준비합니다.",
     });
   }
 
   return result.length;
 }
+
+// 현재 미사용이지만 다른 패키지에서 참조할 수 있어 유지한다.
+export { resolveRecordInternalIdByPublicId, resolveSpaceInternalIdByPublicId };

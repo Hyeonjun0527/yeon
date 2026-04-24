@@ -1,17 +1,20 @@
 import {
+  bigint,
   jsonb,
   pgTable,
   text,
   timestamp,
-  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
 import { spaces } from "./spaces";
 
 export const sheetIntegrations = pgTable("sheet_integrations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: uuid("space_id")
+  id: bigint("id", { mode: "bigint" })
+    .primaryKey()
+    .generatedAlwaysAsIdentity(),
+  publicId: text("public_id").notNull().unique(),
+  spaceId: bigint("space_id", { mode: "bigint" })
     .notNull()
     .references(() => spaces.id, { onDelete: "cascade" }),
   sheetUrl: text("sheet_url").notNull(),

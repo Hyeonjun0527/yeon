@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { Application } from "@splinetool/runtime";
-import styles from "./landing-home.module.css";
+import styles from "./landing-workspace.module.css";
 
 const SPLINE_SCENE =
   "https://prod.spline.design/3K3aYKR6mrKFknHz/scene.splinecode";

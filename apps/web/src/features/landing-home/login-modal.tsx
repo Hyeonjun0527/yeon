@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
 import { ChevronDown, X } from "lucide-react";
 
 import type { DevLoginOption } from "@/lib/auth/dev-login-options";
@@ -214,10 +215,11 @@ export function LoginModal({
                   id="landing-login-title"
                   className="m-0 text-[clamp(24px,3vw,34px)] font-black leading-[1.08] tracking-[-0.04em] text-[#111318]"
                 >
-                  회원가입 없이 시작해요
+                  공통 계정으로 계속할게요
                 </h2>
                 <p className="m-0 text-[14px] leading-[1.6] text-[#626b79]">
-                  상담 기록 워크스페이스를 바로 열 수 있어요.
+                  상담 워크스페이스처럼 계정이 필요한 서비스를 바로 열 수
+                  있어요.
                 </p>
               </div>
 
@@ -262,6 +264,29 @@ export function LoginModal({
                 카카오 로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의한
                 것으로 간주됩니다.
               </p>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[12px] leading-[1.5] text-[#626b79]">
+                <Link
+                  href={`/auth/login?next=${encodeURIComponent(nextPath)}`}
+                  className="font-semibold text-[#2b313d] underline-offset-2 hover:underline"
+                >
+                  이메일로 로그인
+                </Link>
+                <span aria-hidden="true">·</span>
+                <Link
+                  href={`/auth/register?next=${encodeURIComponent(nextPath)}`}
+                  className="underline-offset-2 hover:underline"
+                >
+                  이메일로 가입
+                </Link>
+                <span aria-hidden="true">·</span>
+                <Link
+                  href="/auth/reset-request"
+                  className="underline-offset-2 hover:underline"
+                >
+                  비밀번호 찾기
+                </Link>
+              </div>
 
               {hasDevLoginOptions ? (
                 <div className="mt-2 grid gap-3 rounded-[22px] border border-[rgba(17,19,24,0.08)] bg-[rgba(17,19,24,0.03)] p-4">

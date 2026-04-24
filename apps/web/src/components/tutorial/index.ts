@@ -1,4 +1,4 @@
-export { HomeTutorial } from "./home-tutorial";
+export { CounselingTutorial } from "./counseling-tutorial";
 export { StudentTutorial } from "./student-tutorial";
 export { CheckBoardTutorial } from "./check-board-tutorial";
 export { TutorialTriggerButton } from "./tutorial-trigger-button";

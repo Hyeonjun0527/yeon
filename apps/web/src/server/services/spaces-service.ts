@@ -1,5 +1,4 @@
 import { and, desc, eq } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import type {
   CreateSpaceBody,
   UpdateSpaceBody,
@@ -13,11 +12,63 @@ import {
   isSpaceDateString,
   normalizeSpaceDateInput,
 } from "@/lib/space-period";
+import { generatePublicId, ID_PREFIX } from "@/server/lib/public-id";
 
 import { ServiceError } from "./service-error";
 
 export type CreateSpaceInput = CreateSpaceBody;
 export type UpdateSpaceInput = UpdateSpaceBody;
+
+export type SpaceRow = typeof spaces.$inferSelect;
+
+export interface SpaceDto {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdByUserId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export function toSpaceDto(row: SpaceRow): SpaceDto {
+  return {
+    id: row.publicId,
+    name: row.name,
+    description: row.description,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    createdByUserId: row.createdByUserId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * publicId → 내부 bigint id 해석. 존재하지 않으면 null.
+ * 소유권 검증은 호출자가 별도로 한다.
+ */
+export async function resolveSpaceInternalIdByPublicId(
+  publicId: string,
+): Promise<bigint | null> {
+  const [row] = await getDb()
+    .select({ id: spaces.id })
+    .from(spaces)
+    .where(eq(spaces.publicId, publicId))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+export async function requireSpaceInternalIdByPublicId(
+  publicId: string,
+): Promise<bigint> {
+  const id = await resolveSpaceInternalIdByPublicId(publicId);
+  if (id === null) {
+    throw new ServiceError(404, "스페이스를 찾지 못했습니다.");
+  }
+  return id;
+}
 
 function resolveCreateSpacePeriod(data: CreateSpaceInput) {
   const startDate = normalizeSpaceDateInput(data.startDate);
@@ -35,7 +86,7 @@ function resolveCreateSpacePeriod(data: CreateSpaceInput) {
 }
 
 function resolveUpdateSpacePeriod(
-  existingSpace: typeof spaces.$inferSelect,
+  existingSpace: SpaceRow,
   data: UpdateSpaceInput,
 ) {
   const hasStartDatePatch = data.startDate !== undefined;
@@ -96,7 +147,10 @@ function resolveUpdateSpacePeriod(
   };
 }
 
-export async function createSpace(userId: string, data: CreateSpaceInput) {
+export async function createSpace(
+  userId: string,
+  data: CreateSpaceInput,
+): Promise<SpaceRow> {
   const db = getDb();
   const name = data.name.trim().slice(0, 100);
 
@@ -110,7 +164,7 @@ export async function createSpace(userId: string, data: CreateSpaceInput) {
   const [space] = await db
     .insert(spaces)
     .values({
-      id: randomUUID(),
+      publicId: generatePublicId(ID_PREFIX.spaces),
       name,
       description: data.description?.trim() || null,
       startDate: period.startDate,
@@ -120,10 +174,14 @@ export async function createSpace(userId: string, data: CreateSpaceInput) {
     })
     .returning();
 
+  if (!space) {
+    throw new ServiceError(500, "스페이스를 생성하지 못했습니다.");
+  }
+
   return space;
 }
 
-export async function getSpaces(userId: string) {
+export async function getSpaces(userId: string): Promise<SpaceRow[]> {
   const db = getDb();
 
   return db
@@ -133,13 +191,15 @@ export async function getSpaces(userId: string) {
     .orderBy(desc(spaces.createdAt));
 }
 
-export async function getSpaceById(spaceId: string) {
+export async function getSpaceByPublicId(
+  publicId: string,
+): Promise<SpaceRow> {
   const db = getDb();
 
   const [space] = await db
     .select()
     .from(spaces)
-    .where(eq(spaces.id, spaceId))
+    .where(eq(spaces.publicId, publicId))
     .limit(1);
 
   if (!space) {
@@ -149,12 +209,40 @@ export async function getSpaceById(spaceId: string) {
   return space;
 }
 
-export async function deleteSpace(userId: string, spaceId: string) {
+export async function getSpaceByInternalId(
+  internalId: bigint,
+): Promise<SpaceRow> {
+  const db = getDb();
+
+  const [space] = await db
+    .select()
+    .from(spaces)
+    .where(eq(spaces.id, internalId))
+    .limit(1);
+
+  if (!space) {
+    throw new ServiceError(404, "스페이스를 찾지 못했습니다.");
+  }
+
+  return space;
+}
+
+/**
+ * 기존 호출자 호환용 별칭. publicId 기반 조회와 의미가 같다.
+ */
+export const getSpaceById = getSpaceByPublicId;
+
+export async function deleteSpace(
+  userId: string,
+  publicId: string,
+): Promise<SpaceRow> {
   const db = getDb();
 
   const [deletedSpace] = await db
     .delete(spaces)
-    .where(and(eq(spaces.id, spaceId), eq(spaces.createdByUserId, userId)))
+    .where(
+      and(eq(spaces.publicId, publicId), eq(spaces.createdByUserId, userId)),
+    )
     .returning();
 
   if (!deletedSpace) {
@@ -166,14 +254,16 @@ export async function deleteSpace(userId: string, spaceId: string) {
 
 export async function updateSpace(
   userId: string,
-  spaceId: string,
+  publicId: string,
   data: UpdateSpaceInput,
-) {
+): Promise<SpaceRow> {
   const db = getDb();
   const [existingSpace] = await db
     .select()
     .from(spaces)
-    .where(and(eq(spaces.id, spaceId), eq(spaces.createdByUserId, userId)))
+    .where(
+      and(eq(spaces.publicId, publicId), eq(spaces.createdByUserId, userId)),
+    )
     .limit(1);
 
   if (!existingSpace) {
@@ -197,7 +287,9 @@ export async function updateSpace(
   const [updatedSpace] = await db
     .update(spaces)
     .set(updateFields)
-    .where(and(eq(spaces.id, spaceId), eq(spaces.createdByUserId, userId)))
+    .where(
+      and(eq(spaces.publicId, publicId), eq(spaces.createdByUserId, userId)),
+    )
     .returning();
 
   if (!updatedSpace) {

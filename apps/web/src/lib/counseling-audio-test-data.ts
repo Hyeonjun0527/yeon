@@ -28,8 +28,6 @@ export const COUNSELING_AUDIO_TEST_DATA = [
 export type CounselingAudioTestDataId =
   (typeof COUNSELING_AUDIO_TEST_DATA)[number]["id"];
 
-export function getCounselingAudioTestDataById(
-  id: CounselingAudioTestDataId,
-) {
+export function getCounselingAudioTestDataById(id: CounselingAudioTestDataId) {
   return COUNSELING_AUDIO_TEST_DATA.find((sample) => sample.id === id) ?? null;
 }

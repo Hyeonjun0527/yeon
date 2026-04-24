@@ -36,7 +36,7 @@ describe("oauth-state", () => {
   it("consumeOAuthStateCookieValue는 일치하는 state를 소비하고 쿠키에서 제거한다", () => {
     const created = createOAuthStateCookieValue({
       provider: "google",
-      nextPath: "/home",
+      nextPath: "/counseling-service",
     });
 
     const consumed = consumeOAuthStateCookieValue({
@@ -45,7 +45,7 @@ describe("oauth-state", () => {
       state: created.state,
     });
 
-    expect(consumed.matchedEntry?.nextPath).toBe("/home");
+    expect(consumed.matchedEntry?.nextPath).toBe("/counseling-service");
     expect(consumed.nextCookieValue).toBeNull();
   });
 
@@ -68,7 +68,7 @@ describe("oauth-state", () => {
   it("서명이 변조된 쿠키는 무시한다", () => {
     const created = createOAuthStateCookieValue({
       provider: "google",
-      nextPath: "/home",
+      nextPath: "/counseling-service",
     });
     const tampered = `${created.cookieValue}tampered`;
 
@@ -109,6 +109,42 @@ describe("oauth-state", () => {
 
     expect(dropped.matchedEntry).toBeNull();
     expect(newest.matchedEntry?.nextPath).toBe("/path-8");
+  });
+
+  it("state 길이가 다르면 timing-safe 비교에서 매칭되지 않는다", () => {
+    const created = createOAuthStateCookieValue({
+      provider: "google",
+      nextPath: "/dashboard",
+    });
+
+    const consumed = consumeOAuthStateCookieValue({
+      cookieValue: created.cookieValue,
+      provider: "google",
+      state: `${created.state}extra`,
+    });
+
+    expect(consumed.matchedEntry).toBeNull();
+    expect(consumed.nextCookieValue).toBe(created.cookieValue);
+  });
+
+  it("같은 길이지만 다른 state는 매칭되지 않는다", () => {
+    const created = createOAuthStateCookieValue({
+      provider: "google",
+      nextPath: "/dashboard",
+    });
+
+    const tamperedState =
+      created.state.slice(0, -1) +
+      (created.state.slice(-1) === "A" ? "B" : "A");
+
+    const consumed = consumeOAuthStateCookieValue({
+      cookieValue: created.cookieValue,
+      provider: "google",
+      state: tamperedState,
+    });
+
+    expect(consumed.matchedEntry).toBeNull();
+    expect(consumed.nextCookieValue).toBe(created.cookieValue);
   });
 
   it("만료된 entry는 decode 단계에서 제거된다", () => {

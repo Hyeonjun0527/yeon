@@ -7,6 +7,7 @@ import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { ReactNode } from "react";
 import type { ApiRequestError, Message } from "./types";
 import { SPEAKER_CYCLE } from "./constants";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 function parseDurationParts(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
@@ -192,7 +193,7 @@ export async function fetchApi<TSchema>(
   init: RequestInit,
   parse: (input: unknown) => TSchema,
 ) {
-  const response = await fetch(path, {
+  const response = await fetch(resolveApiHrefForCurrentPath(path), {
     ...init,
     credentials: "same-origin",
   });

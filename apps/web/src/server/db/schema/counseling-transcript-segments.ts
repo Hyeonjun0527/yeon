@@ -1,9 +1,9 @@
 import {
+  bigint,
   integer,
   pgTable,
   text,
   uniqueIndex,
-  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -12,8 +12,11 @@ import { counselingRecords } from "./counseling-records";
 export const counselingTranscriptSegments = pgTable(
   "counseling_transcript_segments",
   {
-    id: uuid("id").primaryKey(),
-    recordId: uuid("record_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    recordId: bigint("record_id", { mode: "bigint" })
       .notNull()
       .references(() => counselingRecords.id, { onDelete: "cascade" }),
     segmentIndex: integer("segment_index").notNull(),

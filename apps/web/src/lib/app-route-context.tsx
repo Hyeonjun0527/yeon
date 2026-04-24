@@ -6,69 +6,38 @@ import {
   type PropsWithChildren,
   useMemo,
 } from "react";
+import {
+  DEFAULT_COUNSELING_SERVICE_BASE_PATH,
+  normalizeAppPathnameForBasePath,
+  resolveApiHrefForBasePath,
+  resolveAppHrefForBasePath,
+} from "@/lib/app-route-paths";
 
 type AppRouteContextValue = {
   appBasePath: string;
   resolveAppHref: (href: string) => string;
+  resolveApiHref: (href: string) => string;
   normalizeAppPathname: (pathname: string) => string;
 };
 
-const DEFAULT_HOME_BASE_PATH = "/home";
-
 const AppRouteContext = createContext<AppRouteContextValue>({
-  appBasePath: DEFAULT_HOME_BASE_PATH,
+  appBasePath: DEFAULT_COUNSELING_SERVICE_BASE_PATH,
   resolveAppHref: (href) => href,
+  resolveApiHref: (href) => href,
   normalizeAppPathname: (pathname) => pathname,
 });
 
 export function AppRouteProvider({
-  appBasePath = DEFAULT_HOME_BASE_PATH,
+  appBasePath = DEFAULT_COUNSELING_SERVICE_BASE_PATH,
   children,
 }: PropsWithChildren<{ appBasePath?: string }>) {
   const value = useMemo<AppRouteContextValue>(() => {
-    const resolveAppHref = (href: string) => {
-      if (appBasePath === DEFAULT_HOME_BASE_PATH) {
-        return href;
-      }
-
-      if (href === DEFAULT_HOME_BASE_PATH) {
-        return appBasePath;
-      }
-
-      if (
-        href.startsWith(`${DEFAULT_HOME_BASE_PATH}?`) ||
-        href.startsWith(`${DEFAULT_HOME_BASE_PATH}#`)
-      ) {
-        return `${appBasePath}${href.slice(DEFAULT_HOME_BASE_PATH.length)}`;
-      }
-
-      if (href.startsWith(`${DEFAULT_HOME_BASE_PATH}/`)) {
-        return `${appBasePath}${href.slice(DEFAULT_HOME_BASE_PATH.length)}`;
-      }
-
-      return href;
-    };
-
-    const normalizeAppPathname = (pathname: string) => {
-      if (appBasePath === DEFAULT_HOME_BASE_PATH) {
-        return pathname;
-      }
-
-      if (pathname === appBasePath) {
-        return DEFAULT_HOME_BASE_PATH;
-      }
-
-      if (pathname.startsWith(`${appBasePath}/`)) {
-        return `${DEFAULT_HOME_BASE_PATH}${pathname.slice(appBasePath.length)}`;
-      }
-
-      return pathname;
-    };
-
     return {
       appBasePath,
-      resolveAppHref,
-      normalizeAppPathname,
+      resolveAppHref: (href) => resolveAppHrefForBasePath(appBasePath, href),
+      resolveApiHref: (href) => resolveApiHrefForBasePath(appBasePath, href),
+      normalizeAppPathname: (pathname) =>
+        normalizeAppPathnameForBasePath(appBasePath, pathname),
     };
   }, [appBasePath]);
 

@@ -1,9 +1,11 @@
 import {
+  bigint,
   doublePrecision,
   integer,
   index,
   jsonb,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -15,8 +17,11 @@ import { users } from "./users";
 export const publicCheckSessions = pgTable(
   "public_check_sessions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    spaceId: uuid("space_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 120 }).notNull(),

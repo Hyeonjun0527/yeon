@@ -2,55 +2,54 @@ import { Mic, FileText, MessageSquare, FolderOpen } from "lucide-react";
 
 export const STATS = [
   {
-    label: "녹음 인식 완성도",
-    value: 99.9,
-    suffix: "%",
-    description:
-      "상담기록의 출발점인 원문을 빠르게 남겨 흐름이 끊기지 않게 합니다.",
-  },
-  {
-    label: "수강생 정보 추출",
-    value: 3,
-    suffix: "초",
-    description:
-      "AI가 상담 기록과 업로드 자료를 바탕으로 필요한 수강생 정보를 바로 정리합니다.",
-  },
-  {
-    label: "엑셀·워드 보고서",
+    label: "루트 포털",
     value: 1,
-    suffix: "클릭",
+    suffix: "개",
     description:
-      "정리된 상담기록을 운영 공유용 문서로 바로 내보내 다음 작업까지 이어집니다.",
+      "서비스를 하나씩 늘려도 진입 브랜드와 공통 계정 경험은 하나로 유지합니다.",
+  },
+  {
+    label: "공통 로그인 허브",
+    value: 1,
+    suffix: "곳",
+    description: "계정형 서비스는 같은 로그인과 세션 정책 위에서 확장합니다.",
+  },
+  {
+    label: "서비스 확장 슬롯",
+    value: 3,
+    suffix: "+",
+    description:
+      "상담 워크스페이스부터 타자연습, 실험형 공개 서비스까지 같은 구조로 붙입니다.",
   },
 ] as const;
 
 export const FEATURES = [
   {
     icon: Mic,
-    title: "고정밀 STT 원문",
+    title: "루트 포털 + 서비스 레지스트리",
     description:
-      "긴 상담 녹음도 흐름이 끊기지 않게 원문으로 펼쳐 보여줍니다. 요약보다 먼저, 상담기록의 본체를 정확하게 확인할 수 있습니다.",
+      "yeon.world 루트는 브랜드와 서비스 포털을 맡고, 각 서비스는 자기 slug 아래에서 독립적으로 동작합니다.",
     accent: "accent" as const,
   },
   {
     icon: MessageSquare,
-    title: "AI 수강생 관리 보조",
+    title: "공통 로그인과 계정",
     description:
-      "상담 내용과 업로드 자료를 바탕으로 수강생 정보, 핵심 이슈, 다음 관리 포인트를 빠르게 정리합니다.",
+      "로그인, 세션, 계정 정리는 플랫폼이 소유하고 계정이 필요한 서비스만 그 위에 올라탑니다.",
     accent: "blue" as const,
   },
   {
     icon: FileText,
-    title: "문서 자동화",
+    title: "서비스별 독립 SEO와 URL",
     description:
-      "정리된 상담기록을 엑셀·워드 보고서로 바로 내보내 운영 공유와 후속 조치를 더 빠르게 마무리합니다.",
+      "타자연습처럼 공개형 유입 서비스는 자기 canonical 경로와 metadata를 직접 소유합니다.",
     accent: "green" as const,
   },
   {
     icon: FolderOpen,
-    title: "상담 히스토리 누적",
+    title: "서비스별 깊은 경험 설계",
     description:
-      "수강생별 상담기록이 누적되어 이전 약속, 변화 흐름, 다음 상담 맥락을 이어서 볼 수 있습니다.",
+      "상담, 타자연습, 랭킹처럼 서로 다른 UX를 하나의 앱 안에서도 서비스 경계 기준으로 분리합니다.",
     accent: "purple" as const,
   },
 ] as const;
@@ -58,26 +57,27 @@ export const FEATURES = [
 export const FLOW_STEPS = [
   {
     number: "01",
-    title: "데모 보기 또는 로그인",
+    title: "루트 포털 진입",
     description:
-      "평가용 데모로 바로 들어가거나 소셜 로그인으로 실제 작업 화면을 엽니다.",
+      "사용자는 yeon.world에서 서비스 목록, 접근 정책, 진입 경로를 먼저 확인합니다.",
   },
   {
     number: "02",
-    title: "상담 선택 또는 업로드",
-    description: "왼쪽 리스트에서 기존 상담을 고르거나 새 녹음본을 올립니다.",
+    title: "서비스 선택",
+    description:
+      "공개형 서비스는 바로 열고, 계정형 서비스는 해당 경로를 next로 붙여 로그인 흐름으로 보냅니다.",
   },
   {
     number: "03",
-    title: "원문과 요약 생성",
+    title: "서비스별 경험 시작",
     description:
-      "STT가 전체 원문을 만들고 AI가 핵심 상담 내용과 다음 액션 초안을 정리합니다.",
+      "선택한 서비스가 자기 URL, 자기 메타데이터, 자기 UX를 기준으로 실제 기능을 실행합니다.",
   },
   {
     number: "04",
-    title: "다음 상담 준비",
+    title: "다음 서비스 확장",
     description:
-      "가운데 원문을 검토하고 오른쪽 AI 채팅으로 필요한 부분만 다시 묻고 저장합니다.",
+      "새 서비스를 추가할 때는 루트 브랜드나 로그인 허브를 다시 뒤흔들지 않고 서비스 단위로 붙입니다.",
   },
 ] as const;
 

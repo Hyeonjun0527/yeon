@@ -60,7 +60,7 @@ export const updateMemberBodySchema = z.object({
 });
 
 export const bulkDeleteMembersBodySchema = z.object({
-  memberIds: z.array(z.string().uuid()).min(1).max(200),
+  memberIds: z.array(z.string().min(1)).min(1).max(200),
 });
 
 export const createMemberTabBodySchema = z.object({
@@ -74,7 +74,7 @@ export const updateMemberTabBodySchema = z.object({
 });
 
 export const reorderMemberTabsBodySchema = z.object({
-  order: z.array(z.string().uuid()),
+  order: z.array(z.string().min(1)),
 });
 
 export const createMemberFieldBodySchema = z.object({
@@ -90,15 +90,15 @@ export const updateMemberFieldBodySchema = z.object({
   options: z.array(memberFieldSelectOptionSchema).nullish(),
   isRequired: z.boolean().optional(),
   displayOrder: z.number().int().min(0).optional(),
-  tabId: z.string().uuid().optional(),
+  tabId: z.string().min(1).optional(),
 });
 
 export const reorderMemberFieldsBodySchema = z.object({
-  order: z.array(z.string().uuid()),
+  order: z.array(z.string().min(1)),
 });
 
 export const memberFieldValuePayloadSchema = z.object({
-  fieldDefinitionId: z.string().uuid(),
+  fieldDefinitionId: z.string().min(1),
   value: z.unknown(),
 });
 

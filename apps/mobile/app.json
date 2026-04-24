@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "연챗 - 익명 친구 만들기",
+    "slug": "chat-service",
+    "scheme": "chat-service",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FFFFFF",
+      "image": "./assets/images/chat-service-splash-animal.png",
+      "resizeMode": "contain"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

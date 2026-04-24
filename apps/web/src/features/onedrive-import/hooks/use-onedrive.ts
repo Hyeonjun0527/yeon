@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { resolveApiHrefForCurrentPath } from "@/lib/app-route-paths";
 
 export interface OneDriveFile {
   id: string;
@@ -51,7 +52,9 @@ export function useOnedrive(onImportComplete?: () => void) {
   const checkStatus = useCallback(async () => {
     try {
       setConnecting(true);
-      const res = await fetch("/api/v1/integrations/onedrive/status");
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/integrations/onedrive/status"),
+      );
       if (!res.ok) return;
       const data = (await res.json()) as { connected: boolean };
       setConnected(data.connected);
@@ -63,7 +66,9 @@ export function useOnedrive(onImportComplete?: () => void) {
   }, []);
 
   const connectOneDrive = useCallback(() => {
-    window.location.href = "/api/v1/integrations/onedrive/auth";
+    window.location.href = resolveApiHrefForCurrentPath(
+      "/api/v1/integrations/onedrive/auth",
+    );
   }, []);
 
   const loadFiles = useCallback(async (folderId?: string) => {
@@ -71,8 +76,10 @@ export function useOnedrive(onImportComplete?: () => void) {
       setFilesLoading(true);
       setError(null);
       const url = folderId
-        ? `/api/v1/integrations/onedrive/files?folderId=${folderId}`
-        : "/api/v1/integrations/onedrive/files";
+        ? resolveApiHrefForCurrentPath(
+            `/api/v1/integrations/onedrive/files?folderId=${folderId}`,
+          )
+        : resolveApiHrefForCurrentPath("/api/v1/integrations/onedrive/files");
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error("파일 목록을 불러오지 못했습니다.");
@@ -92,11 +99,14 @@ export function useOnedrive(onImportComplete?: () => void) {
     try {
       setAnalyzing(true);
       setError(null);
-      const res = await fetch("/api/v1/integrations/onedrive/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId }),
-      });
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/integrations/onedrive/analyze"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileId }),
+        },
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "파일 분석에 실패했습니다.");
@@ -133,11 +143,14 @@ export function useOnedrive(onImportComplete?: () => void) {
     try {
       setImporting(true);
       setError(null);
-      const res = await fetch("/api/v1/integrations/onedrive/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editablePreview),
-      });
+      const res = await fetch(
+        resolveApiHrefForCurrentPath("/api/v1/integrations/onedrive/import"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editablePreview),
+        },
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || "가져오기에 실패했습니다.");

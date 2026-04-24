@@ -2,6 +2,7 @@ import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
+  DEFAULT_POST_LOGIN_PATH,
   getAppOrigin,
   normalizeAuthRedirectPath,
 } from "@/server/auth/constants";
@@ -9,6 +10,7 @@ import {
   createDevLoginUser,
   isDevLoginAllowed,
   resolveDevLoginUserId,
+  verifyDevLoginRequestSecret,
 } from "@/server/auth/dev-login";
 import {
   createAuthSession,
@@ -22,14 +24,14 @@ function jsonError(message: string, status: number) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isDevLoginAllowed(request.nextUrl.hostname)) {
+  if (!isDevLoginAllowed() || !verifyDevLoginRequestSecret(request)) {
     return new NextResponse(null, { status: 404 });
   }
 
   const requestedNextPath = request.nextUrl.searchParams.get("next");
   const nextPath = requestedNextPath
     ? normalizeAuthRedirectPath(requestedNextPath)
-    : "/home";
+    : DEFAULT_POST_LOGIN_PATH;
   const shouldCreateAccount =
     request.nextUrl.searchParams.get("create") === "1";
   const userId = shouldCreateAccount

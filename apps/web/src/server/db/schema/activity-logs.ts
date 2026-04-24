@@ -1,9 +1,10 @@
 import {
+  bigint,
   index,
   jsonb,
   pgTable,
+  text,
   timestamp,
-  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -13,11 +14,14 @@ import { spaces } from "./spaces";
 export const activityLogs = pgTable(
   "activity_logs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    memberId: uuid("member_id")
+    id: bigint("id", { mode: "bigint" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    publicId: text("public_id").notNull().unique(),
+    memberId: bigint("member_id", { mode: "bigint" })
       .notNull()
       .references(() => members.id, { onDelete: "cascade" }),
-    spaceId: uuid("space_id")
+    spaceId: bigint("space_id", { mode: "bigint" })
       .notNull()
       .references(() => spaces.id, { onDelete: "cascade" }),
     type: varchar("type", { length: 30 }).notNull(),
