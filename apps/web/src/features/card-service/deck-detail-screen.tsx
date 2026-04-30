@@ -6,7 +6,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type { CardDeckDetailResponse } from "@yeon/api-contract/card-decks";
 
 import {
-  AddCardForm,
+  AddCardsPanel,
   CardRow,
   DeckDetailHeader,
   DeleteDeckConfirm,
@@ -68,7 +68,7 @@ export function DeckDetailScreen({ deckId }: DeckDetailScreenProps) {
               onOpenDelete={() => setDeleteOpen(true)}
             />
 
-            <AddCardForm deckId={state.deck.id} />
+            <AddCardsPanel deckId={state.deck.id} />
 
             <section className="flex flex-col gap-3">
               <h2 className="text-[16px] font-semibold text-[#111]">

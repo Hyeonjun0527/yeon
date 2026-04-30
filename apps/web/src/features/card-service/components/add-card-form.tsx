@@ -36,12 +36,8 @@ export function AddCardForm({ deckId }: AddCardFormProps) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-xl border border-[#e5e5e5] p-5"
-    >
-      <h3 className="text-[14px] font-semibold text-[#111]">새 카드 추가</h3>
-      <div className="mt-4 flex flex-col gap-3 md:flex-row">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 md:flex-row">
         <label className="flex flex-1 flex-col gap-2">
           <span className="text-[13px] text-[#666]">앞면 (질문)</span>
           <textarea
@@ -66,7 +62,7 @@ export function AddCardForm({ deckId }: AddCardFormProps) {
       {error ? (
         <p className="mt-3 text-[13px] text-red-600">{error.message}</p>
       ) : null}
-      <div className="mt-4 flex justify-end">
+      <div className="flex justify-end">
         <button
           type="submit"
           disabled={!canSubmit}

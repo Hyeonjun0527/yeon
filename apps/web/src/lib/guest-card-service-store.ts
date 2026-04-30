@@ -6,6 +6,7 @@ import type {
   CardDeckItemDto,
   CreateCardDeckBody,
   CreateCardDeckItemBody,
+  CreateCardDeckItemsBody,
   UpdateCardDeckBody,
   UpdateCardDeckItemBody,
 } from "@yeon/api-contract/card-decks";
@@ -110,7 +111,10 @@ function nowIso(): string {
 }
 
 function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -142,7 +146,11 @@ export async function listGuestDecks(): Promise<CardDeckDto[]> {
   const decks = await db.getAll("decks");
   const result: CardDeckDto[] = [];
   for (const deck of decks) {
-    const itemCount = await db.countFromIndex("items", "by-deck", deck.publicId);
+    const itemCount = await db.countFromIndex(
+      "items",
+      "by-deck",
+      deck.publicId,
+    );
     result.push(toDeckDto(deck, itemCount));
   }
   result.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -250,6 +258,39 @@ export async function addGuestCard(
   return toItemDto(row);
 }
 
+export async function addGuestCards(
+  deckPublicId: string,
+  body: CreateCardDeckItemsBody,
+): Promise<CardDeckItemDto[]> {
+  const db = await getDb();
+  const createdAt = nowIso();
+  const rows: GuestItemRow[] = body.items.map((item) => ({
+    publicId: randomId(),
+    deckPublicId,
+    frontText: item.frontText,
+    backText: item.backText,
+    createdAt,
+    updatedAt: createdAt,
+  }));
+
+  const tx = db.transaction(["decks", "items"], "readwrite");
+  const deck = await tx.objectStore("decks").get(deckPublicId);
+  if (!deck) {
+    tx.abort();
+    throw new Error("덱을 찾을 수 없습니다.");
+  }
+
+  const itemsStore = tx.objectStore("items");
+  const decksStore = tx.objectStore("decks");
+  await Promise.all([
+    ...rows.map((row) => itemsStore.put(row)),
+    decksStore.put({ ...deck, updatedAt: createdAt }),
+    tx.done,
+  ]);
+
+  return rows.map(toItemDto);
+}
+
 export async function updateGuestCard(
   itemId: string,
   body: UpdateCardDeckItemBody,
@@ -272,7 +313,11 @@ export async function updateGuestCard(
   const deckUpdate = deck
     ? tx.objectStore("decks").put({ ...deck, updatedAt: now })
     : Promise.resolve();
-  await Promise.all([tx.objectStore("items").put(updated), deckUpdate, tx.done]);
+  await Promise.all([
+    tx.objectStore("items").put(updated),
+    deckUpdate,
+    tx.done,
+  ]);
   return toItemDto(updated);
 }
 
@@ -289,7 +334,11 @@ export async function deleteGuestCard(itemId: string): Promise<void> {
   const deckUpdate = deck
     ? tx.objectStore("decks").put({ ...deck, updatedAt: now })
     : Promise.resolve();
-  await Promise.all([tx.objectStore("items").delete(itemId), deckUpdate, tx.done]);
+  await Promise.all([
+    tx.objectStore("items").delete(itemId),
+    deckUpdate,
+    tx.done,
+  ]);
 }
 
 export async function countGuestCardDecks(): Promise<number> {

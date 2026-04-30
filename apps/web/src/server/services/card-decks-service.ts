@@ -4,6 +4,7 @@ import type {
   CardDeckItemDto,
   CreateCardDeckBody,
   CreateCardDeckItemBody,
+  CreateCardDeckItemsBody,
   UpdateCardDeckBody,
   UpdateCardDeckItemBody,
 } from "@yeon/api-contract/card-decks";
@@ -245,6 +246,47 @@ export async function createCardDeckItem(
   }
 
   return toCardDeckItemDto(row);
+}
+
+export async function createCardDeckItems(
+  userId: string,
+  deckPublicId: string,
+  body: CreateCardDeckItemsBody,
+): Promise<CardDeckItemDto[]> {
+  const deckRow = await findOwnedDeckRow(userId, deckPublicId);
+  const now = new Date();
+  const values = body.items.map((item) => ({
+    publicId: generatePublicId(ID_PREFIX.cardDeckItems),
+    deckId: deckRow.id,
+    frontText: item.frontText.trim(),
+    backText: item.backText.trim(),
+    updatedAt: now,
+  }));
+
+  for (const value of values) {
+    if (!value.frontText || !value.backText) {
+      throw new ServiceError(400, "앞면과 뒷면을 모두 입력해주세요.");
+    }
+  }
+
+  try {
+    return await getDb().transaction(async (tx) => {
+      const rows = await tx.insert(cardDeckItems).values(values).returning();
+
+      await tx
+        .update(cardDecks)
+        .set({ updatedAt: now })
+        .where(eq(cardDecks.id, deckRow.id));
+
+      return rows.map(toCardDeckItemDto);
+    });
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+    console.error("카드 일괄 추가 실패", error);
+    throw new ServiceError(500, "카드를 일괄 추가하지 못했습니다.");
+  }
 }
 
 export async function updateCardDeckItem(
