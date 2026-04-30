@@ -3,7 +3,7 @@
 #
 # 기능:
 # - .claude/commands/<n>.md (또는 .claude/skills/<n>.md) 를 SSOT 로 간주
-# - .codex/skills/<n>/SKILL.md wrapper 를 자동 생성·갱신
+# - .codex/skills/SHARED/<n>/SKILL.md wrapper 를 자동 생성·갱신
 # - .codex/skills/README.md 의 "현재 미러링된 이름" + "Vendored OMC Skills" 섹션 자동 재생성
 # - .claude/commands/ 와 .claude/skills/ 에 같은 이름 중복 파일이 있고 내용 다르면 경고
 # - .codex/skills/ 쪽에 Claude 대응 없는 스킬(vendored 또는 orphan) 감지
@@ -18,6 +18,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLAUDE_DIR="$REPO_ROOT/.claude"
 CODEX_DIR="$REPO_ROOT/.codex"
+CODEX_SHARED_SKILLS_DIR="$CODEX_DIR/skills/SHARED"
 
 FORCE=0
 CHECK_ONLY=0
@@ -163,7 +164,7 @@ for name in "${!skills[@]}"; do
   fi
 done
 
-# === Codex 측 역방향 스캔 (orphan / vendored 분류) ===
+# === Codex 측 역방향 스캔 (orphan / vendored / local 분류) ===
 # minor-2 대응: vendored 판정은 README 의 명시적 "Vendored OMC Skills" 목록을 ground truth 로 사용.
 # 해당 목록에 있으면 vendored, 없으면 orphan (SSOT 가 사라진 auto-generated wrapper).
 README_FILE="$CODEX_DIR/skills/README.md"
@@ -196,8 +197,17 @@ codex_only=()
 vendored=()
 if [ -d "$CODEX_DIR/skills" ]; then
   while IFS= read -r -d '' skillmd; do
-    name="$(basename "$(dirname "$skillmd")")"
-    if [ -z "${skills[$name]:-}" ]; then
+    skill_dir="$(dirname "$skillmd")"
+    name="$(basename "$skill_dir")"
+    parent="$(basename "$(dirname "$skill_dir")")"
+
+    if [ "$parent" = "SHARED" ] && [ -n "${skills[$name]:-}" ]; then
+      continue
+    fi
+
+    if [ -n "${skills[$name]:-}" ]; then
+      codex_only+=("$name (legacy 위치: 사용자 제작 스킬은 .codex/skills/SHARED/$name/SKILL.md 로 이동해야 함)")
+    else
       if is_known_vendored "$name"; then
         vendored+=("$name")
       elif grep -q 'Source of Truth' "$skillmd" 2>/dev/null && grep -q '\.claude/' "$skillmd" 2>/dev/null; then
@@ -206,7 +216,7 @@ if [ -d "$CODEX_DIR/skills" ]; then
         codex_only+=("$name (미분류: README Vendored 목록에 추가하거나 제거하세요)")
       fi
     fi
-  done < <(find "$CODEX_DIR/skills" -maxdepth 2 -mindepth 2 -type f -name "SKILL.md" -print0 2>/dev/null)
+  done < <(find "$CODEX_DIR/skills" -maxdepth 3 -mindepth 2 -type f -name "SKILL.md" -print0 2>/dev/null)
 fi
 
 # === wrapper 생성·갱신 ===
@@ -218,7 +228,7 @@ sorted_local=$(printf '%s\n' "${!skills[@]}" | LC_ALL=C sort)
 while IFS= read -r name; do
   [ -z "$name" ] && continue
   source_rel="${skills[$name]}"
-  wrapper_dir="$CODEX_DIR/skills/$name"
+  wrapper_dir="$CODEX_SHARED_SKILLS_DIR/$name"
   wrapper_file="$wrapper_dir/SKILL.md"
 
   description=$(extract_description "$REPO_ROOT/$source_rel" || true)
