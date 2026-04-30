@@ -40,3 +40,4 @@ export { passwordCredentials } from "./password-credentials";
 export { emailVerificationTokens } from "./email-verification-tokens";
 export { passwordResetTokens } from "./password-reset-tokens";
 export { loginAttempts } from "./login-attempts";
+export { lifeOsDays } from "./life-os";

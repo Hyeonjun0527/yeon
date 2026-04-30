@@ -62,6 +62,12 @@ export type LifeOsDayInput = {
   entries: LifeOsHourEntry[];
 };
 
+export type LifeOsDay = LifeOsDayInput & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type LifeOsHourClassification = {
   hour: number;
   outcome: LifeOsOutcome;
@@ -130,6 +136,8 @@ export type LifeOsReport = {
 
 export const LIFE_OS_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
+export const LIFE_OS_ROWS = ["MINDSET", "TIME", "GOAL", "ACTION"] as const;
+
 export const LIFE_OS_HOUR_BLOCKS: Array<{
   key: LifeOsBlockKey;
   label: string;
@@ -149,7 +157,16 @@ export const LIFE_OS_ACTIVE_CATEGORIES = new Set<LifeOsCategory>([
 ]);
 
 export const LIFE_OS_CATEGORY_KEYWORDS: Record<LifeOsCategory, string[]> = {
-  deep_work: ["코딩", "개발", "구현", "리팩토링", "설계", "pr", "버그", "디버깅"],
+  deep_work: [
+    "코딩",
+    "개발",
+    "구현",
+    "리팩토링",
+    "설계",
+    "pr",
+    "버그",
+    "디버깅",
+  ],
   learning: ["공부", "학습", "강의", "시험", "문제", "sql", "코테", "독서"],
   admin: ["정리", "메일", "서류", "신청", "예약", "문서", "회의준비"],
   meeting: ["회의", "미팅", "통화", "상담", "인터뷰"],
@@ -198,7 +215,9 @@ export function inferLifeOsCategory(
     LIFE_OS_CATEGORY_KEYWORDS,
   ) as Array<[LifeOsCategory, string[]]>) {
     if (category === "other") continue;
-    if (keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))) {
+    if (
+      keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+    ) {
       return category;
     }
   }
@@ -278,7 +297,10 @@ export function classifyLifeOsHourOutcome(
   }
 
   const previousActionCategory = previousEntry
-    ? inferLifeOsCategory(previousEntry.actionText, previousEntry.actionCategory)
+    ? inferLifeOsCategory(
+        previousEntry.actionText,
+        previousEntry.actionCategory,
+      )
     : "other";
 
   if (
@@ -476,7 +498,10 @@ export function computeLifeOsWeeklyMetrics(params: {
   days: LifeOsDayInput[];
 }): LifeOsWeeklyMetrics {
   const days = params.days.map((day) =>
-    computeLifeOsDailyMetrics({ localDate: day.localDate, entries: day.entries }),
+    computeLifeOsDailyMetrics({
+      localDate: day.localDate,
+      entries: day.entries,
+    }),
   );
   const plannedHours = days.reduce((sum, day) => sum + day.plannedHours, 0);
   const actionHours = days.reduce((sum, day) => sum + day.actionHours, 0);

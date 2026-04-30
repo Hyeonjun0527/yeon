@@ -5,5 +5,14 @@
   "type": "module",
   "devDependencies": {
     "@yeon/config": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./life-os": "./src/life-os.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
   }
 }

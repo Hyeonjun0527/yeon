@@ -232,6 +232,13 @@
       "when": 1776892130903,
       "tag": "0032_add_auth_sessions_user_id_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1777551617493,
+      "tag": "0033_add_life_os_days",
+      "breakpoints": true
     }
   ]
 }

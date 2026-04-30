@@ -40,6 +40,22 @@ describe("file-analysis-service", () => {
     });
   });
 
+  it("parseExcelToText는 과도한 행 수를 거부한다", () => {
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(
+      Array.from({ length: 5001 }, (_, index) => [`행 ${index + 1}`]),
+    );
+    XLSX.utils.book_append_sheet(workbook, worksheet, "큰시트");
+    const buffer = XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+    }) as Buffer;
+
+    expect(() => parseExcelToText(buffer)).toThrow(
+      "큰시트 시트는 최대 5000행까지만 분석할 수 있습니다.",
+    );
+  });
+
   it("parseExcelToText는 시트 이름과 CSV 텍스트를 포함한다", () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([

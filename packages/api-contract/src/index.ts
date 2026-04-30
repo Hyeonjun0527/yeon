@@ -13,3 +13,5 @@ export * from "./student-board";
 export * from "./users";
 export * from "./credential";
 export * from "./card-deck-merge-guest";
+
+export * from "./life-os";

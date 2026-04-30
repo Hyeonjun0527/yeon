@@ -30,6 +30,9 @@ function RootNavigator() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="life-os" />
+      <Stack.Screen name="card-service" />
+      <Stack.Screen name="card-service/decks/[deckId]" />
       <Stack.Screen name="chat/[roomId]" />
       <Stack.Screen name="profile/[profileId]" />
     </Stack>

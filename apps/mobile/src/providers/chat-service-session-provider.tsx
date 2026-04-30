@@ -1,4 +1,5 @@
 import type { ChatServiceSessionDto } from "@yeon/api-contract/chat-service";
+import { ApiClientError } from "@yeon/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -84,8 +85,14 @@ export function ChatServiceSessionProvider({
       setSession(response.session);
       await writeChatServiceSessionToken(response.session.token);
       setStatus("signed_in");
-    } catch {
-      await clearChatServiceSessionToken();
+    } catch (error) {
+      if (
+        error instanceof ApiClientError &&
+        (error.status === 401 || error.status === 403)
+      ) {
+        await clearChatServiceSessionToken();
+      }
+
       setSession(null);
       setStatus("signed_out");
     }

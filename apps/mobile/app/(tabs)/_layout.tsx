@@ -61,6 +61,7 @@ export default function TabsLayout() {
           title: "에스크",
         }}
       />
+
       <Tabs.Screen
         name="friends"
         options={{

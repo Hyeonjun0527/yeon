@@ -111,3 +111,65 @@
   font-size: 12px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateInput,
+.saveButton {
+  border: 1px solid #c7ab37;
+  border-radius: 10px;
+  background: #fffef6;
+  padding: 9px 12px;
+  font-weight: 700;
+}
+
+.saveButton {
+  cursor: pointer;
+  background: #ffe46b;
+}
+
+.statusText {
+  margin: 0;
+  color: #6b4e00;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cellInput {
+  width: 100%;
+  min-height: 30px;
+  resize: vertical;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  outline: none;
+}
+
+.cellInput::placeholder,
+.memoInput::placeholder {
+  color: rgba(31, 41, 55, 0.38);
+}
+
+.readOnlyCell {
+  color: #1f2937;
+  font-weight: 800;
+}
+
+.memoInput {
+  width: 100%;
+  min-height: 96px;
+  margin-top: 8px;
+  resize: vertical;
+  border: 1px solid #eadb9e;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+}

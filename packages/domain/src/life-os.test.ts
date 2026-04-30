@@ -37,10 +37,12 @@ describe("classifyLifeOsHourOutcome", () => {
       { hour: 9, goalText: "코딩", actionText: "" },
       "planned_no_action",
     ],
-  ] satisfies Array<[string, LifeOsHourEntry, string]>)
-    ("classifies %s", (_caseName, entry, expected) => {
+  ] satisfies Array<[string, LifeOsHourEntry, string]>)(
+    "classifies %s",
+    (_caseName, entry, expected) => {
       expect(classifyLifeOsHourOutcome(entry).outcome).toBe(expected);
-    });
+    },
+  );
 
   it("detects spillover before category swap when previous action continues", () => {
     expect(
@@ -119,8 +121,14 @@ describe("Life OS metrics and recommendations", () => {
     const patterns = detectLifeOsOverplanningPatterns(weekly);
     const recommendations = generateLifeOsRecommendations(patterns);
 
-    expect(patterns.some((pattern) => pattern.type === "repeated_overplanned_block")).toBe(true);
-    expect(patterns.some((pattern) => pattern.type === "repeated_overplanned_category")).toBe(true);
+    expect(
+      patterns.some((pattern) => pattern.type === "repeated_overplanned_block"),
+    ).toBe(true);
+    expect(
+      patterns.some(
+        (pattern) => pattern.type === "repeated_overplanned_category",
+      ),
+    ).toBe(true);
     expect(recommendations.length).toBeGreaterThan(0);
     expect(recommendations[0]?.evidence).toBeTruthy();
   });

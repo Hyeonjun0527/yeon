@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
         userId: result.userId,
         expiresAt: result.session.expiresAt.toISOString(),
       },
-      { status: 200 },
+      {
+        headers: { "cache-control": "no-store" },
+        status: 200,
+      },
     );
 
     return applyAuthSessionCookie(response, result.session);

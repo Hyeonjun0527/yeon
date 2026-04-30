@@ -1,4 +1,4 @@
-import { Redirect } from "expo-router";
+import { Redirect, type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -15,7 +15,11 @@ import { TextField } from "../../../components/ui/text-field";
 import { useChatServiceSession } from "../../../providers/chat-service-session-provider";
 import { colors } from "../../../theme/colors";
 
+const LIFE_OS_ROUTE = "/life-os" as Href;
+const CARD_SERVICE_ROUTE = "/card-service" as Href;
+
 export function AuthScreen() {
+  const router = useRouter();
   const { challenge, requestOtp, status, verifyOtp } = useChatServiceSession();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
@@ -124,6 +128,23 @@ export function AuthScreen() {
                 />
               </View>
             ) : null}
+            <View style={styles.formBlock}>
+              <Text style={styles.blockTitle}>개인 생산성 도구</Text>
+              <Text style={styles.blockDescription}>
+                Life OS와 카드 서비스는 Yeon 계정으로 별도 로그인해 사용할 수
+                있습니다.
+              </Text>
+              <ActionButton
+                label="Life OS 열기"
+                onPress={() => router.push(LIFE_OS_ROUTE)}
+                variant="secondary"
+              />
+              <ActionButton
+                label="카드 서비스 열기"
+                onPress={() => router.push(CARD_SERVICE_ROUTE)}
+                variant="secondary"
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -179,6 +200,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
     padding: 18,
+  },
+  blockDescription: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
   },
   blockTitle: {
     color: colors.text,

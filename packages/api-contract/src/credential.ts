@@ -12,7 +12,10 @@ const passwordSchema = z
   .string()
   .min(PASSWORD_MIN_LENGTH, "비밀번호는 최소 8자 이상이어야 합니다.")
   .max(PASSWORD_MAX_LENGTH, "비밀번호는 최대 72자까지 입력할 수 있습니다.")
-  .refine((value) => !/\s/.test(value), "비밀번호에 공백을 포함할 수 없습니다.");
+  .refine(
+    (value) => !/\s/.test(value),
+    "비밀번호에 공백을 포함할 수 없습니다.",
+  );
 
 const displayNameSchema = z
   .string()
@@ -49,6 +52,14 @@ export const credentialLoginResponseSchema = z.object({
 });
 export type CredentialLoginResponse = z.infer<
   typeof credentialLoginResponseSchema
+>;
+
+export const mobileCredentialLoginResponseSchema =
+  credentialLoginResponseSchema.extend({
+    sessionToken: z.string().min(1),
+  });
+export type MobileCredentialLoginResponse = z.infer<
+  typeof mobileCredentialLoginResponseSchema
 >;
 
 export const credentialVerifyQuerySchema = z.object({

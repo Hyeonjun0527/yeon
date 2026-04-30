@@ -11,3 +11,4 @@ export { EmptyDecksScreen } from "./empty-decks-screen";
 export { MergeGuestDialog } from "./merge-guest-dialog";
 export { PlayCard } from "./play-card";
 export { PlayControls } from "./play-controls";
+export { CardServiceSettingsDialog } from "./card-service-settings-dialog";
