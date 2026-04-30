@@ -4,10 +4,10 @@
 
 <skill_catalog_policy>
 
-- Direct child directories under `.codex/skills/<name>/SKILL.md` are vendored/OMX-provided skills.
-- User-authored shared skills live under `.codex/skills/SHARED/<name>/SKILL.md`.
+- Direct child directories under `.codex/skills/<name>/SKILL.md` are reserved for active OMX runtime/control skills.
+- User-authored, project, imported, or legacy OMC helper skills live under `.codex/skills/SHARED/<name>/SKILL.md`.
 - `.claude/commands/*.md` 또는 `.claude/skills/*.md`가 source of truth인 사용자 제작 스킬은 `SHARED/` 아래 thin wrapper로 유지한다.
-- Vendored OMC skills는 upstream 절차를 보존하되, Yeon 정책과 충돌하면 project `AGENTS.md`의 main-only override가 우선한다.
+- SHARED imported skills preserve upstream procedures, but Yeon `AGENTS.md` main-only policy wins on conflict.
 - `.codex/skills-archive/`는 Codex 기본 skill discovery에서 빼기 위한 보관소다. AI가 자동으로 읽을 문서가 아니라, 필요할 때 사람이 다시 살리거나 참고하기 위한 parked 자료다.
 
 </skill_catalog_policy>
@@ -58,7 +58,11 @@ Use for normal Yeon development.
 
 - `.codex/skills-archive/writer-memory` — useful for fiction/writing projects, not default Yeon development routing.
 
-## User-authored SHARED skills
+## SHARED skills (non-OMX direct)
+
+`SHARED/` contains every project/user/imported skill that is **not** part of the active OMX direct runtime surface. Some are generated from `.claude/commands` or `.claude/skills`; others are imported helper skills that should remain visually separate from OMX.
+
+### Claude-SSOT mirrored SHARED skills
 
 These are generated under `.codex/skills/SHARED/` from `.claude/commands` or `.claude/skills`. Do not edit their wrappers directly; edit the source and run `bin/sync-skills.sh`.
 
@@ -88,47 +92,49 @@ These are generated under `.codex/skills/SHARED/` from `.claude/commands` or `.c
 
 <!-- SYNC-SKILLS:LOCAL:END -->
 
-## Vendored OMC Skills
-
-These are vendored / OMX-provided skills kept as direct children of `.codex/skills/`.
-
-- source: `https://github.com/Yeachan-Heo/oh-my-claudecode/tree/main/skills`
-- current active vendored names:
+### Imported / non-OMX SHARED skills
 
 ```txt
-ai-slop-cleaner
 ask
-autopilot
-cancel
 ccg
-configure-notifications
 debug
 deep-dive
-deep-interview
 deepinit
 external-context
 frontend-design
-hud
 learner
 mcp-setup
 omc-doctor
 omc-reference
 omc-setup
 omc-teams
-plan
 project-session-manager
-ralph
-ralplan
 release
 remember
 sciomc
 self-improve
 setup
-skill
 skillify
+ui-ux-pro-max
+```
+
+## OMX Direct Skills
+
+Only active OMX runtime/control skills stay as direct children of `.codex/skills/`.
+
+```txt
+ai-slop-cleaner
+autopilot
+cancel
+configure-notifications
+deep-interview
+hud
+plan
+ralph
+ralplan
+skill
 team
 trace
-ui-ux-pro-max
 ultraqa
 ultrawork
 verify
@@ -141,4 +147,5 @@ wiki
 - `frontend-design-skill` was renamed to `frontend-design` to match its frontmatter name and make invocation predictable.
 - Stray `.codex/skills/clarify.md` was removed; the discoverable wrapper is `.codex/skills/SHARED/clarify/SKILL.md`.
 - User-authored wrappers were moved from `.codex/skills/<name>/` to `.codex/skills/SHARED/<name>/` so they are visually separate from OMX-provided skills.
+- Non-OMX imported helpers were also moved to `.codex/skills/SHARED/<name>/`; only OMX runtime/control skills remain direct children.
 - `writer-memory` was moved to `.codex/skills-archive/` because it is unrelated to Yeon's coding/product workflow and should not appear in default skill routing.

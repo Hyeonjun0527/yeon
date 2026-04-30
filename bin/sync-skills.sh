@@ -6,7 +6,7 @@
 # - .codex/skills/SHARED/<n>/SKILL.md wrapper 를 자동 생성·갱신
 # - .codex/skills/README.md 의 "현재 미러링된 이름" + "Vendored OMC Skills" 섹션 자동 재생성
 # - .claude/commands/ 와 .claude/skills/ 에 같은 이름 중복 파일이 있고 내용 다르면 경고
-# - .codex/skills/ 쪽에 Claude 대응 없는 스킬(vendored 또는 orphan) 감지
+# - .codex/skills/ 쪽에 SHARED도 아니고 OMX direct 목록에도 없는 스킬 감지
 #
 # 사용:
 #   bin/sync-skills.sh          # 모든 스킬 sync (누락·drift 갱신)
@@ -164,13 +164,13 @@ for name in "${!skills[@]}"; do
   fi
 done
 
-# === Codex 측 역방향 스캔 (orphan / vendored / local 분류) ===
-# minor-2 대응: vendored 판정은 README 의 명시적 "Vendored OMC Skills" 목록을 ground truth 로 사용.
-# 해당 목록에 있으면 vendored, 없으면 orphan (SSOT 가 사라진 auto-generated wrapper).
+# === Codex 측 역방향 스캔 (orphan / OMX direct / SHARED 분류) ===
+# OMX direct 판정은 README 의 명시적 "OMX Direct Skills" 목록을 ground truth 로 사용.
+# SHARED 아래 skill은 사용자 제작/프로젝트 공유/imported 스킬로 보고 orphan 검사에서 제외한다.
 README_FILE="$CODEX_DIR/skills/README.md"
-known_vendored=()
+known_direct=()
 if [ -f "$README_FILE" ]; then
-  # README 의 Vendored 섹션 안에 있는 단어들을 수집 (섹션 마커 또는 ```txt 블록 감지)
+  # README 의 OMX Direct 섹션 안에 있는 단어들을 수집 (섹션 마커 또는 ```txt 블록 감지)
   while IFS= read -r line; do
     # 빈 줄/주석/섹션 헤더 스킵
     [ -z "$line" ] && continue
@@ -180,40 +180,42 @@ if [ -f "$README_FILE" ]; then
     # bullet 또는 plain 이름 추출
     name_candidate=$(echo "$line" | sed -E 's/^[-*]?[[:space:]]*`?([a-zA-Z0-9_-]+)`?[[:space:]]*$/\1/' | tr -d '[:space:]')
     if [ -n "$name_candidate" ] && echo "$name_candidate" | grep -qE '^[a-zA-Z0-9_-]+$'; then
-      known_vendored+=("$name_candidate")
+      known_direct+=("$name_candidate")
     fi
-  done < <(awk '/^## Vendored OMC Skills/,/^## [^V]|^---$/' "$README_FILE" | grep -E '^[[:space:]]*[a-zA-Z0-9_-]+[[:space:]]*$|^- `[a-zA-Z0-9_-]+`' 2>/dev/null)
+  done < <(awk '/^## OMX Direct Skills/,/^## [^O]|^---$/' "$README_FILE" | grep -E '^[[:space:]]*[a-zA-Z0-9_-]+[[:space:]]*$|^- `[a-zA-Z0-9_-]+`' 2>/dev/null)
 fi
 
-is_known_vendored() {
+is_known_direct() {
   local n="$1"
-  for v in "${known_vendored[@]:-}"; do
+  for v in "${known_direct[@]:-}"; do
     [ "$v" = "$n" ] && return 0
   done
   return 1
 }
 
 codex_only=()
-vendored=()
+direct=()
+shared=()
 if [ -d "$CODEX_DIR/skills" ]; then
   while IFS= read -r -d '' skillmd; do
     skill_dir="$(dirname "$skillmd")"
     name="$(basename "$skill_dir")"
     parent="$(basename "$(dirname "$skill_dir")")"
 
-    if [ "$parent" = "SHARED" ] && [ -n "${skills[$name]:-}" ]; then
+    if [ "$parent" = "SHARED" ]; then
+      shared+=("$name")
       continue
     fi
 
     if [ -n "${skills[$name]:-}" ]; then
       codex_only+=("$name (legacy 위치: 사용자 제작 스킬은 .codex/skills/SHARED/$name/SKILL.md 로 이동해야 함)")
     else
-      if is_known_vendored "$name"; then
-        vendored+=("$name")
+      if is_known_direct "$name"; then
+        direct+=("$name")
       elif grep -q 'Source of Truth' "$skillmd" 2>/dev/null && grep -q '\.claude/' "$skillmd" 2>/dev/null; then
-        codex_only+=("$name (orphan: Claude 대응 SSOT 없음 — README Vendored 목록에도 없음)")
+        codex_only+=("$name (orphan: Claude 대응 SSOT 없음 — README OMX Direct 목록에도 없음)")
       else
-        codex_only+=("$name (미분류: README Vendored 목록에 추가하거나 제거하세요)")
+        codex_only+=("$name (미분류: README OMX Direct 목록에 추가하거나 SHARED로 이동하세요)")
       fi
     fi
   done < <(find "$CODEX_DIR/skills" -maxdepth 3 -mindepth 2 -type f -name "SKILL.md" -print0 2>/dev/null)
@@ -293,7 +295,8 @@ fi
 echo "sync-skills 결과:"
 echo "  로컬 스킬: ${#skills[@]}"
 echo "  동일(ok): $ok / 생성: $created / 갱신: $updated"
-echo "  Vendored OMC: ${#vendored[@]}"
+echo "  OMX direct: ${#direct[@]}"
+echo "  SHARED: ${#shared[@]}"
 
 if [ ${#duplicate_warnings[@]} -gt 0 ]; then
   echo ""
