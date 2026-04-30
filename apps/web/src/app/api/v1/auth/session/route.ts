@@ -3,7 +3,7 @@ import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { AUTH_SESSION_COOKIE_NAME } from "@/server/auth/constants";
+import { getAuthSessionTokenFromRequest } from "@/server/auth/request-session-token";
 import {
   clearAuthSessionCookie,
   deleteAuthSessionByToken,
@@ -16,9 +16,9 @@ function jsonError(message: string, status: number) {
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionToken = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value;
+    const sessionToken = getAuthSessionTokenFromRequest(request);
     const user = sessionToken
-      ? await getAuthUserBySessionToken(sessionToken)
+      ? await getAuthUserBySessionToken(sessionToken.token)
       : null;
     const response = NextResponse.json(
       authSessionResponseSchema.parse({
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    if (sessionToken && !user) {
+    if (sessionToken?.source === "cookie" && !user) {
       clearAuthSessionCookie(response);
     }
 
@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const sessionToken = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value;
+    const sessionToken = getAuthSessionTokenFromRequest(request);
 
     if (sessionToken) {
-      await deleteAuthSessionByToken(sessionToken);
+      await deleteAuthSessionByToken(sessionToken.token);
     }
 
     const response = NextResponse.json(

@@ -7,10 +7,7 @@ import {
   platformServiceAccessPolicies,
   platformServiceStatuses,
 } from "@/lib/platform-services";
-import {
-  SITE_BRAND_NAME,
-  SITE_SUPPORT_EMAIL,
-} from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_SUPPORT_EMAIL } from "@/lib/site-brand";
 import { LoginModal } from "./login-modal";
 
 type LandingHomeProps = {
@@ -110,10 +107,9 @@ export function LandingHome({
             </p>
           </div>
 
-          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${services.length}, minmax(0, 1fr))` }}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => {
-              const isLive =
-                service.status === platformServiceStatuses.live;
+              const isLive = service.status === platformServiceStatuses.live;
               const requiresAuth =
                 service.accessPolicy ===
                 platformServiceAccessPolicies.authRequired;
@@ -127,7 +123,7 @@ export function LandingHome({
               };
 
               const cardBase =
-                "group flex flex-col gap-5 rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-left transition-all duration-200 hover:border-white/20 hover:bg-white/[0.07] hover:-translate-y-0.5";
+                "group flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07] md:gap-5 md:p-6";
               const cardInner = (
                 <>
                   <div className="flex items-start justify-between">
@@ -144,15 +140,15 @@ export function LandingHome({
                       {isLive ? "운영 중" : "준비 중"}
                     </span>
                   </div>
-                  <div className="grid gap-1.5">
-                    <h2 className="text-[17px] font-bold leading-tight tracking-[-0.02em] text-white">
+                  <div className="grid min-w-0 gap-1.5">
+                    <h2 className="break-keep text-[18px] font-bold leading-snug tracking-[-0.02em] text-white md:text-[17px] md:leading-tight">
                       {service.title}
                     </h2>
-                    <p className="text-[13px] leading-relaxed text-white/50">
+                    <p className="break-keep text-[14px] leading-6 text-white/50 md:text-[13px] md:leading-relaxed">
                       {service.summary}
                     </p>
                   </div>
-                  <span className="w-fit rounded-md bg-white/6 px-2.5 py-1 text-[11px] text-white/35">
+                  <span className="w-fit break-keep rounded-md bg-white/6 px-2.5 py-1 text-[11px] text-white/35">
                     {service.audience}
                   </span>
                 </>
@@ -184,7 +180,7 @@ export function LandingHome({
               return (
                 <div
                   key={service.slug}
-                  className="flex flex-col gap-5 rounded-2xl border border-white/6 bg-white/[0.02] p-6 opacity-50"
+                  className="flex min-w-0 flex-col gap-4 rounded-2xl border border-white/6 bg-white/[0.02] p-5 opacity-50 md:gap-5 md:p-6"
                 >
                   {cardInner}
                 </div>

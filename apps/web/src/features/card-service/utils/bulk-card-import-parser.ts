@@ -51,12 +51,11 @@ type MarkerMatch = {
 } | null;
 
 function getMarker(line: string): MarkerMatch {
-  const trimmedStart = line.trimStart();
   for (const marker of [QUESTION_MARKER, ANSWER_MARKER, CARD_MARKER]) {
-    if (trimmedStart === marker || trimmedStart.startsWith(marker)) {
+    if (line === marker) {
       return {
         marker,
-        content: trimmedStart.slice(marker.length),
+        content: "",
       };
     }
   }

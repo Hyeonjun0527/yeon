@@ -60,6 +60,21 @@ export const cardDeckItemDtoSchema = z.object({
 });
 export type CardDeckItemDto = z.infer<typeof cardDeckItemDtoSchema>;
 
+export const cardDeckListResponseSchema = z.object({
+  decks: z.array(cardDeckDtoSchema),
+});
+export type CardDeckListResponse = z.infer<typeof cardDeckListResponseSchema>;
+
+export const cardDeckResponseSchema = z.object({
+  deck: cardDeckDtoSchema,
+});
+export type CardDeckResponse = z.infer<typeof cardDeckResponseSchema>;
+
+export const cardDeckItemResponseSchema = z.object({
+  item: cardDeckItemDtoSchema,
+});
+export type CardDeckItemResponse = z.infer<typeof cardDeckItemResponseSchema>;
+
 export const cardDeckDetailResponseSchema = z.object({
   deck: cardDeckDtoSchema,
   items: z.array(cardDeckItemDtoSchema),

@@ -1,3 +1,1 @@
-// Export pure business logic from here.
-
-export {};
+export * from "./life-os";

@@ -3,7 +3,7 @@ import { errorResponseSchema } from "@yeon/api-contract/error";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { AUTH_SESSION_COOKIE_NAME } from "@/server/auth/constants";
+import { getAuthSessionTokenFromRequest } from "@/server/auth/request-session-token";
 import {
   clearAuthSessionCookie,
   getAuthUserBySessionToken,
@@ -35,15 +35,15 @@ export async function withHandler(
 }
 
 export async function requireAuthenticatedUser(request: NextRequest) {
-  const sessionToken = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value;
+  const sessionToken = getAuthSessionTokenFromRequest(request);
   const currentUser = sessionToken
-    ? await getAuthUserBySessionToken(sessionToken)
+    ? await getAuthUserBySessionToken(sessionToken.token)
     : null;
 
   if (!currentUser) {
     const response = jsonError("로그인이 필요합니다.", 401);
 
-    if (sessionToken) {
+    if (sessionToken?.source === "cookie") {
       clearAuthSessionCookie(response);
     }
 

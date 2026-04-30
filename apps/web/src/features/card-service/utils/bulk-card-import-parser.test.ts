@@ -21,18 +21,12 @@ describe("parseBulkCardImportInput", () => {
     ]);
   });
 
-  it("마커와 내용이 같은 줄에 붙어도 파싱한다", () => {
+  it("마커와 내용이 같은 줄에 붙으면 마커로 인식하지 않는다", () => {
     const result = parseBulkCardImportInput(`[[Q]]문제 1
-[[A]]정답 1
-[[CARD]]
-[[Q]]문제 2
-[[A]]정답 2`);
+[[A]]정답 1`);
 
-    expect(result.errors).toEqual([]);
-    expect(result.cards).toEqual([
-      { frontText: "문제 1", backText: "정답 1" },
-      { frontText: "문제 2", backText: "정답 2" },
-    ]);
+    expect(result.cards).toEqual([]);
+    expect(result.errors[0]).toContain("마커 밖의 내용");
   });
 
   it("문제와 정답 안의 일반 대괄호는 내용으로 유지한다", () => {
@@ -48,8 +42,8 @@ describe("parseBulkCardImportInput", () => {
     });
   });
 
-  it("마커는 trim한 한 줄 전체가 일치할 때만 인식한다", () => {
-    const result = parseBulkCardImportInput(`  [[Q]]
+  it("마커는 한 줄 전체가 정확히 일치할 때만 인식한다", () => {
+    const result = parseBulkCardImportInput(`[[Q]]
 문제 안의 [[A]] 문자열은 마커가 아니다
 [[A]]
 정답 안의 [[CARD]] 문자열도 마커가 아니다`);
@@ -59,6 +53,16 @@ describe("parseBulkCardImportInput", () => {
       frontText: "문제 안의 [[A]] 문자열은 마커가 아니다",
       backText: "정답 안의 [[CARD]] 문자열도 마커가 아니다",
     });
+  });
+
+  it("마커 주변에 공백이 있으면 일반 텍스트로 처리한다", () => {
+    const result = parseBulkCardImportInput(`  [[Q]]
+문제
+[[A]]
+정답`);
+
+    expect(result.cards).toEqual([]);
+    expect(result.errors[0]).toContain("마커 밖의 내용");
   });
 
   it("문제와 정답의 줄바꿈을 카드 경계로 쓰지 않는다", () => {

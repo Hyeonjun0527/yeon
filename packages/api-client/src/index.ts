@@ -1,5 +1,19 @@
 import { authSessionResponseSchema } from "@yeon/api-contract/auth";
 import {
+  cardDeckDetailResponseSchema,
+  cardDeckItemResponseSchema,
+  cardDeckListResponseSchema,
+  cardDeckResponseSchema,
+  createCardDeckBodySchema,
+  createCardDeckItemBodySchema,
+  updateCardDeckBodySchema,
+  updateCardDeckItemBodySchema,
+  type CreateCardDeckBody,
+  type CreateCardDeckItemBody,
+  type UpdateCardDeckBody,
+  type UpdateCardDeckItemBody,
+} from "@yeon/api-contract/card-decks";
+import {
   chatServiceBlockProfileResponseSchema,
   chatServiceCreateAskPostBodySchema,
   chatServiceCreateAskPostResponseSchema,
@@ -43,8 +57,21 @@ import {
   type ChatServiceVoteAskPostBody,
 } from "@yeon/api-contract/chat-service";
 import { contestOverviewResponseSchema } from "@yeon/api-contract/contest";
+import {
+  credentialLoginBodySchema,
+  mobileCredentialLoginResponseSchema,
+  type CredentialLoginBody,
+} from "@yeon/api-contract/credential";
 import { errorResponseSchema } from "@yeon/api-contract/error";
 import { healthResponseSchema } from "@yeon/api-contract/health";
+import {
+  LIFE_OS_API_PATHS,
+  lifeOsDayResponseSchema,
+  lifeOsDaysResponseSchema,
+  lifeOsReportResponseSchema,
+  upsertLifeOsDayBodySchema,
+  type UpsertLifeOsDayBody,
+} from "@yeon/api-contract/life-os";
 import {
   createUserResponseSchema,
   listUsersResponseSchema,
@@ -112,6 +139,16 @@ function createChatServiceHeaders(sessionToken?: string): HeadersInit {
   };
 }
 
+function createAuthSessionHeaders(sessionToken?: string): HeadersInit {
+  if (!sessionToken) {
+    return {};
+  }
+
+  return {
+    authorization: `Bearer ${sessionToken}`,
+  };
+}
+
 export function createApiClient(options: ApiClientOptions = {}) {
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = options.baseUrl ?? "";
@@ -143,6 +180,24 @@ export function createApiClient(options: ApiClientOptions = {}) {
     return schema.parse(data);
   }
 
+  async function requestNoContent(path: string, init?: RequestInit) {
+    const response = await fetchImpl(joinUrl(baseUrl, path), {
+      ...init,
+      headers: {
+        "content-type": "application/json",
+        ...defaultHeaders,
+        ...init?.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const message =
+        (await parseErrorResponse(response)) ?? "API 요청 처리에 실패했습니다.";
+
+      throw new ApiClientError(response.status, message);
+    }
+  }
+
   return {
     getHealth() {
       return request({
@@ -150,18 +205,34 @@ export function createApiClient(options: ApiClientOptions = {}) {
         schema: healthResponseSchema,
       });
     },
-    getAuthSession() {
+    getAuthSession(sessionToken?: string) {
       return request({
         path: "/api/v1/auth/session",
         schema: authSessionResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
       });
     },
-    async logout() {
+    async logout(sessionToken?: string) {
       await request({
         path: "/api/v1/auth/session",
         schema: authSessionResponseSchema,
         init: {
           method: "DELETE",
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    loginWithCredential(body: CredentialLoginBody) {
+      const parsedBody = credentialLoginBodySchema.parse(body);
+
+      return request({
+        path: "/api/v1/mobile/auth/credentials/login",
+        schema: mobileCredentialLoginResponseSchema,
+        init: {
+          method: "POST",
+          body: JSON.stringify(parsedBody),
         },
       });
     },
@@ -169,6 +240,154 @@ export function createApiClient(options: ApiClientOptions = {}) {
       return request({
         path: "/api/v1/contest/overview",
         schema: contestOverviewResponseSchema,
+      });
+    },
+    listCardDecks(sessionToken?: string) {
+      return request({
+        path: "/api/v1/card-decks",
+        schema: cardDeckListResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    createCardDeck(body: CreateCardDeckBody, sessionToken?: string) {
+      const parsedBody = createCardDeckBodySchema.parse(body);
+
+      return request({
+        path: "/api/v1/card-decks",
+        schema: cardDeckResponseSchema,
+        init: {
+          method: "POST",
+          headers: createAuthSessionHeaders(sessionToken),
+          body: JSON.stringify(parsedBody),
+        },
+      });
+    },
+    getCardDeckDetail(deckId: string, sessionToken?: string) {
+      return request({
+        path: `/api/v1/card-decks/${deckId}`,
+        schema: cardDeckDetailResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    updateCardDeck(
+      deckId: string,
+      body: UpdateCardDeckBody,
+      sessionToken?: string,
+    ) {
+      const parsedBody = updateCardDeckBodySchema.parse(body);
+
+      return request({
+        path: `/api/v1/card-decks/${deckId}`,
+        schema: cardDeckResponseSchema,
+        init: {
+          method: "PATCH",
+          headers: createAuthSessionHeaders(sessionToken),
+          body: JSON.stringify(parsedBody),
+        },
+      });
+    },
+    deleteCardDeck(deckId: string, sessionToken?: string) {
+      return requestNoContent(`/api/v1/card-decks/${deckId}`, {
+        method: "DELETE",
+        headers: createAuthSessionHeaders(sessionToken),
+      });
+    },
+    createCardDeckItem(
+      deckId: string,
+      body: CreateCardDeckItemBody,
+      sessionToken?: string,
+    ) {
+      const parsedBody = createCardDeckItemBodySchema.parse(body);
+
+      return request({
+        path: `/api/v1/card-decks/${deckId}/items`,
+        schema: cardDeckItemResponseSchema,
+        init: {
+          method: "POST",
+          headers: createAuthSessionHeaders(sessionToken),
+          body: JSON.stringify(parsedBody),
+        },
+      });
+    },
+    updateCardDeckItem(
+      deckId: string,
+      itemId: string,
+      body: UpdateCardDeckItemBody,
+      sessionToken?: string,
+    ) {
+      const parsedBody = updateCardDeckItemBodySchema.parse(body);
+
+      return request({
+        path: `/api/v1/card-decks/${deckId}/items/${itemId}`,
+        schema: cardDeckItemResponseSchema,
+        init: {
+          method: "PATCH",
+          headers: createAuthSessionHeaders(sessionToken),
+          body: JSON.stringify(parsedBody),
+        },
+      });
+    },
+    deleteCardDeckItem(deckId: string, itemId: string, sessionToken?: string) {
+      return requestNoContent(`/api/v1/card-decks/${deckId}/items/${itemId}`, {
+        method: "DELETE",
+        headers: createAuthSessionHeaders(sessionToken),
+      });
+    },
+    listLifeOsDays(sessionToken?: string) {
+      return request({
+        path: LIFE_OS_API_PATHS.days,
+        schema: lifeOsDaysResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    getLifeOsDay(localDate: string, sessionToken?: string) {
+      return request({
+        path: LIFE_OS_API_PATHS.dayByDate(localDate),
+        schema: lifeOsDayResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    upsertLifeOsDay(body: UpsertLifeOsDayBody, sessionToken?: string) {
+      const parsedBody = upsertLifeOsDayBodySchema.parse(body);
+
+      return request({
+        path: LIFE_OS_API_PATHS.dayByDate(parsedBody.localDate),
+        schema: lifeOsDayResponseSchema,
+        init: {
+          method: "PUT",
+          headers: createAuthSessionHeaders(sessionToken),
+          body: JSON.stringify(parsedBody),
+        },
+      });
+    },
+    getLifeOsDailyReport(localDate: string, sessionToken?: string) {
+      return request({
+        path: LIFE_OS_API_PATHS.dailyReport(localDate),
+        schema: lifeOsReportResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
+      });
+    },
+    getLifeOsWeeklyReport(
+      periodStart: string,
+      periodEnd: string,
+      sessionToken?: string,
+    ) {
+      return request({
+        path: LIFE_OS_API_PATHS.weeklyReport(periodStart, periodEnd),
+        schema: lifeOsReportResponseSchema,
+        init: {
+          headers: createAuthSessionHeaders(sessionToken),
+        },
       });
     },
     listUsers() {

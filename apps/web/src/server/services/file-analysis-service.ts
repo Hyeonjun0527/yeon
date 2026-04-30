@@ -174,13 +174,63 @@ export interface RefineContext {
 
 /* ── Excel → 텍스트 변환 ── */
 
+const MAX_EXCEL_BYTES = 8 * 1024 * 1024;
+const MAX_EXCEL_SHEETS = 30;
+const MAX_EXCEL_ROWS_PER_SHEET = 5000;
+const MAX_EXCEL_COLUMNS_PER_SHEET = 80;
+
+function assertExcelBufferIsBounded(buffer: Buffer) {
+  if (buffer.byteLength > MAX_EXCEL_BYTES) {
+    throw new ServiceError(
+      413,
+      "엑셀 파일은 최대 8MB까지만 분석할 수 있습니다.",
+    );
+  }
+}
+
+function assertWorkbookIsBounded(workbook: XLSX.WorkBook) {
+  if (workbook.SheetNames.length > MAX_EXCEL_SHEETS) {
+    throw new ServiceError(
+      413,
+      `엑셀 시트는 최대 ${MAX_EXCEL_SHEETS}개까지만 분석할 수 있습니다.`,
+    );
+  }
+}
+
+function assertSheetRowsAreBounded(sheetName: string, rows: string[][]) {
+  if (rows.length > MAX_EXCEL_ROWS_PER_SHEET) {
+    throw new ServiceError(
+      413,
+      `${sheetName} 시트는 최대 ${MAX_EXCEL_ROWS_PER_SHEET}행까지만 분석할 수 있습니다.`,
+    );
+  }
+
+  const maxColumnCount = getMaxColumnCount(rows);
+  if (maxColumnCount > MAX_EXCEL_COLUMNS_PER_SHEET) {
+    throw new ServiceError(
+      413,
+      `${sheetName} 시트는 최대 ${MAX_EXCEL_COLUMNS_PER_SHEET}열까지만 분석할 수 있습니다.`,
+    );
+  }
+}
+
 export function parseExcelToText(buffer: Buffer): string {
+  assertExcelBufferIsBounded(buffer);
   const workbook = XLSX.read(buffer, { type: "buffer" });
+  assertWorkbookIsBounded(workbook);
   const parts: string[] = [];
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
+    const rows = XLSX.utils
+      .sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: "",
+        raw: false,
+      })
+      .map((row) => row.map(normalizeSheetCell));
+    assertSheetRowsAreBounded(sheetName, rows);
     const csv = XLSX.utils.sheet_to_csv(sheet);
     parts.push(`=== 시트: ${sheetName} ===\n${csv}`);
   }
@@ -201,7 +251,9 @@ function normalizeSheetCell(cell: unknown): string {
 }
 
 function parseExcelToRows(buffer: Buffer): SheetRows[] {
+  assertExcelBufferIsBounded(buffer);
   const workbook = XLSX.read(buffer, { type: "buffer" });
+  assertWorkbookIsBounded(workbook);
   const result: SheetRows[] = [];
 
   for (const sheetName of workbook.SheetNames) {
@@ -214,6 +266,7 @@ function parseExcelToRows(buffer: Buffer): SheetRows[] {
         raw: false,
       })
       .map((row) => row.map(normalizeSheetCell));
+    assertSheetRowsAreBounded(sheetName, rows);
     if (rows.length > 0) {
       result.push({ sheetName, rows });
     }

@@ -58,7 +58,7 @@ export function PlayCard({
           className="absolute inset-0 flex items-center justify-center rounded-2xl border border-[#e5e5e5] bg-white p-12 text-center"
           style={FACE_STYLE}
         >
-          <p className="whitespace-pre-wrap text-[22px] leading-relaxed text-[#111]">
+          <p className="whitespace-pre-wrap break-keep text-[22px] leading-relaxed text-[#111]">
             {frontText}
           </p>
         </div>
@@ -69,7 +69,7 @@ export function PlayCard({
             transform: "rotateY(180deg)",
           }}
         >
-          <p className="whitespace-pre-wrap text-[22px] leading-relaxed text-white">
+          <p className="whitespace-pre-wrap break-keep text-[22px] leading-relaxed text-white">
             {backText}
           </p>
         </div>

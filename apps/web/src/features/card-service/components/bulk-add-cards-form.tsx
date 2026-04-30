@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CARD_BULK_IMPORT_MAX_ITEMS } from "@yeon/api-contract/card-decks";
 
 import { useAddCards } from "../hooks";
 import { parseBulkCardImportInput } from "../utils/bulk-card-import-parser";
+import {
+  BULK_CARD_HELP_VISIBILITY_EVENT,
+  setBulkCardHelpVisible,
+  shouldShowBulkCardHelp,
+} from "../utils/bulk-card-help-preference";
 
 const BULK_CARD_TEMPLATE = `[[Q]]
 문제
@@ -22,6 +27,7 @@ interface BulkAddCardsFormProps {
 
 export function BulkAddCardsForm({ deckId }: BulkAddCardsFormProps) {
   const [rawText, setRawText] = useState("");
+  const [isHelpVisible, setHelpVisible] = useState(true);
   const { mutate, isPending, error } = useAddCards(deckId);
   const parseResult = useMemo(
     () => parseBulkCardImportInput(rawText),
@@ -36,6 +42,31 @@ export function BulkAddCardsForm({ deckId }: BulkAddCardsFormProps) {
     parseResult.cards.length - previewCards.length,
     0,
   );
+
+  useEffect(() => {
+    setHelpVisible(shouldShowBulkCardHelp());
+
+    function handlePreferenceChange(event: Event) {
+      const customEvent = event as CustomEvent<{ isVisible: boolean }>;
+      setHelpVisible(customEvent.detail?.isVisible ?? shouldShowBulkCardHelp());
+    }
+
+    window.addEventListener(
+      BULK_CARD_HELP_VISIBILITY_EVENT,
+      handlePreferenceChange,
+    );
+    return () => {
+      window.removeEventListener(
+        BULK_CARD_HELP_VISIBILITY_EVENT,
+        handlePreferenceChange,
+      );
+    };
+  }, []);
+
+  function handleDismissHelp() {
+    setHelpVisible(false);
+    setBulkCardHelpVisible(false);
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,19 +86,29 @@ export function BulkAddCardsForm({ deckId }: BulkAddCardsFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-4 text-[13px] text-[#555]">
-        <p className="font-semibold text-[#111]">
-          AI에게 이렇게 만들어달라고 요청하세요.
-        </p>
-        <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-[12px] leading-5 text-[#333]">
-          {BULK_CARD_TEMPLATE}
-        </pre>
-        <p className="mt-3">
-          마커는 한 줄 전체가 <code>[[Q]]</code>, <code>[[A]]</code>,{" "}
-          <code>[[CARD]]</code>일 때만 인식합니다. 문제/정답 안의 일반 대괄호는
-          그대로 저장됩니다.
-        </p>
-      </div>
+      {isHelpVisible ? (
+        <div className="relative rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-4 pr-12 text-[13px] text-[#555]">
+          <button
+            aria-label="AI 형식 도움말 숨기기"
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border border-[#e5e5e5] bg-white text-[15px] font-semibold text-[#666] transition-colors hover:border-[#111] hover:text-[#111]"
+            onClick={handleDismissHelp}
+            type="button"
+          >
+            ×
+          </button>
+          <p className="font-semibold text-[#111]">
+            AI에게 이렇게 만들어달라고 요청하세요.
+          </p>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-[12px] leading-5 text-[#333]">
+            {BULK_CARD_TEMPLATE}
+          </pre>
+          <p className="mt-3">
+            마커는 한 줄 전체가 <code>[[Q]]</code>, <code>[[A]]</code>,{" "}
+            <code>[[CARD]]</code>일 때만 인식합니다. 문제/정답 안의 일반
+            대괄호는 그대로 저장됩니다.
+          </p>
+        </div>
+      ) : null}
 
       <label className="flex flex-col gap-2">
         <span className="text-[13px] text-[#666]">AI 형식 붙여넣기</span>

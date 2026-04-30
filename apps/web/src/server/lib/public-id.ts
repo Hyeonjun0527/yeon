@@ -26,6 +26,7 @@ export const ID_PREFIX = {
   activityLogs: "alg",
   cardDecks: "dck",
   cardDeckItems: "dki",
+  lifeOsDays: "lod",
 } as const;
 
 export type IdPrefixKey = keyof typeof ID_PREFIX;

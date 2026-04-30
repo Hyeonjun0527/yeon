@@ -8,6 +8,7 @@ import { countGuestCardDecks } from "@/lib/guest-card-service-store";
 
 import { useIsAuthenticated } from "./auth-context";
 import {
+  CardServiceSettingsDialog,
   CreateDeckDialog,
   DeckList,
   EmptyDecksScreen,
@@ -33,6 +34,7 @@ function toViewState(
 
 export function CardServiceHome() {
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [guestDeckCount, setGuestDeckCount] = useState<number | null>(null);
   const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
   const isAuthenticated = useIsAuthenticated();
@@ -107,6 +109,13 @@ export function CardServiceHome() {
             >
               + 새 덱
             </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-[13px] font-semibold text-[#111] transition-colors hover:border-[#111] hover:bg-[#fafafa]"
+            >
+              설정
+            </button>
           </div>
         </div>
       </header>
@@ -137,6 +146,10 @@ export function CardServiceHome() {
 
       {isCreateOpen ? (
         <CreateDeckDialog onClose={() => setCreateOpen(false)} />
+      ) : null}
+
+      {isSettingsOpen ? (
+        <CardServiceSettingsDialog onClose={() => setSettingsOpen(false)} />
       ) : null}
 
       {isMergeDialogOpen && guestDeckCount !== null && guestDeckCount > 0 ? (

@@ -14,10 +14,31 @@ interface FilePreviewProps {
 
 // 브라우저가 <img>로 렌더할 수 없는 포맷
 const NO_BROWSER_PREVIEW_EXTS = [".heic", ".heif"];
+const MAX_SPREADSHEET_PREVIEW_BYTES = 8 * 1024 * 1024;
+const MAX_SPREADSHEET_PREVIEW_ROWS = 5000;
+const MAX_SPREADSHEET_PREVIEW_COLUMNS = 80;
 
 function needsHeicConversion(fileName: string): boolean {
   const lower = fileName.toLowerCase();
   return NO_BROWSER_PREVIEW_EXTS.some((ext) => lower.endsWith(ext));
+}
+
+function assertSpreadsheetPreviewRowsAreBounded(rows: string[][]) {
+  if (rows.length > MAX_SPREADSHEET_PREVIEW_ROWS) {
+    throw new Error(
+      `스프레드시트 미리보기는 최대 ${MAX_SPREADSHEET_PREVIEW_ROWS}행까지만 지원합니다.`,
+    );
+  }
+
+  const maxColumnCount = rows.reduce(
+    (max, row) => Math.max(max, row.length),
+    0,
+  );
+  if (maxColumnCount > MAX_SPREADSHEET_PREVIEW_COLUMNS) {
+    throw new Error(
+      `스프레드시트 미리보기는 최대 ${MAX_SPREADSHEET_PREVIEW_COLUMNS}열까지만 지원합니다.`,
+    );
+  }
 }
 
 export function FilePreview({ uri, mimeType, fileName }: FilePreviewProps) {
@@ -142,15 +163,25 @@ function SpreadsheetPreview({ uri }: { uri: string }) {
       const res = await fetch(uri);
       if (!res.ok) throw new Error("파일을 불러올 수 없습니다.");
       const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > MAX_SPREADSHEET_PREVIEW_BYTES) {
+        throw new Error("스프레드시트 미리보기는 최대 8MB까지만 지원합니다.");
+      }
       const XLSX = await import("xlsx");
       const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
+      if (wb.SheetNames.length > 30) {
+        throw new Error(
+          "스프레드시트 미리보기는 최대 30개 시트까지만 지원합니다.",
+        );
+      }
       const ws = wb.Sheets[wb.SheetNames[0]];
       if (!ws) throw new Error("시트를 읽을 수 없습니다.");
-      return XLSX.utils.sheet_to_json(ws, {
+      const rows = XLSX.utils.sheet_to_json(ws, {
         header: 1,
         raw: false,
         defval: "",
       }) as string[][];
+      assertSpreadsheetPreviewRowsAreBounded(rows);
+      return rows;
     },
   });
 

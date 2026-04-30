@@ -46,7 +46,64 @@ describe("api/v1/auth/session route", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(200);
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith("stale-token");
     expect(mockClearAuthSessionCookie).toHaveBeenCalledTimes(1);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: false,
+      user: null,
+    });
+  });
+
+  it("GET은 bearer 세션으로 사용자를 조회하고 쿠키를 정리하지 않는다", async () => {
+    mockGetAuthUserBySessionToken.mockResolvedValue({
+      avatarUrl: null,
+      displayName: "사용자",
+      email: "user@example.com",
+      id: "11111111-1111-4111-8111-111111111111",
+      lastLoginAt: "2026-04-30T00:00:00.000Z",
+      providers: ["dev"],
+    });
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      headers: {
+        authorization: "Bearer bearer-token",
+        cookie: "yeon.session=stale-cookie-token",
+      },
+    });
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith("bearer-token");
+    expect(mockClearAuthSessionCookie).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      authenticated: true,
+      user: {
+        avatarUrl: null,
+        displayName: "사용자",
+        email: "user@example.com",
+        id: "11111111-1111-4111-8111-111111111111",
+        lastLoginAt: "2026-04-30T00:00:00.000Z",
+        providers: ["dev"],
+      },
+    });
+  });
+
+  it("GET은 stale bearer 세션이면 쿠키 정리를 요청하지 않는다", async () => {
+    mockGetAuthUserBySessionToken.mockResolvedValue(null);
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      headers: {
+        authorization: "Bearer stale-bearer-token",
+        cookie: "yeon.session=stale-cookie-token",
+      },
+    });
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith(
+      "stale-bearer-token",
+    );
+    expect(mockClearAuthSessionCookie).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
       authenticated: false,
       user: null,
@@ -62,6 +119,25 @@ describe("api/v1/auth/session route", () => {
     const response = await DELETE(request);
 
     expect(mockDeleteAuthSessionByToken).toHaveBeenCalledWith("valid-token");
+    expect(mockClearAuthSessionCookie).toHaveBeenCalledTimes(1);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: false,
+      user: null,
+    });
+  });
+
+  it("DELETE는 bearer 토큰을 삭제하고 쿠키 정리 응답도 유지한다", async () => {
+    const request = new NextRequest("http://localhost/api/v1/auth/session", {
+      method: "DELETE",
+      headers: {
+        authorization: "Bearer bearer-token",
+        cookie: "yeon.session=cookie-token",
+      },
+    });
+
+    const response = await DELETE(request);
+
+    expect(mockDeleteAuthSessionByToken).toHaveBeenCalledWith("bearer-token");
     expect(mockClearAuthSessionCookie).toHaveBeenCalledTimes(1);
     await expect(response.json()).resolves.toEqual({
       authenticated: false,

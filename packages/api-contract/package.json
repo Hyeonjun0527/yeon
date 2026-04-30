@@ -17,14 +17,17 @@
     "./instructor-workspace": "./src/instructor-workspace.ts",
     "./spaces": "./src/spaces.ts",
     "./credential": "./src/credential.ts",
-    "./card-deck-merge-guest": "./src/card-deck-merge-guest.ts"
+    "./card-deck-merge-guest": "./src/card-deck-merge-guest.ts",
+    "./life-os": "./src/life-os.ts"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@yeon/domain": "workspace:*"
   },
   "devDependencies": {
     "@yeon/config": "workspace:*",

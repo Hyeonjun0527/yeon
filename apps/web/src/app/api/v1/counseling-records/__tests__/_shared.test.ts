@@ -102,7 +102,52 @@ describe("counseling-records api shared helpers", () => {
 
     const result = await requireAuthenticatedUser(request);
 
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith("valid-token");
     expect(result.currentUser).toEqual({ id: "user-1" });
     expect(result.response).toBeNull();
+  });
+
+  it("bearer 세션이 쿠키보다 우선하고 유효하면 currentUser를 반환한다", async () => {
+    mockGetAuthUserBySessionToken.mockResolvedValue({ id: "user-1" });
+
+    const request = new NextRequest(
+      "http://localhost/api/v1/counseling-records",
+      {
+        headers: {
+          authorization: "Bearer bearer-token",
+          cookie: "yeon.session=cookie-token",
+        },
+      },
+    );
+
+    const result = await requireAuthenticatedUser(request);
+
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith("bearer-token");
+    expect(mockClearAuthSessionCookie).not.toHaveBeenCalled();
+    expect(result.currentUser).toEqual({ id: "user-1" });
+    expect(result.response).toBeNull();
+  });
+
+  it("bearer 세션이 stale이면 쿠키를 정리하지 않고 401을 반환한다", async () => {
+    mockGetAuthUserBySessionToken.mockResolvedValue(null);
+
+    const request = new NextRequest(
+      "http://localhost/api/v1/counseling-records",
+      {
+        headers: {
+          authorization: "Bearer stale-bearer-token",
+          cookie: "yeon.session=cookie-token",
+        },
+      },
+    );
+
+    const result = await requireAuthenticatedUser(request);
+
+    expect(mockGetAuthUserBySessionToken).toHaveBeenCalledWith(
+      "stale-bearer-token",
+    );
+    expect(result.currentUser).toBeNull();
+    expect(result.response?.status).toBe(401);
+    expect(mockClearAuthSessionCookie).not.toHaveBeenCalled();
   });
 });
