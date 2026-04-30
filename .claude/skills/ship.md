@@ -1,90 +1,59 @@
 ---
 name: ship
-description: 검증 → 커밋 → push → PR → develop 머지까지 일사천리로 수행하는 배포 플로우.
+description: 검증 → 커밋 → push → PR(main) → 머지까지 수행하는 Yeon main-only ship 플로우.
 user_invocable: true
 ---
 
-# Ship
+# Ship — main-only
 
-## 전제 조건
+## 전제
 
 - 구현이 완료된 상태여야 한다.
-- code-quality-guardian 체크리스트를 통과한 상태여야 한다.
-- **동시 작업 인식**: push 직전 반드시 `git fetch origin && git rebase origin/develop`을 실행한다. 다른 에이전트가 먼저 develop에 머지했을 수 있다. rebase 없이 push하면 충돌이 생기거나 다른 에이전트의 작업이 누락될 수 있다.
+- `develop`은 잠정 중단이므로 사용하지 않는다.
+- base/target은 `main`이다.
+- 직접 `main` push 금지. PR을 사용한다.
 
-## 플로우
+## 1. 검증
 
-### 1. 검증
+`validate` 스킬 기준으로 실행한다. 코드 변경이면 보통:
 
-`validate.md` 순서대로 실행한다.
-
-1. `pnpm lint`
-2. `pnpm prettier:fix`
-3. `pnpm typecheck`
+1. lint/fix
+2. format
+3. typecheck
 4. `pnpm --filter @yeon/web build`
-5. 필요 시 test
+5. 필요한 test
 
-모든 단계가 green이어야 다음으로 진행한다.
-
-### 2. 커밋
+## 2. 커밋
 
 ```bash
+git status --short --branch
+git status --short | grep '^??' || true
 git add <변경 파일만 선별>
 git commit
 ```
 
-- `git add .`은 사용하지 않는다. 자기 작업 파일만 pathspec으로 선별한다.
-- 커밋 메시지는 한국어로, 변경 대상 + 핵심 동작 변화 + 수정 의도가 드러나게 작성한다.
-- 모호한 메시지(`fix: 수정`, `refactor: 정리`) 금지.
-- **커밋 전 untracked 파일 확인 필수**: `git status`에서 `??`로 표시된 파일이 있는데, 커밋할 파일이 해당 파일을 import하면 Docker 빌드가 실패한다. 스테이징 전에 반드시 `git status --short | grep "^??"` 로 미커밋 파일을 확인하고, import 관계가 있는 파일은 함께 커밋한다.
+- `git add .` 지양.
+- 커밋 메시지는 한국어로 구체적으로 작성한다.
+- Lore trailers가 필요한 세션이면 포함한다.
 
-### 3. Push
+## 3. push
 
 ```bash
-# 첫 push
-git push -u origin <branch-name>
-
-# 후속 push
-git push
+git fetch origin
+git rebase origin/main
+git push -u origin <branch>
 ```
 
-- 새 브랜치의 첫 push는 반드시 `-u`로 upstream을 연결한다.
-- rebase 이후에만 `--force-with-lease` 사용 가능.
-
-### 4. PR 생성
+## 4. PR(main) 생성/갱신
 
 ```bash
-gh pr create \
-  --base develop \
-  --head <branch-name> \
-  --title "<구체적 제목>" \
-  --body-file <본문파일>
-
+gh pr create --base main --head <branch> --title "<제목>" --body-file <body-file>
 gh pr edit <pr> --add-assignee Hyeonjun0527
 ```
 
-- 이미 열린 PR이 있으면 기존 PR에 push.
-- PR 본문 필수 항목: 작업 내용, 변경 이유, 검증 방법, 브랜치 정보.
-- assignee는 항상 `Hyeonjun0527`.
+기존 PR이 있으면 새 PR을 만들지 말고 기존 PR에 push한다.
 
-### 5. Develop 머지
+## 5. merge 및 확인
 
-```bash
-gh pr merge <pr> --merge
-```
-
-- PR이 생성되면 바로 develop에 머지한다.
-- 머지 후 develop 기준으로 통합 검증을 다시 실행한다.
-- 통합 검증이 실패하면 같은 브랜치에서 수정 커밋으로 이어간다.
-
-## 중단 조건
-
-- 검증 실패 시: 수정 후 재실행.
-- push 실패 시: conflict 해결 후 재시도.
-- PR 생성 실패 시: 원인 파악 후 재시도.
-- 머지 실패 시: 원인을 사용자에게 보고.
-
-## 이 플로우는 멈추지 않는다
-
-- 개발 완료 필수 원칙에 따라, 이 전체 흐름은 중간에 멈추지 않고 일사천리로 수행한다.
-- 실패한 단계가 있으면 그 시점에서 사용자에게 보고한다.
+- PR checks 확인 후 merge.
+- 운영 반영 작업이면 GitHub Actions main workflow와 `https://yeon.world` health를 확인한다.

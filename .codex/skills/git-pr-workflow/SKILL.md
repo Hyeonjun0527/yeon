@@ -1,7 +1,7 @@
 ---
 name: git-pr-workflow
 description: |-
-  `study-platform-client`와 동일한 commit, push, PR, stacked PR 운영 절차.
+  Yeon main-only 브랜치, 커밋, push, PR, merge 운영 절차. develop은 잠정 중단 상태로 기본 사용 금지.
 ---
 
 # git-pr-workflow
