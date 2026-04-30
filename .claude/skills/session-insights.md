@@ -13,7 +13,7 @@ user_invocable: true
 아래 소스를 종합하여 분석한다:
 
 1. **git log** — 커밋 히스토리, 브랜치별 활동, 시간대별 패턴
-2. **personal_space/** — 날짜별 백로그, TIL, 작업 기록
+2. **docs/** + **ai-log/** — 공식 문서, 날짜별 AI 작업 기록
 3. **MEMORY.md + 메모리 파일** — 축적된 피드백, 프로젝트 메모리
 4. **.claude/skills/** — 현재 등록된 스킬 목록
 

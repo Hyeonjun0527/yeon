@@ -21,8 +21,8 @@ output
 .env.local
 **/.env.local
 
-personal_space
-docs/backlog
+ai-log
+docs/product/backlog/history
 
 AGENTS.md
 AGENTS.local.md

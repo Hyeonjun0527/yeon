@@ -32,17 +32,17 @@ This file is the **thin project override** for Yeon. The global baseline is `~/.
   5. relevant skills only
 - Before modifying files, check current work state:
   - `git status --short --branch`
-  - `ls personal_space/ai-log/<today>/` and previous-day unfinished logs when relevant
-- For development work, create or update a work log under `personal_space/ai-log/YYYY-MM-DD/`.
+  - `ls ai-log/hyeonjun/<today>/` (or the active author directory) and previous-day unfinished logs when relevant
+- For development work, create or update a work log under `ai-log/{person}/YYYY-MM-DD/`.
 
 </startup_protocol>
 
 <work_log_policy>
 
-- New work logs go under `personal_space/ai-log/YYYY-MM-DD/`.
+- New work logs go under `ai-log/{person}/YYYY-MM-DD/`.
 - Working filename: `N-작업-{claude|codex}_{시작HHMM}-{예상종료HHMM}_{주제}_[작업중].md`.
 - Completion filename: replace end time with actual time and suffix with `_[완료].md`; also update the internal actual end/status fields.
-- Do not create new top-level `ai-log/` or `docs/` folders outside `personal_space/`.
+- Do not recreate `personal_space/`; use root `docs/` for official documents and root `ai-log/` for process logs.
 
 </work_log_policy>
 
