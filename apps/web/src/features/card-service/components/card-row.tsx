@@ -11,7 +11,7 @@ import type { CardDeckItemDto } from "@yeon/api-contract/card-decks";
 
 import { useDeleteCard, useUpdateCard } from "../hooks";
 
-const PREVIEW_MAX_LENGTH = 96;
+const PREVIEW_MAX_LENGTH = 180;
 
 interface CardRowProps {
   deckId: string;
@@ -233,7 +233,7 @@ export function CardRow({
         onKeyDown={handleViewKeyDown}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={`grid cursor-pointer grid-cols-[48px_minmax(0,1fr)_64px] items-stretch outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-[#111] md:grid-cols-[56px_minmax(0,1fr)_64px] ${
+        className={`grid cursor-pointer grid-cols-[44px_minmax(0,1fr)_48px] items-stretch outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-[#111] md:grid-cols-[56px_minmax(0,1fr)_64px] ${
           isDeleteRevealed ? "-translate-x-24" : "translate-x-0"
         }`}
       >
@@ -241,21 +241,21 @@ export function CardRow({
           {index ?? "-"}
         </div>
 
-        <div className="min-w-0 px-4 py-3">
-          <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] md:gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-[12px] font-medium text-[#666]">
+        <div className="min-w-0 px-3 py-3 md:px-4">
+          <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] md:gap-4">
+            <div className="flex min-w-0 flex-col items-start gap-1.5 md:grid md:grid-cols-[48px_minmax(0,1fr)] md:gap-3">
+              <span className="mt-0.5 shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-center text-[12px] font-medium text-[#666]">
                 질문
               </span>
-              <p className="truncate text-[16px] font-medium leading-7 text-[#111] md:text-[14px] md:leading-6">
+              <p className="w-full min-w-0 overflow-hidden break-words text-[16px] font-medium leading-6 text-[#111] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] md:text-[14px] md:leading-6">
                 {toPreviewText(item.frontText)}
               </p>
             </div>
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-[12px] font-medium text-[#666]">
+            <div className="flex min-w-0 flex-col items-start gap-1.5 md:grid md:grid-cols-[48px_minmax(0,1fr)] md:gap-3">
+              <span className="mt-0.5 shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-center text-[12px] font-medium text-[#666]">
                 답변
               </span>
-              <p className="truncate text-[15px] leading-7 text-[#555] md:text-[14px] md:leading-6 md:text-[#333]">
+              <p className="w-full min-w-0 overflow-hidden break-words text-[15px] leading-6 text-[#555] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] md:text-[14px] md:leading-6 md:text-[#333]">
                 {toPreviewText(item.backText)}
               </p>
             </div>
@@ -316,7 +316,7 @@ export function CardRow({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-center gap-1 pr-2">
+        <div className="flex items-center justify-center gap-1 pr-1 md:pr-2">
           <button
             type="button"
             onClick={(event) => {
@@ -338,7 +338,7 @@ export function CardRow({
               setActionMenuOpen((prev) => !prev);
               setDeleteRevealed(false);
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[18px] text-[#666] hover:bg-[#fafafa] hover:text-[#111]"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[18px] text-[#666] hover:bg-[#fafafa] hover:text-[#111] md:h-8 md:w-8"
             aria-label="카드 작업 더보기"
           >
             ⋮
