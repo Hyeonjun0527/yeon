@@ -4,10 +4,11 @@
 
 <skill_catalog_policy>
 
-- Direct child directories under `.codex/skills/<name>/SKILL.md` are discoverable skills.
-- `.claude/commands/*.md` 또는 `.claude/skills/*.md`가 source of truth인 로컬 스킬은 thin wrapper로 유지한다.
+- Direct child directories under `.codex/skills/<name>/SKILL.md` are vendored/OMX-provided skills.
+- User-authored shared skills live under `.codex/skills/SHARED/<name>/SKILL.md`.
+- `.claude/commands/*.md` 또는 `.claude/skills/*.md`가 source of truth인 사용자 제작 스킬은 `SHARED/` 아래 thin wrapper로 유지한다.
 - Vendored OMC skills는 upstream 절차를 보존하되, Yeon 정책과 충돌하면 project `AGENTS.md`의 main-only override가 우선한다.
-- Confusing or low-fit skills may be moved to `.codex/skills-archive/` so they stop appearing in default routing.
+- `.codex/skills-archive/`는 Codex 기본 skill discovery에서 빼기 위한 보관소다. AI가 자동으로 읽을 문서가 아니라, 필요할 때 사람이 다시 살리거나 참고하기 위한 parked 자료다.
 
 </skill_catalog_policy>
 
@@ -57,9 +58,9 @@ Use for normal Yeon development.
 
 - `.codex/skills-archive/writer-memory` — useful for fiction/writing projects, not default Yeon development routing.
 
-## Local mirrored skills
+## User-authored SHARED skills
 
-These are generated from `.claude/commands` or `.claude/skills`. Do not edit their wrappers directly; edit the source and run `bin/sync-skills.sh`.
+These are generated under `.codex/skills/SHARED/` from `.claude/commands` or `.claude/skills`. Do not edit their wrappers directly; edit the source and run `bin/sync-skills.sh`.
 
 <!-- SYNC-SKILLS:LOCAL:BEGIN -->
 
@@ -88,6 +89,8 @@ These are generated from `.claude/commands` or `.claude/skills`. Do not edit the
 <!-- SYNC-SKILLS:LOCAL:END -->
 
 ## Vendored OMC Skills
+
+These are vendored / OMX-provided skills kept as direct children of `.codex/skills/`.
 
 - source: `https://github.com/Yeachan-Heo/oh-my-claudecode/tree/main/skills`
 - current active vendored names:
@@ -136,5 +139,6 @@ wiki
 ## Cleanup decisions
 
 - `frontend-design-skill` was renamed to `frontend-design` to match its frontmatter name and make invocation predictable.
-- Stray `.codex/skills/clarify.md` was removed; the discoverable wrapper is `.codex/skills/clarify/SKILL.md`.
+- Stray `.codex/skills/clarify.md` was removed; the discoverable wrapper is `.codex/skills/SHARED/clarify/SKILL.md`.
+- User-authored wrappers were moved from `.codex/skills/<name>/` to `.codex/skills/SHARED/<name>/` so they are visually separate from OMX-provided skills.
 - `writer-memory` was moved to `.codex/skills-archive/` because it is unrelated to Yeon's coding/product workflow and should not appear in default skill routing.
