@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - develop
     paths:
       - ".github/workflows/docker-image.yml"
       - "Dockerfile"
@@ -36,7 +35,7 @@ env:
 
 jobs:
   build_amd64:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-amd64-${{ github.run_id }}-${{ github.run_attempt }}
@@ -68,7 +67,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: Build amd64 image by digest
@@ -80,7 +78,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             NODE_MEMORY=4096
-            NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
+            NEXT_PUBLIC_RACE_SERVER_URL=wss://race.yeon.world
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=yeon-web-amd64
@@ -102,7 +100,7 @@ jobs:
           retention-days: 1
 
   build_arm64:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-arm64-${{ github.run_id }}-${{ github.run_attempt }}
@@ -139,7 +137,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: 디스크·이미지 정리 (빌드 전)
@@ -162,7 +159,7 @@ jobs:
           platforms: linux/arm64
           build-args: |
             NODE_MEMORY=3072
-            NEXT_PUBLIC_RACE_SERVER_URL=${{ github.ref == 'refs/heads/main' && 'wss://race.yeon.world' || 'wss://race.dev.yeon.world' }}
+            NEXT_PUBLIC_RACE_SERVER_URL=wss://race.yeon.world
           outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           # provenance / sbom 은 cache export 를 무겁게 하고 여기선 쓰지 않으므로 off.
@@ -196,7 +193,7 @@ jobs:
         run: docker buildx prune -f --keep-storage 10GB --filter "until=168h" || true
 
   publish_manifest:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     needs:
       - build_amd64
       - build_arm64
@@ -228,7 +225,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       # pattern: 'digest-*' 는 prefix match 라 race-server 용 artifact(`digest-race-amd64` 등)까지 잡아
@@ -338,7 +334,7 @@ jobs:
           done
 
   build_race_amd64:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-amd64-${{ github.run_id }}-${{ github.run_attempt }}
@@ -370,7 +366,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: Build race-server amd64 image by digest
@@ -401,7 +396,7 @@ jobs:
           retention-days: 1
 
   build_race_arm64:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64]
     env:
       DIGEST_DIR: ${{ github.workspace }}/.ci-digests/digests-race-arm64-${{ github.run_id }}-${{ github.run_attempt }}
@@ -435,7 +430,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: 디스크·이미지 정리 (빌드 전)
@@ -489,7 +483,7 @@ jobs:
         run: docker buildx prune -f --keep-storage 10GB --filter "until=168h" || true
 
   publish_race_manifest:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     needs:
       - build_race_amd64
       - build_race_arm64
@@ -521,7 +515,6 @@ jobs:
           images: ${{ steps.image.outputs.ref }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,format=short,prefix=sha-
 
       - name: Download image digests
@@ -595,66 +588,6 @@ jobs:
       DEPLOY_DIR: /srv/yeon
       COMPOSE_FILE: compose.prod.yml
       IMAGE_TAG: latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: GHCR 로그인
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check deploy prerequisites
-        run: |
-          set -eu
-          install -d "${DEPLOY_DIR}"
-          test -f "${DEPLOY_DIR}/.env"
-          command -v docker
-          docker compose version
-          docker network inspect yeon-edge >/dev/null 2>&1 || docker network create yeon-edge
-          docker network inspect yeon-db-edge >/dev/null 2>&1 || docker network create yeon-db-edge
-
-      - name: Sync compose file
-        run: |
-          set -eu
-          install -m 644 "${COMPOSE_FILE}" "${DEPLOY_DIR}/${COMPOSE_FILE}"
-
-      - name: Deploy on Raspberry Pi
-        run: |
-          set -eu
-          owner_lower="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          cd "${DEPLOY_DIR}"
-          export YEON_WEB_IMAGE="ghcr.io/${owner_lower}/yeon-web-app:${IMAGE_TAG}"
-          export YEON_RACE_SERVER_IMAGE="ghcr.io/${owner_lower}/yeon-race-server:${IMAGE_TAG}"
-          # Pi 네트워크 대응: pull 실패 시 최대 3회 재시도
-          for i in 1 2 3; do
-            docker compose -f "${COMPOSE_FILE}" pull && break
-            [ "$i" -eq 3 ] && exit 1
-            echo "pull 실패 (${i}/3), 30초 후 재시도..."
-            sleep 30
-          done
-          # --force-recreate 제거: 변경된 서비스(web)만 재시작, DB는 불필요하게 재시작하지 않음
-          # --wait: 모든 서비스가 healthy 상태가 될 때까지 대기 후 반환
-          docker compose -f "${COMPOSE_FILE}" up -d --wait
-
-      - name: Run DB migrations
-        run: |
-          set -eu
-          DEPLOY_DIR="${DEPLOY_DIR}" COMPOSE_FILE="${COMPOSE_FILE}" bash scripts/migrate.sh
-
-  deploy_develop:
-    if: github.ref == 'refs/heads/develop'
-    needs:
-      - publish_manifest
-      - publish_race_manifest
-    runs-on: [self-hosted, Linux, ARM64]
-    env:
-      DEPLOY_DIR: /srv/yeon-develop
-      COMPOSE_FILE: compose.dev.yml
-      IMAGE_TAG: develop
 
     steps:
       - name: Checkout

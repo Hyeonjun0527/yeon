@@ -1,7 +1,7 @@
 ---
 name: validate
 description: |-
-  코드 변경 후 실행하는 lint → format → typecheck → build 검증 파이프라인.
+  Yeon 변경 후 실행하는 검증 파이프라인. 코드 변경은 lint/format/typecheck/build/test, 문서·규칙 변경은 SSOT/sync/diff 검증.
 ---
 
 # validate

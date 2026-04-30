@@ -1,7 +1,7 @@
 ---
 name: deploy-all
 description: |-
-  검증 → 커밋 → push → PR(develop) → 머지 → PR(main) → 머지까지 전체 배포 플로우.
+  Yeon main-only 운영 배포 플로우. 검증 → 커밋 → push → PR(main) → 머지 → 운영 배포 확인.
 ---
 
 # deploy-all

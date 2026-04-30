@@ -1,68 +1,67 @@
 ---
 name: git-pr-workflow
-description: `study-platform-client`와 동일한 commit, push, PR, stacked PR 운영 절차.
+description: Yeon main-only 브랜치, 커밋, push, PR, merge 운영 절차. develop은 잠정 중단 상태로 기본 사용 금지.
 user_invocable: true
 ---
 
-# Git / PR Workflow
+# Git / PR Workflow — Yeon main-only
 
-## 운영 모델
+## 현재 정책
 
-- develop 서버 기준 통합 브랜치: `develop`
-- 운영 브랜치: `main`
-- 첫 landing 단위의 첫 브랜치는 최신 `origin/develop`에서 분기한다.
-- 별도 landing 단위가 필요할 때만 stacked branch와 stacked PR로 분리한다.
+- `develop`은 잠정 중단 상태다.
+- 기본 base는 `origin/main`, 기본 PR target은 `main`이다.
+- `develop`, `origin/develop`, `dev.yeon.world`는 사용자가 명시적으로 재활성화하거나 지정한 경우에만 사용한다.
+- 직접 `main` push는 금지. 작업 브랜치 → push → PR(main) → merge가 기본이다.
 
-## 현재 저장소 상태
+## 시작
 
-- 2026-04-06 기준 이 저장소 원격에는 `origin/main`만 있다.
-- 따라서 첫 통합 단계에서는 `main`에서 `develop`을 생성해 push한 뒤, 그 다음부터 이 규칙을 그대로 적용한다.
+```bash
+git status --short --branch
+git fetch origin
+git switch -c <type>/<name>-<N> origin/main
+```
 
-## 커밋 절차
+이미 작업 브랜치가 있으면 새 브랜치를 만들지 말고 현재 브랜치에서 이어간다. 단, 사용자가 명시적으로 새 브랜치를 요청하면 `origin/main`에서 분기한다.
 
-1. lint fix
-2. format fix
-3. typecheck
-4. `git add .`
-5. `git commit`
+## 작업 중 안전
 
-- 스크립트가 아직 없으면 없는 척 대체하지 말고 먼저 공유한다.
-- 커밋 메시지는 반드시 한국어로, 변경 대상 + 핵심 동작 변화 + 수정 의도가 드러나게 작성한다.
+- 다른 에이전트 변경을 되돌리지 않는다.
+- 같은 파일 동시 수정이 보이면 semantic conflict 여부를 확인한다.
+- 자기 파일만 stage한다. `git add .` 지양.
+- 커밋 전 untracked 파일 확인:
 
-## push 절차
+```bash
+git status --short | grep '^??' || true
+```
 
-1. 검증이 green인지 확인한다.
-2. 첫 push면 `git push -u origin <branch>`
-3. 후속 수정은 같은 브랜치에 계속 push한다.
-4. restack이나 rebase 뒤에는 본인 브랜치에 한해 `--force-with-lease`만 사용한다.
+## push 전
 
-## PR 절차
+```bash
+git fetch origin
+git rebase origin/main
+# 필요 시 검증 후
+git push -u origin <branch>
+```
 
-1. 첫 PR의 base는 `develop`
-2. stacked PR의 base는 직전 작업 브랜치
-3. `gh pr create --base <base> --head <head> --title "<title>" --body-file <file>`
-4. `gh pr edit <pr> --add-assignee Hyeonjun0527`
+rebase 후 기존 원격 브랜치를 갱신해야 하면 본인 브랜치에만 `--force-with-lease`를 사용한다.
 
-## PR 본문 필수 항목
+## PR
+
+```bash
+gh pr create --base main --head <branch> --title "<구체적 제목>" --body-file <body-file>
+gh pr edit <pr-number> --add-assignee Hyeonjun0527
+```
+
+PR 본문 최소 항목:
 
 - 작업 내용
 - 변경 이유
 - 검증 방법
-- 브랜치 정보(`base`, `head`, `순번`)
+- base/head 브랜치
+- main-only 정책 준수 여부
 
-## 금지사항
+## merge
 
-- direct `develop` push
-- direct `main` push
-- suffix 없는 작업 브랜치명
-- 깨진 중간 상태 커밋
-- 서로 다른 landing 단위를 한 PR에 섞는 것
-
-## 동시 작업 인식
-
-이 저장소에는 여러 에이전트가 동시에 작업 중일 수 있다.
-
-- **작업 시작 전**: `git fetch origin && git rebase origin/develop` — 다른 에이전트가 먼저 머지한 내용을 반영한다.
-- **push 직전**: 다시 한번 `git fetch origin && git rebase origin/develop` — 작업 중에 다른 에이전트가 머지했을 수 있다.
-- **같은 파일 수정 충돌 시**: 로컬에서 rebase로 충돌을 해결하고, `--force-with-lease`로 push한다. `--force`는 금지.
-- **브랜치명 충돌 방지**: 다른 에이전트가 사용 중인 브랜치명과 겹치지 않도록 작업 단위가 명확히 드러나는 이름을 사용한다.
+- PR checks가 green이어야 한다.
+- merge 직전 필요하면 `git fetch origin && git rebase origin/main` 후 push한다.
+- merge 후 운영 배포가 필요한 작업은 main workflow run을 확인한다.
