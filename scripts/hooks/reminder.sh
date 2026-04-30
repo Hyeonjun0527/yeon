@@ -52,7 +52,7 @@ EOF
 cat <<EOF
 
 ### 핵심 3조
-1. 로그: personal_space/ai-log/${TODAY}/N-작업-{claude|codex}_{HHMM}-{HHMM}_{주제}_[작업중].md → 완료 시 종료시각 rename + _[완료] suffix.
+1. 로그: ai-log/{person}/${TODAY}/N-작업-{claude|codex}_{HHMM}-{HHMM}_{주제}_[작업중].md → 완료 시 종료시각 rename + _[완료] suffix.
 2. 착수 전: 상대 주체 [작업중] 문서 확인. 범위 겹치면 재분할.
 3. 큰 작업: Claude/Codex 분할 검토 먼저.
 

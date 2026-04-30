@@ -27,7 +27,7 @@ user_invocable: true
 ### Agent 3: TIL (Today I Learned) 추출
 
 - 이번 세션에서 새롭게 알게 된 기술적 사실, 디버깅 경험, 아키텍처 결정을 추출
-- `personal_space/YYYY-MM-DD/TIL.md` 형식으로 정리할 내용을 준비
+- `ai-log/{person}/YYYY-MM-DD/TIL.md` 형식으로 정리할 내용을 준비
 - 이미 알고 있던 것의 반복은 제외하고, 진짜 새로운 발견만 포함
 
 ### Agent 4: 후속 작업 정리
